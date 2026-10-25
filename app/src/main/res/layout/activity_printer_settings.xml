@@ -1,0 +1,337 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F4F6F8"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Top Header Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card"
+            android:elevation="2dp"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:src="@android:drawable/ic_menu_agenda"
+                    android:contentDescription="Printer Icon" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="XP-T361 Thermal Printer"
+                        android:textColor="#212121"
+                        android:textSize="17sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="80mm Bluetooth ESC/POS Receipt Station"
+                        android:textColor="#757575"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="12dp"
+                android:background="#EEEEEE" />
+
+            <!-- Printer Specs Grid -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:weightSum="3">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Paper Width"
+                        android:textColor="#757575"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/tvPaperWidth"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="80 mm"
+                        android:textColor="#2E7D32"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Resolution"
+                        android:textColor="#757575"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/tvDpi"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="203 DPI"
+                        android:textColor="#2E7D32"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Columns"
+                        android:textColor="#757575"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/tvCharsPerLine"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="48 Chars"
+                        android:textColor="#2E7D32"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Bluetooth Device Selection Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_card"
+            android:elevation="2dp"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Paired Bluetooth Printer"
+                android:textColor="#212121"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Select your paired XP-T361 device from the dropdown below:"
+                android:textColor="#757575"
+                android:textSize="12sp" />
+
+            <!-- Spinner Container with Border -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_spinner_border">
+
+                <Spinner
+                    android:id="@+id/spnPrinters"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp" />
+            </FrameLayout>
+
+            <!-- Currently Saved MAC Indicator -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Current Target: "
+                    android:textColor="#757575"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/tvCurrentMacAddress"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="None configured"
+                    android:textColor="#1565C0"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Action Button Row: Refresh & Save -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:orientation="horizontal"
+                android:weightSum="2">
+
+                <Button
+                    android:id="@+id/btnRefreshDevices"
+                    android:layout_width="0dp"
+                    android:layout_height="46dp"
+                    android:layout_marginEnd="6dp"
+                    android:layout_weight="1"
+                    android:text="Refresh List"
+                    android:textAllCaps="false"
+                    android:textColor="#2E7D32"
+                    android:background="@drawable/bg_btn_outlined" />
+
+                <Button
+                    android:id="@+id/btnSavePrinter"
+                    android:layout_width="0dp"
+                    android:layout_height="46dp"
+                    android:layout_marginStart="6dp"
+                    android:layout_weight="1"
+                    android:text="Save Printer"
+                    android:textAllCaps="false"
+                    android:textColor="#FFFFFF"
+                    android:background="@drawable/bg_btn_primary" />
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Test Print & Diagnostics Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_card"
+            android:elevation="2dp"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Printer Verification &amp; Test"
+                android:textColor="#212121"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Sends a complete 80mm sample receipt with Myanmar Unicode rendering, itemized invoice table, total, and barcodes."
+                android:textColor="#757575"
+                android:textSize="12sp" />
+
+            <!-- Test Print Button -->
+            <Button
+                android:id="@+id/btnTestPrint"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="14dp"
+                android:text="Execute Test Print (XP-T361)"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_btn_accent" />
+
+            <!-- Printing Progress Indicator -->
+            <ProgressBar
+                android:id="@+id/pbPrintProgress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="10dp"
+                android:visibility="gone" />
+
+            <!-- Status Feedback Label -->
+            <TextView
+                android:id="@+id/tvPrintStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:text="Ready"
+                android:textColor="#757575"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+
+        <!-- Troubleshooting Info Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:layout_marginBottom="24dp"
+            android:background="@drawable/bg_card_yellow"
+            android:orientation="vertical"
+            android:padding="14dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="XP-T361 Connection Tips:"
+                android:textColor="#F57F17"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:lineSpacingExtra="2dp"
+                android:text="1. Pair the XP-T361 in your Android Bluetooth Settings first (Default PIN: 0000 or 1234).\n2. Ensure printer power is ON and 80mm thermal paper roll is loaded.\n3. Complex Myanmar script is converted into high-contrast monochrome bitmaps for clean printing."
+                android:textColor="#5D4037"
+                android:textSize="11.5sp" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

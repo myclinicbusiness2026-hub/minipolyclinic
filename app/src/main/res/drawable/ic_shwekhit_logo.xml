@@ -1,0 +1,44 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+
+    <!-- Golden Outer Glow / Ring -->
+    <path
+        android:fillColor="#D4AF37"
+        android:pathData="M24,2 C11.85,2 2,11.85 2,24 C2,36.15 11.85,46 24,46 C36.15,46 46,36.15 46,24 C46,11.85 36.15,2 24,2 Z" />
+
+    <!-- Thin Inner Golden Ring Accent -->
+    <path
+        android:fillColor="#FFF8E1"
+        android:pathData="M24,3.5 C12.68,3.5 3.5,12.68 3.5,24 C3.5,35.32 12.68,44.5 24,44.5 C35.32,44.5 44.5,35.32 44.5,24 C44.5,12.68 35.32,3.5 24,3.5 Z" />
+
+    <!-- Deep Emerald Medical Green Circular Field -->
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M24,5 C13.51,5 5,13.51 5,24 C5,34.49 13.51,43 24,43 C34.49,43 43,34.49 43,24 C43,13.51 34.49,5 24,5 Z" />
+
+    <!-- Inner Golden Crest Ring -->
+    <path
+        android:strokeColor="#FFD700"
+        android:strokeWidth="0.8"
+        android:fillColor="#00000000"
+        android:pathData="M24,7.5 C14.89,7.5 7.5,14.89 7.5,24 C7.5,33.11 14.89,40.5 24,40.5 C33.11,40.5 40.5,33.11 40.5,24 C40.5,14.89 33.11,7.5 24,7.5 Z" />
+
+    <!-- Pure White Central Medical Cross -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M21,14 H27 V21 H34 V27 H27 V34 H21 V27 H14 V21 H21 Z" />
+
+    <!-- Golden Cross Core Inlay -->
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M22.5,16.5 H25.5 V22.5 H31.5 V25.5 H25.5 V31.5 H22.5 V25.5 H16.5 V22.5 H22.5 Z" />
+
+    <!-- Golden Medical Star / Sparkle Accents -->
+    <path
+        android:fillColor="#FFF9C4"
+        android:pathData="M24,21 L24.8,23.2 L27,24 L24.8,24.8 L24,27 L23.2,24.8 L21,24 L23.2,23.2 Z" />
+
+</vector>

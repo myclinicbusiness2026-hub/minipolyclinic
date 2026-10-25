@@ -1,0 +1,6 @@
+{
+  "name": "Shwe Khit Clinic",
+  "description": "\"ရွှေခေတ်\" အထွေထွေရောဂါကုဆေးခန်း - Smart EMR, FEFO Inventory & Clinic Management System",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

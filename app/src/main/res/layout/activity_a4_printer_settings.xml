@@ -1,0 +1,429 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F4F6F8"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Top Header Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card"
+            android:elevation="2dp"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:src="@android:drawable/ic_menu_edit"
+                    android:contentDescription="A4 Doc Icon" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="A4 Medical Record &amp; Rx Station"
+                        android:textColor="#212121"
+                        android:textSize="17sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="ISO A4 Clinical EMR &amp; Prescription Layout Studio"
+                        android:textColor="#757575"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="12dp"
+                android:background="#EEEEEE" />
+
+            <!-- Specs Grid -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:weightSum="3">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Page Standard"
+                        android:textColor="#757575"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/tvPaperStandard"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="210 x 297 mm"
+                        android:textColor="#2E7D32"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Point Grid"
+                        android:textColor="#757575"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/tvPointGrid"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="595 x 842 pt"
+                        android:textColor="#2E7D32"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Target Engine"
+                        android:textColor="#757575"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/tvEngine"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Vector PDF"
+                        android:textColor="#2E7D32"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Paper & Page Layout Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_card"
+            android:elevation="2dp"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Paper &amp; Layout Formatting (စက္ကူနှင့် ဘေးဘောင်)"
+                android:textColor="#212121"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <!-- Paper Size -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Paper Size (စာရွက်အရွယ်အစား):"
+                android:textColor="#757575"
+                android:textSize="12sp" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/bg_spinner_border">
+
+                <Spinner
+                    android:id="@+id/spnPaperSize"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp" />
+            </FrameLayout>
+
+            <!-- Margin Selection -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Margins (ဘေးဘောင် အကျဉ်းအကျယ်):"
+                android:textColor="#757575"
+                android:textSize="12sp" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/bg_spinner_border">
+
+                <Spinner
+                    android:id="@+id/spnMargins"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp" />
+            </FrameLayout>
+
+            <!-- Orientation -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Orientation (စာရွက်အထားအသို):"
+                android:textColor="#757575"
+                android:textSize="12sp" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/bg_spinner_border">
+
+                <Spinner
+                    android:id="@+id/spnOrientation"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp" />
+            </FrameLayout>
+
+        </LinearLayout>
+
+        <!-- Clinical Content Toggles Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_card"
+            android:elevation="2dp"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Document Content Options (ပါဝင်မှု ရွေးချယ်ချက်)"
+                android:textColor="#212121"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <CheckBox
+                android:id="@+id/cbLetterhead"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="ဆေးခန်း Letterhead ခေါင်းစီးနှင့် လိပ်စာ ထည့်သွင်းမည်"
+                android:textColor="#212121"
+                android:textSize="13sp" />
+
+            <CheckBox
+                android:id="@+id/cbStamp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ဆရာဝန် လက်မှတ်နှင့် ဆမ (Dr. Nyan Kaung Sett, 47414) တံဆိပ်တုံး"
+                android:textColor="#212121"
+                android:textSize="13sp" />
+
+            <CheckBox
+                android:id="@+id/cbDemographics"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="လူနာ ကိုယ်ရေးအချက်အလက် (HN, အသက်, ကျား/မ, Vital Signs)"
+                android:textColor="#212121"
+                android:textSize="13sp" />
+
+            <CheckBox
+                android:id="@+id/cbAnatomy"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Anatomy Drawing စာရွက်နှင့် စမ်းသပ်ချက်မှတ်တမ်းများ"
+                android:textColor="#212121"
+                android:textSize="13sp" />
+
+            <CheckBox
+                android:id="@+id/cbGrayscale"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Grayscale / Ink Saver Mode (မှင်သက်သာစေရန် အဖြူအမည်းသီးသန့်)"
+                android:textColor="#212121"
+                android:textSize="13sp" />
+
+        </LinearLayout>
+
+        <!-- System Printer Spooler & Management Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_card"
+            android:elevation="2dp"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Printer Connectivity &amp; Spooler"
+                android:textColor="#212121"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Connect to office A4 printers via Wi-Fi, Network IP, Cloud Print, or USB plugin services (Canon, HP, Epson, Brother)."
+                android:textColor="#757575"
+                android:textSize="12sp" />
+
+            <Button
+                android:id="@+id/btnOpenSystemPrinters"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_btn_outlined"
+                android:text="Open Android Print Services (ပရင်တာများ ရှာဖွေမည်)"
+                android:textAllCaps="false"
+                android:textColor="#2E7D32"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <!-- Action Buttons: Save & Test Print -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_card"
+            android:elevation="2dp"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Save &amp; Verification (သိမ်းဆည်းခြင်းနှင့် စမ်းသပ်ခြင်း)"
+                android:textColor="#212121"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="horizontal"
+                android:weightSum="2">
+
+                <Button
+                    android:id="@+id/btnSaveA4Settings"
+                    android:layout_width="0dp"
+                    android:layout_height="46dp"
+                    android:layout_marginEnd="6dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_btn_primary"
+                    android:text="Save Preferences"
+                    android:textAllCaps="false"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold" />
+
+                <Button
+                    android:id="@+id/btnTestA4Print"
+                    android:layout_width="0dp"
+                    android:layout_height="46dp"
+                    android:layout_marginStart="6dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_btn_accent"
+                    android:text="Execute Test Print"
+                    android:textAllCaps="false"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvA4Status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:gravity="center"
+                android:text="Preferences Loaded"
+                android:textColor="#757575"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+
+        <!-- Helpful Info Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:layout_marginBottom="24dp"
+            android:background="@drawable/bg_card_yellow"
+            android:orientation="vertical"
+            android:padding="14dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="A4 Document Printing Tips:"
+                android:textColor="#F57F17"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:lineSpacingExtra="2dp"
+                android:text="1. Normal 15mm margins ensure proper clearance on all laser/inkjet printers.\n2. Official SAMA seal includes Dr. Nyan Kaung Sett's Medical Registration 47414.\n3. Prescriptions can also be exported directly as high-resolution PDF for instant sharing via Viber or Telegram."
+                android:textColor="#5D4037"
+                android:textSize="11.5sp" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>
