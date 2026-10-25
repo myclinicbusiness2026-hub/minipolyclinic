@@ -25,7 +25,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Assemble Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --stacktrace --no-daemon -Dorg.gradle.jvmargs="-Xmx6g -XX:MaxMetaspaceSize=768m -XX:+UseParallelGC -XX:-UseGCOverheadLimit" -Pkotlin.compiler.execution.strategy=in-process
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
