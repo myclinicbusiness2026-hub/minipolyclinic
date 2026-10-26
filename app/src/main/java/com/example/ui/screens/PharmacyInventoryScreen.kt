@@ -186,7 +186,7 @@ fun PharmacyInventoryScreen(
             ) {
               Icon(Icons.Default.AddBox, contentDescription = null, modifier = Modifier.size(12.dp))
               Spacer(modifier = Modifier.width(2.dp))
-              Text("+ Stock", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+              Text("Stock", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
             }
           }
         }
@@ -886,7 +886,7 @@ fun SupplierManagementView(
       ) {
         Icon(Icons.Default.AddBusiness, contentDescription = null, modifier = Modifier.size(15.dp))
         Spacer(modifier = Modifier.width(4.dp))
-        Text("+ Add Supplier", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+        Text("Add Supplier", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
       }
     }
 

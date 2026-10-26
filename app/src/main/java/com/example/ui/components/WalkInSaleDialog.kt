@@ -392,7 +392,7 @@ fun WalkInSaleDialog(
                           ) {
                             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
                             Spacer(modifier = Modifier.width(3.dp))
-                            Text("+ ထည့်မည်", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+                            Text("ထည့်မည်", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
                           }
                         }
                       }

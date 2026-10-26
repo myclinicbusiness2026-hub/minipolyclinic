@@ -86,7 +86,7 @@ fun TreatmentOrderCard(
         ) {
           Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
           Spacer(modifier = Modifier.width(4.dp))
-          Text("+ ဆေးထိုးအော်ဒါ", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+          Text("ဆေးထိုးအော်ဒါ", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
         }
       }
 

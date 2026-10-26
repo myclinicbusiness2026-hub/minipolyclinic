@@ -208,7 +208,7 @@ fun ChronicDiseaseTrendsDialog(
                 ) {
                   Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(12.dp))
                   Spacer(modifier = Modifier.width(3.dp))
-                  Text("+ Log Reading", fontSize = 9.5.sp)
+                  Text("Log Reading", fontSize = 9.5.sp)
                 }
               }
 

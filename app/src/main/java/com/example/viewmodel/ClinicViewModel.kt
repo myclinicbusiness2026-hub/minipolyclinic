@@ -1314,7 +1314,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     return Pair(true, restored)
   }
 
-  fun updateInvoiceDocumentationFee(invoiceId: String, includeFee: Boolean, fee: Double = 3000.0) {
+  fun updateInvoiceDocumentationFee(invoiceId: String, includeFee: Boolean, fee: Double = 1000.0) {
     val effectiveFee = if (includeFee) fee else 0.0
     val updated = _invoices.value.map { inv ->
       if (inv.id == invoiceId) {

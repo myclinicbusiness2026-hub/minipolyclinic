@@ -243,7 +243,7 @@ fun PatientQueueScreen(
             ) {
               Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(15.dp))
               Spacer(modifier = Modifier.width(5.dp))
-              Text("+ New Patient", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+              Text("New Patient", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
             }
 
             // Follow-up / 2nd Visit Action
@@ -258,7 +258,7 @@ fun PatientQueueScreen(
             ) {
               Icon(Icons.Default.EventRepeat, contentDescription = null, modifier = Modifier.size(15.dp))
               Spacer(modifier = Modifier.width(5.dp))
-              Text("+ Follow-up", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+              Text("Follow-up", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
             }
           }
         }
@@ -1018,7 +1018,7 @@ fun PatientQueueItemCard(
               ) {
                 Icon(Icons.Default.EventRepeat, contentDescription = null, modifier = Modifier.size(12.dp))
                 Spacer(modifier = Modifier.width(3.dp))
-                Text("+ Follow-up", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                Text("Follow-up", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
               }
             }
           }

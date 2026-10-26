@@ -168,7 +168,7 @@ fun MedicalAttachmentsDialog(
           ) {
             Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(14.dp))
             Spacer(modifier = Modifier.width(4.dp))
-            Text("+ Attach Image / PDF", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+            Text("Attach Image / PDF", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
           }
         }
 

@@ -869,7 +869,7 @@ private fun PatientDetailedEmrPane(
           ) {
             Icon(Icons.Default.EventRepeat, contentDescription = null, modifier = Modifier.size(13.dp))
             Spacer(modifier = Modifier.width(4.dp))
-            Text("+ Register Follow-Up", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+            Text("Register Follow-Up", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
           }
         }
 

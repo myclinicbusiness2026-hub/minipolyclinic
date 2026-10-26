@@ -134,7 +134,7 @@ fun TreatmentScreen(
           ) {
             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
             Spacer(modifier = Modifier.width(4.dp))
-            Text("ကုသမှုကတ်အသစ် (+ New Card)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text("ကုသမှုကတ်အသစ် (New Card)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
           }
         }
       }
@@ -661,12 +661,12 @@ fun AdministerSessionModal(
 
   val currencyFmt = NumberFormat.getNumberInstance(Locale.US)
 
-  // Find common consumables from pharmacy inventory or presets
-  val consumablePresets = listOf(
-    Pair("IV Cannula (အကြောပိုက်)", 1500.0),
-    Pair("Scalp Vein / Butterfly Needle (ကလေးအပ်)", 1000.0),
-    Pair("Syringe & WFI (ဆေးထိုးအပ်+ဆေးဖျော်ရေ)", 1000.0),
-    Pair("IV Infusion Set (အကြောပိုက်ဆက်ကြိုး)", 2000.0)
+  // Preset consumable items mapped to store inventory
+  val presetQueries = listOf(
+    Pair("Cannula", "IV Cannula"),
+    Pair("Scalp Vein", "Scalp Vein Needle"),
+    Pair("Syringe", "Syringe & WFI"),
+    Pair("Infusion", "IV Infusion Set")
   )
 
   val filteredStoreItems = remember(medicines, storeSearchQuery) {
@@ -780,33 +780,50 @@ fun AdministerSessionModal(
 
           Spacer(modifier = Modifier.height(6.dp))
 
-          // Preset Chips
+          // Preset Chips strictly matched with Store Inventory
           Row(
             modifier = Modifier
               .fillMaxWidth()
               .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
           ) {
-            consumablePresets.forEach { (name, price) ->
+            presetQueries.forEach { (keyword, defaultLabel) ->
+              val storeMatch = medicines.find {
+                it.name.contains(keyword, ignoreCase = true) ||
+                it.genericName.contains(keyword, ignoreCase = true)
+              }
               ElevatedAssistChip(
                 onClick = {
-                  val medMatch = medicines.find { it.name.contains(name.split(" ").first(), ignoreCase = true) }
-                  val existingIdx = selectedConsumables.indexOfFirst { it.name == name }
-                  if (existingIdx >= 0) {
-                    val curr = selectedConsumables[existingIdx]
-                    selectedConsumables[existingIdx] = curr.copy(quantity = curr.quantity + 1)
-                  } else {
-                    selectedConsumables.add(
-                      TreatmentConsumable(
-                        medicineId = medMatch?.id ?: "",
-                        name = name,
-                        quantity = 1,
-                        unitPrice = medMatch?.sellingPrice ?: price
+                  if (storeMatch != null) {
+                    val existingIdx = selectedConsumables.indexOfFirst { it.medicineId == storeMatch.id }
+                    if (existingIdx >= 0) {
+                      val curr = selectedConsumables[existingIdx]
+                      selectedConsumables[existingIdx] = curr.copy(quantity = curr.quantity + 1)
+                    } else {
+                      selectedConsumables.add(
+                        TreatmentConsumable(
+                          medicineId = storeMatch.id,
+                          name = storeMatch.name,
+                          quantity = 1,
+                          unitPrice = storeMatch.sellingPrice
+                        )
                       )
-                    )
+                    }
+                  } else {
+                    Toast.makeText(
+                      context,
+                      "$defaultLabel အား Pharmacy Store ထဲတွင် ဦးစွာ စာရင်းသွင်းပေးပါ",
+                      Toast.LENGTH_SHORT
+                    ).show()
                   }
                 },
-                label = { Text("+ $name", fontSize = 9.5.sp) }
+                label = {
+                  if (storeMatch != null) {
+                    Text("${storeMatch.name} (${storeMatch.totalStock})", fontSize = 9.5.sp, color = MedicalGreenDark)
+                  } else {
+                    Text("$defaultLabel (Store တွင်မရှိ)", fontSize = 9.sp, color = SlateMuted)
+                  }
+                }
               )
             }
           }
@@ -892,7 +909,7 @@ fun AdministerSessionModal(
                       modifier = Modifier.height(24.dp),
                       colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen)
                     ) {
-                      Text("+ Add", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                      Text("Add", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                   }
                   HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 0.5.dp)

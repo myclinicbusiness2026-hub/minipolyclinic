@@ -25,6 +25,7 @@ data class ClinicSettings(
   val defaultIvInfusionFee: Double = 6000.0,
   val defaultNebulizerFee: Double = 3000.0,
   val defaultDepoFee: Double = 2500.0,
+  val defaultDocumentationFee: Double = 1000.0,
   val allowQuickLogin: Boolean = true,
   val thermalPaperWidthMm: Int = 80,
   val bluetoothPrinterMac: String = "",

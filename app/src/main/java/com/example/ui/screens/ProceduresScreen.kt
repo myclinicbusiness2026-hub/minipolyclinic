@@ -122,7 +122,7 @@ fun ProceduresScreen(
         ) {
           Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
           Spacer(modifier = Modifier.width(3.dp))
-          Text("+ Add", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+          Text("Add", fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
       }
     }

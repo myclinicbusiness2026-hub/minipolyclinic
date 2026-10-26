@@ -864,6 +864,7 @@ object ClinicDataPersistence {
       put("defaultIvInfusionFee", s.defaultIvInfusionFee)
       put("defaultNebulizerFee", s.defaultNebulizerFee)
       put("defaultDepoFee", s.defaultDepoFee)
+      put("defaultDocumentationFee", s.defaultDocumentationFee)
       put("allowQuickLogin", s.allowQuickLogin)
       put("thermalPaperWidthMm", s.thermalPaperWidthMm)
       put("receiptGreetingMm", s.receiptGreetingMm)
@@ -904,6 +905,7 @@ object ClinicDataPersistence {
         defaultIvInfusionFee = o.optDouble("defaultIvInfusionFee", 6000.0),
         defaultNebulizerFee = o.optDouble("defaultNebulizerFee", 3000.0),
         defaultDepoFee = o.optDouble("defaultDepoFee", 2500.0),
+        defaultDocumentationFee = o.optDouble("defaultDocumentationFee", 1000.0),
         allowQuickLogin = o.optBoolean("allowQuickLogin", true),
         thermalPaperWidthMm = o.optInt("thermalPaperWidthMm", 80),
         receiptGreetingMm = o.optString("receiptGreetingMm", "ကျေးဇူးတင်ပါသည် (Thank you!)"),

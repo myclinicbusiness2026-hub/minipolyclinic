@@ -151,7 +151,7 @@ fun VaccinationTrackerDialog(
           ) {
             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
             Spacer(modifier = Modifier.width(4.dp))
-            Text("+ Record Vaccination", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+            Text("Record Vaccination", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
           }
         }
 

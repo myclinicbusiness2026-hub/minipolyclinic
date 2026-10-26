@@ -509,7 +509,7 @@ fun A4AnatomyCanvasDialog(
             ) {
               Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(12.dp), tint = MedicalGreen)
               Spacer(modifier = Modifier.width(2.dp))
-              Text("+ Add Sheet", fontSize = 10.sp, color = MedicalGreen, fontWeight = FontWeight.Bold)
+              Text("Add Sheet", fontSize = 10.sp, color = MedicalGreen, fontWeight = FontWeight.Bold)
             }
 
             // Remove Sheet Button (Available when more than 1 sheet exists)

@@ -193,7 +193,7 @@ fun CashierBillingScreen(
             ) {
               Icon(Icons.Default.AddShoppingCart, contentDescription = null, modifier = Modifier.size(13.dp))
               Spacer(modifier = Modifier.width(4.dp))
-              Text("+ ဆေးသီးသန့်အရောင်း (Walk-in OTC)", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+              Text("ဆေးသီးသန့်အရောင်း (Walk-in OTC)", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.width(6.dp))
             Surface(
@@ -306,7 +306,7 @@ fun CashierBillingScreen(
           ) {
             Icon(Icons.Default.AddShoppingCart, contentDescription = null, modifier = Modifier.size(14.dp))
             Spacer(modifier = Modifier.width(6.dp))
-            Text("+ ဆေးသီးသန့်အရောင်း (Direct Walk-in OTC POS)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text("ဆေးသီးသန့်အရောင်း (Direct Walk-in OTC POS)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
           }
         }
       }
@@ -931,7 +931,7 @@ private fun BillingCheckoutPane(
   }
   val existingDocFeeAmount = activeInvoice.items.find {
     it.description.contains("Documentation Fee", ignoreCase = true) || it.description.contains("Document Fee", ignoreCase = true)
-  }?.unitPrice ?: 3000.0
+  }?.unitPrice ?: 1000.0
 
   var wantsDocument by remember(activeInvoice.id, hasDocFeeItem) { mutableStateOf(hasDocFeeItem) }
   var docFeeAmountText by remember(activeInvoice.id) { mutableStateOf(existingDocFeeAmount.toInt().toString()) }
@@ -1216,7 +1216,7 @@ private fun BillingDocumentationBanner(
           .clickable(enabled = !activeInvoice.isPaid) {
             val next = !wantsDocument
             onWantsDocumentChange(next)
-            val amount = docFeeAmountText.toDoubleOrNull() ?: 3000.0
+            val amount = docFeeAmountText.toDoubleOrNull() ?: 1000.0
             onToggleDocFee(activeInvoice, next, amount)
           }
       ) {
@@ -1225,7 +1225,7 @@ private fun BillingDocumentationBanner(
           onCheckedChange = { checked ->
             if (!activeInvoice.isPaid) {
               onWantsDocumentChange(checked)
-              val amount = docFeeAmountText.toDoubleOrNull() ?: 3000.0
+              val amount = docFeeAmountText.toDoubleOrNull() ?: 1000.0
               onToggleDocFee(activeInvoice, checked, amount)
             }
           },
