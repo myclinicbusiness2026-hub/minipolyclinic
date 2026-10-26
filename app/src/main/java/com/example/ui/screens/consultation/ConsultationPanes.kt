@@ -53,7 +53,8 @@ fun ConsultationClinicalRecordPane(
   anatomyPageCount: Int,
   objective: String,
   canvasNotesState: String,
-  onOpenFullscreenCanvas: () -> Unit
+  onOpenFullscreenCanvas: () -> Unit,
+  onEditRecord: ((ConsultationRecord) -> Unit)? = null
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     // 1. Patient Banner Card with Allergies Alert
@@ -156,7 +157,8 @@ fun ConsultationClinicalRecordPane(
         },
         onDeleteRecord = { recId ->
           viewModel.deleteConsultation(recId)
-        }
+        },
+        onEditRecord = onEditRecord
       )
     }
 

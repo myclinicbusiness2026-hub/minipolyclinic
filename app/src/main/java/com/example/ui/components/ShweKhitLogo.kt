@@ -63,8 +63,22 @@ fun ShweKhitLogo(
       contentAlignment = Alignment.Center
     ) {
       if (!customLogoUri.isNullOrBlank()) {
+        val model: Any = remember(customLogoUri) {
+          when {
+            customLogoUri.startsWith("/") -> java.io.File(customLogoUri)
+            customLogoUri.startsWith("file://") -> java.io.File(customLogoUri.removePrefix("file://"))
+            customLogoUri.length > 150 && !customLogoUri.contains("/") && !customLogoUri.contains(":") -> {
+              try {
+                android.util.Base64.decode(customLogoUri, android.util.Base64.DEFAULT)
+              } catch (_: Exception) {
+                customLogoUri
+              }
+            }
+            else -> customLogoUri
+          }
+        }
         AsyncImage(
-          model = customLogoUri,
+          model = model,
           contentDescription = "Clinic Logo",
           modifier = Modifier
             .fillMaxSize()

@@ -38,6 +38,7 @@ fun ClinicSettingsDialog(
   var clinicNameEn by remember { mutableStateOf(currentSettings.clinicNameEn) }
   var clinicSubtitleMm by remember { mutableStateOf(currentSettings.clinicSubtitleMm) }
   var clinicLogoUri by remember { mutableStateOf(currentSettings.clinicLogoUri) }
+  var clinicLogoBase64 by remember { mutableStateOf(currentSettings.clinicLogoBase64) }
   var doctorName by remember { mutableStateOf(currentSettings.doctorName) }
   var doctorDegree by remember { mutableStateOf(currentSettings.doctorDegree) }
   var doctorSama by remember { mutableStateOf(currentSettings.doctorSama) }
@@ -67,13 +68,13 @@ fun ClinicSettingsDialog(
   ) { uri ->
     if (uri != null) {
       try {
-        val file = java.io.File(context.filesDir, "clinic_logo.png")
-        context.contentResolver.openInputStream(uri)?.use { input ->
-          file.outputStream().use { output ->
-            input.copyTo(output)
-          }
+        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        if (bytes != null) {
+          clinicLogoBase64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+          val file = java.io.File(context.filesDir, "clinic_logo.png")
+          file.writeBytes(bytes)
+          clinicLogoUri = file.absolutePath
         }
-        clinicLogoUri = file.absolutePath
       } catch (e: Exception) {
         clinicLogoUri = uri.toString()
       }
@@ -167,7 +168,7 @@ fun ClinicSettingsDialog(
               Row(verticalAlignment = Alignment.CenterVertically) {
                 ShweKhitLogo(
                   size = 52.dp,
-                  customLogoUri = clinicLogoUri.ifBlank { null }
+                  customLogoUri = clinicLogoBase64.ifBlank { clinicLogoUri.ifBlank { null } }
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
@@ -178,7 +179,7 @@ fun ClinicSettingsDialog(
                     color = DarkGrayText
                   )
                   Text(
-                    if (clinicLogoUri.isNotBlank()) "စိတ်ကြိုက် Logo အသုံးပြုထားပါသည်" else "မူလ “ရွှေခေတ်” Logo ကို အသုံးပြုထားပါသည်",
+                    if (clinicLogoBase64.isNotBlank() || clinicLogoUri.isNotBlank()) "စိတ်ကြိုက် Logo အသုံးပြုထားပါသည်" else "မူလ “ရွှေခေတ်” Logo ကို အသုံးပြုထားပါသည်",
                     fontSize = 9.5.sp,
                     color = SlateMedium
                   )
@@ -202,9 +203,12 @@ fun ClinicSettingsDialog(
                   Text("Logo အသစ်ထည့်မည်", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
                 }
 
-                if (clinicLogoUri.isNotBlank()) {
+                if (clinicLogoUri.isNotBlank() || clinicLogoBase64.isNotBlank()) {
                   OutlinedButton(
-                    onClick = { clinicLogoUri = "" },
+                    onClick = { 
+                      clinicLogoUri = "" 
+                      clinicLogoBase64 = ""
+                    },
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                     modifier = Modifier.height(34.dp),
                     shape = RoundedCornerShape(6.dp)
@@ -593,6 +597,7 @@ fun ClinicSettingsDialog(
                   bluetoothPrinterMac = currentSettings.bluetoothPrinterMac,
                   receiptGreetingMm = receiptGreetingMm.trim(),
                   clinicLogoUri = clinicLogoUri.trim(),
+                  clinicLogoBase64 = clinicLogoBase64.trim(),
                   activeStationName = activeStationName.trim().ifBlank { "Doctor Consultation Station" },
                   wifiHubHostIp = wifiHubHostIp.trim(),
                   wifiSyncPort = wifiSyncPort.toIntOrNull() ?: 8080,

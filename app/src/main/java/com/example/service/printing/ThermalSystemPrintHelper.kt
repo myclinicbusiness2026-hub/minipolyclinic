@@ -17,6 +17,8 @@ import android.print.PrintManager
 import android.widget.Toast
 import com.example.model.ClinicSettings
 import com.example.model.Invoice
+import com.example.ui.screens.treatment.TreatmentCard
+import com.example.ui.screens.treatment.TreatmentStatus
 import java.io.FileOutputStream
 import java.text.NumberFormat
 import java.util.Locale
@@ -336,6 +338,177 @@ fun triggerSystemPrintThermalSlip(
         is80mm = is80mm
       )
 
+      printManager.print(jobName, adapter, printAttributes)
+    } else {
+      Toast.makeText(context, "System Print Spooler not available", Toast.LENGTH_SHORT).show()
+    }
+  } catch (e: Exception) {
+    Toast.makeText(context, "Print Spooler Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+  }
+}
+
+/**
+ * Android PrintDocumentAdapter for Treatment Card Slip
+ */
+class TreatmentCardPrintAdapter(
+  private val card: TreatmentCard,
+  private val clinicSettings: ClinicSettings,
+  private val is80mm: Boolean = true
+) : PrintDocumentAdapter() {
+
+  override fun onLayout(
+    oldAttributes: PrintAttributes?,
+    newAttributes: PrintAttributes,
+    cancellationSignal: CancellationSignal?,
+    callback: LayoutResultCallback,
+    metadata: Bundle?
+  ) {
+    if (cancellationSignal?.isCanceled == true) {
+      callback.onLayoutCancelled()
+      return
+    }
+
+    val safeCardId = card.id.replace("/", "_")
+    val info = PrintDocumentInfo.Builder("TreatmentCard_${safeCardId}.pdf")
+      .setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT)
+      .setPageCount(1)
+      .build()
+
+    callback.onLayoutFinished(info, true)
+  }
+
+  override fun onWrite(
+    pages: Array<out PageRange>?,
+    destination: ParcelFileDescriptor,
+    cancellationSignal: CancellationSignal?,
+    callback: WriteResultCallback
+  ) {
+    var pdfDoc: PdfDocument? = null
+    try {
+      pdfDoc = PdfDocument()
+
+      val pageWidth = if (is80mm) 226 else 164
+      val estimatedHeight = 280 + (card.sessions.size * 22) + 80
+      val pageHeight = estimatedHeight.coerceAtLeast(360)
+
+      val pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, 1).create()
+      val page = pdfDoc.startPage(pageInfo)
+      val canvas = page.canvas
+
+      drawTreatmentSlipCanvas(canvas, pageWidth.toFloat(), pageHeight.toFloat())
+
+      pdfDoc.finishPage(page)
+
+      FileOutputStream(destination.fileDescriptor).use { out ->
+        pdfDoc.writeTo(out)
+      }
+
+      callback.onWriteFinished(arrayOf(PageRange.ALL_PAGES))
+    } catch (e: Exception) {
+      callback.onWriteFailed(e.message)
+    } finally {
+      pdfDoc?.close()
+    }
+  }
+
+  private fun drawTreatmentSlipCanvas(canvas: Canvas, width: Float, height: Float) {
+    val paint = Paint().apply {
+      isAntiAlias = true
+      color = Color.BLACK
+    }
+    val margin = 8f
+    var y = 18f
+
+    // Header
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    paint.textSize = 9.5f
+    paint.textAlign = Paint.Align.CENTER
+    val clinicTitle = clinicSettings.clinicNameMm.ifBlank { "SHWE KHIT GENERAL CLINIC" }
+    canvas.drawText(clinicTitle, width / 2f, y, paint)
+    y += 12f
+
+    paint.textSize = 8.5f
+    paint.color = Color.DKGRAY
+    canvas.drawText("DAY-CARE TREATMENT CARD", width / 2f, y, paint)
+    y += 10f
+
+    paint.color = Color.BLACK
+    paint.strokeWidth = 0.8f
+    canvas.drawLine(margin, y, width - margin, y, paint)
+    y += 12f
+
+    // Patient info
+    paint.textAlign = Paint.Align.LEFT
+    paint.textSize = 8f
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    canvas.drawText("Patient: ${card.patientName} (${card.patientHn})", margin, y, paint)
+    y += 11f
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+    canvas.drawText("Doctor: ${card.doctorName}", margin, y, paint)
+    y += 11f
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    canvas.drawText("Rx: ${card.medicationName} (${card.dosage})", margin, y, paint)
+    y += 11f
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+    canvas.drawText("Route: ${card.route.label} • ${card.frequency}", margin, y, paint)
+    y += 11f
+
+    canvas.drawLine(margin, y, width - margin, y, paint)
+    y += 12f
+
+    // Sessions table
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    paint.textSize = 8f
+    canvas.drawText("DOSE", margin, y, paint)
+    canvas.drawText("SCHEDULE / STATUS", margin + 40f, y, paint)
+    y += 11f
+
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+    paint.textSize = 7.5f
+    card.sessions.forEach { s ->
+      val statusDesc = if (s.status == TreatmentStatus.COMPLETED) {
+        "[✓] ${s.administeredAt ?: "Done"} (${s.administeredBy})"
+      } else {
+        "[ ] ${s.scheduledDate} ${s.scheduledTime}"
+      }
+      canvas.drawText("Dose ${s.sessionNumber}:", margin, y, paint)
+      canvas.drawText(statusDesc.take(28), margin + 40f, y, paint)
+      y += 12f
+    }
+
+    y += 4f
+    canvas.drawLine(margin, y, width - margin, y, paint)
+    y += 12f
+
+    paint.textAlign = Paint.Align.CENTER
+    paint.textSize = 7f
+    canvas.drawText("* ဆေးထိုးရန်လာတိုင်း ဤကတ်ပြား ယူဆောင်လာပါ *", width / 2f, y, paint)
+    y += 10f
+    val greeting = clinicSettings.receiptGreetingMm.ifBlank { "ကျေးဇူးတင်ပါသည်" }
+    canvas.drawText(greeting, width / 2f, y, paint)
+  }
+}
+
+/**
+ * Triggers Android's Native System Print Spooler for Treatment Card Slip
+ */
+fun triggerSystemPrintTreatmentSlip(
+  context: Context,
+  card: TreatmentCard,
+  clinicSettings: ClinicSettings,
+  is80mm: Boolean = true
+) {
+  try {
+    val printManager = context.getSystemService(Context.PRINT_SERVICE) as? PrintManager
+    if (printManager != null) {
+      val safeCardId = card.id.replace("[^a-zA-Z0-9]".toRegex(), "_")
+      val jobName = "TreatmentCard_${safeCardId}"
+      val printAttributes = PrintAttributes.Builder()
+        .setColorMode(PrintAttributes.COLOR_MODE_MONOCHROME)
+        .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
+        .build()
+
+      val adapter = TreatmentCardPrintAdapter(card, clinicSettings, is80mm)
       printManager.print(jobName, adapter, printAttributes)
     } else {
       Toast.makeText(context, "System Print Spooler not available", Toast.LENGTH_SHORT).show()

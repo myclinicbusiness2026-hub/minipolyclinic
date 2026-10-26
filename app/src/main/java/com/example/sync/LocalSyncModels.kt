@@ -53,6 +53,7 @@ data class SyncDataPayload(
   val invoices: List<Invoice>,
   val medicines: List<Medicine>,
   val users: List<UserAccount> = emptyList(),
+  val clinicSettings: ClinicSettings? = null,
   val deletedPatientIds: List<String> = emptyList(),
   val deletedConsultationIds: List<String> = emptyList(),
   val deletedInvoiceIds: List<String> = emptyList(),
@@ -265,6 +266,22 @@ data class SyncDataPayload(
       userArr.put(uo)
     }
     root.put("users", userArr)
+
+    if (clinicSettings != null) {
+      val so = JSONObject().apply {
+        put("clinicNameEn", clinicSettings.clinicNameEn)
+        put("clinicNameMm", clinicSettings.clinicNameMm)
+        put("clinicSubtitleMm", clinicSettings.clinicSubtitleMm)
+        put("clinicAddress", clinicSettings.clinicAddress)
+        put("clinicPhone", clinicSettings.clinicPhone)
+        put("doctorName", clinicSettings.doctorName)
+        put("doctorDegree", clinicSettings.doctorDegree)
+        put("doctorSama", clinicSettings.doctorSama)
+        put("clinicLogoUri", clinicSettings.clinicLogoUri)
+        put("clinicLogoBase64", clinicSettings.clinicLogoBase64)
+      }
+      root.put("clinicSettings", so)
+    }
 
     return root.toString()
   }

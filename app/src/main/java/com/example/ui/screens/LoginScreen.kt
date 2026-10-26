@@ -113,7 +113,7 @@ fun LoginScreen(
         // Clinic Branding Header
         ShweKhitLogo(
           size = 48.dp,
-          customLogoUri = clinicSettings.clinicLogoUri.ifBlank { null }
+          customLogoUri = clinicSettings.effectiveLogo.ifBlank { null }
         )
         Spacer(modifier = Modifier.height(10.dp))
 

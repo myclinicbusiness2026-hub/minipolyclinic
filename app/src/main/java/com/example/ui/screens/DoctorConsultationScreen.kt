@@ -217,6 +217,7 @@ fun DoctorConsultationScreen(
   val drawingPagesState = remember(activePatient?.id) { mutableStateListOf<DrawingPage>() }
   var canvasNotesState by remember(activePatient?.id) { mutableStateOf("") }
   var anatomyPageCount by remember(activePatient?.id) { mutableStateOf(1) }
+  var editingConsultation by remember { mutableStateOf<ConsultationRecord?>(null) }
 
   // Restore in-progress active draft for active patient if currently being edited today
   val draftConsultations by viewModel.draftConsultations.collectAsState()
@@ -309,7 +310,8 @@ fun DoctorConsultationScreen(
         referralRecord = referralState,
         doctorNameOverride = effectiveDoctor.first,
         doctorDegreeOverride = effectiveDoctor.second,
-        doctorSamaOverride = effectiveDoctor.third
+        doctorSamaOverride = effectiveDoctor.third,
+        treatmentOrders = orderedTreatmentCards.toList()
       )
     }
   }
@@ -356,40 +358,9 @@ fun DoctorConsultationScreen(
         rbs = rbsText.toDoubleOrNull() ?: activePatient.vitals.rbs
       )
 
-      viewModel.completeConsultation(
-        patientId = activePatient.id,
-        subjective = subjective,
-        objective = currentNotes,
-        assessment = assessment,
-        plan = plan,
-        diagnosisList = selectedDiagnoses.toList(),
-        prescriptions = prescribedDrugs.toList(),
-        selectedProcedures = selectedProcedures.toList(),
-        consultationFee = consultationFeeText.toDoubleOrNull() ?: 8000.0,
-        serviceFee = serviceFeeText.toDoubleOrNull() ?: 0.0,
-        suggestedInvestigations = selectedInvestigations.toList(),
-        drawingPages = resolvedPages,
-        canvasNotes = currentNotes,
-        followUpAppointment = followUpAppointmentText,
-        followUpDueDate = dueDate,
-        nextVaccineSchedule = nextVaccineScheduleText,
-        patientInstructions = patientInstructionsState,
-        medicalLeave = medicalLeaveState,
-        referralRecord = referralState,
-        attachments = attachmentsState.toList(),
-        vitals = currentVitals,
-        doctorNameOverride = effectiveDoctor.first,
-        doctorDegreeOverride = effectiveDoctor.second,
-        doctorSamaOverride = effectiveDoctor.third
-      )
-
-      // 1. Add doctor-ordered Treatment Cards
-      orderedTreatmentCards.forEach { card ->
-        viewModel.addTreatmentCard(card)
-      }
-
-      // 2. Automatically generate Day-Care Treatment Card if any injectable drugs were ordered in Rx without explicit card
-      if (orderedTreatmentCards.isEmpty()) {
+      // Collect all treatment orders (explicit + injectable Rx)
+      val finalTreatmentCards = orderedTreatmentCards.toMutableList()
+      if (finalTreatmentCards.isEmpty()) {
         prescribedDrugs.forEach { drug ->
           val isInjection = drug.effectiveName.contains("Inj", ignoreCase = true) ||
               drug.dosage.contains("Inj", ignoreCase = true) ||
@@ -431,9 +402,43 @@ fun DoctorConsultationScreen(
               medicationFee = drug.unitPrice,
               instructions = drug.instructions
             )
-            viewModel.addTreatmentCard(card)
+            finalTreatmentCards.add(card)
           }
         }
+      }
+
+      // Complete consultation with combined injection fees
+      viewModel.completeConsultation(
+        patientId = activePatient.id,
+        subjective = subjective,
+        objective = currentNotes,
+        assessment = assessment,
+        plan = plan,
+        diagnosisList = selectedDiagnoses.toList(),
+        prescriptions = prescribedDrugs.toList(),
+        selectedProcedures = selectedProcedures.toList(),
+        consultationFee = consultationFeeText.toDoubleOrNull() ?: 8000.0,
+        serviceFee = serviceFeeText.toDoubleOrNull() ?: 0.0,
+        suggestedInvestigations = selectedInvestigations.toList(),
+        drawingPages = resolvedPages,
+        canvasNotes = currentNotes,
+        followUpAppointment = followUpAppointmentText,
+        followUpDueDate = dueDate,
+        nextVaccineSchedule = nextVaccineScheduleText,
+        patientInstructions = patientInstructionsState,
+        medicalLeave = medicalLeaveState,
+        referralRecord = referralState,
+        attachments = attachmentsState.toList(),
+        vitals = currentVitals,
+        doctorNameOverride = effectiveDoctor.first,
+        doctorDegreeOverride = effectiveDoctor.second,
+        doctorSamaOverride = effectiveDoctor.third,
+        treatmentOrders = finalTreatmentCards
+      )
+
+      // Save treatment cards to database/state
+      finalTreatmentCards.forEach { card ->
+        viewModel.addTreatmentCard(card)
       }
 
       onConsultationCompleted()
@@ -833,7 +838,8 @@ fun DoctorConsultationScreen(
                 anatomyPageCount = anatomyPageCount,
                 objective = objective,
                 canvasNotesState = canvasNotesState,
-                onOpenFullscreenCanvas = { showScribbleExpanded = true }
+                onOpenFullscreenCanvas = { showScribbleExpanded = true },
+                onEditRecord = { record -> editingConsultation = record }
               )
             }
 
@@ -921,7 +927,8 @@ fun DoctorConsultationScreen(
                 anatomyPageCount = anatomyPageCount,
                 objective = objective,
                 canvasNotesState = canvasNotesState,
-                onOpenFullscreenCanvas = { showScribbleExpanded = true }
+                onOpenFullscreenCanvas = { showScribbleExpanded = true },
+                onEditRecord = { record -> editingConsultation = record }
               )
             }
 
@@ -1399,5 +1406,125 @@ fun DoctorConsultationScreen(
       }
     )
   }
+
+  // Edit Past Consultation Dialog
+  editingConsultation?.let { record ->
+    EditConsultationDialog(
+      record = record,
+      onDismiss = { editingConsultation = null },
+      onSave = { updated ->
+        viewModel.updateConsultation(updated)
+        editingConsultation = null
+        Toast.makeText(context, "ဆေးမှတ်တမ်း အောင်မြင်စွာ ပြင်ဆင်သိမ်းဆည်းပြီးပါပြီ", Toast.LENGTH_SHORT).show()
+      }
+    )
+  }
+}
+
+/**
+ * Dialog to edit previously saved consultation record (SOAP notes, fee, diagnoses)
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditConsultationDialog(
+  record: ConsultationRecord,
+  onDismiss: () -> Unit,
+  onSave: (ConsultationRecord) -> Unit
+) {
+  var subjectiveText by remember { mutableStateOf(record.subjective) }
+  var objectiveText by remember { mutableStateOf(record.objective.ifBlank { record.canvasNotes }) }
+  var assessmentText by remember { mutableStateOf(record.assessment.ifBlank { record.diagnosisList.joinToString(", ") }) }
+  var planText by remember { mutableStateOf(record.plan) }
+  var feeText by remember { mutableStateOf(record.consultationFee.toInt().toString()) }
+
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = {
+      Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Default.Edit, contentDescription = null, tint = Color(0xFF7E22CE))
+        Spacer(modifier = Modifier.width(8.dp))
+        Column {
+          Text("ဆေးမှတ်တမ်း ပြင်ဆင်ခြင်း (Edit Consultation)", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+          Text("Patient: ${record.patientName} • Date: ${record.timestamp}", fontSize = 10.sp, color = SlateMedium)
+        }
+      }
+    },
+    text = {
+      Column(
+        modifier = Modifier
+          .fillMaxWidth()
+          .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+      ) {
+        OutlinedTextField(
+          value = subjectiveText,
+          onValueChange = { subjectiveText = it },
+          label = { Text("ရောဂါရာဇဝင် / Chief Complaints (S)", fontSize = 11.sp) },
+          modifier = Modifier.fillMaxWidth(),
+          minLines = 2,
+          maxLines = 4
+        )
+        OutlinedTextField(
+          value = objectiveText,
+          onValueChange = { objectiveText = it },
+          label = { Text("စမ်းသပ်တွေ့ရှိချက် / Examination & Findings (O)", fontSize = 11.sp) },
+          modifier = Modifier.fillMaxWidth(),
+          minLines = 2,
+          maxLines = 4
+        )
+        OutlinedTextField(
+          value = assessmentText,
+          onValueChange = { assessmentText = it },
+          label = { Text("ရောဂါအမည် / Assessment & Diagnosis (A)", fontSize = 11.sp) },
+          modifier = Modifier.fillMaxWidth(),
+          singleLine = true
+        )
+        OutlinedTextField(
+          value = planText,
+          onValueChange = { planText = it },
+          label = { Text("ကုသမှုအစီအစဉ် / Treatment Plan (P)", fontSize = 11.sp) },
+          modifier = Modifier.fillMaxWidth(),
+          minLines = 2,
+          maxLines = 4
+        )
+        OutlinedTextField(
+          value = feeText,
+          onValueChange = { feeText = it },
+          label = { Text("ဆရာဝန်ပြသခ / Consultation Fee (Ks)", fontSize = 11.sp) },
+          modifier = Modifier.fillMaxWidth(),
+          singleLine = true
+        )
+      }
+    },
+    confirmButton = {
+      Button(
+        onClick = {
+          val newFee = feeText.toDoubleOrNull() ?: record.consultationFee
+          val updated = record.copy(
+            subjective = subjectiveText,
+            objective = objectiveText,
+            assessment = assessmentText,
+            plan = planText,
+            consultationFee = newFee
+          )
+          onSave(updated)
+        },
+        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7E22CE)),
+        shape = RoundedCornerShape(6.dp)
+      ) {
+        Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(14.dp))
+        Spacer(modifier = Modifier.width(4.dp))
+        Text("သိမ်းဆည်းမည် (Save)", fontSize = 11.sp)
+      }
+    },
+    dismissButton = {
+      OutlinedButton(
+        onClick = onDismiss,
+        shape = RoundedCornerShape(6.dp)
+      ) {
+        Text("မသိမ်းဘဲပိတ်မည်", fontSize = 11.sp)
+      }
+    }
+  )
 }
 

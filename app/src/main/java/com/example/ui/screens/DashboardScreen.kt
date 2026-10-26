@@ -299,7 +299,7 @@ fun DashboardScreen(
           }
           ShweKhitLogo(
             size = 40.dp,
-            customLogoUri = clinicSettings.clinicLogoUri.ifBlank { null }
+            customLogoUri = clinicSettings.effectiveLogo.ifBlank { null }
           )
         }
       }

@@ -630,6 +630,7 @@ fun TreatmentScreen(
   cardToPrint?.let { card ->
     TreatmentCardSlipDialog(
       card = card,
+      clinicSettings = clinicSettings,
       onDismiss = { cardToPrint = null }
     )
   }
@@ -1315,6 +1316,7 @@ fun CreateTreatmentCardModal(
 @Composable
 fun TreatmentCardSlipDialog(
   card: TreatmentCard,
+  clinicSettings: ClinicSettings = ClinicSettings(),
   onDismiss: () -> Unit
 ) {
   val context = LocalContext.current
@@ -1355,7 +1357,12 @@ fun TreatmentCardSlipDialog(
     confirmButton = {
       Button(
         onClick = {
-          Toast.makeText(context, "Printing Treatment Card Slip...", Toast.LENGTH_SHORT).show()
+          com.example.service.printing.triggerSystemPrintTreatmentSlip(
+            context = context,
+            card = card,
+            clinicSettings = clinicSettings,
+            is80mm = clinicSettings.thermalPaperWidthMm == 80
+          )
           onDismiss()
         },
         colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen)

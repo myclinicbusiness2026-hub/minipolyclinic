@@ -40,7 +40,8 @@ fun PastConsultationHistoryCard(
   onCopyPlan: ((String) -> Unit)? = null,
   onCopyInvestigations: ((List<String>) -> Unit)? = null,
   onViewA4Record: ((ConsultationRecord) -> Unit)? = null,
-  onDeleteRecord: ((String) -> Unit)? = null
+  onDeleteRecord: ((String) -> Unit)? = null,
+  onEditRecord: ((ConsultationRecord) -> Unit)? = null
 ) {
   var isExpanded by remember(pastRecords) { mutableStateOf(false) }
   var recordToDelete by remember { mutableStateOf<ConsultationRecord?>(null) }
@@ -187,6 +188,19 @@ fun PastConsultationHistoryCard(
                           modifier = Modifier.size(28.dp)
                         ) {
                           Icon(Icons.Default.DeleteOutline, contentDescription = "Delete Record", tint = Color(0xFFDC2626), modifier = Modifier.size(15.dp))
+                        }
+                      }
+                      if (onEditRecord != null) {
+                        OutlinedButton(
+                          onClick = { onEditRecord(record) },
+                          contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                          modifier = Modifier.height(28.dp),
+                          shape = RoundedCornerShape(6.dp),
+                          border = BorderStroke(1.dp, Color(0xFF7E22CE))
+                        ) {
+                          Icon(Icons.Default.Edit, contentDescription = null, tint = Color(0xFF7E22CE), modifier = Modifier.size(13.dp))
+                          Spacer(modifier = Modifier.width(3.dp))
+                          Text("ပြင်ဆင်မည်", fontSize = 9.5.sp, color = Color(0xFF7E22CE), fontWeight = FontWeight.Bold)
                         }
                       }
                       if (onViewA4Record != null) {

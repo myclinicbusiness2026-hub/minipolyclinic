@@ -390,7 +390,7 @@ fun PosThermalSlipDialog(
               // 1. Clinic Branding Header
               ShweKhitLogo(
                 size = 36.dp,
-                customLogoUri = clinicSettings.clinicLogoUri.ifBlank { null }
+                customLogoUri = clinicSettings.effectiveLogo.ifBlank { null }
               )
               Spacer(modifier = Modifier.height(6.dp))
               Text(

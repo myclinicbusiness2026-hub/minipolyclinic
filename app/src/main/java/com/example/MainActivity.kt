@@ -156,7 +156,7 @@ fun MiniPolyclinicMainApp(
               Row(verticalAlignment = Alignment.CenterVertically) {
                 ShweKhitLogo(
                   size = 40.dp,
-                  customLogoUri = clinicSettings.clinicLogoUri.ifBlank { null }
+                  customLogoUri = clinicSettings.effectiveLogo.ifBlank { null }
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Column {
@@ -569,7 +569,7 @@ fun MiniPolyclinicMainApp(
             Row(verticalAlignment = Alignment.CenterVertically) {
               ShweKhitLogo(
                 size = 32.dp,
-                customLogoUri = clinicSettings.clinicLogoUri.ifBlank { null }
+                customLogoUri = clinicSettings.effectiveLogo.ifBlank { null }
               )
               Spacer(modifier = Modifier.width(8.dp))
               Column {

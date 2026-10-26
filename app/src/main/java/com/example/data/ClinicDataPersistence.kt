@@ -867,6 +867,15 @@ object ClinicDataPersistence {
       put("allowQuickLogin", s.allowQuickLogin)
       put("thermalPaperWidthMm", s.thermalPaperWidthMm)
       put("receiptGreetingMm", s.receiptGreetingMm)
+      put("clinicLogoUri", s.clinicLogoUri)
+      put("clinicLogoBase64", s.clinicLogoBase64)
+      put("bluetoothPrinterMac", s.bluetoothPrinterMac)
+      put("wifiHubHostIp", s.wifiHubHostIp)
+      put("wifiSyncPort", s.wifiSyncPort)
+      put("supabaseUrl", s.supabaseUrl)
+      put("supabaseAnonKey", s.supabaseAnonKey)
+      put("enableSupabaseSync", s.enableSupabaseSync)
+      put("activeStationName", s.activeStationName)
     }
     getPrefs(context).edit().putString(KEY_CLINIC_SETTINGS, obj.toString()).apply()
   }
@@ -897,7 +906,16 @@ object ClinicDataPersistence {
         defaultDepoFee = o.optDouble("defaultDepoFee", 2500.0),
         allowQuickLogin = o.optBoolean("allowQuickLogin", true),
         thermalPaperWidthMm = o.optInt("thermalPaperWidthMm", 80),
-        receiptGreetingMm = o.optString("receiptGreetingMm", "ကျေးဇူးတင်ပါသည် (Thank you!)")
+        receiptGreetingMm = o.optString("receiptGreetingMm", "ကျေးဇူးတင်ပါသည် (Thank you!)"),
+        clinicLogoUri = o.optString("clinicLogoUri", ""),
+        clinicLogoBase64 = o.optString("clinicLogoBase64", ""),
+        bluetoothPrinterMac = o.optString("bluetoothPrinterMac", ""),
+        wifiHubHostIp = o.optString("wifiHubHostIp", ""),
+        wifiSyncPort = o.optInt("wifiSyncPort", 8080),
+        supabaseUrl = o.optString("supabaseUrl", "https://tjpayhhzbrcrkwyahecr.supabase.co"),
+        supabaseAnonKey = o.optString("supabaseAnonKey", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqcGF5aGh6YnJjcmt3eWFoZWNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2NTcxNTMsImV4cCI6MjEwNjIzMzE1M30.U7YlxEPl26SQt0bKjY2vw3nEWtYEOnAdxHt2L6_FEdU"),
+        enableSupabaseSync = o.optBoolean("enableSupabaseSync", true),
+        activeStationName = o.optString("activeStationName", "Doctor Consultation Station")
       )
     } catch (_: Exception) {
       ClinicSettings()

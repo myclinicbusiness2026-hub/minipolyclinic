@@ -599,10 +599,11 @@ fun A4PrescriptionTable(
       HorizontalDivider(thickness = 0.8.dp, color = BorderGray)
       consultation.prescriptions.forEachIndexed { idx, drug ->
         val isExt = drug.isExternal || drug.medicineId.startsWith("EXT-")
-        val baseTitle = if (drug.dosage.isNotBlank() && !drug.name.contains(drug.dosage, ignoreCase = true)) {
-          "${drug.name} (${drug.dosage})"
+        val effectiveDrugName = drug.effectiveName.ifBlank { drug.name.ifBlank { drug.medicineName } }
+        val baseTitle = if (drug.dosage.isNotBlank() && !effectiveDrugName.contains(drug.dosage, ignoreCase = true)) {
+          "${effectiveDrugName} (${drug.dosage})"
         } else {
-          drug.name
+          effectiveDrugName
         }
         val drugTitle = if (isExt) "$baseTitle  [ပြင်ပဝယ်ရန်/External]" else baseTitle
         Row(

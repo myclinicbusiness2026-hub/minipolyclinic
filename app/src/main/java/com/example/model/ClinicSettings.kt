@@ -31,6 +31,7 @@ data class ClinicSettings(
   val preferredThermalPrinterAddress: String = "",
   val receiptGreetingMm: String = "ကျေးဇူးတင်ပါသည် (Thank you!)",
   val clinicLogoUri: String = "",
+  val clinicLogoBase64: String = "",
   val supabaseUrl: String = "https://tjpayhhzbrcrkwyahecr.supabase.co",
   val supabaseAnonKey: String = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqcGF5aGh6YnJjcmt3eWFoZWNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2NTcxNTMsImV4cCI6MjEwNjIzMzE1M30.U7YlxEPl26SQt0bKjY2vw3nEWtYEOnAdxHt2L6_FEdU",
   val enableSupabaseSync: Boolean = true,
@@ -39,4 +40,6 @@ data class ClinicSettings(
   val lastSupabaseSyncTimestamp: String = "",
   val lastWifiSyncTimestamp: String = "",
   val activeStationName: String = "Doctor Consultation Station"
-)
+) {
+  val effectiveLogo: String get() = clinicLogoBase64.ifBlank { clinicLogoUri }
+}

@@ -336,6 +336,7 @@ class LocalWifiSyncManager(
       invoices = invoices,
       medicines = medicines,
       users = users,
+      clinicSettings = ClinicDataPersistence.loadClinicSettings(context),
       deletedPatientIds = deletedPatients,
       deletedConsultationIds = deletedConsultations,
       deletedInvoiceIds = deletedInvoices,
@@ -502,6 +503,29 @@ class LocalWifiSyncManager(
       }
       val mergedUsers = userMap.values.toList()
       ClinicDataPersistence.saveUsers(context, mergedUsers)
+
+      // Merge Clinic Settings & Logo
+      val remoteSettingsObj = root.optJSONObject("clinicSettings")
+      if (remoteSettingsObj != null) {
+        val localSettings = ClinicDataPersistence.loadClinicSettings(context)
+        val remoteLogoBase64 = remoteSettingsObj.optString("clinicLogoBase64", "")
+        val remoteLogoUri = remoteSettingsObj.optString("clinicLogoUri", "")
+        if (remoteLogoBase64.isNotBlank() || remoteSettingsObj.optString("clinicNameMm", "").isNotBlank()) {
+          val updatedSettings = localSettings.copy(
+            clinicNameEn = remoteSettingsObj.optString("clinicNameEn", localSettings.clinicNameEn),
+            clinicNameMm = remoteSettingsObj.optString("clinicNameMm", localSettings.clinicNameMm),
+            clinicSubtitleMm = remoteSettingsObj.optString("clinicSubtitleMm", localSettings.clinicSubtitleMm),
+            clinicAddress = remoteSettingsObj.optString("clinicAddress", localSettings.clinicAddress),
+            clinicPhone = remoteSettingsObj.optString("clinicPhone", localSettings.clinicPhone),
+            doctorName = remoteSettingsObj.optString("doctorName", localSettings.doctorName),
+            doctorDegree = remoteSettingsObj.optString("doctorDegree", localSettings.doctorDegree),
+            doctorSama = remoteSettingsObj.optString("doctorSama", localSettings.doctorSama),
+            clinicLogoBase64 = if (remoteLogoBase64.isNotBlank()) remoteLogoBase64 else localSettings.clinicLogoBase64,
+            clinicLogoUri = if (remoteLogoUri.isNotBlank()) remoteLogoUri else localSettings.clinicLogoUri
+          )
+          ClinicDataPersistence.saveClinicSettings(context, updatedSettings)
+        }
+      }
 
       scope.launch(Dispatchers.Main) {
         onDataUpdated()

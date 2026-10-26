@@ -1,6 +1,7 @@
 package com.example.service.printing
 
 import android.graphics.*
+import java.io.File
 import com.example.model.ConsultationRecord
 import com.example.model.Patient
 import com.example.model.PrescribedDrug
@@ -702,17 +703,34 @@ object A4PdfNativeCanvasRenderer {
     paint.strokeWidth = 2.5f
     canvas.drawLine(20f, 16f + headerHeight, width - 20f, 16f + headerHeight, paint)
 
-    // Left: Circular Logo Emblem with White Cross
+    // Left: Circular Logo Emblem (Custom or White Cross)
     val logoCx = 46f
     val logoCy = 16f + headerHeight / 2f
     val logoR = 18f
-    paint.color = Color.rgb(0x2E, 0x7D, 0x32)
-    canvas.drawCircle(logoCx, logoCy, logoR, paint)
-    paint.color = Color.WHITE
-    val crossW = 4f
-    val crossL = 10f
-    canvas.drawRect(logoCx - crossW / 2, logoCy - crossL, logoCx + crossW / 2, logoCy + crossL, paint)
-    canvas.drawRect(logoCx - crossL, logoCy - crossW / 2, logoCx + crossL, logoCy + crossW / 2, paint)
+    val customLogo = loadLogoBitmap(printSettings.clinicLogoUri)
+    if (customLogo != null) {
+      canvas.save()
+      val clipPath = Path()
+      clipPath.addCircle(logoCx, logoCy, logoR, Path.Direction.CCW)
+      canvas.clipPath(clipPath)
+      val srcRect = Rect(0, 0, customLogo.width, customLogo.height)
+      val dstRect = RectF(logoCx - logoR, logoCy - logoR, logoCx + logoR, logoCy + logoR)
+      canvas.drawBitmap(customLogo, srcRect, dstRect, null)
+      canvas.restore()
+      paint.style = Paint.Style.STROKE
+      paint.color = Color.rgb(0x2E, 0x7D, 0x32)
+      paint.strokeWidth = 1.2f
+      canvas.drawCircle(logoCx, logoCy, logoR, paint)
+      paint.style = Paint.Style.FILL
+    } else {
+      paint.color = Color.rgb(0x2E, 0x7D, 0x32)
+      canvas.drawCircle(logoCx, logoCy, logoR, paint)
+      paint.color = Color.WHITE
+      val crossW = 4f
+      val crossL = 10f
+      canvas.drawRect(logoCx - crossW / 2, logoCy - crossL, logoCx + crossW / 2, logoCy + crossL, paint)
+      canvas.drawRect(logoCx - crossL, logoCy - crossW / 2, logoCx + crossL, logoCy + crossW / 2, paint)
+    }
 
     // Clinic Titles
     val textStartX = 72f
@@ -1130,6 +1148,51 @@ object A4PdfNativeCanvasRenderer {
     return currentY + 4f
   }
 
+  private fun loadLogoBitmap(logoUri: String): Bitmap? {
+    if (logoUri.isBlank()) return null
+    return try {
+      if (logoUri.startsWith("data:image") || logoUri.length > 200) {
+        val clean = if (logoUri.contains(",")) logoUri.substringAfter(",") else logoUri
+        val bytes = android.util.Base64.decode(clean, android.util.Base64.DEFAULT)
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+      } else {
+        val file = File(logoUri.removePrefix("file://"))
+        if (file.exists()) {
+          BitmapFactory.decodeFile(file.absolutePath)
+        } else {
+          null
+        }
+      }
+    } catch (e: Exception) {
+      null
+    }
+  }
+
+  private fun wrapTextIntoLines(text: String, maxWidth: Float, paint: Paint): List<String> {
+    if (text.isBlank()) return emptyList()
+    val words = text.split(" ")
+    val lines = mutableListOf<String>()
+    var currentLine = StringBuilder()
+
+    for (word in words) {
+      if (currentLine.isEmpty()) {
+        currentLine.append(word)
+      } else {
+        val testLine = "${currentLine} $word"
+        if (paint.measureText(testLine) <= maxWidth) {
+          currentLine.append(" ").append(word)
+        } else {
+          lines.add(currentLine.toString())
+          currentLine = StringBuilder(word)
+        }
+      }
+    }
+    if (currentLine.isNotEmpty()) {
+      lines.add(currentLine.toString())
+    }
+    return lines
+  }
+
   private fun drawFormattedClinicalLine(
     canvas: Canvas,
     rawLine: String,
@@ -1139,11 +1202,13 @@ object A4PdfNativeCanvasRenderer {
     paint: Paint
   ): Float {
     val trimmed = rawLine.trim()
-    val isSubheading = (trimmed.startsWith("[") && trimmed.endsWith("]")) ||
-      (trimmed.startsWith("#") && trimmed.length < 50) ||
-      (trimmed.endsWith(":") && trimmed.length < 40 && !trimmed.startsWith("•") && !trimmed.startsWith("-"))
+    if (trimmed.isBlank()) return y
 
-    if (isSubheading) {
+    // Subheading: only if explicitly enclosed in [ ... ] or markdown heading #
+    val isExplicitSubheading = (trimmed.startsWith("[") && trimmed.endsWith("]")) ||
+      (trimmed.startsWith("#") && trimmed.length < 50)
+
+    if (isExplicitSubheading) {
       val title = trimmed.removePrefix("[").removeSuffix("]").removePrefix("#").trim()
       paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
       paint.textSize = 9.5f
@@ -1160,23 +1225,20 @@ object A4PdfNativeCanvasRenderer {
       paint.textSize = 8.5f
       paint.color = Color.rgb(0x21, 0x21, 0x21)
 
-      val formatted = if (trimmed.startsWith("•") || trimmed.startsWith("-") || trimmed.startsWith("*")) {
-        "  • ${trimmed.substring(1).trim()}"
+      val cleanContent = if (trimmed.startsWith("•") || trimmed.startsWith("-") || trimmed.startsWith("*")) {
+        trimmed.substring(1).trim()
       } else {
-        "    $trimmed"
+        trimmed
       }
 
-      val charLimit = (maxWidth / 4.8f).toInt().coerceAtLeast(35)
-      if (formatted.length > charLimit) {
-        val part1 = formatted.take(charLimit)
-        val part2 = "      " + formatted.substring(charLimit)
-        canvas.drawText(part1, x, y, paint)
-        canvas.drawText(part2.take(charLimit), x, y + 12f, paint)
-        return y + 24f
-      } else {
-        canvas.drawText(formatted, x, y, paint)
-        return y + 13f
+      val wrappedLines = wrapTextIntoLines(cleanContent, maxWidth - 16f, paint)
+      var currentY = y
+      wrappedLines.forEachIndexed { index, lineText ->
+        val prefix = if (index == 0) "• " else "  "
+        canvas.drawText(prefix + lineText, x + 4f, currentY, paint)
+        currentY += 12f
       }
+      return currentY + 2f
     }
   }
 

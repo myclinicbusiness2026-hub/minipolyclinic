@@ -50,7 +50,7 @@ data class A4PrintSettings(
         doctorName = s.doctorName,
         doctorDegree = s.doctorDegree,
         doctorSama = s.doctorSama,
-        clinicLogoUri = s.clinicLogoUri,
+        clinicLogoUri = s.clinicLogoBase64.ifBlank { s.clinicLogoUri },
         options = options
       )
     }

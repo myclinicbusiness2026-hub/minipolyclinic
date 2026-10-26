@@ -798,7 +798,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     vitals: VitalSigns = VitalSigns(),
     doctorNameOverride: String = "",
     doctorDegreeOverride: String = "",
-    doctorSamaOverride: String = ""
+    doctorSamaOverride: String = "",
+    treatmentOrders: List<TreatmentCard> = emptyList()
   ) {
     val existing = draftConsultations.value[patientId]
     val draft = ConsultationRecord(
@@ -869,7 +870,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     vitals: VitalSigns = VitalSigns(),
     doctorNameOverride: String = "",
     doctorDegreeOverride: String = "",
-    doctorSamaOverride: String = ""
+    doctorSamaOverride: String = "",
+    treatmentOrders: List<TreatmentCard> = emptyList()
   ) {
     val patient = _patients.value.find { it.id == patientId } ?: return
     val consultation = ConsultationRecord(
@@ -953,6 +955,19 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       )
     }
 
+    treatmentOrders.forEach { card ->
+      val fee = if (card.sessionFee > 0) card.sessionFee else card.route.getDefaultFee(clinicSettings.value)
+      invoiceItems.add(
+        InvoiceItem(
+          name = "ဆေးထိုးခ / Injection Fee (${card.route.label} - ${card.medicationName})",
+          quantity = 1,
+          unitPrice = fee,
+          totalPrice = fee,
+          isProcedure = true
+        )
+      )
+    }
+
     val totalItemsPrice = invoiceItems.sumOf { it.totalPrice }
     val calculatedTotal = consultationFee + serviceFee + totalItemsPrice
 
@@ -979,6 +994,31 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     // Route patient status
     val nextStatus = if (prescriptions.isNotEmpty()) QueueStatus.AT_PHARMACY else QueueStatus.AT_BILLING
     updatePatientStatus(patientId, nextStatus)
+  }
+
+  fun updateConsultation(updatedRecord: ConsultationRecord) {
+    val ctx = getApplication<Application>()
+    val currentList = _consultations.value
+    val updatedList = currentList.map { if (it.id == updatedRecord.id) updatedRecord else it }
+    _consultations.value = updatedList
+    ClinicDataPersistence.saveConsultations(ctx, updatedList)
+
+    val invoices = _invoices.value
+    val matchingInvoice = invoices.find { it.consultationId == updatedRecord.id }
+    if (matchingInvoice != null) {
+      val diffFee = updatedRecord.consultationFee - matchingInvoice.consultationFee
+      val updatedInv = matchingInvoice.copy(
+        consultationFee = updatedRecord.consultationFee,
+        totalAmount = (matchingInvoice.totalAmount + diffFee).coerceAtLeast(0.0)
+      )
+      val updatedInvoices = invoices.map { if (it.id == updatedInv.id) updatedInv else it }
+      _invoices.value = updatedInvoices
+      ClinicDataPersistence.saveInvoices(ctx, updatedInvoices)
+    }
+
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
   }
 
   fun deleteConsultation(consultationId: String) {
