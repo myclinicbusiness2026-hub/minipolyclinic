@@ -955,7 +955,6 @@ fun DoctorConsultationScreen(
             }
           }
         }
-      }
       } else {
         // No patient currently active in consultation queue
         Card(
