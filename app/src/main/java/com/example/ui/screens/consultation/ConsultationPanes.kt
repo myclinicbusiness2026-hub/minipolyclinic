@@ -37,7 +37,7 @@ fun ConsultationClinicalRecordPane(
   onOpenAttachments: () -> Unit,
   attachmentsState: SnapshotStateList<MedicalAttachment>,
   // Past records
-  pastConsultations: List<Consultation>,
+  pastConsultations: List<ConsultationRecord>,
   prescribedDrugs: SnapshotStateList<PrescribedDrug>,
   selectedDiagnoses: SnapshotStateList<String>,
   selectedProcedures: SnapshotStateList<ProcedureItem>,
@@ -201,7 +201,7 @@ fun ConsultationPrescriptionAndBillingPane(
   onOpenAddTreatmentOrder: () -> Unit,
   procedures: List<ProcedureItem>,
   selectedProcedures: SnapshotStateList<ProcedureItem>,
-  medicines: List<MedicineItem>,
+  medicines: List<Medicine>,
   onOpenCustomProcedure: () -> Unit,
   consultationFeeText: String,
   onConsultationFeeChange: (String) -> Unit,
