@@ -660,6 +660,7 @@ fun AdministerSessionModal(
   var storeSearchQuery by remember { mutableStateOf("") }
 
   val currencyFmt = NumberFormat.getNumberInstance(Locale.US)
+  val context = LocalContext.current
 
   // Preset consumable items mapped to store inventory
   val presetQueries = listOf(
