@@ -15,9 +15,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Expand Swap Space to 6GB
+      - name: Expand Swap Space to 7GB
         run: |
-          sudo fallocate -l 6G /swapfile
+          sudo swapoff -a || true
+          sudo rm -f /swapfile
+          sudo fallocate -l 7G /swapfile
           sudo chmod 600 /swapfile
           sudo mkswap /swapfile
           sudo swapon /swapfile
