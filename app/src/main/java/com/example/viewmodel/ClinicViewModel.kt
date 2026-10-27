@@ -1724,13 +1724,6 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         )
       } else s
     }
-          sessionFee = sessionFee,
-          consumables = consumables,
-          invoiceId = invId,
-          notes = notes
-        )
-      } else s
-    }
     val allCompleted = updatedSessions.all { it.status == TreatmentStatus.COMPLETED }
     val updatedCard = card.copy(
       sessions = updatedSessions,
