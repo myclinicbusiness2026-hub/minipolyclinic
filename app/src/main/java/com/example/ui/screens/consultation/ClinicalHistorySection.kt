@@ -1,4 +1,4 @@
-package com.example.ui.screens.consultation
+﻿package com.example.ui.screens.consultation
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -1360,7 +1360,6 @@ fun ClinicalHistorySection(
       value = historyRemarks,
       onValueChange = { historyRemarks = it },
       singleLine = false, minLines = 2, maxLines = 5,
-      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default),
       placeholder = { Text("ရောဂါရာဇဝင် အသေးစိတ်၊ လူနာပြောပြချက်များနှင့် အထွေထွေမှတ်ချက်များကို လွတ်လပ်စွာ ရိုက်ထည့်နိုင်ပါသည်...", fontSize = 11.sp, color = SlateMuted) },
       modifier = Modifier
         .fillMaxWidth()
