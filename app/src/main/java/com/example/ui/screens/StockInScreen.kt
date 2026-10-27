@@ -70,6 +70,7 @@ fun StockInScreen(
   var selectedSupplierName by remember { mutableStateOf(suppliers.firstOrNull()?.name ?: "AA Medical Products Ltd.") }
   var showAddSupplierDialog by remember { mutableStateOf(false) }
   var supplierDropdownExpanded by remember { mutableStateOf(false) }
+  var recordAsExpense by remember { mutableStateOf(true) }
 
   // Success Feedback Snackbar State
   val snackbarHostState = remember { SnackbarHostState() }
@@ -759,6 +760,42 @@ fun StockInScreen(
         }
       }
 
+      // 5. Clinic Expense Link Option
+      val currentTotalCost = (costPriceText.toDoubleOrNull() ?: 0.0) * (quantityText.toIntOrNull() ?: 0)
+      Surface(
+        color = if (recordAsExpense) Color(0xFFF0FDF4) else Color(0xFFF8FAFC),
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, if (recordAsExpense) MedicalGreen.copy(alpha = 0.5f) else BorderGray),
+        modifier = Modifier.fillMaxWidth().clickable { recordAsExpense = !recordAsExpense }
+      ) {
+        Row(
+          modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Checkbox(
+            checked = recordAsExpense,
+            onCheckedChange = { recordAsExpense = it },
+            colors = CheckboxDefaults.colors(checkedColor = MedicalGreen)
+          )
+          Spacer(modifier = Modifier.width(6.dp))
+          Column {
+            Text(
+              "ဆေးဝါးဝယ်ယူစရိတ်အဖြစ် Clinic Expense တွင် တပါတည်း မှတ်တမ်းတင်မည်",
+              fontSize = 11.sp,
+              fontWeight = FontWeight.Bold,
+              color = DarkGrayText
+            )
+            Text(
+              "စုစုပေါင်း ကုန်ကျငွေ: ${currencyFmt.format(currentTotalCost)} Ks • ကုမ္ပဏီ: $selectedSupplierName",
+              fontSize = 9.5.sp,
+              color = SlateMedium
+            )
+          }
+        }
+      }
+
+      Spacer(modifier = Modifier.height(6.dp))
+
       // Action Buttons
       Row(
         modifier = Modifier
@@ -809,6 +846,16 @@ fun StockInScreen(
                 minThreshold = threshold,
                 supplierName = selectedSupplierName
               )
+
+              if (recordAsExpense && (cost * qty) > 0) {
+                viewModel.addExpense(
+                  title = "ဆေးဝါးဝယ်ယူခြင်း - ${tradeName.trim()} ($qty $selectedUnitType)",
+                  category = "Pharmacy Stock",
+                  amount = cost * qty,
+                  payee = selectedSupplierName,
+                  notes = "Batch: ${batchNumber.trim()} • Exp: $expiryDate"
+                )
+              }
 
               // Clear or reset fields
               tradeName = ""

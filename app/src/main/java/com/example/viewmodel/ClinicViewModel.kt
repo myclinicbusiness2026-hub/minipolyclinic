@@ -161,8 +161,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
     _invoices.value = (ClinicDataPersistence.loadInvoices(ctx) ?: ClinicInitialDataSeeder.getSeedInvoices())
       .filter { !deletedInvoices.contains(it.id) && !deletedPatients.contains(it.patientId) }
-    _expenses.value = ClinicInitialDataSeeder.getSeedExpenses()
-    _vaccines.value = ClinicInitialDataSeeder.getSeedVaccines()
+    _expenses.value = ClinicDataPersistence.loadExpenses(ctx) ?: ClinicInitialDataSeeder.getSeedExpenses()
+    _vaccines.value = ClinicDataPersistence.loadVaccines(ctx) ?: ClinicInitialDataSeeder.getSeedVaccines()
     _suppliers.value = ClinicDataPersistence.loadSuppliers(ctx) ?: ClinicInitialDataSeeder.getSeedSuppliers()
     _treatmentCards.value = ClinicDataPersistence.loadTreatmentCards(ctx) ?: emptyList()
     clinicSettings.value = ClinicDataPersistence.loadClinicSettings(ctx)
@@ -1146,6 +1146,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   // --- Pharmacy Dispensing (FEFO Stock Deduction) ---
   fun dispenseMedications(patientId: String, items: List<PrescribedDrug>) {
     val medMap = _medicines.value.associateBy { it.id }.toMutableMap()
+    val now = System.currentTimeMillis()
     for (item in items) {
       val med = medMap[item.medicineId] ?: medMap.values.find { it.name.equals(item.medicineName, ignoreCase = true) }
       if (med != null) {
@@ -1154,7 +1155,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           if (remainingToDeduct > 0 && batch.quantity > 0) {
             val deduct = minOf(batch.quantity, remainingToDeduct)
             remainingToDeduct -= deduct
-            batch.copy(quantity = batch.quantity - deduct)
+            batch.copy(quantity = batch.quantity - deduct, lastUpdated = now)
           } else {
             batch
           }
@@ -1165,6 +1166,15 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     _medicines.value = medMap.values.toList()
     ClinicDataPersistence.saveMedicines(getApplication(), _medicines.value)
     updatePatientStatus(patientId, QueueStatus.AT_BILLING)
+
+    // Mark matching invoice as inventory deducted so cashier will not double deduct!
+    val ctx = getApplication<Application>()
+    val matchingInv = _invoices.value.find { it.patientId == patientId && it.paymentStatus != "Paid" }
+    if (matchingInv != null) {
+      val updatedInvs = _invoices.value.map { if (it.id == matchingInv.id) it.copy(isInventoryDeducted = true) else it }
+      _invoices.value = updatedInvs
+      ClinicDataPersistence.saveInvoices(ctx, updatedInvs)
+    }
   }
 
   fun dispensePrescription(patientId: String, prescriptionList: List<PrescribedDrug>) =
@@ -1224,38 +1234,71 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   }
 
   private fun deductInventoryForInvoice(inv: Invoice) {
+    if (inv.isInventoryDeducted) return
+
+    val ctx = getApplication<Application>()
+    val medMap = _medicines.value.associateBy { it.id }.toMutableMap()
+    var modified = false
+    val now = System.currentTimeMillis()
+
     val consultation = _consultations.value.find { it.id == inv.consultationId }
+    val prescribedNames = mutableSetOf<String>()
+
+    // 1. Deduct consultation prescriptions (if present and not external)
     if (consultation != null && consultation.prescriptions.isNotEmpty()) {
-      dispenseMedications(inv.patientId, consultation.prescriptions)
-    } else {
-      val medMap = _medicines.value.associateBy { it.id }.toMutableMap()
-      var modified = false
-      for (item in inv.items.filter { !it.isProcedure }) {
-        val cleanName = item.name.split(" x ").firstOrNull()?.split("(")?.firstOrNull()?.trim() ?: item.name
-        val med = medMap.values.find {
-          it.name.equals(cleanName, ignoreCase = true) ||
-          item.name.contains(it.name, ignoreCase = true) ||
-          (it.genericName.isNotBlank() && item.name.contains(it.genericName, ignoreCase = true))
-        }
+      for (item in consultation.prescriptions.filter { !it.isExternal }) {
+        prescribedNames.add(item.effectiveName.lowercase().trim())
+        val med = medMap[item.medicineId] ?: medMap.values.find { it.name.equals(item.medicineName, ignoreCase = true) }
         if (med != null && item.quantity > 0) {
           var remaining = item.quantity
           val updatedBatches = med.allBatches.map { b ->
             if (remaining > 0 && b.quantity > 0) {
               val deduct = minOf(b.quantity, remaining)
               remaining -= deduct
-              b.copy(quantity = b.quantity - deduct)
+              b.copy(quantity = b.quantity - deduct, lastUpdated = now)
             } else b
           }
           medMap[med.id] = med.copy(batches = updatedBatches)
           modified = true
         }
       }
-      if (modified) {
-        val updatedList = _medicines.value.map { medMap[it.id] ?: it }
-        _medicines.value = updatedList
-        ClinicDataPersistence.saveMedicines(getApplication(), updatedList)
+    }
+
+    // 2. ALSO deduct store consumables and OTC items in inv.items (Syringe, Cannula, Scalp vein, OTC drugs)
+    for (item in inv.items.filter { !it.isProcedure }) {
+      val cleanName = item.name.split(" x ").firstOrNull()?.split("(")?.firstOrNull()?.trim() ?: item.name
+      if (prescribedNames.contains(cleanName.lowercase()) || prescribedNames.contains(item.name.lowercase())) {
+        continue
+      }
+      val med = medMap.values.find {
+        it.name.equals(cleanName, ignoreCase = true) ||
+        item.name.contains(it.name, ignoreCase = true) ||
+        (it.genericName.isNotBlank() && item.name.contains(it.genericName, ignoreCase = true))
+      }
+      if (med != null && item.quantity > 0) {
+        var remaining = item.quantity
+        val updatedBatches = med.allBatches.map { b ->
+          if (remaining > 0 && b.quantity > 0) {
+            val deduct = minOf(b.quantity, remaining)
+            remaining -= deduct
+            b.copy(quantity = b.quantity - deduct, lastUpdated = now)
+          } else b
+        }
+        medMap[med.id] = med.copy(batches = updatedBatches)
+        modified = true
       }
     }
+
+    if (modified) {
+      val updatedList = _medicines.value.map { medMap[it.id] ?: it }
+      _medicines.value = updatedList
+      ClinicDataPersistence.saveMedicines(ctx, updatedList)
+    }
+
+    // Mark invoice isInventoryDeducted = true
+    val updatedInvs = _invoices.value.map { if (it.id == inv.id) it.copy(isInventoryDeducted = true) else it }
+    _invoices.value = updatedInvs
+    ClinicDataPersistence.saveInvoices(ctx, updatedInvs)
   }
 
   fun markInvoicePaid(invoiceId: String, method: PaymentMethod, paid: Double, discount: Double = 0.0) =
@@ -1957,7 +2000,13 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       paymentMethod = paymentMethod,
       notes = notes
     )
-    _expenses.value = _expenses.value + exp
+    val updated = _expenses.value + exp
+    _expenses.value = updated
+    val ctx = getApplication<Application>()
+    ClinicDataPersistence.saveExpenses(ctx, updated)
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
   }
 
   fun addExpense(category: String, amount: Double, desc: String) {
@@ -1965,7 +2014,13 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   }
 
   fun deleteExpense(expenseId: String) {
-    _expenses.value = _expenses.value.filter { it.id != expenseId }
+    val updated = _expenses.value.filter { it.id != expenseId }
+    _expenses.value = updated
+    val ctx = getApplication<Application>()
+    ClinicDataPersistence.saveExpenses(ctx, updated)
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
   }
 
   fun updateClinicSettings(settings: ClinicSettings) {
@@ -2071,26 +2126,40 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
   fun clearDemoDataForLiveClinic(resetStockToZero: Boolean) {
     val ctx = getApplication<Application>()
+    val currentPatIds = _patients.value.map { it.id }.toSet()
+    val currentConsIds = _consultations.value.map { it.id }.toSet()
+    val currentInvIds = _invoices.value.map { it.id }.toSet()
+
     _patients.value = emptyList()
     _selectedPatientId.value = null
     _consultations.value = emptyList()
     _invoices.value = emptyList()
     _expenses.value = emptyList()
     _vaccines.value = emptyList()
+    _treatmentCards.value = emptyList()
     draftConsultations.value = emptyMap()
 
     ClinicDataPersistence.savePatients(ctx, emptyList())
     ClinicDataPersistence.saveConsultations(ctx, emptyList())
     ClinicDataPersistence.saveInvoices(ctx, emptyList())
-    ClinicDataPersistence.saveDeletedPatientIds(ctx, emptySet())
-    ClinicDataPersistence.saveDeletedConsultationIds(ctx, emptySet())
+    ClinicDataPersistence.saveExpenses(ctx, emptyList())
+    ClinicDataPersistence.saveVaccines(ctx, emptyList())
+    ClinicDataPersistence.saveTreatmentCards(ctx, emptyList())
+
+    val deletedPatIds = ClinicDataPersistence.loadDeletedPatientIds(ctx) + currentPatIds
+    val deletedConsIds = ClinicDataPersistence.loadDeletedConsultationIds(ctx) + currentConsIds
+    val deletedInvIds = ClinicDataPersistence.loadDeletedInvoiceIds(ctx) + currentInvIds
+
+    ClinicDataPersistence.saveDeletedPatientIds(ctx, deletedPatIds)
+    ClinicDataPersistence.saveDeletedConsultationIds(ctx, deletedConsIds)
+    ClinicDataPersistence.saveDeletedInvoiceIds(ctx, deletedInvIds)
 
     if (resetStockToZero) {
-      val zeroStockMedicines = _medicines.value.map { med ->
-        med.copy(batches = med.batches.map { b -> b.copy(quantity = 0) })
-      }
-      _medicines.value = zeroStockMedicines
-      ClinicDataPersistence.saveMedicines(ctx, zeroStockMedicines)
+      val currentMedIds = _medicines.value.map { it.id }.toSet()
+      _medicines.value = emptyList()
+      ClinicDataPersistence.saveMedicines(ctx, emptyList())
+      val deletedMedIds = ClinicDataPersistence.loadDeletedMedicineIds(ctx) + currentMedIds
+      ClinicDataPersistence.saveDeletedMedicineIds(ctx, deletedMedIds)
     }
 
     viewModelScope.launch(Dispatchers.IO) {

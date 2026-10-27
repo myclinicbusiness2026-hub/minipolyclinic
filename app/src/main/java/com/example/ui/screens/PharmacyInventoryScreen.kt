@@ -441,7 +441,6 @@ fun PharmacyInventoryScreen(
                 currencyFmt = currencyFmt,
                 suppliers = suppliers,
                 getDaysUntilExpiry = ::getDaysUntilExpiry,
-                onDispenseQuick = { qty -> viewModel.dispenseQuick(med.id, qty) },
                 onDeleteMedicine = { medicineToDelete = med }
               )
             }
@@ -636,7 +635,6 @@ fun EnhancedMedicineItemCard(
   currencyFmt: NumberFormat,
   suppliers: List<Supplier>,
   getDaysUntilExpiry: (String) -> Long,
-  onDispenseQuick: (Int) -> Unit = {},
   onDeleteMedicine: (() -> Unit)? = null
 ) {
   var isExpanded by remember { mutableStateOf(false) }
@@ -861,20 +859,6 @@ fun EnhancedMedicineItemCard(
         )
 
         Spacer(modifier = Modifier.width(6.dp))
-
-        OutlinedButton(
-          onClick = { onDispenseQuick(1) },
-          enabled = medicine.totalStock > 0,
-          shape = RoundedCornerShape(4.dp),
-          border = BorderStroke(0.8.dp, MedicalGreen),
-          contentPadding = PaddingValues(horizontal = 6.dp, vertical = 1.dp),
-          modifier = Modifier.height(24.dp),
-          colors = ButtonDefaults.outlinedButtonColors(contentColor = MedicalGreen)
-        ) {
-          Icon(Icons.Default.RemoveCircleOutline, contentDescription = null, modifier = Modifier.size(11.dp))
-          Spacer(modifier = Modifier.width(2.dp))
-          Text("Dispense 1", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
-        }
 
         if (onDeleteMedicine != null) {
           Spacer(modifier = Modifier.width(3.dp))

@@ -90,7 +90,8 @@ data class StockBatch(
   val expiryDate: String, // YYYY-MM-DD
   val quantity: Int,
   val costPricePerUnit: Double,
-  val supplierName: String? = null
+  val supplierName: String? = null,
+  val lastUpdated: Long = System.currentTimeMillis()
 )
 
 data class Medicine(
@@ -340,7 +341,8 @@ data class Invoice(
   val discountPercent: Double = 0.0,
   val doctorFeeDiscount: Double = 0.0,
   val pharmacyDiscount: Double = 0.0,
-  val procedureDiscount: Double = 0.0
+  val procedureDiscount: Double = 0.0,
+  val isInventoryDeducted: Boolean = false
 ) {
   val invoiceNo: String get() = invoiceNumber
   val createdAt: String get() = timestamp

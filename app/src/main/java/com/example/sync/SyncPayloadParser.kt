@@ -198,7 +198,8 @@ object SyncPayloadParser {
               expiryDate = bo.optString("expiryDate", "2027-12-31"),
               quantity = bo.optInt("quantity", 0),
               costPricePerUnit = bo.optDouble("costPricePerUnit", 0.0),
-              supplierName = if (bo.has("supplierName") && !bo.isNull("supplierName")) bo.optString("supplierName") else null
+              supplierName = if (bo.has("supplierName") && !bo.isNull("supplierName")) bo.optString("supplierName") else null,
+              lastUpdated = bo.optLong("lastUpdated", System.currentTimeMillis())
             )
           )
         }

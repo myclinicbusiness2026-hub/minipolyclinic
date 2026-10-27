@@ -298,6 +298,8 @@ object ClinicDataPersistence {
             put("expiryDate", b.expiryDate)
             put("quantity", b.quantity)
             put("costPricePerUnit", b.costPricePerUnit)
+            put("supplierName", b.supplierName ?: "")
+            put("lastUpdated", b.lastUpdated)
           }
           bArr.put(bObj)
         }
@@ -325,7 +327,9 @@ object ClinicDataPersistence {
                 batchNumber = bo.optString("batchNumber"),
                 expiryDate = bo.optString("expiryDate"),
                 quantity = bo.optInt("quantity", 0),
-                costPricePerUnit = bo.optDouble("costPricePerUnit", 0.0)
+                costPricePerUnit = bo.optDouble("costPricePerUnit", 0.0),
+                supplierName = if (bo.has("supplierName") && !bo.isNull("supplierName")) bo.optString("supplierName") else null,
+                lastUpdated = bo.optLong("lastUpdated", System.currentTimeMillis())
               )
             )
           }
@@ -553,6 +557,7 @@ object ClinicDataPersistence {
         put("changeAmount", inv.changeAmount)
         put("cashierName", inv.cashierName)
         put("timestamp", inv.timestamp)
+        put("isInventoryDeducted", inv.isInventoryDeducted)
 
         val itemsArr = JSONArray()
         inv.items.forEach { item ->
@@ -613,7 +618,8 @@ object ClinicDataPersistence {
             paidAmount = o.optDouble("paidAmount", 0.0),
             changeAmount = o.optDouble("changeAmount", 0.0),
             cashierName = o.optString("cashierName", "Staff"),
-            timestamp = o.optString("timestamp")
+            timestamp = o.optString("timestamp"),
+            isInventoryDeducted = o.optBoolean("isInventoryDeducted", false)
           )
         )
       }
@@ -835,6 +841,106 @@ object ClinicDataPersistence {
             discontinuedBy = o.optString("discontinuedBy"),
             discontinuedAt = o.optString("discontinuedAt"),
             notes = o.optString("notes")
+          )
+        )
+      }
+      list
+    } catch (_: Exception) {
+      null
+    }
+  }
+
+  // 7. Expenses
+  fun saveExpenses(context: Context, list: List<ExpenseRecord>) {
+    val arr = JSONArray()
+    list.forEach { e ->
+      val obj = JSONObject().apply {
+        put("id", e.id)
+        put("voucherNo", e.voucherNo)
+        put("date", e.date)
+        put("category", e.category)
+        put("title", e.title)
+        put("amount", e.amount)
+        put("payee", e.payee)
+        put("paymentMethod", e.paymentMethod.name)
+        put("recordedBy", e.recordedBy)
+        put("notes", e.notes)
+      }
+      arr.put(obj)
+    }
+    getPrefs(context).edit().putString(KEY_EXPENSES, arr.toString()).apply()
+  }
+
+  fun loadExpenses(context: Context): List<ExpenseRecord>? {
+    val str = getPrefs(context).getString(KEY_EXPENSES, null) ?: return null
+    return try {
+      val arr = JSONArray(str)
+      val list = mutableListOf<ExpenseRecord>()
+      for (i in 0 until arr.length()) {
+        val o = arr.getJSONObject(i)
+        list.add(
+          ExpenseRecord(
+            id = o.optString("id", UUID.randomUUID().toString()),
+            voucherNo = o.optString("voucherNo"),
+            date = o.optString("date"),
+            category = o.optString("category", "General"),
+            title = o.optString("title"),
+            amount = o.optDouble("amount", 0.0),
+            payee = o.optString("payee"),
+            paymentMethod = try { PaymentMethod.valueOf(o.optString("paymentMethod", "CASH")) } catch (_: Exception) { PaymentMethod.CASH },
+            recordedBy = o.optString("recordedBy"),
+            notes = o.optString("notes")
+          )
+        )
+      }
+      list
+    } catch (_: Exception) {
+      null
+    }
+  }
+
+  // 8. Vaccines
+  fun saveVaccines(context: Context, list: List<VaccineRecord>) {
+    val arr = JSONArray()
+    list.forEach { v ->
+      val obj = JSONObject().apply {
+        put("id", v.id)
+        put("patientId", v.patientId)
+        put("vaccineName", v.vaccineName)
+        put("doseNumber", v.doseNumber)
+        put("dateGiven", v.dateGiven)
+        put("nextDueDate", v.nextDueDate)
+        put("batchNumber", v.batchNumber)
+        put("administeredBy", v.administeredBy)
+        put("adverseReactions", v.adverseReactions)
+        put("fee", v.fee)
+        put("isPaid", v.isPaid)
+      }
+      arr.put(obj)
+    }
+    getPrefs(context).edit().putString(KEY_VACCINES, arr.toString()).apply()
+  }
+
+  fun loadVaccines(context: Context): List<VaccineRecord>? {
+    val str = getPrefs(context).getString(KEY_VACCINES, null) ?: return null
+    return try {
+      val arr = JSONArray(str)
+      val list = mutableListOf<VaccineRecord>()
+      for (i in 0 until arr.length()) {
+        val o = arr.getJSONObject(i)
+        list.add(
+          VaccineRecord(
+            id = o.optString("id", UUID.randomUUID().toString()),
+            patientId = o.optString("patientId"),
+            vaccineName = o.optString("vaccineName"),
+            doseNumber = o.optInt("doseNumber", 1),
+            dateGiven = o.optString("dateGiven"),
+            nextDueDate = o.optString("nextDueDate"),
+            batchNumber = o.optString("batchNumber"),
+            administeredBy = o.optString("administeredBy"),
+            adverseReactions = o.optString("adverseReactions"),
+            fee = o.optDouble("fee", 0.0),
+            isPaid = o.optBoolean("isPaid", true)
           )
         )
       }

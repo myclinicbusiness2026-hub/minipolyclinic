@@ -470,8 +470,8 @@ class LocalWifiSyncManager(
             if (exBatch == null) {
               batchMap[rb.batchNumber] = rb
             } else {
-              val reconciledQty = if (rb.quantity < exBatch.quantity) rb.quantity else exBatch.quantity
-              batchMap[rb.batchNumber] = exBatch.copy(quantity = reconciledQty)
+              val winner = if (rb.lastUpdated > exBatch.lastUpdated) rb else exBatch
+              batchMap[rb.batchNumber] = winner
             }
           }
           medMap[existing.id] = existing.copy(batches = batchMap.values.toList())

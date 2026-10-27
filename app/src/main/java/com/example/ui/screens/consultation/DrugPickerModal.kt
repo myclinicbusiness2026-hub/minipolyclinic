@@ -245,10 +245,10 @@ fun DrugPickerModal(
                     }
                     Column(horizontalAlignment = Alignment.End) {
                       Text(
-                        "Stock: ${med.totalStock}",
+                        if (med.totalStock <= 0) "Stock: 0 (ပြတ်လပ်)" else "Stock: ${med.totalStock}",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (med.totalStock < med.minStockThreshold) StatusCritical else MedicalGreenDark
+                        color = if (med.totalStock <= 0) StatusCritical else if (med.totalStock < med.minStockThreshold) Color(0xFFD97706) else MedicalGreenDark
                       )
                       Text("Exp: ${earliestBatch?.expiryDate ?: "N/A"}", fontSize = 8.sp, color = SlateLight)
                     }
@@ -277,6 +277,26 @@ fun DrugPickerModal(
                   "⚠️ ALLERGY WARNING: Patient is allergic to: ${patient.allergies.joinToString(", ")}",
                   color = StatusCritical,
                   fontSize = 11.sp,
+                  fontWeight = FontWeight.Bold,
+                  softWrap = true
+                )
+              }
+              Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            if (med.totalStock <= 0) {
+              Box(
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .clip(RoundedCornerShape(6.dp))
+                  .background(Color(0xFFFEF2F2))
+                  .border(1.dp, StatusCritical.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                  .padding(8.dp)
+              ) {
+                Text(
+                  "⚠️ စတော့ပြတ်လပ်နေပါသည် (Out of Stock): လက်ရှိ ဆေးခန်းတွင် ဤဆေးဝါးလက်ကျန် (၀) ဖြစ်နေပါသည်။ အပြင်ဆေးဆိုင်မှ ဝယ်ယူရန် ဆေးညွှန်းထုတ်ပေးလိုပါက အပေါ်ရှိ 'Non-Store External Rx' tab ကို အသုံးပြုပါ သို့မဟုတ် စတော့အသစ် ထည့်သွင်းပါ။",
+                  color = StatusCritical,
+                  fontSize = 10.sp,
                   fontWeight = FontWeight.Bold,
                   softWrap = true
                 )
