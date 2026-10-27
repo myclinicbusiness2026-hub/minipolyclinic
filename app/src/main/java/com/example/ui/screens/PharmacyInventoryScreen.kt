@@ -64,6 +64,8 @@ fun PharmacyInventoryScreen(
   var showAddCategoryDialog by remember { mutableStateOf(false) }
   var medicineToDelete by remember { mutableStateOf<Medicine?>(null) }
   var showAddSupplierDialog by remember { mutableStateOf(false) }
+  var editingSupplier by remember { mutableStateOf<Supplier?>(null) }
+  var deletingSupplier by remember { mutableStateOf<Supplier?>(null) }
 
   // Patients waiting at pharmacy for dispensing
   val pharmacyQueuePatients = patients.filter { it.status == QueueStatus.AT_PHARMACY }
@@ -458,7 +460,8 @@ fun PharmacyInventoryScreen(
           SupplierManagementView(
             suppliers = suppliers,
             onAddSupplierClick = { showAddSupplierDialog = true },
-            onDeleteSupplier = { viewModel.deleteSupplier(it) }
+            onEditSupplier = { editingSupplier = it },
+            onDeleteSupplier = { deletingSupplier = it }
           )
         }
       }
@@ -469,6 +472,43 @@ fun PharmacyInventoryScreen(
         onDismiss = { showAddSupplierDialog = false },
         onAdd = { name, contact, phone, email, addr ->
           viewModel.addSupplier(name, contact, phone, email, addr)
+        }
+      )
+    }
+
+    editingSupplier?.let { sup ->
+      EditSupplierDialog(
+        supplier = sup,
+        onDismiss = { editingSupplier = null },
+        onSave = { updated ->
+          viewModel.updateSupplier(updated)
+          editingSupplier = null
+        }
+      )
+    }
+
+    deletingSupplier?.let { sup ->
+      AlertDialog(
+        onDismissRequest = { deletingSupplier = null },
+        icon = { Icon(Icons.Default.DeleteForever, contentDescription = null, tint = Color(0xFFDC2626), modifier = Modifier.size(28.dp)) },
+        title = { Text("Delete Supplier?", fontWeight = FontWeight.Bold, fontSize = 14.sp) },
+        text = { Text("Are you sure you want to remove '${sup.name}'? This action cannot be undone.", fontSize = 11.5.sp) },
+        confirmButton = {
+          Button(
+            onClick = {
+              viewModel.deleteSupplier(sup.id)
+              deletingSupplier = null
+            },
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+            shape = RoundedCornerShape(6.dp)
+          ) {
+            Text("Confirm Delete", fontSize = 11.sp, color = PureWhite, fontWeight = FontWeight.Bold)
+          }
+        },
+        dismissButton = {
+          OutlinedButton(onClick = { deletingSupplier = null }, shape = RoundedCornerShape(6.dp)) {
+            Text("Cancel", fontSize = 11.sp)
+          }
         }
       )
     }
@@ -859,7 +899,8 @@ fun EnhancedMedicineItemCard(
 fun SupplierManagementView(
   suppliers: List<Supplier>,
   onAddSupplierClick: () -> Unit,
-  onDeleteSupplier: (String) -> Unit
+  onEditSupplier: (Supplier) -> Unit,
+  onDeleteSupplier: (Supplier) -> Unit
 ) {
   Column(
     modifier = Modifier.fillMaxSize(),
@@ -950,9 +991,136 @@ fun SupplierManagementView(
                 Text(sup.address, fontSize = 10.5.sp, color = SlateMuted)
               }
             }
+
+            HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(vertical = 6.dp))
+
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.End,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              OutlinedButton(
+                onClick = { onEditSupplier(sup) },
+                shape = RoundedCornerShape(4.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                modifier = Modifier.height(28.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MedicalGreenDark),
+                border = BorderStroke(1.dp, MedicalGreenDark.copy(alpha = 0.5f))
+              ) {
+                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(12.dp))
+                Spacer(modifier = Modifier.width(3.dp))
+                Text("Edit", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+              }
+              Spacer(modifier = Modifier.width(6.dp))
+              OutlinedButton(
+                onClick = { onDeleteSupplier(sup) },
+                shape = RoundedCornerShape(4.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                modifier = Modifier.height(28.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFDC2626)),
+                border = BorderStroke(1.dp, Color(0xFFDC2626).copy(alpha = 0.5f))
+              ) {
+                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(12.dp))
+                Spacer(modifier = Modifier.width(3.dp))
+                Text("Delete", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+              }
+            }
           }
         }
       }
     }
   }
+}
+
+@Composable
+fun EditSupplierDialog(
+  supplier: Supplier,
+  onDismiss: () -> Unit,
+  onSave: (Supplier) -> Unit
+) {
+  var name by remember { mutableStateOf(supplier.name) }
+  var contact by remember { mutableStateOf(supplier.contactPerson) }
+  var phone by remember { mutableStateOf(supplier.phone) }
+  var email by remember { mutableStateOf(supplier.email) }
+  var address by remember { mutableStateOf(supplier.address) }
+
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("Edit Supplier (ဆေးကုမ္ပဏီ ပြင်ဆင်ရန်)", fontWeight = FontWeight.Bold, fontSize = 14.sp) },
+    text = {
+      Column(
+        modifier = Modifier
+          .fillMaxWidth()
+          .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+      ) {
+        OutlinedTextField(
+          value = name,
+          onValueChange = { name = it },
+          label = { Text("Company / Vendor Name", fontSize = 11.sp) },
+          modifier = Modifier.fillMaxWidth(),
+          shape = RoundedCornerShape(6.dp),
+          singleLine = true
+        )
+        OutlinedTextField(
+          value = contact,
+          onValueChange = { contact = it },
+          label = { Text("Contact Person", fontSize = 11.sp) },
+          modifier = Modifier.fillMaxWidth(),
+          shape = RoundedCornerShape(6.dp),
+          singleLine = true
+        )
+        OutlinedTextField(
+          value = phone,
+          onValueChange = { phone = it },
+          label = { Text("Phone Number", fontSize = 11.sp) },
+          modifier = Modifier.fillMaxWidth(),
+          shape = RoundedCornerShape(6.dp),
+          singleLine = true
+        )
+        OutlinedTextField(
+          value = email,
+          onValueChange = { email = it },
+          label = { Text("Email", fontSize = 11.sp) },
+          modifier = Modifier.fillMaxWidth(),
+          shape = RoundedCornerShape(6.dp),
+          singleLine = true
+        )
+        OutlinedTextField(
+          value = address,
+          onValueChange = { address = it },
+          label = { Text("Office Address", fontSize = 11.sp) },
+          modifier = Modifier.fillMaxWidth(),
+          shape = RoundedCornerShape(6.dp),
+          minLines = 2,
+          maxLines = 3
+        )
+      }
+    },
+    confirmButton = {
+      Button(
+        onClick = {
+          if (name.isNotBlank()) {
+            onSave(supplier.copy(
+              name = name.trim(),
+              contactPerson = contact.trim(),
+              phone = phone.trim(),
+              email = email.trim(),
+              address = address.trim()
+            ))
+          }
+        },
+        enabled = name.isNotBlank(),
+        colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+        shape = RoundedCornerShape(6.dp)
+      ) {
+        Text("Save Changes", fontSize = 11.sp, color = PureWhite, fontWeight = FontWeight.Bold)
+      }
+    },
+    dismissButton = {
+      OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(6.dp)) {
+        Text("Cancel", fontSize = 11.sp)
+      }
+    }
+  )
 }

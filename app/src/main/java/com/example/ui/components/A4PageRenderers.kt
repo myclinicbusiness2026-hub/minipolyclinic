@@ -828,7 +828,7 @@ fun ColumnScope.A4ClinicalConsultationPageContent(
           modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
           verticalAlignment = Alignment.CenterVertically
         ) {
-          Text("Clinical Diagnosis: ", fontWeight = FontWeight.Bold, fontSize = 9.sp, color = DarkGrayText)
+          Text("Provisional Diagnosis: ", fontWeight = FontWeight.Bold, fontSize = 9.sp, color = DarkGrayText)
           val diagText = when {
             consultation.diagnosisList.isNotEmpty() -> consultation.diagnosisList.joinToString(" • ")
             else -> consultation.assessment
@@ -1122,7 +1122,7 @@ fun ColumnScope.A4UnifiedSinglePageContent(
         modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
       ) {
-        Text("Clinical Diagnosis: ", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
+        Text("Provisional Diagnosis: ", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
         val diagText = when {
           consultation.diagnosisList.isNotEmpty() -> consultation.diagnosisList.joinToString(" • ")
           else -> consultation.assessment

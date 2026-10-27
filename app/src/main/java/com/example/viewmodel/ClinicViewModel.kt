@@ -117,13 +117,17 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
     val seedUsers = ClinicInitialDataSeeder.getSeedUsers()
     val savedUsers = (ClinicDataPersistence.loadUsers(ctx) ?: seedUsers).toMutableList()
-    if (savedUsers.none { it.username.equals("shwekhit", ignoreCase = true) }) {
-      val defaultAdmin = seedUsers.firstOrNull { it.username.equals("shwekhit", ignoreCase = true) }
-        ?: UserAccount(id = "USR-001", username = "shwekhit", fullName = "Clinic Administrator", role = UserRole.ADMIN, passwordHash = "123456", pinCode = "123456")
-      savedUsers.add(0, defaultAdmin)
-      ClinicDataPersistence.saveUsers(ctx, savedUsers)
+    // Retain only officially permitted clinic accounts: "nks" (Admin) and "shwekhit" (Cashier)
+    val demoUsernames = setOf("doctor", "cashier", "reception", "admin", "nurse")
+    val cleanedUsers = savedUsers.filterNot { demoUsernames.contains(it.username.lowercase().trim()) }.toMutableList()
+    if (cleanedUsers.none { it.username.equals("nks", ignoreCase = true) }) {
+      seedUsers.firstOrNull { it.username.equals("nks", ignoreCase = true) }?.let { cleanedUsers.add(0, it) }
     }
-    _users.value = savedUsers
+    if (cleanedUsers.none { it.username.equals("shwekhit", ignoreCase = true) }) {
+      seedUsers.firstOrNull { it.username.equals("shwekhit", ignoreCase = true) }?.let { cleanedUsers.add(it) }
+    }
+    _users.value = cleanedUsers
+    ClinicDataPersistence.saveUsers(ctx, cleanedUsers)
     _currentUser.value = null
     _isLoggedIn.value = false
 
@@ -1003,6 +1007,25 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     _invoices.value = updatedInvoices
     ClinicDataPersistence.saveInvoices(getApplication(), updatedInvoices)
 
+    // Tag and persist Day-Care Treatment Cards linked to this consultation invoice
+    if (treatmentOrders.isNotEmpty()) {
+      val ctx = getApplication<Application>()
+      val taggedCards = treatmentOrders.map { card ->
+        val updatedSessions = card.sessions.mapIndexed { idx, s ->
+          if (idx == 0) s.copy(invoiceId = invoice.id) else s
+        }
+        card.copy(
+          consultationInvoiceId = invoice.id,
+          sessions = updatedSessions
+        )
+      }
+      val currentCards = _treatmentCards.value
+      val existingIds = taggedCards.map { it.id }.toSet()
+      val mergedCards = currentCards.filterNot { existingIds.contains(it.id) } + taggedCards
+      _treatmentCards.value = mergedCards
+      ClinicDataPersistence.saveTreatmentCards(ctx, mergedCards)
+    }
+
     // Route patient status
     val nextStatus = if (prescriptions.isNotEmpty()) QueueStatus.AT_PHARMACY else QueueStatus.AT_BILLING
     updatePatientStatus(patientId, nextStatus)
@@ -1326,6 +1349,106 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     return Pair(true, restored)
   }
 
+  fun returnSelectedInvoiceItemsAndAdjust(
+    invoiceId: String,
+    returnedItemNames: Set<String>,
+    voidEntireInvoice: Boolean = false
+  ): Pair<Boolean, List<String>> {
+    val ctx = getApplication<Application>()
+    val inv = _invoices.value.find { it.id == invoiceId } ?: return Pair(false, emptyList())
+    val restored = mutableListOf<String>()
+
+    val itemsToReturn = if (voidEntireInvoice) {
+      inv.items.filter { !it.isProcedure }
+    } else {
+      inv.items.filter { !it.isProcedure && returnedItemNames.contains(it.name) }
+    }
+
+    if (itemsToReturn.isNotEmpty()) {
+      val medMap = _medicines.value.associateBy { it.id }.toMutableMap()
+      var modified = false
+      for (item in itemsToReturn) {
+        val cleanName = item.name.split(" x ").firstOrNull()?.split("(")?.firstOrNull()?.trim() ?: item.name
+        val med = medMap.values.find {
+          it.name.equals(cleanName, ignoreCase = true) ||
+          item.name.contains(it.name, ignoreCase = true)
+        }
+        if (med != null && item.quantity > 0) {
+          val primaryBatch = med.batches.firstOrNull()
+          val updatedBatches = if (primaryBatch != null) {
+            med.batches.mapIndexed { idx, b -> if (idx == 0) b.copy(quantity = b.quantity + item.quantity) else b }
+          } else {
+            listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", item.quantity, 0.0))
+          }
+          medMap[med.id] = med.copy(batches = updatedBatches)
+          modified = true
+          restored.add(item.name)
+        }
+      }
+      if (modified) {
+        val updatedList = _medicines.value.map { medMap[it.id] ?: it }
+        _medicines.value = updatedList
+        ClinicDataPersistence.saveMedicines(ctx, updatedList)
+      }
+    }
+
+    // Annotate returned medications on consultation EMR record
+    if (inv.consultationId.isNotBlank() && itemsToReturn.isNotEmpty()) {
+      val returnedCleanNames = itemsToReturn.map {
+        it.name.split(" x ").firstOrNull()?.split("(")?.firstOrNull()?.trim()?.lowercase() ?: it.name.lowercase()
+      }.toSet()
+
+      val updatedCons = _consultations.value.map { c ->
+        if (c.id == inv.consultationId) {
+          val updatedRx = c.prescriptions.map { rx ->
+            val rxClean = rx.effectiveName.split("(").firstOrNull()?.trim()?.lowercase() ?: rx.effectiveName.lowercase()
+            if (returnedCleanNames.any { rxClean.contains(it) || it.contains(rxClean) }) {
+              rx.copy(instructions = if (rx.instructions.isNotBlank()) "${rx.instructions} [ပြန်အပ်ခဲ့သည် - မသောက်ပါ]" else "[ပြန်အပ်ခဲ့သည် - မသောက်ပါ]")
+            } else rx
+          }
+          c.copy(prescriptions = updatedRx)
+        } else c
+      }
+      _consultations.value = updatedCons
+      ClinicDataPersistence.saveConsultations(ctx, updatedCons)
+    }
+
+    if (voidEntireInvoice) {
+      ClinicDataPersistence.addDeletedInvoiceId(ctx, invoiceId)
+      val updatedInvoices = _invoices.value.filter { it.id != invoiceId }
+      _invoices.value = updatedInvoices
+      ClinicDataPersistence.saveInvoices(ctx, updatedInvoices)
+    } else {
+      // Adjust invoice: remove returned medicines, recalculate subtotal and total, keeping Doctor Consultation Fee!
+      val remainingItems = inv.items.filterNot { returnedItemNames.contains(it.name) }
+      val newItemsTotal = remainingItems.sumOf { it.totalPrice }
+      val newSubTotal = newItemsTotal + inv.consultationFee + inv.serviceFee
+      val newTotal = (newSubTotal - inv.discount).coerceAtLeast(0.0)
+      val updatedInv = inv.copy(
+        items = remainingItems,
+        totalAmount = newTotal
+      )
+      val updatedInvoices = _invoices.value.map { if (it.id == invoiceId) updatedInv else it }
+      _invoices.value = updatedInvoices
+      ClinicDataPersistence.saveInvoices(ctx, updatedInvoices)
+    }
+
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
+    return Pair(true, restored)
+  }
+
+  fun updateSupplier(supplier: Supplier) {
+    val ctx = getApplication<Application>()
+    val updated = _suppliers.value.map { if (it.id == supplier.id) supplier else it }
+    _suppliers.value = updated
+    ClinicDataPersistence.saveSuppliers(ctx, updated)
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
+  }
+
   fun updateInvoiceDocumentationFee(invoiceId: String, includeFee: Boolean, fee: Double = 1000.0) {
     val effectiveFee = if (includeFee) fee else 0.0
     val updated = _invoices.value.map { inv ->
@@ -1543,28 +1666,47 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     val totalCost = invoiceItems.sumOf { it.totalPrice }
-    val invId = "INV-TC-${UUID.randomUUID().toString().take(8)}"
-    val invNo = "INV-${1000 + _invoices.value.size + 1}"
-    val invoice = Invoice(
-      id = invId,
-      invoiceNumber = invNo,
-      patientId = card.patientId.ifBlank { "WALK-IN" },
-      patientName = card.patientName.ifBlank { "Treatment Patient" },
-      items = invoiceItems,
-      consultationFee = 0.0,
-      serviceFee = 0.0,
-      totalAmount = totalCost,
-      paidAmount = totalCost,
-      paymentStatus = "Paid",
-      cashierName = nurseName.ifBlank { _currentUser.value?.fullName ?: "Nurse Station" },
-      timestamp = BurmeseDateUtils.getNowFormatted()
-    )
 
-    // 2. Add Invoice & Deduct stock for Clinic Med + Consumables
-    val updatedInvoices = _invoices.value + invoice
-    _invoices.value = updatedInvoices
-    ClinicDataPersistence.saveInvoices(ctx, updatedInvoices)
-    deductInventoryForInvoice(invoice)
+    val isAlreadyBilled = (session.invoiceId?.isNotBlank() == true && !session.invoiceId.startsWith("INV-TC-")) ||
+      (!card.consultationInvoiceId.isNullOrBlank() && session.sessionNumber == 1)
+
+    var invoice: Invoice? = null
+    if (isAlreadyBilled) {
+      // Deduct stock for consumables and clinic medicine without creating duplicate invoice
+      val tempItems = mutableListOf<InvoiceItem>()
+      if (isClinicMed && card.medicationName.isNotBlank()) {
+        tempItems.add(InvoiceItem(name = card.medicationName, quantity = 1, unitPrice = medPrice, totalPrice = medPrice, isProcedure = false))
+      }
+      consumables.forEach { c ->
+        tempItems.add(InvoiceItem(name = c.name, quantity = c.quantity, unitPrice = c.unitPrice, totalPrice = c.totalPrice, isProcedure = false))
+      }
+      if (tempItems.isNotEmpty()) {
+        val dummyInv = Invoice(items = tempItems)
+        deductInventoryForInvoice(dummyInv)
+      }
+    } else {
+      val invId = "INV-TC-${UUID.randomUUID().toString().take(8)}"
+      val invNo = "INV-${1000 + _invoices.value.size + 1}"
+      val newInv = Invoice(
+        id = invId,
+        invoiceNumber = invNo,
+        patientId = card.patientId.ifBlank { "WALK-IN" },
+        patientName = card.patientName.ifBlank { "Treatment Patient" },
+        items = invoiceItems,
+        consultationFee = 0.0,
+        serviceFee = 0.0,
+        totalAmount = totalCost,
+        paidAmount = totalCost,
+        paymentStatus = "Paid",
+        cashierName = nurseName.ifBlank { _currentUser.value?.fullName ?: "Nurse Station" },
+        timestamp = BurmeseDateUtils.getNowFormatted()
+      )
+      val updatedInvoices = _invoices.value + newInv
+      _invoices.value = updatedInvoices
+      ClinicDataPersistence.saveInvoices(ctx, updatedInvoices)
+      deductInventoryForInvoice(newInv)
+      invoice = newInv
+    }
 
     // 3. Mark session COMPLETED
     val updatedSessions = card.sessions.map { s ->
@@ -1574,7 +1716,14 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           administeredAt = BurmeseDateUtils.getNowFormatted(),
           administeredBy = nurseName,
           isClinicMed = isClinicMed,
-          medicationFee = medPrice,
+          medicationFee = if (isClinicMed) medPrice else 0.0,
+          sessionFee = sessionFee,
+          consumables = consumables,
+          invoiceId = if (isAlreadyBilled) (card.consultationInvoiceId ?: session.invoiceId) else invoice?.id,
+          notes = notes
+        )
+      } else s
+    }
           sessionFee = sessionFee,
           consumables = consumables,
           invoiceId = invId,

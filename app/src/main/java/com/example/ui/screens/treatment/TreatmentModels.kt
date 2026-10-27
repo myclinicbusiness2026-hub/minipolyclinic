@@ -97,6 +97,7 @@ data class TreatmentCard(
   val sessionFee: Double = 3000.0,
   val medicationFee: Double = 0.0,
   val isBilledPerSession: Boolean = true,
+  val consultationInvoiceId: String? = null,
   val cardStatus: TreatmentStatus = TreatmentStatus.IN_PROGRESS,
   val discontinueReason: String = "",
   val discontinuedBy: String = "",

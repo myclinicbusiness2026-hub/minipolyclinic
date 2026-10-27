@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -77,11 +78,14 @@ fun TreatmentScreen(
   val activeCardsCount = treatmentCards.count { !it.isDiscontinued && !it.isFullyCompleted }
   val completedCardsCount = treatmentCards.count { it.isFullyCompleted }
 
+  val screenWidthDp = LocalConfiguration.current.screenWidthDp
+  val isMobilePortrait = screenWidthDp < 600
+
   Column(
     modifier = Modifier
       .fillMaxSize()
       .background(BgLightGray)
-      .padding(10.dp)
+      .padding(8.dp)
   ) {
     // 1. Top Header & Metrics Bar
     Surface(
@@ -90,51 +94,104 @@ fun TreatmentScreen(
       border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
       modifier = Modifier.fillMaxWidth()
     ) {
-      Row(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-      ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-          Box(
-            modifier = Modifier
-              .size(36.dp)
-              .clip(RoundedCornerShape(8.dp))
-              .background(SoftGreenContainer),
-            contentAlignment = Alignment.Center
+      if (isMobilePortrait) {
+        Column(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(10.dp),
+          verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
           ) {
-            Icon(Icons.Default.Healing, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(20.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Box(
+                modifier = Modifier
+                  .size(32.dp)
+                  .clip(RoundedCornerShape(6.dp))
+                  .background(SoftGreenContainer),
+                contentAlignment = Alignment.Center
+              ) {
+                Icon(Icons.Default.Healing, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(18.dp))
+              }
+              Spacer(modifier = Modifier.width(8.dp))
+              Column {
+                Text(
+                  "Day-Care Treatment Cards",
+                  fontSize = 13.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = SlateDark
+                )
+                Text(
+                  "ဆေးထိုး/အကြောပုလင်း ကုသမှုကတ်များ",
+                  fontSize = 10.sp,
+                  color = SlateMuted
+                )
+              }
+            }
           }
-          Spacer(modifier = Modifier.width(10.dp))
-          Column {
-            Text(
-              "Day-Care Treatment Cards (ဆေးထိုး/အကြောပုလင်း ကုသမှုကတ်များ)",
-              fontSize = 13.5.sp,
-              fontWeight = FontWeight.Bold,
-              color = SlateDark
-            )
-            Text(
-              "IM / IV Push / IV Infusion Drip / Nebulizer • Routine Nursing & Day-Care",
-              fontSize = 10.5.sp,
-              color = SlateMuted
-            )
-          }
-        }
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-          // New Card Button
           Button(
             onClick = { showCreateCardDialog = true },
             colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
             shape = RoundedCornerShape(6.dp),
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-            modifier = Modifier.height(32.dp)
+            modifier = Modifier
+              .fillMaxWidth()
+              .height(34.dp)
           ) {
             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
             Spacer(modifier = Modifier.width(4.dp))
             Text("ကုသမှုကတ်အသစ် (New Card)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+          }
+        }
+      } else {
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(10.dp),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+              modifier = Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(SoftGreenContainer),
+              contentAlignment = Alignment.Center
+            ) {
+              Icon(Icons.Default.Healing, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(20.dp))
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            Column {
+              Text(
+                "Day-Care Treatment Cards (ဆေးထိုး/အကြောပုလင်း ကုသမှုကတ်များ)",
+                fontSize = 13.5.sp,
+                fontWeight = FontWeight.Bold,
+                color = SlateDark
+              )
+              Text(
+                "IM / IV Push / IV Infusion Drip / Nebulizer • Routine Nursing & Day-Care",
+                fontSize = 10.5.sp,
+                color = SlateMuted
+              )
+            }
+          }
+
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Button(
+              onClick = { showCreateCardDialog = true },
+              colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+              shape = RoundedCornerShape(6.dp),
+              contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+              modifier = Modifier.height(32.dp)
+            ) {
+              Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+              Spacer(modifier = Modifier.width(4.dp))
+              Text("ကုသမှုကတ်အသစ် (New Card)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
           }
         }
       }
@@ -142,9 +199,11 @@ fun TreatmentScreen(
 
     Spacer(modifier = Modifier.height(8.dp))
 
-    // 2. Metrics & Status Row
+    // 2. Metrics & Status Row (Scrollable on small screens)
     Row(
-      modifier = Modifier.fillMaxWidth(),
+      modifier = Modifier
+        .fillMaxWidth()
+        .then(if (isMobilePortrait) Modifier.horizontalScroll(rememberScrollState()) else Modifier),
       horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
       // Metric 1: Today Due
@@ -152,8 +211,7 @@ fun TreatmentScreen(
         shape = RoundedCornerShape(8.dp),
         color = if (todayDueSessions.isNotEmpty()) StatusWarningContainer else PureWhite,
         border = BorderStroke(1.dp, if (todayDueSessions.isNotEmpty()) StatusWarning.copy(alpha = 0.5f) else Color(0xFFE2E8F0)),
-        modifier = Modifier
-          .weight(1f)
+        modifier = (if (isMobilePortrait) Modifier.width(150.dp) else Modifier.weight(1f))
           .height(52.dp)
           .clickable { selectedTab = 0 }
       ) {
@@ -161,11 +219,11 @@ fun TreatmentScreen(
           modifier = Modifier.padding(horizontal = 10.dp),
           verticalAlignment = Alignment.CenterVertically
         ) {
-          Icon(Icons.Default.Schedule, contentDescription = null, tint = if (todayDueSessions.isNotEmpty()) StatusWarning else SlateMuted, modifier = Modifier.size(22.dp))
+          Icon(Icons.Default.Schedule, contentDescription = null, tint = if (todayDueSessions.isNotEmpty()) StatusWarning else SlateMuted, modifier = Modifier.size(20.dp))
           Spacer(modifier = Modifier.width(8.dp))
           Column {
-            Text("ယနေ့ထိုးရန် (Today Due)", fontSize = 10.sp, color = SlateMedium)
-            Text("${todayDueSessions.size} Sessions", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = if (todayDueSessions.isNotEmpty()) StatusWarning else SlateDark)
+            Text("ယနေ့ထိုးရန် (Due)", fontSize = 9.5.sp, color = SlateMedium)
+            Text("${todayDueSessions.size} Sessions", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (todayDueSessions.isNotEmpty()) StatusWarning else SlateDark)
           }
         }
       }
@@ -175,8 +233,7 @@ fun TreatmentScreen(
         shape = RoundedCornerShape(8.dp),
         color = PureWhite,
         border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-        modifier = Modifier
-          .weight(1f)
+        modifier = (if (isMobilePortrait) Modifier.width(150.dp) else Modifier.weight(1f))
           .height(52.dp)
           .clickable { selectedTab = 1 }
       ) {
@@ -184,11 +241,11 @@ fun TreatmentScreen(
           modifier = Modifier.padding(horizontal = 10.dp),
           verticalAlignment = Alignment.CenterVertically
         ) {
-          Icon(Icons.Default.Sync, contentDescription = null, tint = OceanGreenPrimary, modifier = Modifier.size(22.dp))
+          Icon(Icons.Default.Sync, contentDescription = null, tint = OceanGreenPrimary, modifier = Modifier.size(20.dp))
           Spacer(modifier = Modifier.width(8.dp))
           Column {
-            Text("ကုသဆဲကတ်များ (Active Cards)", fontSize = 10.sp, color = SlateMedium)
-            Text("$activeCardsCount Patients", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+            Text("ကုသဆဲ (Active)", fontSize = 9.5.sp, color = SlateMedium)
+            Text("$activeCardsCount Patients", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = SlateDark)
           }
         }
       }
@@ -198,8 +255,7 @@ fun TreatmentScreen(
         shape = RoundedCornerShape(8.dp),
         color = PureWhite,
         border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-        modifier = Modifier
-          .weight(1f)
+        modifier = (if (isMobilePortrait) Modifier.width(150.dp) else Modifier.weight(1f))
           .height(52.dp)
           .clickable { selectedTab = 2 }
       ) {
@@ -207,11 +263,11 @@ fun TreatmentScreen(
           modifier = Modifier.padding(horizontal = 10.dp),
           verticalAlignment = Alignment.CenterVertically
         ) {
-          Icon(Icons.Default.CheckCircle, contentDescription = null, tint = StatusSuccess, modifier = Modifier.size(22.dp))
+          Icon(Icons.Default.CheckCircle, contentDescription = null, tint = StatusSuccess, modifier = Modifier.size(20.dp))
           Spacer(modifier = Modifier.width(8.dp))
           Column {
-            Text("ပြီးစီးမှု စုစုပေါင်း (Completed)", fontSize = 10.sp, color = SlateMedium)
-            Text("$completedCardsCount Cards", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+            Text("ပြီးစီးမှု (Completed)", fontSize = 9.5.sp, color = SlateMedium)
+            Text("$completedCardsCount Cards", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = SlateDark)
           }
         }
       }
@@ -219,9 +275,11 @@ fun TreatmentScreen(
 
     Spacer(modifier = Modifier.height(8.dp))
 
-    // 3. Tab Bar
+    // 3. Tab Bar (Always horizontally scrollable to prevent tab squeeze)
     Row(
-      modifier = Modifier.fillMaxWidth(),
+      modifier = Modifier
+        .fillMaxWidth()
+        .horizontalScroll(rememberScrollState()),
       horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
       FilterChip(
@@ -346,17 +404,19 @@ fun TreatmentScreen(
                       }
                     }
 
-                    // Administer Button
-                    Button(
-                      onClick = { sessionToAdminister = Pair(card, session) },
-                      colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
-                      shape = RoundedCornerShape(6.dp),
-                      contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                      modifier = Modifier.height(30.dp)
-                    ) {
-                      Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(13.dp))
-                      Spacer(modifier = Modifier.width(4.dp))
-                      Text("ဆေးထိုးပြီး (Administer)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    // Administer Button (Landscape / Tablet)
+                    if (!isMobilePortrait) {
+                      Button(
+                        onClick = { sessionToAdminister = Pair(card, session) },
+                        colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+                        shape = RoundedCornerShape(6.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                        modifier = Modifier.height(30.dp)
+                      ) {
+                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(13.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("ဆေးထိုးပြီး (Administer)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                      }
                     }
                   }
 
@@ -367,7 +427,7 @@ fun TreatmentScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                   ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                       Text(
                         "${card.medicationName} (${card.dosage}) • ${card.route.label}",
                         fontSize = 11.5.sp,
@@ -384,6 +444,24 @@ fun TreatmentScreen(
                       fontWeight = FontWeight.Bold,
                       color = SlateDark
                     )
+                  }
+
+                  // Administer Button (Mobile Portrait - Full Width touch target)
+                  if (isMobilePortrait) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                      onClick = { sessionToAdminister = Pair(card, session) },
+                      colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+                      shape = RoundedCornerShape(6.dp),
+                      contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                      modifier = Modifier
+                        .fillMaxWidth()
+                        .height(36.dp)
+                    ) {
+                      Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(15.dp))
+                      Spacer(modifier = Modifier.width(6.dp))
+                      Text("ဆေးထိုးမည် (Administer)", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                    }
                   }
                 }
               }
@@ -522,9 +600,11 @@ fun TreatmentScreen(
 
                   Spacer(modifier = Modifier.height(8.dp))
 
-                  // Visual Progress Grid / Session Badges
+                  // Visual Progress Grid / Session Badges (Scrollable to prevent squishing)
                   Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                      .fillMaxWidth()
+                      .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                   ) {
                     card.sessions.forEach { s ->
@@ -533,14 +613,14 @@ fun TreatmentScreen(
                         shape = RoundedCornerShape(4.dp),
                         color = if (isDone) MedicalGreen else if (card.isDiscontinued) Color(0xFFE2E8F0) else Color(0xFFF3E5F5),
                         modifier = Modifier
-                          .weight(1f)
-                          .height(24.dp),
+                          .widthIn(min = 36.dp)
+                          .height(26.dp),
                         border = BorderStroke(1.dp, if (isDone) MedicalGreenDark else SlateLight)
                       ) {
-                        Box(contentAlignment = Alignment.Center) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 4.dp)) {
                           Text(
                             "D${s.sessionNumber}",
-                            fontSize = 9.5.sp,
+                            fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (isDone) PureWhite else if (card.isDiscontinued) SlateMedium else Color(0xFF5E35B1)
                           )
@@ -577,7 +657,7 @@ fun TreatmentScreen(
       defaultNurseName = currentUser?.fullName ?: "Nurse Station",
       onDismiss = { sessionToAdminister = null },
       onConfirm = { isClinicMed, medPrice, sessionFee, consumables, notes ->
-        viewModel.administerTreatmentSession(
+        val generatedInv = viewModel.administerTreatmentSession(
           cardId = card.id,
           sessionId = session.id,
           nurseName = currentUser?.fullName ?: "Nurse Staff",
@@ -587,7 +667,11 @@ fun TreatmentScreen(
           consumables = consumables,
           notes = notes
         )
-        Toast.makeText(context, "Dose ${session.sessionNumber} ဆေးထိုးပြီးစီးကြောင်း မှတ်တမ်းတင်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
+        if (generatedInv == null) {
+          Toast.makeText(context, "Dose ${session.sessionNumber} ဆေးထိုးပြီးစီးပါပြီ (Consultation ဘောင်ချာတွင် ပေါင်းထည့်ပြီးဖြစ်၍ ဘောင်ချာအသစ် မထုတ်တော့ပါ)", Toast.LENGTH_LONG).show()
+        } else {
+          Toast.makeText(context, "Dose ${session.sessionNumber} ဆေးထိုးပြီးစီးပါပြီ (ဘောင်ချာ #${generatedInv.invoiceNo} ထုတ်ပေးပြီး)", Toast.LENGTH_SHORT).show()
+        }
         sessionToAdminister = null
       }
     )

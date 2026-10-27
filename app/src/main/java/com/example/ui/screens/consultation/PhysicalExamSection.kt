@@ -1066,7 +1066,7 @@ fun PhysicalExamSection(
                   modifier = Modifier.weight(1.2f),
                   textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
                   shape = RoundedCornerShape(4.dp),
-                  singleLine = true
+                  singleLine = false, minLines = 1, maxLines = 3
                 )
                 OutlinedTextField(
                   value = traumaDimensions,
@@ -1075,7 +1075,7 @@ fun PhysicalExamSection(
                   modifier = Modifier.weight(1f),
                   textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
                   shape = RoundedCornerShape(4.dp),
-                  singleLine = true
+                  singleLine = false, minLines = 1, maxLines = 3
                 )
               }
             }

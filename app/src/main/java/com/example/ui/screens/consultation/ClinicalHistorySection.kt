@@ -421,7 +421,7 @@ fun ClinicalHistorySection(
                   .padding(start = 68.dp),
                 textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
                 shape = RoundedCornerShape(4.dp),
-                singleLine = true
+                singleLine = false, minLines = 1, maxLines = 3
               )
 
               Spacer(modifier = Modifier.height(6.dp))
@@ -532,7 +532,7 @@ fun ClinicalHistorySection(
                   .padding(start = 68.dp),
                 textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
                 shape = RoundedCornerShape(4.dp),
-                singleLine = true
+                singleLine = false, minLines = 1, maxLines = 3
               )
 
               Spacer(modifier = Modifier.height(6.dp))
@@ -569,7 +569,7 @@ fun ClinicalHistorySection(
                 modifier = Modifier.fillMaxWidth(),
                 textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
                 shape = RoundedCornerShape(4.dp),
-                singleLine = true
+                singleLine = false, minLines = 1, maxLines = 3
               )
 
               Spacer(modifier = Modifier.height(6.dp))
@@ -606,7 +606,7 @@ fun ClinicalHistorySection(
                 modifier = Modifier.fillMaxWidth(),
                 textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
                 shape = RoundedCornerShape(4.dp),
-                singleLine = true
+                singleLine = false, minLines = 1, maxLines = 3
               )
 
               Spacer(modifier = Modifier.height(6.dp))
@@ -643,7 +643,7 @@ fun ClinicalHistorySection(
                 modifier = Modifier.fillMaxWidth(),
                 textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
                 shape = RoundedCornerShape(4.dp),
-                singleLine = true
+                singleLine = false, minLines = 1, maxLines = 3
               )
 
               Spacer(modifier = Modifier.height(6.dp))
@@ -659,7 +659,7 @@ fun ClinicalHistorySection(
                 modifier = Modifier.fillMaxWidth(),
                 textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
                 shape = RoundedCornerShape(4.dp),
-                singleLine = true
+                singleLine = false, minLines = 1, maxLines = 3
               )
             }
           }
@@ -825,7 +825,7 @@ fun ClinicalHistorySection(
                 textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
                 shape = RoundedCornerShape(4.dp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default),
-                singleLine = true
+                singleLine = false, minLines = 1, maxLines = 3
               )
             }
           }
@@ -905,7 +905,7 @@ fun ClinicalHistorySection(
                 textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
                 shape = RoundedCornerShape(4.dp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default),
-                singleLine = true
+                singleLine = false, minLines = 1, maxLines = 3
               )
             }
           }
@@ -985,7 +985,7 @@ fun ClinicalHistorySection(
                 textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
                 shape = RoundedCornerShape(4.dp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default),
-                singleLine = true
+                singleLine = false, minLines = 1, maxLines = 3
               )
             }
           }
@@ -1122,7 +1122,7 @@ fun ClinicalHistorySection(
                   textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
                   shape = RoundedCornerShape(4.dp),
                   keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default),
-                  singleLine = true
+                  singleLine = false, minLines = 1, maxLines = 3
                 )
 
                 Button(
@@ -1193,7 +1193,7 @@ fun ClinicalHistorySection(
                 textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
                 shape = RoundedCornerShape(4.dp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default),
-                singleLine = true
+                singleLine = false, minLines = 1, maxLines = 3
               )
             }
           }
@@ -1267,7 +1267,7 @@ fun ClinicalHistorySection(
                 textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
                 shape = RoundedCornerShape(4.dp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default),
-                singleLine = true
+                singleLine = false, minLines = 1, maxLines = 3
               )
             }
           }
@@ -1341,7 +1341,7 @@ fun ClinicalHistorySection(
                 textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
                 shape = RoundedCornerShape(4.dp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default),
-                singleLine = true
+                singleLine = false, minLines = 1, maxLines = 3
               )
             }
           }

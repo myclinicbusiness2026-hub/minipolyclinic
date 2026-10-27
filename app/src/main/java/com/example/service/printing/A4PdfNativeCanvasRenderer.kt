@@ -158,17 +158,7 @@ object A4PdfNativeCanvasRenderer {
     // 4. Vitals Row (6 Stat Boxes)
     currentY = drawVitalsRow(canvas, width, currentY, consultation, patient)
 
-    // 5. Clinical Diagnosis Box (if present)
-    val diagText = when {
-      consultation.diagnosisList.isNotEmpty() -> consultation.diagnosisList.joinToString(" • ")
-      consultation.assessment.isNotBlank() -> consultation.assessment
-      else -> ""
-    }
-    if (diagText.isNotBlank()) {
-      currentY = drawDiagnosisBox(canvas, width, currentY, diagText)
-    }
-
-    // 6. Clinical Examination & History Section
+    // 5. Clinical Examination & History Section (Placed directly below Vitals)
     val hasHistory = !patient?.chiefComplaint.isNullOrBlank() || consultation.subjective.isNotBlank()
     val hasExam = consultation.objective.isNotBlank()
 
@@ -180,6 +170,16 @@ object A4PdfNativeCanvasRenderer {
     } else if (hasExam) {
       val lines = getObjectiveLines(consultation)
       currentY = drawSingleColumnClinicalSection(canvas, width, currentY, "Physical Examination & Clinical Findings:", lines, maxLines = 10)
+    }
+
+    // 6. Provisional Diagnosis Box (Placed below History & Physical Exam)
+    val diagText = when {
+      consultation.diagnosisList.isNotEmpty() -> consultation.diagnosisList.joinToString(" • ")
+      consultation.assessment.isNotBlank() -> consultation.assessment
+      else -> ""
+    }
+    if (diagText.isNotBlank()) {
+      currentY = drawDiagnosisBox(canvas, width, currentY, diagText)
     }
 
     // 7. Prescriptions (Rx) Section (Only if present)
@@ -234,17 +234,7 @@ object A4PdfNativeCanvasRenderer {
     // 4. Vitals Row (6 Stat Boxes)
     currentY = drawVitalsRow(canvas, width, currentY, consultation, patient)
 
-    // 5. Clinical Diagnosis Box (if present)
-    val diagText = when {
-      consultation.diagnosisList.isNotEmpty() -> consultation.diagnosisList.joinToString(" • ")
-      consultation.assessment.isNotBlank() -> consultation.assessment
-      else -> ""
-    }
-    if (diagText.isNotBlank()) {
-      currentY = drawDiagnosisBox(canvas, width, currentY, diagText)
-    }
-
-    // 6. Clinical Examination & History Section
+    // 5. Clinical Examination & History Section (Placed directly below Vitals)
     val hasHistory = !patient?.chiefComplaint.isNullOrBlank() || consultation.subjective.isNotBlank()
     val hasExam = consultation.objective.isNotBlank()
 
@@ -256,6 +246,16 @@ object A4PdfNativeCanvasRenderer {
     } else if (hasExam) {
       val lines = getObjectiveLines(consultation)
       currentY = drawSingleColumnClinicalSection(canvas, width, currentY, "Physical Examination & Clinical Findings:", lines, maxLines = 14)
+    }
+
+    // 6. Provisional Diagnosis Box (Placed below History & Physical Exam)
+    val diagText = when {
+      consultation.diagnosisList.isNotEmpty() -> consultation.diagnosisList.joinToString(" • ")
+      consultation.assessment.isNotBlank() -> consultation.assessment
+      else -> ""
+    }
+    if (diagText.isNotBlank()) {
+      currentY = drawDiagnosisBox(canvas, width, currentY, diagText)
     }
 
     // 7. Dynamic Flow: Fill remaining vertical space on Page 1 with Prescriptions
@@ -979,7 +979,7 @@ object A4PdfNativeCanvasRenderer {
     paint.textSize = 9.5f
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     paint.color = Color.rgb(0x1B, 0x5E, 0x20)
-    canvas.drawText("Clinical Diagnosis: $diagText", 28f, topY + 17f, paint)
+    canvas.drawText("Provisional Diagnosis: $diagText", 28f, topY + 17f, paint)
 
     return topY + 32f
   }
@@ -1025,9 +1025,11 @@ object A4PdfNativeCanvasRenderer {
     maxLines: Int = 12
   ): Float {
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    val leftW = (width - 48f) * 0.44f
-    val rightX = 20f + leftW + 8f
-    val rightW = width - 20f - rightX
+    val usableW = width - 40f - 12f // 20f margins, 12f centered gap
+    val colW = usableW / 2f
+    val leftW = colW
+    val rightX = 20f + colW + 12f
+    val rightW = colW
 
     var leftY = topY + 13f
     var rightY = topY + 13f
@@ -1056,11 +1058,11 @@ object A4PdfNativeCanvasRenderer {
       rightY = drawFormattedClinicalLine(canvas, line, rightX, rightY, rightW, paint)
     }
 
-    // Vertical Divider Line between columns
+    // Vertical Divider Line between columns (Exactly 50/50 centered)
     val sectionEndY = maxOf(leftY, rightY) + 4f
     paint.color = Color.rgb(0xE2, 0xE8, 0xF0)
     paint.strokeWidth = 0.8f
-    canvas.drawLine(20f + leftW + 4f, topY, 20f + leftW + 4f, sectionEndY, paint)
+    canvas.drawLine(20f + colW + 6f, topY, 20f + colW + 6f, sectionEndY, paint)
 
     return sectionEndY
   }
@@ -1202,12 +1204,19 @@ object A4PdfNativeCanvasRenderer {
     val trimmed = rawLine.trim()
     if (trimmed.isBlank()) return y
 
-    // Subheading: only if explicitly enclosed in [ ... ] or markdown heading #
-    val isExplicitSubheading = (trimmed.startsWith("[") && trimmed.endsWith("]")) ||
-      (trimmed.startsWith("#") && trimmed.length < 50)
+    // Subheading: only if explicitly marked as markdown heading # or [HEADING: / [SECTION:
+    val isExplicitSubheading = (trimmed.startsWith("###") || trimmed.startsWith("##") || trimmed.startsWith("# ")) ||
+      ((trimmed.startsWith("[HEADING:") || trimmed.startsWith("[SECTION:")) && trimmed.endsWith("]"))
 
     if (isExplicitSubheading) {
-      val title = trimmed.removePrefix("[").removeSuffix("]").removePrefix("#").trim()
+      val title = trimmed
+        .removePrefix("[HEADING:")
+        .removePrefix("[SECTION:")
+        .removeSuffix("]")
+        .removePrefix("###")
+        .removePrefix("##")
+        .removePrefix("#")
+        .trim()
       paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
       paint.textSize = 9.5f
       paint.color = Color.rgb(0x1B, 0x5E, 0x20)

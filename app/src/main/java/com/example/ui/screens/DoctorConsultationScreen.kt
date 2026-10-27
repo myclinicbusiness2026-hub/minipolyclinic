@@ -436,11 +436,6 @@ fun DoctorConsultationScreen(
         treatmentOrders = finalTreatmentCards
       )
 
-      // Save treatment cards to database/state
-      finalTreatmentCards.forEach { card ->
-        viewModel.addTreatmentCard(card)
-      }
-
       onConsultationCompleted()
     }
   }

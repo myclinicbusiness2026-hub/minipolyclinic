@@ -417,9 +417,9 @@ fun CashierBillingScreen(
                 viewModel.updateInvoiceDocumentationFee(inv.id, includeFee, feeAmount)
               },
               onBackToQueue = null,
-              onDeleteInvoiceAndReturnStock = { inv ->
-                val (success, restoredList) = viewModel.deleteInvoiceAndReturnStock(inv.id)
-                if (success) {
+              onDeleteInvoiceAndReturnStock = { inv, returnedNames, voidAll ->
+                val (success, restoredList) = viewModel.returnSelectedInvoiceItemsAndAdjust(inv.id, returnedNames, voidAll)
+                if (success && voidAll) {
                   selectedInvoiceId = null
                 }
               }
@@ -569,9 +569,9 @@ fun CashierBillingScreen(
               onBackToQueue = {
                 mobileActiveTab = 0
               },
-              onDeleteInvoiceAndReturnStock = { inv ->
-                val (success, restoredList) = viewModel.deleteInvoiceAndReturnStock(inv.id)
-                if (success) {
+              onDeleteInvoiceAndReturnStock = { inv, returnedNames, voidAll ->
+                val (success, restoredList) = viewModel.returnSelectedInvoiceItemsAndAdjust(inv.id, returnedNames, voidAll)
+                if (success && voidAll) {
                   selectedInvoiceId = null
                   mobileActiveTab = 0
                 }
@@ -890,7 +890,7 @@ private fun BillingCheckoutPane(
   onPrintA4: (com.example.model.ConsultationRecord) -> Unit,
   onToggleDocFee: (Invoice, Boolean, Double) -> Unit = { _, _, _ -> },
   onBackToQueue: (() -> Unit)?,
-  onDeleteInvoiceAndReturnStock: ((Invoice) -> Unit)? = null,
+  onDeleteInvoiceAndReturnStock: ((Invoice, Set<String>, Boolean) -> Unit)? = null,
   onApplyDoctorFeeFoc: (Invoice) -> Unit = {},
   onApplyAllFoc: (Invoice) -> Unit = {},
   onResetDiscounts: (Invoice) -> Unit = {},
@@ -1081,13 +1081,14 @@ private fun BillingCheckoutPane(
       canDelete = onDeleteInvoiceAndReturnStock != null
     )
 
-    // 7. Delete Confirmation Modal
+    // 7. Delete / Selective Return Modal
     if (showDeleteDialog && onDeleteInvoiceAndReturnStock != null) {
       BillingDeleteConfirmDialog(
         activeInvoice = activeInvoice,
+        currencyFmt = currencyFmt,
         onDismiss = { showDeleteDialog = false },
-        onConfirmDelete = { invoice ->
-          onDeleteInvoiceAndReturnStock(invoice)
+        onConfirmReturn = { invoice, returnedNames, voidAll ->
+          onDeleteInvoiceAndReturnStock(invoice, returnedNames, voidAll)
           showDeleteDialog = false
         }
       )
@@ -2030,18 +2031,27 @@ private fun BillingActionButtonsRow(
 @Composable
 private fun BillingDeleteConfirmDialog(
   activeInvoice: Invoice,
+  currencyFmt: NumberFormat,
   onDismiss: () -> Unit,
-  onConfirmDelete: (Invoice) -> Unit
+  onConfirmReturn: (Invoice, Set<String>, Boolean) -> Unit
 ) {
-  val pharmacyItems = activeInvoice.items.filter {
-    it.category.equals("Pharmacy", ignoreCase = true) || it.category.equals("Medicine", ignoreCase = true)
+  val pharmacyItems = remember(activeInvoice.items) {
+    activeInvoice.items.filter {
+      !it.isProcedure && (it.category.equals("Pharmacy", ignoreCase = true) || it.category.equals("Medicine", ignoreCase = true))
+    }
   }
+
+  // Selected items to return (default: empty, user picks which medicines to return)
+  val selectedToReturn = remember { mutableStateListOf<String>() }
+
+  val returnedMedCost = pharmacyItems.filter { selectedToReturn.contains(it.name) }.sumOf { it.totalPrice }
+  val adjustedGrandTotal = (activeInvoice.totalAmount - returnedMedCost).coerceAtLeast(activeInvoice.consultationFee)
 
   AlertDialog(
     onDismissRequest = onDismiss,
     icon = {
       Icon(
-        Icons.Default.DeleteForever,
+        Icons.Default.AssignmentReturn,
         contentDescription = null,
         tint = Color(0xFFDC2626),
         modifier = Modifier.size(28.dp)
@@ -2049,74 +2059,187 @@ private fun BillingDeleteConfirmDialog(
     },
     title = {
       Text(
-        "Delete Invoice & Return Stock?",
+        "ဆေးဝါး ရွေးချယ်ပြန်အပ်ခြင်းနှင့် ဘေလ်ပြင်ဆင်ခြင်း",
         fontWeight = FontWeight.Bold,
-        fontSize = 15.sp,
+        fontSize = 14.sp,
         color = DarkGrayText
       )
     },
     text = {
-      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      Column(
+        modifier = Modifier
+          .fillMaxWidth()
+          .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+      ) {
         Text(
-          "အင်ဗွိုက်စ် #${activeInvoice.invoiceNo} (${activeInvoice.patientName}) အား ဖျက်သိမ်းပါမည်လား။ လူနာမှ ဆေးမယူတော့သည့်အတွက် စာရင်းမှ ဖျက်သိမ်းမည် ဖြစ်ပါသည်။",
-          fontSize = 12.sp,
+          "လူနာ #${activeInvoice.invoiceNo} (${activeInvoice.patientName}) အတွက် ငွေမလောက်၍ မယူဖြစ်သော ဆေးဝါးများကို ရွေးချယ်ပေးပါရန်။ (ဆရာဝန် ကြည့်ရှုပြီးဖြစ်၍ ဆရာဝန်ပြသခ မပျက်မပြယ် ကျန်ရှိပါမည်)",
+          fontSize = 11.5.sp,
           color = DarkGrayText
         )
+
+        // Doctor Consultation Fee (Locked)
+        Surface(
+          shape = RoundedCornerShape(6.dp),
+          color = Color(0xFFF1F5F9),
+          border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+          ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Icon(Icons.Default.Lock, contentDescription = null, tint = MedicalGreenDark, modifier = Modifier.size(14.dp))
+              Spacer(modifier = Modifier.width(6.dp))
+              Text("ဆရာဝန်ပြသခ (Consultation Fee):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+            }
+            Text("${currencyFmt.format(activeInvoice.consultationFee.toInt())} Ks (ကျန်ရှိမည်)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+          }
+        }
 
         if (pharmacyItems.isNotEmpty()) {
           Surface(
             shape = RoundedCornerShape(6.dp),
-            color = Color(0xFFFEF2F2),
-            border = BorderStroke(1.dp, Color(0xFFFECACA)),
+            color = Color(0xFFFFFBEB),
+            border = BorderStroke(1.dp, Color(0xFFFDE68A)),
             modifier = Modifier.fillMaxWidth()
           ) {
             Column(modifier = Modifier.padding(8.dp)) {
-              Text(
-                "Pharmacy စတော့ထဲသို့ အလိုအလျောက် ပြန်သွင်းမည့် ဆေးဝါးများ (${pharmacyItems.size} မျိုး):",
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.sp,
-                color = Color(0xFF991B1B)
-              )
-              Spacer(modifier = Modifier.height(4.dp))
-              pharmacyItems.forEach { item ->
+              Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+              ) {
                 Text(
-                  "• ${item.description} (အရေအတွက်: ${item.quantity})",
-                  fontSize = 10.5.sp,
-                  color = Color(0xFF7F1D1D)
+                  "ပြန်အပ်မည့် ဆေးဝါးများအား အမှန်ခြစ်ပါ (${selectedToReturn.size}/${pharmacyItems.size}):",
+                  fontWeight = FontWeight.Bold,
+                  fontSize = 11.sp,
+                  color = Color(0xFF92400E)
                 )
+                TextButton(
+                  onClick = {
+                    if (selectedToReturn.size == pharmacyItems.size) {
+                      selectedToReturn.clear()
+                    } else {
+                      selectedToReturn.clear()
+                      selectedToReturn.addAll(pharmacyItems.map { it.name })
+                    }
+                  },
+                  contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                  Text(
+                    if (selectedToReturn.size == pharmacyItems.size) "အားလုံးဖြုတ်" else "ဆေးအားလုံးရွေး",
+                    fontSize = 10.sp,
+                    color = Color(0xFFB45309),
+                    fontWeight = FontWeight.Bold
+                  )
+                }
+              }
+
+              Spacer(modifier = Modifier.height(4.dp))
+
+              pharmacyItems.forEach { item ->
+                val isChecked = selectedToReturn.contains(item.name)
+                Row(
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                      if (isChecked) selectedToReturn.remove(item.name) else selectedToReturn.add(item.name)
+                    }
+                    .padding(vertical = 3.dp),
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Checkbox(
+                    checked = isChecked,
+                    onCheckedChange = { chk ->
+                      if (chk) selectedToReturn.add(item.name) else selectedToReturn.remove(item.name)
+                    },
+                    modifier = Modifier.size(24.dp)
+                  )
+                  Spacer(modifier = Modifier.width(6.dp))
+                  Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                      item.name,
+                      fontSize = 11.sp,
+                      fontWeight = if (isChecked) FontWeight.Bold else FontWeight.Normal,
+                      color = if (isChecked) Color(0xFF991B1B) else DarkGrayText
+                    )
+                    Text(
+                      "${item.quantity} ခု x ${currencyFmt.format(item.unitPrice.toInt())} Ks = ${currencyFmt.format(item.totalPrice.toInt())} Ks",
+                      fontSize = 10.sp,
+                      color = if (isChecked) Color(0xFFDC2626) else SlateMuted
+                    )
+                  }
+                }
               }
             }
           }
-        } else {
-          Text(
-            "ဤအင်ဗွိုက်စ်တွင် ဆေးဝါးပစ္စည်းများ မပါဝင်ပါ။ အင်ဗွိုက်စ်စာရင်းမှသာ ဖျက်သိမ်းမည် ဖြစ်ပါသည်။",
-            fontSize = 11.sp,
-            color = SlateMedium
-          )
         }
 
-        Text(
-          "အတည်ပြုပါက အင်ဗွိုက်စ်ကို ပယ်ဖျက်ပြီး ဆေးဝါးများကို Pharmacy Store ထဲသို့ FEFO အတိုင်း အလိုအလျောက် ပြန်လည်ဖြည့်သွင်းပေးပါမည်။",
-          fontSize = 10.5.sp,
-          color = SlateMedium
-        )
+        // Live Total Calculation Card
+        Surface(
+          shape = RoundedCornerShape(6.dp),
+          color = Color(0xFFF8FAFC),
+          border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+              Text("မူလ စုစုပေါင်း ကျသင့်ငွေ:", fontSize = 11.sp, color = SlateMedium)
+              Text("${currencyFmt.format(activeInvoice.totalAmount.toInt())} Ks", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+            }
+            if (returnedMedCost > 0) {
+              Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("ပြန်အပ်မည့် ဆေးဖိုး (စတော့ထဲ ပြန်ဝင်မည်):", fontSize = 11.sp, color = Color(0xFFDC2626))
+                Text("-${currencyFmt.format(returnedMedCost.toInt())} Ks", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC2626))
+              }
+              HorizontalDivider(color = Color(0xFFCBD5E1), thickness = 0.8.dp)
+              Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("ပြင်ဆင်ပြီး အသစ်ကျသင့်ငွေ (ပေးချေရန်):", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+                Text("${currencyFmt.format(adjustedGrandTotal.toInt())} Ks", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+              }
+            }
+          }
+        }
       }
     },
     confirmButton = {
-      Button(
-        onClick = { onConfirmDelete(activeInvoice) },
-        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
-        shape = RoundedCornerShape(6.dp)
-      ) {
-        Text("Confirm Delete & Return", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = PureWhite)
+      Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (selectedToReturn.isNotEmpty()) {
+          Button(
+            onClick = { onConfirmReturn(activeInvoice, selectedToReturn.toSet(), false) },
+            colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+            shape = RoundedCornerShape(6.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+          ) {
+            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("ရွေးထားသောဆေး ပြန်အပ်ပြီး ဘေလ်ပြင်မည်", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = PureWhite)
+          }
+        }
+
+        OutlinedButton(
+          onClick = { onConfirmReturn(activeInvoice, emptySet(), true) },
+          colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFDC2626)),
+          border = BorderStroke(1.dp, Color(0xFFDC2626)),
+          shape = RoundedCornerShape(6.dp),
+          contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+          Icon(Icons.Default.DeleteForever, contentDescription = null, modifier = Modifier.size(14.dp))
+          Spacer(modifier = Modifier.width(3.dp))
+          Text("ဘေလ်တစ်ခုလုံး ပယ်ဖျက်မည် (Void)", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+        }
       }
     },
     dismissButton = {
       OutlinedButton(
         onClick = onDismiss,
-        shape = RoundedCornerShape(6.dp)
+        shape = RoundedCornerShape(6.dp),
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
       ) {
-        Text("Cancel", fontSize = 11.5.sp)
+        Text("မလုပ်တော့ပါ", fontSize = 11.sp)
       }
     }
   )

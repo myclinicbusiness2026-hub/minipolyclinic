@@ -238,35 +238,19 @@ object ClinicInitialDataSeeder {
   fun getSeedUsers(): List<UserAccount> = listOf(
     UserAccount(
       id = "USR-001",
-      username = "shwekhit",
-      fullName = "Clinic Administrator",
+      username = "nks",
+      fullName = "Dr. Nyan Kaung Sett (Admin)",
       role = UserRole.ADMIN,
-      passwordHash = "123456",
-      pinCode = "123456"
+      passwordHash = "2121994",
+      pinCode = "2121994",
+      samaNumber = "ဆမ-၂၄၅၈၉",
+      degree = "M.B.,B.S (Mandalay)"
     ),
     UserAccount(
       id = "USR-002",
-      username = "doctor",
-      fullName = "Dr. Nyan Kaung Sett M.B.,B.S(MDY)",
-      role = UserRole.DOCTOR,
-      samaNumber = "ဆမ-၂၄၅၈၉",
-      degree = "M.B.,B.S (Mandalay)",
-      passwordHash = "123456",
-      pinCode = "123456"
-    ),
-    UserAccount(
-      id = "USR-003",
-      username = "cashier",
-      fullName = "Ma Hnin Wai (Cashier/Pharmacy)",
+      username = "shwekhit",
+      fullName = "Cashier Staff (Shwe Khit)",
       role = UserRole.CASHIER,
-      passwordHash = "123456",
-      pinCode = "123456"
-    ),
-    UserAccount(
-      id = "USR-004",
-      username = "reception",
-      fullName = "Daw Su Su (Receptionist)",
-      role = UserRole.RECEPTIONIST,
       passwordHash = "123456",
       pinCode = "123456"
     )

@@ -47,8 +47,8 @@ fun LoginScreen(
   val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
   val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
 
-  // Default credentials as requested: username "shwekhit", password default "123456"
-  var username by remember { mutableStateOf("shwekhit") }
+  // Default credentials: Admin ("nks" / "2121994") and Cashier ("shwekhit" / "123456")
+  var username by remember { mutableStateOf("nks") }
   var password by remember { mutableStateOf("") }
   var passwordVisible by remember { mutableStateOf(false) }
   var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -218,7 +218,48 @@ fun LoginScreen(
           modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Quick Role Selection Chips (Admin: nks, Cashier: shwekhit)
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+          FilterChip(
+            selected = username == "nks",
+            onClick = {
+              username = "nks"
+              password = ""
+              errorMessage = null
+            },
+            label = { Text("Admin (nks)", fontSize = 10.5.sp, fontWeight = FontWeight.Bold) },
+            leadingIcon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = null, modifier = Modifier.size(14.dp)) },
+            modifier = Modifier.weight(1f),
+            colors = FilterChipDefaults.filterChipColors(
+              selectedContainerColor = MedicalGreen,
+              selectedLabelColor = PureWhite,
+              selectedLeadingIconColor = PureWhite
+            )
+          )
+          FilterChip(
+            selected = username == "shwekhit",
+            onClick = {
+              username = "shwekhit"
+              password = ""
+              errorMessage = null
+            },
+            label = { Text("Cashier (shwekhit)", fontSize = 10.5.sp, fontWeight = FontWeight.Bold) },
+            leadingIcon = { Icon(Icons.Default.PointOfSale, contentDescription = null, modifier = Modifier.size(14.dp)) },
+            modifier = Modifier.weight(1f),
+            colors = FilterChipDefaults.filterChipColors(
+              selectedContainerColor = MedicalGreen,
+              selectedLabelColor = PureWhite,
+              selectedLeadingIconColor = PureWhite
+            )
+          )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
 
         // Username Field
         OutlinedTextField(

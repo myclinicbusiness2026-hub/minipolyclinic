@@ -1,13 +1,28 @@
 package com.example.ui.screens.consultation
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.model.*
 import com.example.ui.components.ClinicalDiagnosisSection
 import com.example.ui.screens.treatment.TreatmentCard
+import com.example.ui.theme.*
 import com.example.viewmodel.ClinicViewModel
 import java.text.NumberFormat
 
@@ -187,7 +202,12 @@ fun ConsultationClinicalRecordPane(
       selectedDiagnoses = selectedDiagnoses
     )
 
-    // 4. Diagnostic Scans & Attachments
+    // 4. Suggested Diagnostic Investigations (Labs, Imaging & Tests)
+    SuggestedInvestigationsCard(
+      selectedInvestigations = selectedInvestigations
+    )
+
+    // 5. Diagnostic Scans & Attachments
     MedicalAttachmentsCard(
       attachments = attachmentsState.toList(),
       onOpenAttachments = onOpenAttachments
@@ -266,5 +286,154 @@ fun ConsultationPrescriptionAndBillingPane(
       onPreviewA4Pdf = onPreviewA4Doc,
       onSendToPharmacy = onSendToPharmacy
     )
+  }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun SuggestedInvestigationsCard(
+  selectedInvestigations: SnapshotStateList<String>
+) {
+  var customInvestigationText by remember { mutableStateOf("") }
+  val commonInvestigations = remember {
+    listOf(
+      "CBC", "RBS", "FBS", "Urine RE", "Stool RE",
+      "Lipid Profile", "LFT", "RFT (Urea / Cr)", "Serum Electrolytes", "Serum Uric Acid",
+      "Chest X-Ray", "ECG", "USG Whole Abdomen", "USG KUB",
+      "Dengue NS1 / IgM", "Malaria RDT", "H. Pylori Ag", "Widal / Typhidot", "Thyroid Profile (TSH)"
+    )
+  }
+
+  Surface(
+    shape = RoundedCornerShape(8.dp),
+    color = PureWhite,
+    border = BorderStroke(1.dp, BorderGray),
+    modifier = Modifier.fillMaxWidth()
+  ) {
+    Column(modifier = Modifier.padding(10.dp)) {
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          Icon(Icons.Default.Science, contentDescription = null, tint = Color(0xFF0284C7), modifier = Modifier.size(16.dp))
+          Spacer(modifier = Modifier.width(6.dp))
+          Text(
+            "စစ်ဆေးစေလိုသော စမ်းသပ်ချက်များ (Suggested Investigations / Labs)",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = SlateDark
+          )
+        }
+        if (selectedInvestigations.isNotEmpty()) {
+          TextButton(
+            onClick = { selectedInvestigations.clear() },
+            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+          ) {
+            Text("Clear All", fontSize = 10.5.sp, color = Color(0xFFDC2626))
+          }
+        }
+      }
+
+      Spacer(modifier = Modifier.height(6.dp))
+
+      // Quick Chips
+      FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+      ) {
+        commonInvestigations.forEach { testName ->
+          val isSelected = selectedInvestigations.any { it.equals(testName, ignoreCase = true) }
+          FilterChip(
+            selected = isSelected,
+            onClick = {
+              if (isSelected) {
+                selectedInvestigations.removeAll { it.equals(testName, ignoreCase = true) }
+              } else {
+                selectedInvestigations.add(testName)
+              }
+            },
+            label = { Text(testName, fontSize = 10.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+            colors = FilterChipDefaults.filterChipColors(
+              selectedContainerColor = Color(0xFF0284C7),
+              selectedLabelColor = PureWhite
+            ),
+            modifier = Modifier.height(28.dp)
+          )
+        }
+      }
+
+      Spacer(modifier = Modifier.height(8.dp))
+
+      // Custom Input Row
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+      ) {
+        OutlinedTextField(
+          value = customInvestigationText,
+          onValueChange = { customInvestigationText = it },
+          placeholder = { Text("အခြားစစ်ဆေးလိုသည့် Lab/X-Ray (e.g. HbA1c, Serum Creatinine)...", fontSize = 10.5.sp, color = SlateMuted) },
+          modifier = Modifier.weight(1f),
+          textStyle = TextStyle(fontSize = 11.sp, color = DarkGrayText),
+          shape = RoundedCornerShape(6.dp),
+          singleLine = true,
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
+          keyboardActions = KeyboardActions(onDone = {
+            val clean = customInvestigationText.trim()
+            if (clean.isNotBlank() && selectedInvestigations.none { it.equals(clean, ignoreCase = true) }) {
+              selectedInvestigations.add(clean)
+              customInvestigationText = ""
+            }
+          })
+        )
+
+        Button(
+          onClick = {
+            val clean = customInvestigationText.trim()
+            if (clean.isNotBlank() && selectedInvestigations.none { it.equals(clean, ignoreCase = true) }) {
+              selectedInvestigations.add(clean)
+              customInvestigationText = ""
+            }
+          },
+          colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
+          shape = RoundedCornerShape(6.dp),
+          contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+          modifier = Modifier.height(42.dp),
+          enabled = customInvestigationText.isNotBlank()
+        ) {
+          Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+          Spacer(modifier = Modifier.width(3.dp))
+          Text("Add", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        }
+      }
+
+      // Selected list preview
+      if (selectedInvestigations.isNotEmpty()) {
+        Spacer(modifier = Modifier.height(8.dp))
+        FlowRow(
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
+          verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+          selectedInvestigations.forEach { inv ->
+            InputChip(
+              selected = true,
+              onClick = { selectedInvestigations.remove(inv) },
+              label = { Text(inv, fontSize = 10.5.sp, fontWeight = FontWeight.Bold) },
+              trailingIcon = {
+                Icon(Icons.Default.Close, contentDescription = "Remove", modifier = Modifier.size(12.dp))
+              },
+              colors = InputChipDefaults.inputChipColors(
+                selectedContainerColor = Color(0xFFE0F2FE),
+                selectedLabelColor = Color(0xFF0369A1)
+              ),
+              modifier = Modifier.height(26.dp)
+            )
+          }
+        }
+      }
+    }
   }
 }
