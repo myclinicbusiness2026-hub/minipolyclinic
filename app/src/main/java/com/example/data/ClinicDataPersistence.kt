@@ -906,15 +906,15 @@ object ClinicDataPersistence {
       val obj = JSONObject().apply {
         put("id", v.id)
         put("patientId", v.patientId)
+        put("patientName", v.patientName)
         put("vaccineName", v.vaccineName)
         put("doseNumber", v.doseNumber)
-        put("dateGiven", v.dateGiven)
-        put("nextDueDate", v.nextDueDate)
+        put("givenDate", v.givenDate)
+        put("nextDueDate", v.nextDueDate ?: "")
         put("batchNumber", v.batchNumber)
-        put("administeredBy", v.administeredBy)
-        put("adverseReactions", v.adverseReactions)
-        put("fee", v.fee)
-        put("isPaid", v.isPaid)
+        put("givenBy", v.givenBy)
+        put("remarks", v.remarks)
+        put("regimeName", v.regimeName)
       }
       arr.put(obj)
     }
@@ -932,15 +932,15 @@ object ClinicDataPersistence {
           VaccineRecord(
             id = o.optString("id", UUID.randomUUID().toString()),
             patientId = o.optString("patientId"),
+            patientName = o.optString("patientName", "Patient"),
             vaccineName = o.optString("vaccineName"),
-            doseNumber = o.optInt("doseNumber", 1),
-            dateGiven = o.optString("dateGiven"),
-            nextDueDate = o.optString("nextDueDate"),
+            doseNumber = o.optString("doseNumber", "Dose 1"),
+            givenDate = o.optString("givenDate"),
+            nextDueDate = if (o.has("nextDueDate") && o.getString("nextDueDate").isNotBlank()) o.getString("nextDueDate") else null,
             batchNumber = o.optString("batchNumber"),
-            administeredBy = o.optString("administeredBy"),
-            adverseReactions = o.optString("adverseReactions"),
-            fee = o.optDouble("fee", 0.0),
-            isPaid = o.optBoolean("isPaid", true)
+            givenBy = o.optString("givenBy", "Nurse"),
+            remarks = o.optString("remarks"),
+            regimeName = o.optString("regimeName")
           )
         )
       }

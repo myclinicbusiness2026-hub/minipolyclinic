@@ -71,6 +71,7 @@ fun StockInScreen(
   var showAddSupplierDialog by remember { mutableStateOf(false) }
   var supplierDropdownExpanded by remember { mutableStateOf(false) }
   var recordAsExpense by remember { mutableStateOf(true) }
+  val currencyFmt = remember { NumberFormat.getNumberInstance(Locale.US) }
 
   // Success Feedback Snackbar State
   val snackbarHostState = remember { SnackbarHostState() }
