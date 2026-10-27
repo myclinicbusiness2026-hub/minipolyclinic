@@ -550,12 +550,16 @@ fun formatDosageAndDirection(drug: PrescribedDrug): String {
     }
   }
 
+  val isInjectableOrExternal = drug.effectiveName.contains(Regex("(?i)\\b(inj|iv|im|sc|vial|amp|cream|ointment|drops|eye drops|ear drops)\\b")) ||
+    drug.instructions.contains(Regex("(?i)\\b(inj|iv|im|sc|push|drip|infusion)\\b"))
+
   val instRaw = drug.instructions.trim()
   val cleanTiming = when {
+    isInjectableOrExternal && (instRaw.contains("စားပြီး") || instRaw.contains("မစားမီ")) -> ""
     instRaw.contains("after", ignoreCase = true) || instRaw.contains("စားပြီး") -> "စားပြီး"
     instRaw.contains("before", ignoreCase = true) || instRaw.contains("မစားမီ") -> "မစားမီ"
     instRaw.contains("with", ignoreCase = true) || instRaw.contains("အစာနှင့်") -> "အစာနှင့်တွဲ၍"
-    instRaw.isBlank() -> "စားပြီး"
+    instRaw.isBlank() -> ""
     else -> instRaw
   }
 

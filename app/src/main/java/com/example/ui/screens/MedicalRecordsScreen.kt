@@ -71,6 +71,8 @@ fun MedicalRecordsScreen(
   var vaccinesPatient by remember { mutableStateOf<Patient?>(null) }
   var attachmentsConsultation by remember { mutableStateOf<ConsultationRecord?>(null) }
   var showFollowUpConfirmDialog by remember { mutableStateOf<Patient?>(null) }
+  var editingConsultation by remember { mutableStateOf<ConsultationRecord?>(null) }
+  val context = androidx.compose.ui.platform.LocalContext.current
 
   val todayIso = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
   val yesterdayIso = remember {
@@ -386,7 +388,8 @@ fun MedicalRecordsScreen(
                 onOpenTrends = { trendsPatient = activePatient },
                 onOpenVaccines = { vaccinesPatient = activePatient },
                 onOpenAttachments = { consult -> attachmentsConsultation = consult },
-                onRequestFollowUpQueue = { showFollowUpConfirmDialog = activePatient }
+                onRequestFollowUpQueue = { showFollowUpConfirmDialog = activePatient },
+                onEditRecord = { consult -> editingConsultation = consult }
               )
             } else {
               EmptyRecordsSelection()
@@ -438,7 +441,8 @@ fun MedicalRecordsScreen(
                 onOpenTrends = { trendsPatient = activePatient },
                 onOpenVaccines = { vaccinesPatient = activePatient },
                 onOpenAttachments = { consult -> attachmentsConsultation = consult },
-                onRequestFollowUpQueue = { showFollowUpConfirmDialog = activePatient }
+                onRequestFollowUpQueue = { showFollowUpConfirmDialog = activePatient },
+                onEditRecord = { consult -> editingConsultation = consult }
               )
             }
           }
@@ -634,6 +638,18 @@ fun MedicalRecordsScreen(
       onDeleteAttachment = { attId -> viewModel.deleteAttachmentFromConsultation(consult.id, attId) }
     )
   }
+
+  editingConsultation?.let { consult ->
+    EditConsultationDialog(
+      record = consult,
+      onDismiss = { editingConsultation = null },
+      onSave = { updated ->
+        viewModel.updateConsultation(updated)
+        editingConsultation = null
+        android.widget.Toast.makeText(context, "ဆေးမှတ်တမ်း အောင်မြင်စွာ ပြင်ဆင်သိမ်းဆည်းပြီးပါပြီ", android.widget.Toast.LENGTH_SHORT).show()
+      }
+    )
+  }
 }
 
 /**
@@ -787,7 +803,8 @@ private fun PatientDetailedEmrPane(
   onOpenTrends: () -> Unit,
   onOpenVaccines: () -> Unit,
   onOpenAttachments: (ConsultationRecord) -> Unit,
-  onRequestFollowUpQueue: () -> Unit
+  onRequestFollowUpQueue: () -> Unit,
+  onEditRecord: (ConsultationRecord) -> Unit
 ) {
   Column(
     modifier = Modifier
@@ -999,7 +1016,8 @@ private fun PatientDetailedEmrPane(
           invoice = correspondingInvoice,
           onPrintA4 = { onPrintA4(consult) },
           onPrintThermal = { inv -> onPrintThermal(inv) },
-          onOpenAttachments = { onOpenAttachments(consult) }
+          onOpenAttachments = { onOpenAttachments(consult) },
+          onEditRecord = { onEditRecord(consult) }
         )
       }
     }
@@ -1016,7 +1034,8 @@ private fun ConsultationVisitTimelineCard(
   invoice: Invoice?,
   onPrintA4: () -> Unit,
   onPrintThermal: (Invoice) -> Unit,
-  onOpenAttachments: () -> Unit
+  onOpenAttachments: () -> Unit,
+  onEditRecord: () -> Unit
 ) {
   var isExpanded by remember { mutableStateOf(visitNumber == 1) }
 
@@ -1064,7 +1083,7 @@ private fun ConsultationVisitTimelineCard(
           }
         }
 
-        // Action Buttons: A4 Print & Expand Toggle
+        // Action Buttons: A4 Print, Edit & Expand Toggle
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
           Button(
             onClick = onPrintA4,
@@ -1076,6 +1095,17 @@ private fun ConsultationVisitTimelineCard(
             Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(12.dp))
             Spacer(modifier = Modifier.width(3.dp))
             Text("A4 Print", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+          }
+
+          OutlinedButton(
+            onClick = onEditRecord,
+            shape = RoundedCornerShape(4.dp),
+            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+            modifier = Modifier.height(26.dp)
+          ) {
+            Icon(Icons.Default.Edit, contentDescription = null, tint = SkyBlueDark, modifier = Modifier.size(12.dp))
+            Spacer(modifier = Modifier.width(3.dp))
+            Text("Edit", fontSize = 9.5.sp, color = SkyBlueDark, fontWeight = FontWeight.Bold)
           }
 
           IconButton(

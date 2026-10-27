@@ -956,13 +956,25 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     treatmentOrders.forEach { card ->
-      val fee = if (card.sessionFee > 0) card.sessionFee else card.route.getDefaultFee(clinicSettings.value)
+      val sFee = if (card.sessionFee > 0) card.sessionFee else card.route.getDefaultFee(clinicSettings.value)
+      val totalFee = card.medicationFee + sFee
+      val routeShort = card.route.label.split(" ").first()
+      val cleanMedName = card.medicationName
+        .replace(Regex("(?i)^inj\\.?\\s*"), "")
+        .replace(Regex("(?i)^iv\\s*"), "")
+        .replace(Regex("(?i)^im\\s*"), "")
+        .replace(Regex("(?i)^sc\\s*"), "")
+        .trim()
+      val doseStr = if (card.dosage.isNotBlank() && !cleanMedName.contains(card.dosage, ignoreCase = true)) " ${card.dosage}" else ""
+      val freqStr = if (card.frequency.isNotBlank()) " ${card.frequency.split(" ").first().lowercase()}" else ""
+      val routeSuffix = card.route.label.split("(").first().trim()
+      val itemName = "$routeShort $cleanMedName$doseStr$freqStr ($routeSuffix)".trim()
       invoiceItems.add(
         InvoiceItem(
-          name = "ဆေးထိုးခ / Injection Fee (${card.route.label} - ${card.medicationName})",
+          name = itemName,
           quantity = 1,
-          unitPrice = fee,
-          totalPrice = fee,
+          unitPrice = totalFee,
+          totalPrice = totalFee,
           isProcedure = true
         )
       )
@@ -1493,26 +1505,25 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val card = _treatmentCards.value.find { it.id == cardId } ?: return null
     val session = card.sessions.find { it.id == sessionId } ?: return null
 
-    // 1. Build line items for this visit
+    // 1. Build line items for this visit (bundled med + injection administration fee)
     val invoiceItems = mutableListOf<InvoiceItem>()
-    if (isClinicMed && medPrice > 0) {
+    val sessionTotalFee = (if (isClinicMed) medPrice else 0.0) + sessionFee
+    if (sessionTotalFee > 0) {
+      val routeShort = card.route.label.split(" ").first()
+      val cleanMedName = card.medicationName
+        .replace(Regex("(?i)^inj\\.?\\s*"), "")
+        .replace(Regex("(?i)^iv\\s*"), "")
+        .replace(Regex("(?i)^im\\s*"), "")
+        .replace(Regex("(?i)^sc\\s*"), "")
+        .trim()
+      val doseStr = if (card.dosage.isNotBlank() && !cleanMedName.contains(card.dosage, ignoreCase = true)) " ${card.dosage}" else ""
+      val itemName = "$routeShort $cleanMedName$doseStr (Dose ${session.sessionNumber}/${card.totalSessions})".trim()
       invoiceItems.add(
         InvoiceItem(
-          name = "${card.medicationName} (Dose ${session.sessionNumber}/${card.totalSessions})",
+          name = itemName,
           quantity = 1,
-          unitPrice = medPrice,
-          totalPrice = medPrice,
-          isProcedure = false
-        )
-      )
-    }
-    if (sessionFee > 0) {
-      invoiceItems.add(
-        InvoiceItem(
-          name = "${card.route.label} Administration / Service Fee",
-          quantity = 1,
-          unitPrice = sessionFee,
-          totalPrice = sessionFee,
+          unitPrice = sessionTotalFee,
+          totalPrice = sessionTotalFee,
           isProcedure = true
         )
       )

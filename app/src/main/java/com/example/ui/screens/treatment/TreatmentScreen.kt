@@ -652,8 +652,8 @@ fun AdministerSessionModal(
   onDismiss: () -> Unit,
   onConfirm: (isClinicMed: Boolean, medPrice: Double, sessionFee: Double, consumables: List<TreatmentConsumable>, notes: String) -> Unit
 ) {
-  var isClinicMed by remember { mutableStateOf(session.isClinicMed) }
-  var medPriceText by remember { mutableStateOf(card.medicationFee.toInt().toString()) }
+  var isClinicMed by remember { mutableStateOf(session.isClinicMed && session.medicationFee > 0) }
+  var medPriceText by remember { mutableStateOf((if (session.medicationFee > 0) session.medicationFee else card.medicationFee).toInt().toString()) }
   var sessionFeeText by remember { mutableStateOf(card.sessionFee.toInt().toString()) }
   var notes by remember { mutableStateOf(session.notes) }
   val selectedConsumables = remember { mutableStateListOf<TreatmentConsumable>() }
@@ -744,8 +744,11 @@ fun AdministerSessionModal(
             )
             FilterChip(
               selected = !isClinicMed,
-              onClick = { isClinicMed = false },
-              label = { Text("လူနာပါဆေး (Patient's Own Med)", fontSize = 10.5.sp) },
+              onClick = {
+                isClinicMed = false
+                medPriceText = "0"
+              },
+              label = { Text("လူနာပါဆေး / ကြိုရှင်းပြီး (0 Ks)", fontSize = 10.5.sp) },
               colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFF5E35B1), selectedLabelColor = PureWhite)
             )
           }
@@ -1117,13 +1120,23 @@ fun CreateTreatmentCardModal(
 ) {
   var selectedPatient by remember { mutableStateOf<Patient?>(patients.firstOrNull()) }
   var medicationName by remember { mutableStateOf("Inj. Ceftriaxone 1g") }
-  var dosage by remember { mutableStateOf("1g IV") }
+  var dosage by remember { mutableStateOf("1 g") }
   var selectedRoute by remember { mutableStateOf(TreatmentRoute.IV_PUSH) }
   var frequency by remember { mutableStateOf("12 hrly") }
   var totalDaysText by remember { mutableStateOf("3") }
   var medFeeText by remember { mutableStateOf("4500") }
   var sessionFeeText by remember(selectedRoute) { mutableStateOf(selectedRoute.getDefaultFee(clinicSettings).toInt().toString()) }
   var instructions by remember { mutableStateOf("Slow IV push over 3-5 mins.") }
+  var storeSearchQuery by remember { mutableStateOf("") }
+  var splitVialMode by remember { mutableStateOf(false) }
+
+  val filteredStoreMeds = remember(medicines, storeSearchQuery) {
+    if (storeSearchQuery.isBlank()) emptyList()
+    else medicines.filter {
+      it.name.contains(storeSearchQuery, ignoreCase = true) ||
+      it.genericName.contains(storeSearchQuery, ignoreCase = true)
+    }.take(5)
+  }
 
   Dialog(
     onDismissRequest = onDismiss,
@@ -1179,6 +1192,61 @@ fun CreateTreatmentCardModal(
             }
           }
 
+          // Store Inventory Search Box
+          OutlinedTextField(
+            value = storeSearchQuery,
+            onValueChange = { storeSearchQuery = it },
+            placeholder = { Text("Store ဆေးစာရင်းမှ ရှာဖွေရွေးချယ်ရန် (Search Pharmacy Store)...", fontSize = 11.sp) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(16.dp)) },
+            trailingIcon = {
+              if (storeSearchQuery.isNotBlank()) {
+                IconButton(onClick = { storeSearchQuery = "" }, modifier = Modifier.size(20.dp)) {
+                  Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(14.dp))
+                }
+              }
+            },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+          )
+
+          if (filteredStoreMeds.isNotEmpty()) {
+            Surface(
+              shape = RoundedCornerShape(6.dp),
+              color = Color(0xFFF8FAFC),
+              border = BorderStroke(1.dp, BorderGrey),
+              modifier = Modifier.fillMaxWidth()
+            ) {
+              Column(modifier = Modifier.padding(4.dp)) {
+                filteredStoreMeds.forEach { med ->
+                  Row(
+                    modifier = Modifier
+                      .fillMaxWidth()
+                      .clickable {
+                        medicationName = med.name
+                        medFeeText = med.sellingPrice.toInt().toString()
+                        if (med.standardDosage.isNotBlank()) {
+                          dosage = med.standardDosage
+                        } else if (med.strength.isNotBlank()) {
+                          dosage = med.strength
+                        }
+                        storeSearchQuery = ""
+                      }
+                      .padding(horizontal = 8.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                  ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                      Text(med.name, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+                      Text("Stock: ${med.totalStock} ${med.unitType} • Price: ${med.sellingPrice.toInt()} Ks", fontSize = 9.5.sp, color = SlateMuted)
+                    }
+                    Text("Select", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+                  }
+                  HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 0.5.dp)
+                }
+              }
+            }
+          }
+
           // Quick Presets
           Text("အသုံးများသော Preset များ:", fontSize = 11.sp, fontWeight = FontWeight.Bold)
           Row(
@@ -1188,7 +1256,7 @@ fun CreateTreatmentCardModal(
             AssistChip(
               onClick = {
                 medicationName = "Inj. Ceftriaxone 1g"
-                dosage = "1g IV"
+                dosage = "1 g"
                 selectedRoute = TreatmentRoute.IV_PUSH
                 frequency = "12 hrly"
                 totalDaysText = "3"
@@ -1255,6 +1323,41 @@ fun CreateTreatmentCardModal(
             )
           }
 
+          // Dosage Quick Chips
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+          ) {
+            listOf("30 mg", "75 mg", "300 mg", "500 mg", "1 g", "1.2 g", "1 Amp", "1 Vial", "1 Bottle").forEach { d ->
+              AssistChip(
+                onClick = { dosage = d },
+                label = { Text(d, fontSize = 9.5.sp) }
+              )
+            }
+          }
+
+          // Split-Vial / Pediatric option
+          Text("ဆေးပုလင်း တွက်ချက်မှု (Billing Mode):", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+          ) {
+            FilterChip(
+              selected = !splitVialMode,
+              onClick = { splitVialMode = false },
+              label = { Text("Dose တိုင်း ဆေးဖိုးတွက်မည် (Default)", fontSize = 10.sp) },
+              colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MedicalGreen, selectedLabelColor = PureWhite)
+            )
+            FilterChip(
+              selected = splitVialMode,
+              onClick = { splitVialMode = true },
+              label = { Text("ကလေး/ခွဲထိုး (၁ ရက် ၁ လုံးသာ)", fontSize = 10.sp) },
+              colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFF0284C7), selectedLabelColor = PureWhite)
+            )
+          }
+
           Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
               value = medFeeText,
@@ -1293,7 +1396,8 @@ fun CreateTreatmentCardModal(
               frequency = frequency,
               days = days,
               medicationFee = medFee,
-              sessionFee = sessionFee
+              sessionFee = sessionFee,
+              splitVialMode = splitVialMode
             )
             val newCard = TreatmentCard(
               patientId = selectedPatient?.id ?: "",

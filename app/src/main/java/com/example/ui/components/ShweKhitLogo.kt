@@ -43,43 +43,66 @@ fun ShweKhitLogo(
     verticalAlignment = Alignment.CenterVertically,
     modifier = modifier
   ) {
-    // Elegant Circular Gold & Emerald Emblem
+    val decodedModel: Any? = remember(customLogoUri) {
+      if (customLogoUri.isNullOrBlank()) null
+      else {
+        try {
+          when {
+            customLogoUri.startsWith("/") -> {
+              val f = java.io.File(customLogoUri)
+              if (f.exists() && f.length() > 0) {
+                android.graphics.BitmapFactory.decodeFile(f.absolutePath)
+              } else null
+            }
+            customLogoUri.startsWith("file://") -> {
+              val f = java.io.File(customLogoUri.removePrefix("file://"))
+              if (f.exists() && f.length() > 0) {
+                android.graphics.BitmapFactory.decodeFile(f.absolutePath)
+              } else null
+            }
+            customLogoUri.startsWith("content://") -> android.net.Uri.parse(customLogoUri)
+            customLogoUri.startsWith("http://") || customLogoUri.startsWith("https://") -> customLogoUri
+            else -> {
+              val clean = if (customLogoUri.contains(",")) customLogoUri.substringAfter(",") else customLogoUri
+              val bytes = android.util.Base64.decode(clean, android.util.Base64.DEFAULT)
+              android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            }
+          }
+        } catch (_: Exception) {
+          null
+        }
+      }
+    }
+
+    // Elegant Circular Emblem (White/Neutral for custom logo, Gold & Emerald for default)
     Box(
       modifier = Modifier
         .size(size)
         .shadow(2.dp, CircleShape)
         .clip(CircleShape)
         .background(
-          brush = Brush.radialGradient(
-            colors = listOf(GoldLight, GoldPrimary)
-          )
+          if (decodedModel != null) {
+            Brush.radialGradient(listOf(PureWhite, Color(0xFFF8FAFC)))
+          } else {
+            Brush.radialGradient(listOf(GoldLight, GoldPrimary))
+          }
         )
         .border(
           BorderStroke(
             1.5.dp,
-            Brush.linearGradient(listOf(GoldAccent, GoldPrimary, Color(0xFF8C6D1F)))
+            if (decodedModel != null) {
+              Brush.linearGradient(listOf(Color(0xFFCBD5E1), Color(0xFF94A3B8)))
+            } else {
+              Brush.linearGradient(listOf(GoldAccent, GoldPrimary, Color(0xFF8C6D1F)))
+            }
           ),
           CircleShape
         ),
       contentAlignment = Alignment.Center
     ) {
-      if (!customLogoUri.isNullOrBlank()) {
-        val model: Any = remember(customLogoUri) {
-          when {
-            customLogoUri.startsWith("/") -> java.io.File(customLogoUri)
-            customLogoUri.startsWith("file://") -> java.io.File(customLogoUri.removePrefix("file://"))
-            customLogoUri.length > 150 && !customLogoUri.contains("/") && !customLogoUri.contains(":") -> {
-              try {
-                android.util.Base64.decode(customLogoUri, android.util.Base64.DEFAULT)
-              } catch (_: Exception) {
-                customLogoUri
-              }
-            }
-            else -> customLogoUri
-          }
-        }
+      if (decodedModel != null) {
         AsyncImage(
-          model = model,
+          model = decodedModel,
           contentDescription = "Clinic Logo",
           modifier = Modifier
             .fillMaxSize()

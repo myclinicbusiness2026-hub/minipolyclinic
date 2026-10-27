@@ -211,7 +211,7 @@ fun AddTreatmentOrderModal(
   onConfirm: (TreatmentCard) -> Unit
 ) {
   var medicationName by remember { mutableStateOf("Inj. Ceftriaxone 1g") }
-  var dosage by remember { mutableStateOf("1g IV") }
+  var dosage by remember { mutableStateOf("1 g") }
   var selectedRoute by remember { mutableStateOf(TreatmentRoute.IV_PUSH) }
   var frequency by remember { mutableStateOf("12 hrly") }
   var totalDaysText by remember { mutableStateOf("3") }
@@ -219,6 +219,7 @@ fun AddTreatmentOrderModal(
   var sessionFeeText by remember(selectedRoute) { mutableStateOf(selectedRoute.getDefaultFee(clinicSettings).toInt().toString()) }
   var instructions by remember { mutableStateOf("Slow IV push over 3-5 mins.") }
   var searchQuery by remember { mutableStateOf("") }
+  var splitVialMode by remember { mutableStateOf(false) }
 
   val filteredMedicines = remember(medicines, searchQuery) {
     if (searchQuery.isBlank()) emptyList()
@@ -316,6 +317,11 @@ fun AddTreatmentOrderModal(
                       .clickable {
                         medicationName = med.name
                         medFeeText = med.sellingPrice.toInt().toString()
+                        if (med.standardDosage.isNotBlank()) {
+                          dosage = med.standardDosage
+                        } else if (med.strength.isNotBlank()) {
+                          dosage = med.strength
+                        }
                         searchQuery = ""
                       }
                       .padding(horizontal = 8.dp, vertical = 6.dp),
@@ -335,13 +341,37 @@ fun AddTreatmentOrderModal(
           }
 
           // 2. Medication Name & Dosage
-          OutlinedTextField(
-            value = medicationName,
-            onValueChange = { medicationName = it },
-            label = { Text("ဆေးအမည် (Medication Name)", fontSize = 11.sp) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-          )
+          Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+              value = medicationName,
+              onValueChange = { medicationName = it },
+              label = { Text("ဆေးအမည် (Medication Name)", fontSize = 11.sp) },
+              singleLine = true,
+              modifier = Modifier.weight(1.4f)
+            )
+            OutlinedTextField(
+              value = dosage,
+              onValueChange = { dosage = it },
+              label = { Text("ဆေးပမာဏ (Dosage)", fontSize = 11.sp) },
+              singleLine = true,
+              modifier = Modifier.weight(0.8f)
+            )
+          }
+
+          // Dosage Quick Chips
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+          ) {
+            listOf("30 mg", "75 mg", "300 mg", "500 mg", "1 g", "1.2 g", "1 Amp", "1 Vial", "1 Bottle").forEach { d ->
+              AssistChip(
+                onClick = { dosage = d },
+                label = { Text(d, fontSize = 9.5.sp) }
+              )
+            }
+          }
 
           // 3. Route Selector
           Text("ထိုးမည့်နည်းလမ်း (Route of Administration):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SlateDark)
@@ -402,6 +432,26 @@ fun AddTreatmentOrderModal(
             }
           }
 
+          // Split-Vial / Pediatric billing option
+          Text("ဆေးပုလင်း တွက်ချက်မှု (Billing Mode):", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+          ) {
+            FilterChip(
+              selected = !splitVialMode,
+              onClick = { splitVialMode = false },
+              label = { Text("Dose တိုင်း ဆေးဖိုးတွက်မည် (Default)", fontSize = 10.sp) },
+              colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MedicalGreen, selectedLabelColor = PureWhite)
+            )
+            FilterChip(
+              selected = splitVialMode,
+              onClick = { splitVialMode = true },
+              label = { Text("ကလေး/ခွဲထိုး (၁ ရက် ၁ လုံးသာ)", fontSize = 10.sp) },
+              colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFF0284C7), selectedLabelColor = PureWhite)
+            )
+          }
+
           // 5. Fee breakdown
           Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
@@ -454,7 +504,8 @@ fun AddTreatmentOrderModal(
                 frequency = frequency.ifBlank { "12 hrly" },
                 days = days,
                 medicationFee = medFee,
-                sessionFee = sessionFee
+                sessionFee = sessionFee,
+                splitVialMode = splitVialMode
               )
               val card = TreatmentCard(
                 patientId = patient?.id ?: "",

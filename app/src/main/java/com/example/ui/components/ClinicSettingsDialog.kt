@@ -68,12 +68,41 @@ fun ClinicSettingsDialog(
   ) { uri ->
     if (uri != null) {
       try {
-        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-        if (bytes != null) {
-          clinicLogoBase64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+        val inputStream = context.contentResolver.openInputStream(uri)
+        val origBitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+        inputStream?.close()
+        if (origBitmap != null) {
+          val maxDim = 512
+          val scaledBitmap = if (origBitmap.width > maxDim || origBitmap.height > maxDim) {
+            val ratio = origBitmap.width.toFloat() / origBitmap.height.toFloat()
+            val targetWidth: Int
+            val targetHeight: Int
+            if (ratio > 1) {
+              targetWidth = maxDim
+              targetHeight = (maxDim / ratio).toInt().coerceAtLeast(1)
+            } else {
+              targetHeight = maxDim
+              targetWidth = (maxDim * ratio).toInt().coerceAtLeast(1)
+            }
+            android.graphics.Bitmap.createScaledBitmap(origBitmap, targetWidth, targetHeight, true)
+          } else {
+            origBitmap
+          }
+          val baos = java.io.ByteArrayOutputStream()
+          scaledBitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 90, baos)
+          val pngBytes = baos.toByteArray()
+          clinicLogoBase64 = android.util.Base64.encodeToString(pngBytes, android.util.Base64.NO_WRAP)
           val file = java.io.File(context.filesDir, "clinic_logo.png")
-          file.writeBytes(bytes)
+          file.writeBytes(pngBytes)
           clinicLogoUri = file.absolutePath
+        } else {
+          val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+          if (bytes != null) {
+            clinicLogoBase64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+            val file = java.io.File(context.filesDir, "clinic_logo.png")
+            file.writeBytes(bytes)
+            clinicLogoUri = file.absolutePath
+          }
         }
       } catch (e: Exception) {
         clinicLogoUri = uri.toString()

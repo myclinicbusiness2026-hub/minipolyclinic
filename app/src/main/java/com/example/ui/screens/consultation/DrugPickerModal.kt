@@ -43,7 +43,7 @@ fun DrugPickerModal(
   var frequency by remember { mutableStateOf("1-0-1") }
   var duration by remember { mutableStateOf("5 Days") }
   var quantityText by remember { mutableStateOf("10") }
-  var instructions by remember { mutableStateOf("စားပြီး") }
+  var instructions by remember { mutableStateOf("") }
 
   // State for Non-Store External Rx Tab
   var extDrugName by remember { mutableStateOf("") }
@@ -51,7 +51,7 @@ fun DrugPickerModal(
   var extFrequency by remember { mutableStateOf("1-0-1") }
   var extDuration by remember { mutableStateOf("5 Days") }
   var extQuantityText by remember { mutableStateOf("10") }
-  var extInstructions by remember { mutableStateOf("စားပြီး") }
+  var extInstructions by remember { mutableStateOf("") }
   var extNotes by remember { mutableStateOf("ပြင်ပဆေးဆိုင်တွင် ဝယ်ယူရန်") }
 
   val filteredMedicines = medicines.filter {
@@ -306,7 +306,7 @@ fun DrugPickerModal(
               instructionPresets.forEach { inst ->
                 FilterChip(
                   selected = instructions == inst,
-                  onClick = { instructions = inst },
+                  onClick = { instructions = if (instructions == inst) "" else inst },
                   label = { Text(inst, fontSize = 9.5.sp, fontWeight = if (instructions == inst) FontWeight.Bold else FontWeight.Normal) },
                   shape = RoundedCornerShape(4.dp),
                   modifier = Modifier.height(26.dp)
@@ -490,7 +490,7 @@ fun DrugPickerModal(
             instructionPresets.forEach { inst ->
               FilterChip(
                 selected = extInstructions == inst,
-                onClick = { extInstructions = inst },
+                onClick = { extInstructions = if (extInstructions == inst) "" else inst },
                 label = { Text(inst, fontSize = 9.5.sp, fontWeight = if (extInstructions == inst) FontWeight.Bold else FontWeight.Normal) },
                 shape = RoundedCornerShape(4.dp),
                 modifier = Modifier.height(26.dp)

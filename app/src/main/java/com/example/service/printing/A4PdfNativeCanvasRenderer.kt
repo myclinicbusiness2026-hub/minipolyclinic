@@ -1151,17 +1151,15 @@ object A4PdfNativeCanvasRenderer {
   private fun loadLogoBitmap(logoUri: String): Bitmap? {
     if (logoUri.isBlank()) return null
     return try {
-      if (logoUri.startsWith("data:image") || logoUri.length > 200) {
+      val file = File(logoUri.removePrefix("file://"))
+      if (file.exists() && file.length() > 0) {
+        BitmapFactory.decodeFile(file.absolutePath)
+      } else if (logoUri.startsWith("data:image") || (!logoUri.startsWith("/") && !logoUri.startsWith("file://"))) {
         val clean = if (logoUri.contains(",")) logoUri.substringAfter(",") else logoUri
         val bytes = android.util.Base64.decode(clean, android.util.Base64.DEFAULT)
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
       } else {
-        val file = File(logoUri.removePrefix("file://"))
-        if (file.exists()) {
-          BitmapFactory.decodeFile(file.absolutePath)
-        } else {
-          null
-        }
+        null
       }
     } catch (e: Exception) {
       null

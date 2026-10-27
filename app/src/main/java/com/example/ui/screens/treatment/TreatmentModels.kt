@@ -119,7 +119,8 @@ object TreatmentCardFactory {
     frequency: String,
     days: Int,
     medicationFee: Double = 0.0,
-    sessionFee: Double = 3000.0
+    sessionFee: Double = 3000.0,
+    splitVialMode: Boolean = false
   ): List<TreatmentSession> {
     val list = mutableListOf<TreatmentSession>()
     val cal = Calendar.getInstance()
@@ -136,7 +137,7 @@ object TreatmentCardFactory {
         for (d in 0 until days) {
           val dateStr = dateFormat.format(cal.time)
           list.add(TreatmentSession(sessionNumber = count++, scheduledDate = dateStr, scheduledTime = "08:00 AM", medicationFee = medicationFee, sessionFee = sessionFee))
-          list.add(TreatmentSession(sessionNumber = count++, scheduledDate = dateStr, scheduledTime = "08:00 PM", medicationFee = medicationFee, sessionFee = sessionFee))
+          list.add(TreatmentSession(sessionNumber = count++, scheduledDate = dateStr, scheduledTime = "08:00 PM", medicationFee = if (splitVialMode) 0.0 else medicationFee, isClinicMed = !splitVialMode, sessionFee = sessionFee))
           cal.add(Calendar.DAY_OF_YEAR, 1)
         }
       }
@@ -145,8 +146,8 @@ object TreatmentCardFactory {
         for (d in 0 until days) {
           val dateStr = dateFormat.format(cal.time)
           list.add(TreatmentSession(sessionNumber = count++, scheduledDate = dateStr, scheduledTime = "06:00 AM", medicationFee = medicationFee, sessionFee = sessionFee))
-          list.add(TreatmentSession(sessionNumber = count++, scheduledDate = dateStr, scheduledTime = "02:00 PM", medicationFee = medicationFee, sessionFee = sessionFee))
-          list.add(TreatmentSession(sessionNumber = count++, scheduledDate = dateStr, scheduledTime = "10:00 PM", medicationFee = medicationFee, sessionFee = sessionFee))
+          list.add(TreatmentSession(sessionNumber = count++, scheduledDate = dateStr, scheduledTime = "02:00 PM", medicationFee = if (splitVialMode) 0.0 else medicationFee, isClinicMed = !splitVialMode, sessionFee = sessionFee))
+          list.add(TreatmentSession(sessionNumber = count++, scheduledDate = dateStr, scheduledTime = "10:00 PM", medicationFee = if (splitVialMode) 0.0 else medicationFee, isClinicMed = !splitVialMode, sessionFee = sessionFee))
           cal.add(Calendar.DAY_OF_YEAR, 1)
         }
       }
