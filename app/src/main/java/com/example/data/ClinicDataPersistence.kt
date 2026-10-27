@@ -844,6 +844,47 @@ object ClinicDataPersistence {
     }
   }
 
+  // 10.5 Suppliers
+  fun saveSuppliers(context: Context, list: List<Supplier>) {
+    val arr = JSONArray()
+    list.forEach { s ->
+      val obj = JSONObject().apply {
+        put("id", s.id)
+        put("name", s.name)
+        put("contactPerson", s.contactPerson)
+        put("phone", s.phone)
+        put("address", s.address)
+        put("email", s.email)
+      }
+      arr.put(obj)
+    }
+    getPrefs(context).edit().putString(KEY_SUPPLIERS, arr.toString()).apply()
+  }
+
+  fun loadSuppliers(context: Context): List<Supplier>? {
+    val str = getPrefs(context).getString(KEY_SUPPLIERS, null) ?: return null
+    return try {
+      val arr = JSONArray(str)
+      val list = mutableListOf<Supplier>()
+      for (i in 0 until arr.length()) {
+        val o = arr.getJSONObject(i)
+        list.add(
+          Supplier(
+            id = o.optString("id", UUID.randomUUID().toString()),
+            name = o.optString("name"),
+            contactPerson = o.optString("contactPerson"),
+            phone = o.optString("phone"),
+            address = o.optString("address", "Mandalay"),
+            email = o.optString("email")
+          )
+        )
+      }
+      list
+    } catch (_: Exception) {
+      null
+    }
+  }
+
   // 11. Clinic Settings & Default Fee Configuration
   fun saveClinicSettings(context: Context, s: ClinicSettings) {
     val obj = JSONObject().apply {

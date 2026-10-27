@@ -163,7 +163,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       .filter { !deletedInvoices.contains(it.id) && !deletedPatients.contains(it.patientId) }
     _expenses.value = ClinicInitialDataSeeder.getSeedExpenses()
     _vaccines.value = ClinicInitialDataSeeder.getSeedVaccines()
-    _suppliers.value = ClinicInitialDataSeeder.getSeedSuppliers()
+    _suppliers.value = ClinicDataPersistence.loadSuppliers(ctx) ?: ClinicInitialDataSeeder.getSeedSuppliers()
     _treatmentCards.value = ClinicDataPersistence.loadTreatmentCards(ctx) ?: emptyList()
     clinicSettings.value = ClinicDataPersistence.loadClinicSettings(ctx)
   }
@@ -1903,22 +1903,35 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   }
 
   fun addSupplier(name: String, contactPerson: String, phone: String, address: String) {
+    addSupplier(name = name, contactPerson = contactPerson, phone = phone, email = "", address = address)
+  }
+
+  fun addSupplier(name: String, contactPerson: String, phone: String, email: String, address: String) {
     val sup = Supplier(
       id = UUID.randomUUID().toString(),
       name = name,
       contactPerson = contactPerson,
       phone = phone,
+      email = email,
       address = address
     )
-    _suppliers.value = _suppliers.value + sup
-  }
-
-  fun addSupplier(name: String, contactPerson: String, phone: String, email: String, address: String) {
-    addSupplier(name = name, contactPerson = contactPerson, phone = phone, address = address)
+    val updated = _suppliers.value + sup
+    _suppliers.value = updated
+    val ctx = getApplication<Application>()
+    ClinicDataPersistence.saveSuppliers(ctx, updated)
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
   }
 
   fun deleteSupplier(supplierId: String) {
-    _suppliers.value = _suppliers.value.filter { it.id != supplierId }
+    val updated = _suppliers.value.filter { it.id != supplierId }
+    _suppliers.value = updated
+    val ctx = getApplication<Application>()
+    ClinicDataPersistence.saveSuppliers(ctx, updated)
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
   }
 
   fun addExpense(
