@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.ProcedureItem
 import com.example.ui.components.AddProcedureDialog
+import com.example.ui.components.EditProcedureDialog
 import com.example.ui.theme.*
 import com.example.viewmodel.ClinicViewModel
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -40,6 +41,7 @@ fun ProceduresScreen(
   var showAddDialog by remember { mutableStateOf(false) }
   var showAddCategoryDialog by remember { mutableStateOf(false) }
   var procedureToDelete by remember { mutableStateOf<ProcedureItem?>(null) }
+  var procedureToEdit by remember { mutableStateOf<ProcedureItem?>(null) }
   var selectedCategory by remember { mutableStateOf<String?>("All") }
 
   val filteredProcedures = remember(procedures, selectedCategory) {
@@ -275,7 +277,19 @@ fun ProceduresScreen(
                   fontSize = 13.sp,
                   color = OceanGreenPrimary
                 )
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                IconButton(
+                  onClick = { procedureToEdit = proc },
+                  modifier = Modifier.size(24.dp)
+                ) {
+                  Icon(
+                    Icons.Default.Edit,
+                    contentDescription = "Edit Procedure",
+                    tint = SkyBlueDark,
+                    modifier = Modifier.size(16.dp)
+                  )
+                }
+                Spacer(modifier = Modifier.width(2.dp))
                 IconButton(
                   onClick = { procedureToDelete = proc },
                   modifier = Modifier.size(24.dp)
@@ -397,6 +411,19 @@ fun ProceduresScreen(
         if (cat.isNotBlank()) {
           viewModel.addProcedureCategory(cat)
         }
+      }
+    )
+  }
+
+  // Edit Procedure Modal
+  procedureToEdit?.let { proc ->
+    EditProcedureDialog(
+      procedure = proc,
+      categoryOptions = procedureCategories,
+      onDismiss = { procedureToEdit = null },
+      onSave = { updated ->
+        viewModel.updateProcedure(updated)
+        procedureToEdit = null
       }
     )
   }

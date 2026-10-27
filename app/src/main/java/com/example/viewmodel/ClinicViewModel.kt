@@ -1,4 +1,4 @@
-package com.example.viewmodel
+﻿package com.example.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
@@ -133,7 +133,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
     _medicines.value = (ClinicDataPersistence.loadMedicines(ctx) ?: ClinicInitialDataSeeder.getSeedMedicines())
       .filter { !deletedMedicines.contains(it.id) }
-    _procedures.value = ClinicInitialDataSeeder.getSeedProcedures()
+    _procedures.value = (ClinicDataPersistence.loadProcedures(ctx) ?: ClinicInitialDataSeeder.getSeedProcedures())
 
     val loadedConsultations = (ClinicDataPersistence.loadConsultations(ctx) ?: ClinicInitialDataSeeder.getSeedConsultations())
       .filter { !deletedConsultations.contains(it.id) && !deletedPatients.contains(it.patientId) }
@@ -538,6 +538,72 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       chiefComplaint = chiefComplaint
     )
     addPatient(patient)
+  }
+
+  fun registerDirectInjectionPatient(
+    name: String,
+    age: Int,
+    gender: Gender,
+    phone: String,
+    address: String,
+    bloodType: String = "O+",
+    allergies: List<String> = emptyList(),
+    chiefComplaint: String = "á€á€­á€¯á€€á€ºá€›á€­á€¯á€€á€ºá€†á€±á€¸á€‘á€­á€¯á€¸ / Day-Care (Direct Injection)",
+    bp: String = "120/80 mmHg",
+    pulse: Int = 76,
+    temp: Double = 98.4,
+    spo2: Int = 98,
+    weight: Double = 60.0,
+    rbs: Double? = 110.0
+  ) {
+    val currentList = _patients.value
+    val nextToken = (currentList.maxOfOrNull { it.tokenNumber } ?: 0) + 1
+    val vitals = VitalSigns(
+      bloodPressure = bp,
+      pulseRate = pulse,
+      temperatureCelsius = if (temp > 50) (temp - 32) * 5 / 9 else temp,
+      oxygenSaturation = spo2,
+      weightKg = weight,
+      rbs = rbs ?: 110.0
+    )
+    val patient = Patient(
+      id = UUID.randomUUID().toString(),
+      tokenNumber = nextToken,
+      name = name,
+      age = age,
+      gender = gender,
+      phone = phone,
+      address = address,
+      bloodType = bloodType,
+      status = QueueStatus.AT_BILLING,
+      registrationTime = BurmeseDateUtils.getNowFormatted(),
+      vitals = vitals,
+      knownAllergies = allergies,
+      chiefComplaint = chiefComplaint.ifBlank { "á€á€­á€¯á€€á€ºá€›á€­á€¯á€€á€ºá€†á€±á€¸á€‘á€­á€¯á€¸ / Day-Care (Direct Injection)" }
+    )
+    val updatedPatients = currentList + patient
+    _patients.value = updatedPatients
+    ClinicDataPersistence.savePatients(getApplication(), updatedPatients)
+
+    // Immediately generate a direct invoice with 0 doctor fee so cashier can bill injection/meds
+    val invoice = Invoice(
+      id = "INV-",
+      invoiceNumber = "INV-",
+      consultationId = "",
+      patientId = patient.id,
+      patientName = patient.name,
+      items = emptyList(),
+      consultationFee = 0.0,
+      serviceFee = 0.0,
+      totalAmount = 0.0,
+      paidAmount = 0.0,
+      paymentStatus = "Unpaid",
+      cashierName = _currentUser.value?.fullName ?: "Counter Cashier",
+      timestamp = BurmeseDateUtils.getNowFormatted()
+    )
+    val updatedInvoices = _invoices.value + invoice
+    _invoices.value = updatedInvoices
+    ClinicDataPersistence.saveInvoices(getApplication(), updatedInvoices)
   }
 
   fun updatePatient(updatedPatient: Patient) {
@@ -1212,6 +1278,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       if (inv.id == invoiceId) {
         val totalAfterDiscount = maxOf(0.0, inv.totalAmount - discount)
         inv.copy(
+          isPaid = true,
           discount = discount,
           totalAmount = totalAfterDiscount,
           paymentMethod = pm,
@@ -1325,6 +1392,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         val finalDiscount = totalGranular + pctDiscount
         val finalTotal = (inv.subTotal - finalDiscount).coerceAtLeast(0.0)
         inv.copy(
+          isPaid = true,
           doctorFeeDiscount = docDiscount,
           pharmacyDiscount = pharmacyDiscount,
           procedureDiscount = procedureDiscount,
@@ -1932,7 +2000,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       isCustom = true,
       consumableItems = items
     )
-    _procedures.value = _procedures.value + proc
+    val updatedProcs = _procedures.value + proc
+    _procedures.value = updatedProcs
+    ClinicDataPersistence.saveProcedures(getApplication(), updatedProcs)
     return proc
   }
 
@@ -1940,9 +2010,49 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     return addCustomProcedure(name = name, category = category, fee = price, notes = desc)
   }
 
+  fun updateProcedure(updated: ProcedureItem) {
+    val updatedProcs = _procedures.value.map { if (it.id == updated.id) updated else it }
+    _procedures.value = updatedProcs
+    ClinicDataPersistence.saveProcedures(getApplication(), updatedProcs)
+  }
 
   fun deleteProcedure(procedureId: String) {
-    _procedures.value = _procedures.value.filter { it.id != procedureId }
+    val updatedProcs = _procedures.value.filter { it.id != procedureId }
+    _procedures.value = updatedProcs
+    ClinicDataPersistence.saveProcedures(getApplication(), updatedProcs)
+  }
+
+  fun toggleInvoicePaidStatus(invoiceId: String, markAsPaid: Boolean) {
+    val updated = _invoices.value.map { inv ->
+      if (inv.id == invoiceId) {
+        if (markAsPaid) {
+          inv.copy(
+            isPaid = true,
+            paymentStatus = "Paid",
+            paidAmount = inv.totalAmount,
+            changeAmount = 0.0,
+            cashierName = _currentUser.value?.fullName ?: "Cashier Staff",
+            timestamp = BurmeseDateUtils.getNowFormatted()
+          )
+        } else {
+          inv.copy(
+            isPaid = false,
+            paymentStatus = "Unpaid",
+            paidAmount = 0.0,
+            changeAmount = 0.0
+          )
+        }
+      } else inv
+    }
+    _invoices.value = updated
+    ClinicDataPersistence.saveInvoices(getApplication(), updated)
+    if (markAsPaid) {
+      val inv = updated.find { it.id == invoiceId }
+      if (inv != null) {
+        updatePatientStatus(inv.patientId, QueueStatus.COMPLETED)
+        deductInventoryForInvoice(inv)
+      }
+    }
   }
 
   fun addSupplier(name: String, contactPerson: String, phone: String, address: String) {

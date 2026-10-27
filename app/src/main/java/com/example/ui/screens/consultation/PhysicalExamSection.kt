@@ -996,7 +996,6 @@ fun PhysicalExamSection(
           }
         }
 
-        if (hasTraumaPresent || traumaWoundTypes.isNotEmpty()) {
           // 1. Wound Classification
           Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -1176,23 +1175,6 @@ fun PhysicalExamSection(
               )
             }
           }
-        } else {
-          Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp),
-            color = Color(0xFFF0FDF4),
-            border = BorderStroke(1.dp, Color(0xFFBBF7D0))
-          ) {
-            Row(
-              modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-              verticalAlignment = Alignment.CenterVertically
-            ) {
-              Icon(Icons.Default.Check, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(18.dp))
-              Spacer(modifier = Modifier.width(8.dp))
-              Text("No acute trauma or wound identified. Tap 'Trauma Present' above if patient has injury.", fontSize = 10.sp, color = MedicalGreenDark)
-            }
           }
         }
       }

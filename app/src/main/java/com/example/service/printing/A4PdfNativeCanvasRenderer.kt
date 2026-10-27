@@ -709,19 +709,13 @@ object A4PdfNativeCanvasRenderer {
     val logoR = 18f
     val customLogo = loadLogoBitmap(printSettings.clinicLogoUri)
     if (customLogo != null) {
-      canvas.save()
-      val clipPath = Path()
-      clipPath.addCircle(logoCx, logoCy, logoR, Path.Direction.CCW)
-      canvas.clipPath(clipPath)
-      val srcRect = Rect(0, 0, customLogo.width, customLogo.height)
-      val dstRect = RectF(logoCx - logoR, logoCy - logoR, logoCx + logoR, logoCy + logoR)
-      canvas.drawBitmap(customLogo, srcRect, dstRect, null)
-      canvas.restore()
-      paint.style = Paint.Style.STROKE
-      paint.color = Color.rgb(0x2E, 0x7D, 0x32)
-      paint.strokeWidth = 1.2f
-      canvas.drawCircle(logoCx, logoCy, logoR, paint)
-      paint.style = Paint.Style.FILL
+      val maxW = 50f
+      val maxH = 48f
+      val scale = minOf(maxW / customLogo.width.toFloat(), maxH / customLogo.height.toFloat())
+      val targetW = customLogo.width * scale
+      val targetH = customLogo.height * scale
+      val dstRect = RectF(logoCx - targetW / 2f, logoCy - targetH / 2f, logoCx + targetW / 2f, logoCy + targetH / 2f)
+      canvas.drawBitmap(customLogo, null, dstRect, null)
     } else {
       paint.color = Color.rgb(0x2E, 0x7D, 0x32)
       canvas.drawCircle(logoCx, logoCy, logoR, paint)
@@ -1346,6 +1340,66 @@ object A4PdfNativeCanvasRenderer {
     return currentY + 8f
   }
 
+  private fun drawTreatmentAndInjectionsSection(
+    canvas: Canvas,
+    width: Float,
+    topY: Float,
+    consultation: ConsultationRecord
+  ): Float {
+    val injectionDrugs = consultation.prescriptions.filter { drug ->
+      drug.effectiveName.contains("Inj", ignoreCase = true) ||
+      drug.dosage.contains("Inj", ignoreCase = true) ||
+      drug.medicineName.contains("Inj", ignoreCase = true) ||
+      drug.instructions.contains("IM", ignoreCase = true) ||
+      drug.instructions.contains("IV", ignoreCase = true) ||
+      drug.instructions.contains("Neb", ignoreCase = true) ||
+      drug.instructions.contains("Drip", ignoreCase = true)
+    }
+    if (injectionDrugs.isEmpty()) return topY
+
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    var currentY = topY
+
+    paint.color = Color.rgb(0x0F, 0x76, 0x6E)
+    paint.textSize = 10f
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    canvas.drawText("Treatment & Injections (á€†á€±á€¸á€‘á€­á€¯á€¸ / á€†á€±á€¸á€žá€½á€„á€ºá€¸ á€€á€¯á€žá€™á€¾á€¯):", 22f, currentY + 10f, paint)
+    currentY += 15f
+
+    injectionDrugs.forEachIndexed { idx, drug ->
+      val name = drug.effectiveName.ifBlank { drug.name.ifBlank { drug.medicineName } }
+      val route = when {
+        drug.instructions.contains("IV", ignoreCase = true) -> "IV Route"
+        drug.instructions.contains("IM", ignoreCase = true) -> "IM Route"
+        drug.instructions.contains("Neb", ignoreCase = true) -> "Nebulization"
+        else -> "Injection"
+      }
+      paint.color = Color.rgb(0xF8, 0xFA, 0xFC)
+      val cardRect = RectF(22f, currentY, width - 22f, currentY + 17f)
+      canvas.drawRoundRect(cardRect, 3f, 3f, paint)
+      paint.style = Paint.Style.STROKE
+      paint.color = Color.rgb(0xCC, 0xF0, 0xEB)
+      paint.strokeWidth = 0.6f
+      canvas.drawRoundRect(cardRect, 3f, 3f, paint)
+      paint.style = Paint.Style.FILL
+
+      paint.color = Color.rgb(0x0F, 0x17, 0x2A)
+      paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+      paint.textSize = 8.5f
+      canvas.drawText(".  () - ", 28f, currentY + 11.5f, paint)
+
+      paint.color = Color.rgb(0x64, 0x74, 0x8B)
+      paint.typeface = Typeface.DEFAULT
+      paint.textSize = 8f
+      paint.textAlign = Paint.Align.RIGHT
+      canvas.drawText(" x  â€¢ ", width - 28f, currentY + 11.5f, paint)
+      paint.textAlign = Paint.Align.LEFT
+
+      currentY += 20f
+    }
+    return currentY + 4f
+  }
+
   private fun drawProceduresAndInvestigations(
     canvas: Canvas,
     width: Float,
@@ -1359,26 +1413,64 @@ object A4PdfNativeCanvasRenderer {
     var currentY = topY
 
     if (consultation.selectedProcedures.isNotEmpty()) {
-      paint.color = Color.rgb(0x2E, 0x7D, 0x32)
-      paint.textSize = 9.5f
+      paint.color = Color.rgb(0x0F, 0x76, 0x6E)
+      paint.textSize = 10f
       paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-      canvas.drawText("Clinical Procedures: ", 22f, currentY + 10f, paint)
-      paint.typeface = Typeface.DEFAULT
-      paint.color = Color.rgb(0x21, 0x21, 0x21)
-      val procs = consultation.selectedProcedures.joinToString(", ") { it.name }
-      val endY = drawWrappedText(canvas, procs, 130f, currentY + 10f, width - 152f, 13f, paint, maxLines = 8)
-      currentY = maxOf(currentY + 16f, endY + 4f)
+      canvas.drawText("Clinical Procedures & Minor Surgery (á€á€½á€²á€…á€­á€á€ºá€€á€¯á€žá€™á€¾á€¯á€”á€¾á€„á€·á€º á€œá€¯á€•á€ºá€‘á€¯á€¶á€¸á€œá€¯á€•á€ºá€”á€Šá€ºá€¸á€™á€»á€¬á€¸):", 22f, currentY + 10f, paint)
+      currentY += 15f
+
+      consultation.selectedProcedures.forEach { proc ->
+        val dt = proc.dateTime.ifBlank { consultation.timestamp }
+        val hasNotes = proc.notes.isNotBlank()
+        val boxH = if (hasNotes) 27f else 17f
+
+        paint.color = Color.rgb(0xF0, 0xFD, 0xFA)
+        val boxRect = RectF(22f, currentY, width - 22f, currentY + boxH)
+        canvas.drawRoundRect(boxRect, 4f, 4f, paint)
+        paint.style = Paint.Style.STROKE
+        paint.color = Color.rgb(0x99, 0xF6, 0xE4)
+        paint.strokeWidth = 0.6f
+        canvas.drawRoundRect(boxRect, 4f, 4f, paint)
+        paint.style = Paint.Style.FILL
+
+        // Procedure Title & Category
+        paint.color = Color.rgb(0x11, 0x5E, 0x59)
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        paint.textSize = 9f
+        canvas.drawText("â€¢  []", 28f, currentY + 11.5f, paint)
+
+        // Date / Time
+        if (dt.isNotBlank()) {
+          paint.typeface = Typeface.DEFAULT
+          paint.color = Color.rgb(0x64, 0x74, 0x8B)
+          paint.textSize = 8f
+          paint.textAlign = Paint.Align.RIGHT
+          canvas.drawText("Done: ", width - 28f, currentY + 11.5f, paint)
+          paint.textAlign = Paint.Align.LEFT
+        }
+
+        // Operative / Procedure Notes
+        if (hasNotes) {
+          paint.typeface = Typeface.DEFAULT
+          paint.color = Color.rgb(0x33, 0x41, 0x55)
+          paint.textSize = 8.5f
+          val noteEndY = drawWrappedText(canvas, "Notes: ", 34f, currentY + 22f, width - 68f, 11f, paint, maxLines = 4)
+          currentY = maxOf(currentY + boxH + 4f, noteEndY + 4f)
+        } else {
+          currentY += boxH + 4f
+        }
+      }
     }
 
     if (consultation.suggestedInvestigations.isNotEmpty()) {
-      paint.color = Color.rgb(0x2E, 0x7D, 0x32)
-      paint.textSize = 9.5f
+      paint.color = Color.rgb(0x0F, 0x76, 0x6E)
+      paint.textSize = 10f
       paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-      canvas.drawText("Diagnostic Investigations: ", 22f, currentY + 10f, paint)
+      canvas.drawText("Diagnostic Investigations (á€…á€…á€ºá€†á€±á€¸á€›á€”á€º á€Šá€½á€¾á€”á€ºá€¸á€á€»á€€á€ºá€™á€»á€¬á€¸):", 22f, currentY + 10f, paint)
       paint.typeface = Typeface.DEFAULT
-      paint.color = Color.rgb(0x21, 0x21, 0x21)
+      paint.color = Color.rgb(0x33, 0x41, 0x55)
       val labs = consultation.suggestedInvestigations.joinToString(", ")
-      val endY = drawWrappedText(canvas, labs, 145f, currentY + 10f, width - 167f, 13f, paint, maxLines = 8)
+      val endY = drawWrappedText(canvas, labs, 150f, currentY + 10f, width - 172f, 13f, paint, maxLines = 8)
       currentY = maxOf(currentY + 16f, endY + 4f)
     }
 

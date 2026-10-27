@@ -119,12 +119,19 @@ object ThermalPrintService {
             val pixelX = xByte * 8 + bit
             if (pixelX < width) {
               val pixel = bitmap.getPixel(pixelX, currentY)
-              val r = (pixel shr 16) and 0xFF
-              val g = (pixel shr 8) and 0xFF
-              val bVal = pixel and 0xFF
-              val luminance = (0.299 * r + 0.587 * g + 0.114 * bVal).toInt()
-              if (luminance < 165) {
-                b = b or (1 shl (7 - bit))
+              val a = (pixel shr 24) and 0xFF
+              if (a > 30) {
+                val r = (pixel shr 16) and 0xFF
+                val g = (pixel shr 8) and 0xFF
+                val bVal = pixel and 0xFF
+                // High-contrast monochrome conversion: preserve colored logo elements like yellow star and green emblems
+                val isYellowStar = (r > 150 && g > 130 && bVal < 140)
+                val isColorSaturation = (maxOf(r, g, bVal) - minOf(r, g, bVal)) > 30
+                val isNotPaperWhite = (r < 240 || g < 240 || bVal < 240)
+                val luminance = (0.299 * r + 0.587 * g + 0.114 * bVal).toInt()
+                if (isYellowStar || (isColorSaturation && isNotPaperWhite) || luminance < 175) {
+                  b = b or (1 shl (7 - bit))
+                }
               }
             }
           }
@@ -307,7 +314,8 @@ object ThermalPrintService {
     canvas.drawText("Cashier : $cashierName", leftMargin, curY + paint.textSize * 0.8f, paint)
     paint.textAlign = Paint.Align.RIGHT
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    val statusText = if (invoice.isPaid) "PAID (${invoice.paymentMethod.label})" else "UNPAID"
+    val isPaid = invoice.isPaid || invoice.paymentStatus.equals("Paid", ignoreCase = true)
+    val statusText = if (isPaid) "PAID (${invoice.paymentMethod.label})" else "UNPAID"
     canvas.drawText(statusText, rightMargin, curY + paint.textSize * 0.8f, paint)
     curY += paint.textSize + 10f
 

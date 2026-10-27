@@ -1,4 +1,4 @@
-package com.example.ui.components
+﻿package com.example.ui.components
 import com.example.viewmodel.ClinicViewModel
 import com.example.service.sync.LocalWifiSyncService
 import android.content.ClipboardManager
@@ -55,9 +55,11 @@ fun RegisterPatientDialog(
     temp: Double,
     spo2: Int,
     weight: Double,
-    rbs: Double?
+    rbs: Double?,
+    isDirectInjection: Boolean
   ) -> Unit
 ) {
+  var isDirectInjection by remember { mutableStateOf(false) }
   var name by remember { mutableStateOf("") }
   var ageText by remember { mutableStateOf("35") }
   var selectedGender by remember { mutableStateOf(Gender.MALE) }
@@ -113,7 +115,74 @@ fun RegisterPatientDialog(
           }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Visit Type Selection: Doctor Consultation vs Direct Injection / Day-Care
+        Text("á€œá€¬á€›á€±á€¬á€€á€ºá€žá€Šá€·á€º á€›á€Šá€ºá€›á€½á€šá€ºá€á€»á€€á€º (Visit Type):", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = SlateDark)
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          Surface(
+            modifier = Modifier
+              .weight(1f)
+              .clickable { isDirectInjection = false },
+            shape = RoundedCornerShape(8.dp),
+            color = if (!isDirectInjection) SoftGreenContainer else PureWhite,
+            border = BorderStroke(1.2.dp, if (!isDirectInjection) MedicalGreen else BorderGrey)
+          ) {
+            Row(
+              modifier = Modifier.padding(vertical = 8.dp, horizontal = 8.dp),
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              RadioButton(
+                selected = !isDirectInjection,
+                onClick = { isDirectInjection = false },
+                colors = RadioButtonDefaults.colors(selectedColor = MedicalGreen)
+              )
+              Spacer(modifier = Modifier.width(4.dp))
+              Column {
+                Text("á€†á€›á€¬á€á€”á€ºá€•á€¼á€žá€›á€”á€º", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+                Text("Doctor Consultation", fontSize = 9.sp, color = SlateMedium)
+              }
+            }
+          }
+
+          Surface(
+            modifier = Modifier
+              .weight(1f)
+              .clickable {
+                isDirectInjection = true
+                if (chiefComplaint.isBlank()) {
+                  chiefComplaint = "á€á€­á€¯á€€á€ºá€›á€­á€¯á€€á€ºá€†á€±á€¸á€‘á€­á€¯á€¸ / Day-Care (Direct Injection)"
+                }
+              },
+            shape = RoundedCornerShape(8.dp),
+            color = if (isDirectInjection) Color(0xFFEFF6FF) else PureWhite,
+            border = BorderStroke(1.2.dp, if (isDirectInjection) SkyBluePrimary else BorderGrey)
+          ) {
+            Row(
+              modifier = Modifier.padding(vertical = 8.dp, horizontal = 8.dp),
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              RadioButton(
+                selected = isDirectInjection,
+                onClick = {
+                  isDirectInjection = true
+                  if (chiefComplaint.isBlank()) {
+                    chiefComplaint = "á€á€­á€¯á€€á€ºá€›á€­á€¯á€€á€ºá€†á€±á€¸á€‘á€­á€¯á€¸ / Day-Care (Direct Injection)"
+                  }
+                },
+                colors = RadioButtonDefaults.colors(selectedColor = SkyBluePrimary)
+              )
+              Spacer(modifier = Modifier.width(4.dp))
+              Column {
+                Text("á€á€­á€¯á€€á€ºá€›á€­á€¯á€€á€ºá€†á€±á€¸á€‘á€­á€¯á€¸", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+                Text("Direct Injection (No Doc)", fontSize = 9.sp, color = SkyBlueDark)
+              }
+            }
+          }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         // Basic Info
         OutlinedTextField(
@@ -284,13 +353,14 @@ fun RegisterPatientDialog(
                 address.trim(),
                 bloodType,
                 allergyList,
-                chiefComplaint.ifBlank { "General clinical consultation" },
+                chiefComplaint.ifBlank { if (isDirectInjection) "á€á€­á€¯á€€á€ºá€›á€­á€¯á€€á€ºá€†á€±á€¸á€‘á€­á€¯á€¸ / Day-Care (Direct Injection)" else "General clinical consultation" },
                 bp,
                 pulseText.toIntOrNull() ?: 75,
                 tempText.toDoubleOrNull() ?: 36.8,
                 spo2Text.toIntOrNull() ?: 98,
                 weightText.toDoubleOrNull() ?: 60.0,
-                rbsText.toDoubleOrNull()
+                rbsText.toDoubleOrNull(),
+                isDirectInjection
               )
               onDismiss()
             }
@@ -1023,6 +1093,178 @@ fun AddProcedureDialog(
           Icon(Icons.Default.Healing, contentDescription = null, modifier = Modifier.size(16.dp))
           Spacer(modifier = Modifier.width(6.dp))
           Text("Save Procedure", fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        }
+      }
+    }
+  }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditProcedureDialog(
+  procedure: com.example.model.ProcedureItem,
+  categoryOptions: List<String> = emptyList(),
+  onDismiss: () -> Unit,
+  onSave: (com.example.model.ProcedureItem) -> Unit
+) {
+  val defaultOptions = listOf("Minor Surgery", "Dressing", "Injection", "Diagnostics", "Wound Care", "Cannulation")
+  val effectiveCategories = (categoryOptions + defaultOptions).distinct()
+
+  var name by remember { mutableStateOf(procedure.name) }
+  var myanmarName by remember { mutableStateOf(procedure.myanmarName) }
+  var category by remember { mutableStateOf(procedure.category) }
+  var feeText by remember { mutableStateOf(procedure.standardFee.toInt().toString()) }
+  var notes by remember { mutableStateOf(procedure.notes) }
+  val initialConsumables = if (procedure.consumableItems.isNotEmpty()) {
+    procedure.consumableItems.joinToString(", ") { "${it.name} x ${it.quantity}" }
+  } else procedure.notes
+  var consumablesText by remember { mutableStateOf(initialConsumables) }
+  var catDropdownExpanded by remember { mutableStateOf(false) }
+
+  Dialog(onDismissRequest = onDismiss) {
+    Card(
+      modifier = Modifier
+        .fillMaxWidth()
+        .widthIn(max = 480.dp)
+        .padding(vertical = 12.dp),
+      shape = RoundedCornerShape(10.dp),
+      colors = CardDefaults.cardColors(containerColor = PureWhite)
+    ) {
+      Column(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(16.dp)
+          .verticalScroll(rememberScrollState())
+      ) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Column {
+            Text(
+              "Edit Procedure (ကုသမှု ပြင်ဆင်ရန်)",
+              style = MaterialTheme.typography.titleMedium,
+              fontWeight = FontWeight.Bold,
+              color = SlateDark
+            )
+            Text(
+              "ID: ${procedure.id.take(8)} • ${procedure.category}",
+              fontSize = 11.sp,
+              color = SlateMuted
+            )
+          }
+          IconButton(onClick = onDismiss) {
+            Icon(Icons.Default.Close, contentDescription = "Close", tint = SlateMuted)
+          }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        OutlinedTextField(
+          value = name,
+          onValueChange = { name = it },
+          label = { Text("Procedure Name (English)", fontSize = 11.sp) },
+          modifier = Modifier.fillMaxWidth(),
+          singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+          value = myanmarName,
+          onValueChange = { myanmarName = it },
+          label = { Text("Procedure Name (Myanmar)", fontSize = 11.sp) },
+          modifier = Modifier.fillMaxWidth(),
+          singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          ExposedDropdownMenuBox(
+            expanded = catDropdownExpanded,
+            onExpandedChange = { catDropdownExpanded = it },
+            modifier = Modifier.weight(1.1f)
+          ) {
+            OutlinedTextField(
+              value = category,
+              onValueChange = { category = it },
+              label = { Text("Category / Custom", fontSize = 11.sp) },
+              trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = catDropdownExpanded) },
+              modifier = Modifier.menuAnchor().fillMaxWidth(),
+              singleLine = true
+            )
+            ExposedDropdownMenu(
+              expanded = catDropdownExpanded,
+              onDismissRequest = { catDropdownExpanded = false }
+            ) {
+              effectiveCategories.forEach { catOption ->
+                DropdownMenuItem(
+                  text = { Text(catOption, fontSize = 11.5.sp) },
+                  onClick = {
+                    category = catOption
+                    catDropdownExpanded = false
+                  }
+                )
+              }
+            }
+          }
+          OutlinedTextField(
+            value = feeText,
+            onValueChange = { feeText = it },
+            label = { Text("Fee (Ks)", fontSize = 11.sp) },
+            modifier = Modifier.weight(0.9f),
+            singleLine = true
+          )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+          value = consumablesText,
+          onValueChange = { consumablesText = it },
+          label = { Text("Consumables", fontSize = 11.sp) },
+          modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+          value = notes,
+          onValueChange = { notes = it },
+          label = { Text("Clinical Notes", fontSize = 11.sp) },
+          modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Button(
+          onClick = {
+            if (name.isNotBlank()) {
+              val newFee = feeText.toDoubleOrNull() ?: procedure.standardFee
+              val updated = procedure.copy(
+                name = name.trim(),
+                myanmarName = myanmarName.trim().ifBlank { name.trim() },
+                category = category.trim(),
+                price = newFee,
+                standardFee = newFee,
+                notes = notes.trim()
+              )
+              onSave(updated)
+              onDismiss()
+            }
+          },
+          modifier = Modifier
+            .fillMaxWidth()
+            .height(40.dp),
+          enabled = name.isNotBlank(),
+          shape = RoundedCornerShape(8.dp),
+          colors = ButtonDefaults.buttonColors(containerColor = OceanGreenPrimary)
+        ) {
+          Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+          Spacer(modifier = Modifier.width(6.dp))
+          Text("Update Procedure (သိမ်းဆည်းမည်)", fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
         }
       }
     }

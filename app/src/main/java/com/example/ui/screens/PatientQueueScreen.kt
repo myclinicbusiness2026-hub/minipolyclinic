@@ -1,4 +1,4 @@
-package com.example.ui.screens
+﻿package com.example.ui.screens
 
 import android.content.Intent
 import android.net.Uri
@@ -178,53 +178,33 @@ fun PatientQueueScreen(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-              // Day-Care Treatment Cards Shortcut
+              // Follow-up Alerts (Phone & SMS Reminders) - Always visible & prominent
               Button(
-                onClick = { viewModel.setTab(9) },
-                colors = ButtonDefaults.buttonColors(containerColor = OceanGreenLight),
+                onClick = { showFollowUpAlertsDialog = true },
+                colors = ButtonDefaults.buttonColors(
+                  containerColor = if (dueFollowUpCount > 0) Color(0xFFEA580C) else PureWhite
+                ),
                 shape = RoundedCornerShape(6.dp),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp),
+                border = BorderStroke(1.dp, if (dueFollowUpCount > 0) Color(0xFFEA580C) else Color(0xFFCBD5E1)),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 3.dp),
                 modifier = Modifier.height(30.dp)
               ) {
                 Icon(
-                  Icons.Default.Healing,
+                  Icons.Default.NotificationsActive,
                   contentDescription = null,
-                  tint = OceanGreenPrimary,
-                  modifier = Modifier.size(13.dp)
+                  tint = if (dueFollowUpCount > 0) PureWhite else Color(0xFFEA580C),
+                  modifier = Modifier.size(14.dp)
                 )
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(5.dp))
                 Text(
-                  "ဆေးထိုးကတ်",
-                  fontSize = 10.5.sp,
+                  "Follow-up Alerts${if (dueFollowUpCount > 0) " ($dueFollowUpCount)" else ""}",
+                  fontSize = 11.sp,
                   fontWeight = FontWeight.Bold,
-                  color = OceanGreenPrimary
+                  color = if (dueFollowUpCount > 0) PureWhite else SlateDark
                 )
               }
-              Spacer(modifier = Modifier.width(6.dp))
-              // Follow-up Alerts (Phone & SMS Reminders)
-              Button(
-                onClick = { showFollowUpAlertsDialog = true },
-                colors = ButtonDefaults.buttonColors(containerColor = if (dueFollowUpCount > 0) Color(0xFFE65100) else BgLightGray),
-                shape = RoundedCornerShape(6.dp),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp),
-                modifier = Modifier.height(30.dp)
-              ) {
-              Icon(
-                Icons.Default.NotificationsActive,
-                contentDescription = null,
-                tint = if (dueFollowUpCount > 0) PureWhite else SlateDark,
-                modifier = Modifier.size(14.dp)
-              )
-              Spacer(modifier = Modifier.width(4.dp))
-              Text(
-                "Alerts${if (dueFollowUpCount > 0) " ($dueFollowUpCount)" else ""}",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (dueFollowUpCount > 0) PureWhite else SlateDark
-              )
             }
           }
-        }
 
           // Row 2: Action Buttons (Prominent + New Patient & + Follow-up)
           Row(
@@ -470,10 +450,16 @@ fun PatientQueueScreen(
   if (showRegisterDialog) {
     RegisterPatientDialog(
       onDismiss = { showRegisterDialog = false },
-      onRegister = { name, age, gender, phone, address, bloodType, allergies, chiefComplaint, bp, pulse, temp, spo2, weight, rbs ->
-        viewModel.registerPatient(
-          name, age, gender, phone, address, bloodType, allergies, chiefComplaint, bp, pulse, temp, spo2, weight, rbs
-        )
+      onRegister = { name, age, gender, phone, address, bloodType, allergies, chiefComplaint, bp, pulse, temp, spo2, weight, rbs, isDirectInjection ->
+        if (isDirectInjection) {
+          viewModel.registerDirectInjectionPatient(
+            name, age, gender, phone, address, bloodType, allergies, chiefComplaint, bp, pulse, temp, spo2, weight, rbs
+          )
+        } else {
+          viewModel.registerPatient(
+            name, age, gender, phone, address, bloodType, allergies, chiefComplaint, bp, pulse, temp, spo2, weight, rbs
+          )
+        }
       }
     )
   }

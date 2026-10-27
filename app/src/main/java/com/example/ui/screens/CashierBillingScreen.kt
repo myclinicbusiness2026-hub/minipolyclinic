@@ -1,4 +1,4 @@
-package com.example.ui.screens
+﻿package com.example.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -422,6 +422,9 @@ fun CashierBillingScreen(
                 if (success && voidAll) {
                   selectedInvoiceId = null
                 }
+              },
+              onToggleInvoicePaid = { invId, isPaid ->
+                viewModel.toggleInvoicePaidStatus(invId, isPaid)
               }
             )
           }
@@ -575,6 +578,9 @@ fun CashierBillingScreen(
                   selectedInvoiceId = null
                   mobileActiveTab = 0
                 }
+              },
+              onToggleInvoicePaid = { invId, isPaid ->
+                viewModel.toggleInvoicePaidStatus(invId, isPaid)
               }
             )
           }
@@ -894,7 +900,8 @@ private fun BillingCheckoutPane(
   onApplyDoctorFeeFoc: (Invoice) -> Unit = {},
   onApplyAllFoc: (Invoice) -> Unit = {},
   onResetDiscounts: (Invoice) -> Unit = {},
-  onConfirmPaymentWithGranular: ((Invoice, PaymentMethod, Double, Double, Double, Double) -> Unit)? = null
+  onConfirmPaymentWithGranular: ((Invoice, PaymentMethod, Double, Double, Double, Double) -> Unit)? = null,
+  onToggleInvoicePaid: ((String, Boolean) -> Unit)? = null
 ) {
   var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -993,7 +1000,8 @@ private fun BillingCheckoutPane(
     BillingPatientHeaderCard(
       activeInvoice = activeInvoice,
       activePatient = activePatient,
-      onBackToQueue = onBackToQueue
+      onBackToQueue = onBackToQueue,
+      onToggleInvoicePaid = onToggleInvoicePaid
     )
 
     Spacer(modifier = Modifier.height(5.dp))
@@ -1100,7 +1108,8 @@ private fun BillingCheckoutPane(
 private fun BillingPatientHeaderCard(
   activeInvoice: Invoice,
   activePatient: com.example.model.Patient?,
-  onBackToQueue: (() -> Unit)?
+  onBackToQueue: (() -> Unit)?,
+  onToggleInvoicePaid: ((String, Boolean) -> Unit)? = null
 ) {
   Surface(
     modifier = Modifier.fillMaxWidth(),
@@ -1150,18 +1159,38 @@ private fun BillingPatientHeaderCard(
           }
         }
 
-        // Status Badge
+        // Status Badge with Manual Checkbox Toggle
         Surface(
           shape = RoundedCornerShape(4.dp),
-          color = if (activeInvoice.isPaid) StatusSuccessContainer else StatusWarningContainer
+          color = if (activeInvoice.isPaid) StatusSuccessContainer else StatusWarningContainer,
+          border = BorderStroke(1.dp, if (activeInvoice.isPaid) StatusSuccess.copy(alpha = 0.5f) else StatusWarning.copy(alpha = 0.5f)),
+          modifier = Modifier.clickable {
+            onToggleInvoicePaid?.invoke(activeInvoice.id, !activeInvoice.isPaid)
+          }
         ) {
-          Text(
-            if (activeInvoice.isPaid) "PAID" else "UNPAID",
-            fontWeight = FontWeight.Bold,
-            fontSize = 9.sp,
-            color = if (activeInvoice.isPaid) StatusSuccess else StatusWarning,
+          Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-          )
+          ) {
+            Checkbox(
+              checked = activeInvoice.isPaid,
+              onCheckedChange = { isChecked ->
+                onToggleInvoicePaid?.invoke(activeInvoice.id, isChecked)
+              },
+              modifier = Modifier.size(16.dp),
+              colors = CheckboxDefaults.colors(
+                checkedColor = MedicalGreen,
+                uncheckedColor = StatusWarning
+              )
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+              if (activeInvoice.isPaid) "PAID (á€„á€½á€±á€›á€¾á€„á€ºá€¸á€•á€¼á€®á€¸)" else "UNPAID (á€„á€½á€±á€™á€›á€¾á€„á€ºá€¸á€›á€žá€±á€¸)",
+              fontWeight = FontWeight.Bold,
+              fontSize = 9.5.sp,
+              color = if (activeInvoice.isPaid) StatusSuccess else StatusWarning
+            )
+          }
         }
       }
 

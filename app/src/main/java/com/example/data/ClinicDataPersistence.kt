@@ -991,6 +991,85 @@ object ClinicDataPersistence {
     }
   }
 
+  // 10b. Master Procedures Persistence
+  fun saveProcedures(context: Context, list: List<ProcedureItem>) {
+    val arr = JSONArray()
+    list.forEach { p ->
+      val obj = JSONObject().apply {
+        put("id", p.id)
+        put("code", p.code)
+        put("name", p.name)
+        put("myanmarName", p.myanmarName)
+        put("category", p.category)
+        put("price", p.price)
+        put("standardFee", p.standardFee)
+        put("consumableCost", p.consumableCost)
+        put("notes", p.notes)
+        put("dateTime", p.dateTime)
+        val consArr = JSONArray()
+        p.consumableItems.forEach { c ->
+          consArr.put(JSONObject().apply {
+            put("id", c.id)
+            put("medicineId", c.medicineId)
+            put("name", c.name)
+            put("quantity", c.quantity)
+            put("unitPrice", c.unitPrice)
+            put("unitType", c.unitType)
+          })
+        }
+        put("consumableItems", consArr)
+      }
+      arr.put(obj)
+    }
+    getPrefs(context).edit().putString(KEY_PROCEDURES, arr.toString()).apply()
+  }
+
+  fun loadProcedures(context: Context): List<ProcedureItem>? {
+    val str = getPrefs(context).getString(KEY_PROCEDURES, null) ?: return null
+    return try {
+      val arr = JSONArray(str)
+      val list = mutableListOf<ProcedureItem>()
+      for (i in 0 until arr.length()) {
+        val o = arr.getJSONObject(i)
+        val consList = mutableListOf<ProcedureConsumable>()
+        val consArr = o.optJSONArray("consumableItems")
+        if (consArr != null) {
+          for (j in 0 until consArr.length()) {
+            val co = consArr.getJSONObject(j)
+            consList.add(
+              ProcedureConsumable(
+                id = co.optString("id", UUID.randomUUID().toString()),
+                medicineId = co.optString("medicineId"),
+                name = co.optString("name"),
+                quantity = co.optInt("quantity", 1),
+                unitPrice = co.optDouble("unitPrice", 0.0),
+                unitType = co.optString("unitType", "pcs")
+              )
+            )
+          }
+        }
+        list.add(
+          ProcedureItem(
+            id = o.optString("id", UUID.randomUUID().toString()),
+            code = o.optString("code"),
+            name = o.optString("name"),
+            myanmarName = o.optString("myanmarName", o.optString("name")),
+            category = o.optString("category", "Minor Surgery"),
+            price = o.optDouble("price", 0.0),
+            standardFee = o.optDouble("standardFee", o.optDouble("price", 0.0)),
+            consumableCost = o.optDouble("consumableCost", 0.0),
+            notes = o.optString("notes"),
+            dateTime = o.optString("dateTime"),
+            consumableItems = consList
+          )
+        )
+      }
+      list
+    } catch (_: Exception) {
+      null
+    }
+  }
+
   // 11. Clinic Settings & Default Fee Configuration
   fun saveClinicSettings(context: Context, s: ClinicSettings) {
     val obj = JSONObject().apply {

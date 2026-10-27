@@ -1,4 +1,4 @@
-package com.example.ui.screens
+﻿package com.example.ui.screens
 import com.example.ui.screens.consultation.*
 import com.example.ui.screens.treatment.*
 
@@ -1430,6 +1430,7 @@ fun EditConsultationDialog(
   var objectiveText by remember { mutableStateOf(record.objective.ifBlank { record.canvasNotes }) }
   var assessmentText by remember { mutableStateOf(record.assessment.ifBlank { record.diagnosisList.joinToString(", ") }) }
   var planText by remember { mutableStateOf(record.plan) }
+  var patientInstructionsText by remember { mutableStateOf(record.patientInstructions) }
   var feeText by remember { mutableStateOf(record.consultationFee.toInt().toString()) }
 
   AlertDialog(
@@ -1483,6 +1484,14 @@ fun EditConsultationDialog(
           maxLines = 4
         )
         OutlinedTextField(
+          value = patientInstructionsText,
+          onValueChange = { patientInstructionsText = it },
+          label = { Text("á€†á€›á€¬á€á€”á€ºá á€Šá€½á€¾á€”á€ºá€€á€¼á€¬á€¸á€á€»á€€á€º / Doctor's Advice & Instructions", fontSize = 11.sp) },
+          modifier = Modifier.fillMaxWidth(),
+          minLines = 2,
+          maxLines = 4
+        )
+        OutlinedTextField(
           value = feeText,
           onValueChange = { feeText = it },
           label = { Text("ဆရာဝန်ပြသခ / Consultation Fee (Ks)", fontSize = 11.sp) },
@@ -1500,6 +1509,7 @@ fun EditConsultationDialog(
             objective = objectiveText,
             assessment = assessmentText,
             plan = planText,
+            patientInstructions = patientInstructionsText,
             consultationFee = newFee
           )
           onSave(updated)

@@ -66,7 +66,8 @@ fun ClinicalHistorySection(
   }
 
   // Auto-init remarks from reception chief complaint or existing subjective notes
-  LaunchedEffect(patientId, patientChiefComplaint, subjectiveNotes) {
+  LaunchedEffect(patientId, patientChiefComplaint) {
+    if (initializedFromExisting) return@LaunchedEffect
     if (patientChiefComplaint.isNotBlank()) {
       if (historyRemarks.isBlank() || historyRemarks == "General clinical consultation") {
         historyRemarks = patientChiefComplaint
@@ -659,7 +660,8 @@ fun ClinicalHistorySection(
                 modifier = Modifier.fillMaxWidth(),
                 textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
                 shape = RoundedCornerShape(4.dp),
-                singleLine = false, minLines = 1, maxLines = 3
+                singleLine = false, minLines = 1, maxLines = 4,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
               )
             }
           }
@@ -1357,6 +1359,8 @@ fun ClinicalHistorySection(
     OutlinedTextField(
       value = historyRemarks,
       onValueChange = { historyRemarks = it },
+      singleLine = false, minLines = 2, maxLines = 5,
+      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default),
       placeholder = { Text("ရောဂါရာဇဝင် အသေးစိတ်၊ လူနာပြောပြချက်များနှင့် အထွေထွေမှတ်ချက်များကို လွတ်လပ်စွာ ရိုက်ထည့်နိုင်ပါသည်...", fontSize = 11.sp, color = SlateMuted) },
       modifier = Modifier
         .fillMaxWidth()

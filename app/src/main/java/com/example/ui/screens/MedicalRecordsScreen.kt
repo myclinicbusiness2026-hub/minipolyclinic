@@ -1,4 +1,4 @@
-package com.example.ui.screens
+﻿package com.example.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.model.*
 import com.example.ui.components.ChronicDiseaseTrendsDialog
+import com.example.ui.components.EditPatientDialog
 import com.example.ui.components.FollowUpPatientDialog
 import com.example.ui.components.MedicalAttachmentsDialog
 import com.example.ui.components.VaccinationTrackerDialog
@@ -72,6 +73,7 @@ fun MedicalRecordsScreen(
   var attachmentsConsultation by remember { mutableStateOf<ConsultationRecord?>(null) }
   var showFollowUpConfirmDialog by remember { mutableStateOf<Patient?>(null) }
   var editingConsultation by remember { mutableStateOf<ConsultationRecord?>(null) }
+  var editingPatient by remember { mutableStateOf<Patient?>(null) }
   val context = androidx.compose.ui.platform.LocalContext.current
 
   val todayIso = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
@@ -389,7 +391,8 @@ fun MedicalRecordsScreen(
                 onOpenVaccines = { vaccinesPatient = activePatient },
                 onOpenAttachments = { consult -> attachmentsConsultation = consult },
                 onRequestFollowUpQueue = { showFollowUpConfirmDialog = activePatient },
-                onEditRecord = { consult -> editingConsultation = consult }
+                onEditRecord = { consult -> editingConsultation = consult },
+                onEditPatient = { p -> editingPatient = p }
               )
             } else {
               EmptyRecordsSelection()
@@ -442,7 +445,8 @@ fun MedicalRecordsScreen(
                 onOpenVaccines = { vaccinesPatient = activePatient },
                 onOpenAttachments = { consult -> attachmentsConsultation = consult },
                 onRequestFollowUpQueue = { showFollowUpConfirmDialog = activePatient },
-                onEditRecord = { consult -> editingConsultation = consult }
+                onEditRecord = { consult -> editingConsultation = consult },
+                onEditPatient = { p -> editingPatient = p }
               )
             }
           }
@@ -650,6 +654,18 @@ fun MedicalRecordsScreen(
       }
     )
   }
+
+  editingPatient?.let { p ->
+    EditPatientDialog(
+      patient = p,
+      onDismiss = { editingPatient = null },
+      onSave = { updated ->
+        viewModel.updatePatient(updated)
+        editingPatient = null
+        android.widget.Toast.makeText(context, "Patient information updated successfully", android.widget.Toast.LENGTH_SHORT).show()
+      }
+    )
+  }
 }
 
 /**
@@ -804,7 +820,8 @@ private fun PatientDetailedEmrPane(
   onOpenVaccines: () -> Unit,
   onOpenAttachments: (ConsultationRecord) -> Unit,
   onRequestFollowUpQueue: () -> Unit,
-  onEditRecord: (ConsultationRecord) -> Unit
+  onEditRecord: (ConsultationRecord) -> Unit,
+  onEditPatient: (Patient) -> Unit = {}
 ) {
   Column(
     modifier = Modifier
@@ -876,17 +893,33 @@ private fun PatientDetailedEmrPane(
             }
           }
 
-          // Explicit Action: Register Follow-up
-          Button(
-            onClick = onRequestFollowUpQueue,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7E22CE)),
-            shape = RoundedCornerShape(6.dp),
-            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-            modifier = Modifier.height(30.dp)
+          Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
           ) {
-            Icon(Icons.Default.EventRepeat, contentDescription = null, modifier = Modifier.size(13.dp))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("Register Follow-Up", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+            OutlinedButton(
+              onClick = { onEditPatient(patient) },
+              shape = RoundedCornerShape(6.dp),
+              contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+              modifier = Modifier.height(30.dp)
+            ) {
+              Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(13.dp), tint = SlateDark)
+              Spacer(modifier = Modifier.width(3.dp))
+              Text("Edit Info", fontSize = 10.sp, color = SlateDark, fontWeight = FontWeight.Bold)
+            }
+
+            // Explicit Action: Register Follow-up
+            Button(
+              onClick = onRequestFollowUpQueue,
+              colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7E22CE)),
+              shape = RoundedCornerShape(6.dp),
+              contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+              modifier = Modifier.height(30.dp)
+            ) {
+              Icon(Icons.Default.EventRepeat, contentDescription = null, modifier = Modifier.size(13.dp))
+              Spacer(modifier = Modifier.width(4.dp))
+              Text("Register Follow-Up", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+            }
           }
         }
 
@@ -1141,6 +1174,33 @@ private fun ConsultationVisitTimelineCard(
         HorizontalDivider(color = BorderGrey, thickness = 0.6.dp)
         Spacer(modifier = Modifier.height(8.dp))
 
+        // 0. Vital Signs Strip
+        Surface(
+          shape = RoundedCornerShape(6.dp),
+          color = BgLightGray,
+          border = BorderStroke(0.6.dp, BorderGrey),
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(horizontal = 8.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceAround
+          ) {
+            VitalBox("BP", consultation.vitals.bloodPressure.ifBlank { "120/80" })
+            VitalBox("Pulse", " bpm")
+            VitalBox("Temp", consultation.vitals.formattedTemperatureF)
+            VitalBox("SpO2", "%")
+            if (consultation.vitals.weightKg > 0) {
+              VitalBox("Weight", " kg")
+            }
+            if (consultation.vitals.rbs > 0) {
+              VitalBox("RBS", " mg/dL")
+            }
+          }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+
         // 1. Chief Complaint & History
         if (consultation.subjective.isNotBlank()) {
           Text("Chief Complaint & Clinical History:", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
@@ -1203,15 +1263,136 @@ private fun ConsultationVisitTimelineCard(
           Spacer(modifier = Modifier.height(6.dp))
         }
 
-        // 5. Procedures
-        if (consultation.selectedProcedures.isNotEmpty()) {
-          Text("Clinical Procedures Performed:", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
-          consultation.selectedProcedures.forEach { proc ->
-            Text("• ${proc.name} (Fee: ${proc.standardFee.toInt()} MMK)", fontSize = 10.sp, color = SlateDark)
+        // Suggested Lab & Diagnostic Investigations
+        if (consultation.suggestedInvestigations.isNotEmpty()) {
+          Text("Suggested Lab & Diagnostic Investigations (á€“á€¬á€á€ºá€á€½á€²/á€…á€…á€ºá€†á€±á€¸á€á€»á€€á€ºá€™á€»á€¬á€¸):", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
+          Spacer(modifier = Modifier.height(2.dp))
+          Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+          ) {
+            consultation.suggestedInvestigations.forEach { inv ->
+              Surface(
+                shape = RoundedCornerShape(4.dp),
+                color = Color(0xFFEFF6FF),
+                border = BorderStroke(0.6.dp, Color(0xFF93C5FD))
+              ) {
+                Text(
+                  "ðŸ”¬ ",
+                  fontSize = 9.5.sp,
+                  fontWeight = FontWeight.Medium,
+                  color = SkyBlueDark,
+                  modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+              }
+            }
           }
           Spacer(modifier = Modifier.height(6.dp))
         }
 
+        // Day-Care Treatment & Injections
+        val injectionDrugs = consultation.prescriptions.filter { drug ->
+          drug.effectiveName.contains("Inj", ignoreCase = true) ||
+          drug.dosage.contains("Inj", ignoreCase = true) ||
+          drug.instructions.contains("IM", ignoreCase = true) ||
+          drug.instructions.contains("IV", ignoreCase = true) ||
+          drug.instructions.contains("Neb", ignoreCase = true) ||
+          drug.instructions.contains("Drip", ignoreCase = true)
+        }
+        if (injectionDrugs.isNotEmpty()) {
+          Text("Treatment & Injections (á€†á€±á€¸á€‘á€­á€¯á€¸ / á€†á€±á€¸á€žá€½á€„á€ºá€¸á€€á€¯á€žá€™á€¾á€¯):", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
+          Spacer(modifier = Modifier.height(2.dp))
+          Surface(
+            shape = RoundedCornerShape(4.dp),
+            color = SoftGreenContainer.copy(alpha = 0.4f),
+            border = BorderStroke(0.6.dp, MedicalGreen.copy(alpha = 0.4f)),
+            modifier = Modifier.fillMaxWidth()
+          ) {
+            Column(modifier = Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+              injectionDrugs.forEachIndexed { idx, drug ->
+                val route = when {
+                  drug.instructions.contains("IV", ignoreCase = true) -> "IV Route"
+                  drug.instructions.contains("IM", ignoreCase = true) -> "IM Route"
+                  drug.instructions.contains("Neb", ignoreCase = true) -> "Nebulization"
+                  else -> "Injection"
+                }
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.SpaceBetween,
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Text(
+                    "ðŸ’‰ []  ()",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MedicalGreenDark
+                  )
+                  Text(" â€¢ ", fontSize = 9.5.sp, color = SlateMedium)
+                }
+              }
+            }
+          }
+          Spacer(modifier = Modifier.height(6.dp))
+        }
+
+        // 5. Clinical Procedures Performed with Notes and Date/Time
+        if (consultation.selectedProcedures.isNotEmpty()) {
+          Text("Clinical Procedures Performed (á€€á€¯á€žá€™á€¾á€¯á€œá€¯á€•á€ºá€†á€±á€¬á€„á€ºá€á€»á€€á€ºá€™á€»á€¬á€¸):", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
+          Spacer(modifier = Modifier.height(2.dp))
+          Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            consultation.selectedProcedures.forEach { proc ->
+              Surface(
+                shape = RoundedCornerShape(4.dp),
+                color = BgLightGray,
+                border = BorderStroke(0.6.dp, BorderGrey),
+                modifier = Modifier.fillMaxWidth()
+              ) {
+                Column(modifier = Modifier.padding(6.dp)) {
+                  Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                  ) {
+                    Text("â€¢  []", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+                    Text(
+                      " MMK",
+                      fontSize = 9.5.sp,
+                      fontWeight = FontWeight.SemiBold,
+                      color = MedicalGreenDark
+                    )
+                  }
+                  if (proc.dateTime.isNotBlank()) {
+                    Text("Time: ", fontSize = 8.5.sp, color = SlateMedium)
+                  }
+                  if (proc.notes.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text("Operative Notes: ", fontSize = 9.5.sp, color = SlateDark)
+                  }
+                }
+              }
+            }
+          }
+          Spacer(modifier = Modifier.height(6.dp))
+        }
+
+        // Doctor's Advice & Patient Instructions
+        if (consultation.patientInstructions.isNotBlank()) {
+          Text("Doctor's Advice & Patient Instructions (á€†á€›á€¬á€á€”á€ºá á€Šá€½á€¾á€”á€ºá€€á€¼á€¬á€¸á€á€»á€€á€ºá€™á€»á€¬á€¸):", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
+          Spacer(modifier = Modifier.height(2.dp))
+          Surface(
+            shape = RoundedCornerShape(4.dp),
+            color = Color(0xFFFEF3C7).copy(alpha = 0.6f),
+            border = BorderStroke(0.6.dp, Color(0xFFF59E0B).copy(alpha = 0.5f)),
+            modifier = Modifier.fillMaxWidth()
+          ) {
+            Text(
+              consultation.patientInstructions,
+              fontSize = 10.sp,
+              color = Color(0xFF92400E),
+              modifier = Modifier.padding(6.dp)
+            )
+          }
+          Spacer(modifier = Modifier.height(6.dp))
+        }
         // 6. Follow-up
         if (consultation.followUpAppointment.isNotBlank()) {
           Surface(

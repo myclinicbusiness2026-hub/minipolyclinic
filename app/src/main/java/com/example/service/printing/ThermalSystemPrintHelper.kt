@@ -156,7 +156,8 @@ class ThermalReceiptPrintAdapter(
     canvas.drawText("Cashier : $cashierName", margin, y, paint)
     paint.textAlign = Paint.Align.RIGHT
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    canvas.drawText(if (invoice.isPaid) "PAID (${invoice.paymentMethod.label})" else "UNPAID", width - margin, y, paint)
+    val isPaid = invoice.isPaid || invoice.paymentStatus.equals("Paid", ignoreCase = true)
+    canvas.drawText(if (isPaid) "PAID (${invoice.paymentMethod.label})" else "UNPAID", width - margin, y, paint)
     y += 10f
 
     // Divider
