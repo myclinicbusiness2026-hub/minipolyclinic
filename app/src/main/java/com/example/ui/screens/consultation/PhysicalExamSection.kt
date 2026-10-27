@@ -1,4 +1,4 @@
-package com.example.ui.screens.consultation
+﻿package com.example.ui.screens.consultation
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -1175,10 +1175,8 @@ fun PhysicalExamSection(
               )
             }
           }
-          }
         }
       }
-    }
 
     // Documented Findings Summary Card
     if (pinFindings.isNotEmpty() || typedNotes.isNotBlank()) {
