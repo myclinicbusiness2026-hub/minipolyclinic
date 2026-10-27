@@ -1226,8 +1226,6 @@ fun CreateTreatmentCardModal(
                         medFeeText = med.sellingPrice.toInt().toString()
                         if (med.standardDosage.isNotBlank()) {
                           dosage = med.standardDosage
-                        } else if (med.strength.isNotBlank()) {
-                          dosage = med.strength
                         }
                         storeSearchQuery = ""
                       }
