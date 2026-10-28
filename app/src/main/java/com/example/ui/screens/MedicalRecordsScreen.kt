@@ -1,4 +1,4 @@
-﻿package com.example.ui.screens
+package com.example.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -18,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -838,28 +839,30 @@ private fun PatientDetailedEmrPane(
       border = BorderStroke(1.dp, BorderGrey)
     ) {
       Column(modifier = Modifier.padding(12.dp)) {
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.Top
-        ) {
-          Row(verticalAlignment = Alignment.CenterVertically) {
+        val screenWidthDp = LocalConfiguration.current.screenWidthDp
+        val isMobilePortrait = screenWidthDp < 600
+
+        if (isMobilePortrait) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+          ) {
             Box(
               modifier = Modifier
-                .size(42.dp)
+                .size(40.dp)
                 .clip(CircleShape)
                 .background(MedicalGreen),
               contentAlignment = Alignment.Center
             ) {
               Text(
                 patient.name.take(1).uppercase(),
-                fontSize = 18.sp,
+                fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
                 color = PureWhite
               )
             }
             Spacer(modifier = Modifier.width(10.dp))
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
               Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                   patient.name,
@@ -883,7 +886,7 @@ private fun PatientDetailedEmrPane(
               }
               Spacer(modifier = Modifier.height(2.dp))
               Text(
-                "${patient.age} Years • ${patient.gender.label} • Blood: ${patient.bloodType} • 📞 ${patient.phone}",
+                "${patient.age} Yrs • ${patient.gender.label} • ${patient.bloodType} • 📞 ${patient.phone}",
                 fontSize = 11.sp,
                 color = SlateMedium
               )
@@ -893,32 +896,119 @@ private fun PatientDetailedEmrPane(
             }
           }
 
+          Spacer(modifier = Modifier.height(8.dp))
+
           Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
           ) {
             OutlinedButton(
               onClick = { onEditPatient(patient) },
               shape = RoundedCornerShape(6.dp),
-              contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-              modifier = Modifier.height(30.dp)
+              contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+              modifier = Modifier.height(32.dp).weight(1f)
             ) {
               Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(13.dp), tint = SlateDark)
-              Spacer(modifier = Modifier.width(3.dp))
-              Text("Edit Info", fontSize = 10.sp, color = SlateDark, fontWeight = FontWeight.Bold)
+              Spacer(modifier = Modifier.width(4.dp))
+              Text("Edit Info", fontSize = 11.sp, color = SlateDark, fontWeight = FontWeight.Bold)
             }
 
-            // Explicit Action: Register Follow-up
             Button(
               onClick = onRequestFollowUpQueue,
               colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7E22CE)),
               shape = RoundedCornerShape(6.dp),
               contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-              modifier = Modifier.height(30.dp)
+              modifier = Modifier.height(32.dp).weight(1.3f)
             ) {
               Icon(Icons.Default.EventRepeat, contentDescription = null, modifier = Modifier.size(13.dp))
               Spacer(modifier = Modifier.width(4.dp))
               Text("Register Follow-Up", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+            }
+          }
+        } else {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+          ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Box(
+                modifier = Modifier
+                  .size(42.dp)
+                  .clip(CircleShape)
+                  .background(MedicalGreen),
+                contentAlignment = Alignment.Center
+              ) {
+                Text(
+                  patient.name.take(1).uppercase(),
+                  fontSize = 18.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = PureWhite
+                )
+              }
+              Spacer(modifier = Modifier.width(10.dp))
+              Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                  Text(
+                    patient.name,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = DarkGrayText
+                  )
+                  Spacer(modifier = Modifier.width(6.dp))
+                  Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = SoftGreenContainer
+                  ) {
+                    Text(
+                      patient.hn,
+                      fontSize = 10.sp,
+                      fontWeight = FontWeight.Bold,
+                      color = MedicalGreenDark,
+                      modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
+                    )
+                  }
+                }
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                  "${patient.age} Years • ${patient.gender.label} • Blood: ${patient.bloodType} • 📞 ${patient.phone}",
+                  fontSize = 11.sp,
+                  color = SlateMedium
+                )
+                if (patient.address.isNotBlank()) {
+                  Text("🏠 ${patient.address}", fontSize = 10.sp, color = SlateMuted)
+                }
+              }
+            }
+
+            Row(
+              horizontalArrangement = Arrangement.spacedBy(6.dp),
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              OutlinedButton(
+                onClick = { onEditPatient(patient) },
+                shape = RoundedCornerShape(6.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.height(30.dp)
+              ) {
+                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(13.dp), tint = SlateDark)
+                Spacer(modifier = Modifier.width(3.dp))
+                Text("Edit Info", fontSize = 10.sp, color = SlateDark, fontWeight = FontWeight.Bold)
+              }
+
+              // Explicit Action: Register Follow-up
+              Button(
+                onClick = onRequestFollowUpQueue,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7E22CE)),
+                shape = RoundedCornerShape(6.dp),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                modifier = Modifier.height(30.dp)
+              ) {
+                Icon(Icons.Default.EventRepeat, contentDescription = null, modifier = Modifier.size(13.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Register Follow-Up", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+              }
             }
           }
         }
@@ -1079,78 +1169,163 @@ private fun ConsultationVisitTimelineCard(
     border = BorderStroke(1.dp, BorderGrey)
   ) {
     Column(modifier = Modifier.padding(10.dp)) {
-      // Header: Visit # + Date + Doctor + Print Button + Expand Toggle
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-      ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-          Box(
-            modifier = Modifier
-              .size(28.dp)
-              .clip(RoundedCornerShape(6.dp))
-              .background(SoftGreenContainer),
-            contentAlignment = Alignment.Center
-          ) {
-            Text(
-              "V$visitNumber",
-              fontWeight = FontWeight.Bold,
-              fontSize = 11.sp,
-              color = MedicalGreenDark
-            )
-          }
-          Spacer(modifier = Modifier.width(8.dp))
-          Column {
-            Text(
-              "Visit Date: ${consultation.timestamp}",
-              fontWeight = FontWeight.Bold,
-              fontSize = 11.5.sp,
-              color = DarkGrayText
-            )
-            Text(
-              "Attending: ${consultation.doctorName} (SAMA: ${consultation.doctorSama})",
-              fontSize = 9.5.sp,
-              color = SlateMuted
-            )
-          }
-        }
+      val visitScreenWidthDp = LocalConfiguration.current.screenWidthDp
+      val isVisitMobile = visitScreenWidthDp < 600
 
-        // Action Buttons: A4 Print, Edit & Expand Toggle
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-          Button(
-            onClick = onPrintA4,
-            colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
-            shape = RoundedCornerShape(4.dp),
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-            modifier = Modifier.height(26.dp)
-          ) {
-            Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(12.dp))
-            Spacer(modifier = Modifier.width(3.dp))
-            Text("A4 Print", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
-          }
-
-          OutlinedButton(
-            onClick = onEditRecord,
-            shape = RoundedCornerShape(4.dp),
-            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-            modifier = Modifier.height(26.dp)
-          ) {
-            Icon(Icons.Default.Edit, contentDescription = null, tint = SkyBlueDark, modifier = Modifier.size(12.dp))
-            Spacer(modifier = Modifier.width(3.dp))
-            Text("Edit", fontSize = 9.5.sp, color = SkyBlueDark, fontWeight = FontWeight.Bold)
+      if (isVisitMobile) {
+        // Mobile Layout: Info Row with Expand Toggle on right
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+            Box(
+              modifier = Modifier
+                .size(28.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(SoftGreenContainer),
+              contentAlignment = Alignment.Center
+            ) {
+              Text(
+                "V$visitNumber",
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp,
+                color = MedicalGreenDark
+              )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+              Text(
+                "Visit Date: ${consultation.timestamp}",
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.5.sp,
+                color = DarkGrayText
+              )
+              Text(
+                "Attending: ${consultation.doctorName} (SAMA: ${consultation.doctorSama})",
+                fontSize = 9.5.sp,
+                color = SlateMuted
+              )
+            }
           }
 
           IconButton(
             onClick = { isExpanded = !isExpanded },
-            modifier = Modifier.size(26.dp)
+            modifier = Modifier.size(28.dp)
           ) {
             Icon(
               if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
               contentDescription = "Expand",
               tint = SlateMedium,
-              modifier = Modifier.size(18.dp)
+              modifier = Modifier.size(20.dp)
             )
+          }
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Action Buttons Row: A4 Print & Edit Record (clearly visible and easy to tap)
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Button(
+            onClick = onPrintA4,
+            colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+            shape = RoundedCornerShape(4.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+            modifier = Modifier.height(28.dp).weight(1f)
+          ) {
+            Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(13.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("A4 Print", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+          }
+
+          OutlinedButton(
+            onClick = onEditRecord,
+            shape = RoundedCornerShape(4.dp),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+            modifier = Modifier.height(28.dp).weight(1f)
+          ) {
+            Icon(Icons.Default.Edit, contentDescription = null, tint = SkyBlueDark, modifier = Modifier.size(13.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("Edit Record", fontSize = 10.sp, color = SkyBlueDark, fontWeight = FontWeight.Bold)
+          }
+        }
+      } else {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+            Box(
+              modifier = Modifier
+                .size(28.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(SoftGreenContainer),
+              contentAlignment = Alignment.Center
+            ) {
+              Text(
+                "V$visitNumber",
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp,
+                color = MedicalGreenDark
+              )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+              Text(
+                "Visit Date: ${consultation.timestamp}",
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.5.sp,
+                color = DarkGrayText
+              )
+              Text(
+                "Attending: ${consultation.doctorName} (SAMA: ${consultation.doctorSama})",
+                fontSize = 9.5.sp,
+                color = SlateMuted
+              )
+            }
+          }
+
+          Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Button(
+              onClick = onPrintA4,
+              colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+              shape = RoundedCornerShape(4.dp),
+              contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+              modifier = Modifier.height(26.dp)
+            ) {
+              Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(12.dp))
+              Spacer(modifier = Modifier.width(3.dp))
+              Text("A4 Print", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+            }
+
+            OutlinedButton(
+              onClick = onEditRecord,
+              shape = RoundedCornerShape(4.dp),
+              contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+              modifier = Modifier.height(26.dp)
+            ) {
+              Icon(Icons.Default.Edit, contentDescription = null, tint = SkyBlueDark, modifier = Modifier.size(12.dp))
+              Spacer(modifier = Modifier.width(3.dp))
+              Text("Edit", fontSize = 9.5.sp, color = SkyBlueDark, fontWeight = FontWeight.Bold)
+            }
+
+            IconButton(
+              onClick = { isExpanded = !isExpanded },
+              modifier = Modifier.size(26.dp)
+            ) {
+              Icon(
+                if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = "Expand",
+                tint = SlateMedium,
+                modifier = Modifier.size(18.dp)
+              )
+            }
           }
         }
       }
@@ -1188,14 +1363,14 @@ private fun ConsultationVisitTimelineCard(
             horizontalArrangement = Arrangement.SpaceAround
           ) {
             VitalBox("BP", consultation.vitals.bloodPressure.ifBlank { "120/80" })
-            VitalBox("Pulse", " bpm")
+            VitalBox("Pulse", "${consultation.vitals.pulseBpm} bpm")
             VitalBox("Temp", consultation.vitals.formattedTemperatureF)
-            VitalBox("SpO2", "%")
+            VitalBox("SpO2", "${consultation.vitals.spO2}%")
             if (consultation.vitals.weightKg > 0) {
-              VitalBox("Weight", " kg")
+              VitalBox("Weight", "${consultation.vitals.weightKg} kg")
             }
             if (consultation.vitals.rbs > 0) {
-              VitalBox("RBS", " mg/dL")
+              VitalBox("RBS", "${consultation.vitals.rbs} mg/dL")
             }
           }
         }
@@ -1265,7 +1440,7 @@ private fun ConsultationVisitTimelineCard(
 
         // Suggested Lab & Diagnostic Investigations
         if (consultation.suggestedInvestigations.isNotEmpty()) {
-          Text("Suggested Lab & Diagnostic Investigations (á€“á€¬á€á€ºá€á€½á€²/á€…á€…á€ºá€†á€±á€¸á€á€»á€€á€ºá€™á€»á€¬á€¸):", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
+          Text("Suggested Lab & Diagnostic Investigations (ဓာတ်ခွဲ/စစ်ဆေးချက်များ):", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
           Spacer(modifier = Modifier.height(2.dp))
           Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -1278,7 +1453,7 @@ private fun ConsultationVisitTimelineCard(
                 border = BorderStroke(0.6.dp, Color(0xFF93C5FD))
               ) {
                 Text(
-                  "ðŸ”¬ ",
+                  "🔬 ${inv.testName}",
                   fontSize = 9.5.sp,
                   fontWeight = FontWeight.Medium,
                   color = SkyBlueDark,
@@ -1300,7 +1475,7 @@ private fun ConsultationVisitTimelineCard(
           drug.instructions.contains("Drip", ignoreCase = true)
         }
         if (injectionDrugs.isNotEmpty()) {
-          Text("Treatment & Injections (á€†á€±á€¸á€‘á€­á€¯á€¸ / á€†á€±á€¸á€žá€½á€„á€ºá€¸á€€á€¯á€žá€™á€¾á€¯):", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
+          Text("Treatment & Injections (ဆေးထိုး / ဆေးသွင်းကုသမှု):", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
           Spacer(modifier = Modifier.height(2.dp))
           Surface(
             shape = RoundedCornerShape(4.dp),
@@ -1322,12 +1497,12 @@ private fun ConsultationVisitTimelineCard(
                   verticalAlignment = Alignment.CenterVertically
                 ) {
                   Text(
-                    "ðŸ’‰ []  ()",
+                    "💉 ${drug.effectiveName} [${drug.dosage}] (${route})",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = MedicalGreenDark
                   )
-                  Text(" â€¢ ", fontSize = 9.5.sp, color = SlateMedium)
+                  Text("${drug.quantity} ${drug.unitType} • ${drug.instructions}", fontSize = 9.5.sp, color = SlateMedium)
                 }
               }
             }
@@ -1337,7 +1512,7 @@ private fun ConsultationVisitTimelineCard(
 
         // 5. Clinical Procedures Performed with Notes and Date/Time
         if (consultation.selectedProcedures.isNotEmpty()) {
-          Text("Clinical Procedures Performed (á€€á€¯á€žá€™á€¾á€¯á€œá€¯á€•á€ºá€†á€±á€¬á€„á€ºá€á€»á€€á€ºá€™á€»á€¬á€¸):", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
+          Text("Clinical Procedures Performed (ကုသမှုလုပ်ဆောင်ချက်များ):", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
           Spacer(modifier = Modifier.height(2.dp))
           Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             consultation.selectedProcedures.forEach { proc ->
@@ -1352,20 +1527,20 @@ private fun ConsultationVisitTimelineCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                   ) {
-                    Text("â€¢  []", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+                    Text("• ${proc.name} [${proc.category.name}]", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
                     Text(
-                      " MMK",
+                      "${proc.price.toInt()} MMK",
                       fontSize = 9.5.sp,
                       fontWeight = FontWeight.SemiBold,
                       color = MedicalGreenDark
                     )
                   }
                   if (proc.dateTime.isNotBlank()) {
-                    Text("Time: ", fontSize = 8.5.sp, color = SlateMedium)
+                    Text("Time: ${proc.dateTime}", fontSize = 8.5.sp, color = SlateMedium)
                   }
                   if (proc.notes.isNotBlank()) {
                     Spacer(modifier = Modifier.height(2.dp))
-                    Text("Operative Notes: ", fontSize = 9.5.sp, color = SlateDark)
+                    Text("Operative Notes: ${proc.notes}", fontSize = 9.5.sp, color = SlateDark)
                   }
                 }
               }
@@ -1376,7 +1551,7 @@ private fun ConsultationVisitTimelineCard(
 
         // Doctor's Advice & Patient Instructions
         if (consultation.patientInstructions.isNotBlank()) {
-          Text("Doctor's Advice & Patient Instructions (á€†á€›á€¬á€á€”á€ºá á€Šá€½á€¾á€”á€ºá€€á€¼á€¬á€¸á€á€»á€€á€ºá€™á€»á€¬á€¸):", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
+          Text("Doctor's Advice & Patient Instructions (ဆရာဝန်၏ ညွှန်ကြားချက်များ):", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
           Spacer(modifier = Modifier.height(2.dp))
           Surface(
             shape = RoundedCornerShape(4.dp),

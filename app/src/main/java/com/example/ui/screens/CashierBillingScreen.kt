@@ -1185,7 +1185,7 @@ private fun BillingPatientHeaderCard(
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
-              if (activeInvoice.isPaid) "PAID (á€„á€½á€±á€›á€¾á€„á€ºá€¸á€•á€¼á€®á€¸)" else "UNPAID (á€„á€½á€±á€™á€›á€¾á€„á€ºá€¸á€›á€žá€±á€¸)",
+              if (activeInvoice.isPaid) "PAID (ငွေရှင်းပြီး)" else "UNPAID (ငွေမရှင်းရသေး)",
               fontWeight = FontWeight.Bold,
               fontSize = 9.5.sp,
               color = if (activeInvoice.isPaid) StatusSuccess else StatusWarning

@@ -120,7 +120,7 @@ fun RegisterPatientDialog(
         Spacer(modifier = Modifier.height(12.dp))
 
         // Visit Type Selection: Doctor Consultation vs Direct Injection / Day-Care
-        Text("á€œá€¬á€›á€±á€¬á€€á€ºá€žá€Šá€·á€º á€›á€Šá€ºá€›á€½á€šá€ºá€á€»á€€á€º (Visit Type):", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = SlateDark)
+        Text("လာရောက်သည့် ရည်ရွယ်ချက် (Visit Type):", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = SlateDark)
         Spacer(modifier = Modifier.height(4.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
           Surface(
@@ -142,7 +142,7 @@ fun RegisterPatientDialog(
               )
               Spacer(modifier = Modifier.width(4.dp))
               Column {
-                Text("á€†á€›á€¬á€á€”á€ºá€•á€¼á€žá€›á€”á€º", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+                Text("ဆရာဝန်ပြသရန်", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
                 Text("Doctor Consultation", fontSize = 9.sp, color = SlateMedium)
               }
             }
@@ -154,7 +154,7 @@ fun RegisterPatientDialog(
               .clickable {
                 isDirectInjection = true
                 if (chiefComplaint.isBlank()) {
-                  chiefComplaint = "á€á€­á€¯á€€á€ºá€›á€­á€¯á€€á€ºá€†á€±á€¸á€‘á€­á€¯á€¸ / Day-Care (Direct Injection)"
+                  chiefComplaint = "တိုက်ရိုက်ဆေးထိုး / Day-Care (Direct Injection)"
                 }
               },
             shape = RoundedCornerShape(8.dp),
@@ -170,14 +170,14 @@ fun RegisterPatientDialog(
                 onClick = {
                   isDirectInjection = true
                   if (chiefComplaint.isBlank()) {
-                    chiefComplaint = "á€á€­á€¯á€€á€ºá€›á€­á€¯á€€á€ºá€†á€±á€¸á€‘á€­á€¯á€¸ / Day-Care (Direct Injection)"
+                  chiefComplaint = "တိုက်ရိုက်ဆေးထိုး / Day-Care (Direct Injection)"
                   }
                 },
                 colors = RadioButtonDefaults.colors(selectedColor = SkyBluePrimary)
               )
               Spacer(modifier = Modifier.width(4.dp))
               Column {
-                Text("á€á€­á€¯á€€á€ºá€›á€­á€¯á€€á€ºá€†á€±á€¸á€‘á€­á€¯á€¸", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+                Text("တိုက်ရိုက်ဆေးထိုး", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
                 Text("Direct Injection (No Doc)", fontSize = 9.sp, color = SkyBlueDark)
               }
             }
@@ -355,7 +355,7 @@ fun RegisterPatientDialog(
                 address.trim(),
                 bloodType,
                 allergyList,
-                chiefComplaint.ifBlank { if (isDirectInjection) "á€á€­á€¯á€€á€ºá€›á€­á€¯á€€á€ºá€†á€±á€¸á€‘á€­á€¯á€¸ / Day-Care (Direct Injection)" else "General clinical consultation" },
+                chiefComplaint.ifBlank { if (isDirectInjection) "တိုက်ရိုက်ဆေးထိုး / Day-Care (Direct Injection)" else "General clinical consultation" },
                 bp,
                 pulseText.toIntOrNull() ?: 75,
                 tempText.toDoubleOrNull() ?: 36.8,

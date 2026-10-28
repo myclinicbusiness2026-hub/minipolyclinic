@@ -75,6 +75,15 @@ fun TreatmentScreen(
     list.sortedBy { it.second.scheduledDate + it.second.scheduledTime }
   }
 
+  val filteredTodayDueSessions = remember(todayDueSessions, searchQuery) {
+    if (searchQuery.isBlank()) todayDueSessions
+    else todayDueSessions.filter { (card, _) ->
+      card.patientName.contains(searchQuery, ignoreCase = true) ||
+      card.patientHn.contains(searchQuery, ignoreCase = true) ||
+      card.medicationName.contains(searchQuery, ignoreCase = true)
+    }
+  }
+
   val activeCardsCount = treatmentCards.count { !it.isDiscontinued && !it.isFullyCompleted }
   val completedCardsCount = treatmentCards.count { it.isFullyCompleted }
 
@@ -317,13 +326,45 @@ fun TreatmentScreen(
       )
     }
 
-    Spacer(modifier = Modifier.height(8.dp))
+    Spacer(modifier = Modifier.height(6.dp))
+
+    // Search Bar for Treatment Cards & Patients
+    Surface(
+      shape = RoundedCornerShape(8.dp),
+      color = PureWhite,
+      border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+      modifier = Modifier.fillMaxWidth()
+    ) {
+      OutlinedTextField(
+        value = searchQuery,
+        onValueChange = { searchQuery = it },
+        placeholder = { Text("လူနာအမည်၊ HN သို့မဟုတ် ဆေးအမည်ဖြင့် ရှာဖွေပါ...", fontSize = 11.sp, color = SlateMuted) },
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(16.dp)) },
+        trailingIcon = {
+          if (searchQuery.isNotBlank()) {
+            IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(24.dp)) {
+              Icon(Icons.Default.Clear, contentDescription = "Clear", modifier = Modifier.size(14.dp))
+            }
+          }
+        },
+        singleLine = true,
+        modifier = Modifier
+          .fillMaxWidth()
+          .height(44.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+          focusedBorderColor = Color.Transparent,
+          unfocusedBorderColor = Color.Transparent
+        )
+      )
+    }
+
+    Spacer(modifier = Modifier.height(6.dp))
 
     // 4. Tab Contents
     when (selectedTab) {
       0 -> {
         // TAB 0: TODAY DUE INJECTIONS
-        if (todayDueSessions.isEmpty()) {
+        if (filteredTodayDueSessions.isEmpty()) {
           Box(
             modifier = Modifier
               .weight(1f)
@@ -333,7 +374,12 @@ fun TreatmentScreen(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
               Icon(Icons.Default.CheckCircle, contentDescription = null, tint = StatusSuccess, modifier = Modifier.size(42.dp))
               Spacer(modifier = Modifier.height(6.dp))
-              Text("ယနေ့အတွက် ဆေးထိုးရန် ကျန်ရှိသူ မရှိပါ", fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+              Text(
+                if (searchQuery.isNotBlank()) "ရှာဖွေမှုနှင့် ကိုက်ညီသော ယနေ့ထိုးရန် ဆေးမရှိပါ" else "ယနေ့အတွက် ဆေးထိုးရန် ကျန်ရှိသူ မရှိပါ",
+                fontSize = 12.5.sp,
+                fontWeight = FontWeight.Bold,
+                color = SlateDark
+              )
               Text("All scheduled injection sessions for today are completed.", fontSize = 11.sp, color = SlateMuted)
             }
           }
@@ -342,7 +388,7 @@ fun TreatmentScreen(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(8.dp)
           ) {
-            items(todayDueSessions, key = { it.second.id }) { (card, session) ->
+            items(filteredTodayDueSessions, key = { it.second.id }) { (card, session) ->
               val patient = patients.find { it.id == card.patientId }
               Surface(
                 shape = RoundedCornerShape(8.dp),
@@ -1258,22 +1304,85 @@ fun CreateTreatmentCardModal(
             .verticalScroll(rememberScrollState()),
           verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-          // Patient selector
-          Text("လူနာ ရွေးချယ်ပါ (Select Patient):", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+          // Searchable Patient Selector
+          var patientSearchQuery by remember { mutableStateOf("") }
+          val filteredPatients = remember(patients, patientSearchQuery) {
+            if (patientSearchQuery.isBlank()) patients.take(12)
+            else patients.filter {
+              it.name.contains(patientSearchQuery, ignoreCase = true) ||
+              it.hn.contains(patientSearchQuery, ignoreCase = true) ||
+              it.phone.contains(patientSearchQuery, ignoreCase = true)
+            }.take(12)
+          }
+
+          Text("လူနာ ရွေးချယ်ပါ (Select Patient):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+
+          // Currently Selected Patient Banner
+          Surface(
+            shape = RoundedCornerShape(6.dp),
+            color = if (selectedPatient != null) SoftGreenContainer else PureWhite,
+            border = BorderStroke(1.dp, if (selectedPatient != null) MedicalGreen else BorderGrey),
+            modifier = Modifier.fillMaxWidth()
           ) {
-            val currPatientId = selectedPatient?.id
-            patients.take(6).forEach { p ->
-              val isSel = currPatientId == p.id
-              FilterChip(
-                selected = isSel,
-                onClick = { selectedPatient = p },
-                label = { Text("${p.name} (${p.hn})", fontSize = 10.sp) },
-                colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MedicalGreen, selectedLabelColor = PureWhite)
-              )
+            Row(
+              modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              if (selectedPatient != null) {
+                Column {
+                  Text("ရွေးချယ်ထားသော လူနာ: ${selectedPatient?.name}", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+                  Text("HN: ${selectedPatient?.hn} • ${selectedPatient?.age} Yrs • 📞 ${selectedPatient?.phone}", fontSize = 9.5.sp, color = SlateMedium)
+                }
+                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(16.dp))
+              } else {
+                Text("လူနာ မရွေးချယ်ရသေးပါ (ရှာဖွေပြီး ရွေးချယ်ပါ)", fontSize = 10.5.sp, color = StatusWarning)
+              }
             }
+          }
+
+          // Search Field for Patient
+          OutlinedTextField(
+            value = patientSearchQuery,
+            onValueChange = { patientSearchQuery = it },
+            placeholder = { Text("လူနာအမည်၊ HN သို့မဟုတ် ဖုန်းဖြင့် ရှာရန်...", fontSize = 10.5.sp) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(15.dp)) },
+            trailingIcon = {
+              if (patientSearchQuery.isNotBlank()) {
+                IconButton(onClick = { patientSearchQuery = "" }, modifier = Modifier.size(20.dp)) {
+                  Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(14.dp))
+                }
+              }
+            },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+          )
+
+          // Filtered Patient Quick Select Chips
+          if (filteredPatients.isNotEmpty()) {
+            Row(
+              modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+              horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+              filteredPatients.forEach { p ->
+                val isSel = selectedPatient?.id == p.id
+                FilterChip(
+                  selected = isSel,
+                  onClick = { selectedPatient = p },
+                  label = { Text("${p.name} (${p.hn})", fontSize = 10.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
+                  colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MedicalGreen,
+                    selectedLabelColor = PureWhite
+                  )
+                )
+              }
+            }
+          } else {
+            Text("ရှာဖွေမှုနှင့် ကိုက်ညီသော လူနာမတွေ့ပါ", fontSize = 9.5.sp, color = SlateLight)
           }
 
           // Store Inventory Search Box

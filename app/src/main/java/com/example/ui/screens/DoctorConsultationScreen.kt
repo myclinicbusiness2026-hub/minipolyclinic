@@ -1486,7 +1486,7 @@ fun EditConsultationDialog(
         OutlinedTextField(
           value = patientInstructionsText,
           onValueChange = { patientInstructionsText = it },
-          label = { Text("á€†á€›á€¬á€á€”á€ºá á€Šá€½á€¾á€”á€ºá€€á€¼á€¬á€¸á€á€»á€€á€º / Doctor's Advice & Instructions", fontSize = 11.sp) },
+          label = { Text("ဆရာဝန်၏ ညွှန်ကြားချက် / Doctor's Advice & Instructions", fontSize = 11.sp) },
           modifier = Modifier.fillMaxWidth(),
           minLines = 2,
           maxLines = 4

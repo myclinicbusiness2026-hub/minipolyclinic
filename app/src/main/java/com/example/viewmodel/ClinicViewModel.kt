@@ -548,7 +548,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     address: String,
     bloodType: String = "O+",
     allergies: List<String> = emptyList(),
-    chiefComplaint: String = "á€á€­á€¯á€€á€ºá€›á€­á€¯á€€á€ºá€†á€±á€¸á€‘á€­á€¯á€¸ / Day-Care (Direct Injection)",
+    chiefComplaint: String = "တိုက်ရိုက်ဆေးထိုး / Day-Care (Direct Injection)",
     bp: String = "120/80 mmHg",
     pulse: Int = 76,
     temp: Double = 98.4,
@@ -579,7 +579,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       registrationTime = BurmeseDateUtils.getNowFormatted(),
       vitals = vitals,
       knownAllergies = allergies,
-      chiefComplaint = chiefComplaint.ifBlank { "á€á€­á€¯á€€á€ºá€›á€­á€¯á€€á€ºá€†á€±á€¸á€‘á€­á€¯á€¸ / Day-Care (Direct Injection)" }
+      chiefComplaint = chiefComplaint.ifBlank { "တိုက်ရိုက်ဆေးထိုး / Day-Care (Direct Injection)" }
     )
     val updatedPatients = currentList + patient
     _patients.value = updatedPatients

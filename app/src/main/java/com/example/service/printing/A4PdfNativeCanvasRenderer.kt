@@ -1363,7 +1363,7 @@ object A4PdfNativeCanvasRenderer {
     paint.color = Color.rgb(0x0F, 0x76, 0x6E)
     paint.textSize = 10f
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    canvas.drawText("Treatment & Injections (á€†á€±á€¸á€‘á€­á€¯á€¸ / á€†á€±á€¸á€žá€½á€„á€ºá€¸ á€€á€¯á€žá€™á€¾á€¯):", 22f, currentY + 10f, paint)
+    canvas.drawText("Treatment & Injections (ဆေးထိုး / ဆေးသွင်း ကုသမှု):", 22f, currentY + 10f, paint)
     currentY += 15f
 
     injectionDrugs.forEachIndexed { idx, drug ->
@@ -1416,7 +1416,7 @@ object A4PdfNativeCanvasRenderer {
       paint.color = Color.rgb(0x0F, 0x76, 0x6E)
       paint.textSize = 10f
       paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-      canvas.drawText("Clinical Procedures & Minor Surgery (á€á€½á€²á€…á€­á€á€ºá€€á€¯á€žá€™á€¾á€¯á€”á€¾á€„á€·á€º á€œá€¯á€•á€ºá€‘á€¯á€¶á€¸á€œá€¯á€•á€ºá€”á€Šá€ºá€¸á€™á€»á€¬á€¸):", 22f, currentY + 10f, paint)
+      canvas.drawText("Clinical Procedures & Minor Surgery (ကုသမှုလုပ်ဆောင်ချက်များ):", 22f, currentY + 10f, paint)
       currentY += 15f
 
       consultation.selectedProcedures.forEach { proc ->
@@ -1466,7 +1466,7 @@ object A4PdfNativeCanvasRenderer {
       paint.color = Color.rgb(0x0F, 0x76, 0x6E)
       paint.textSize = 10f
       paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-      canvas.drawText("Diagnostic Investigations (á€…á€…á€ºá€†á€±á€¸á€›á€”á€º á€Šá€½á€¾á€”á€ºá€¸á€á€»á€€á€ºá€™á€»á€¬á€¸):", 22f, currentY + 10f, paint)
+      canvas.drawText("Diagnostic Investigations (ဓာတ်ခွဲစစ်ဆေးချက်များ):", 22f, currentY + 10f, paint)
       paint.typeface = Typeface.DEFAULT
       paint.color = Color.rgb(0x33, 0x41, 0x55)
       val labs = consultation.suggestedInvestigations.joinToString(", ")

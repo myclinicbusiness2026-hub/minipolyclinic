@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -275,6 +276,9 @@ fun InventoryMasterScreen(
 
   val totalReorderEstimatedCost = remember(reorderItems) { reorderItems.sumOf { it.totalCost } }
 
+  val screenWidthDp = LocalConfiguration.current.screenWidthDp
+  val isMobilePortrait = screenWidthDp < 600
+
   Column(
     modifier = Modifier
       .fillMaxSize()
@@ -288,55 +292,116 @@ fun InventoryMasterScreen(
       color = PureWhite,
       border = BorderStroke(1.dp, BorderGrey)
     ) {
-      Row(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(horizontal = 8.dp, vertical = 5.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-      ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-          Icon(
-            Icons.Default.Inventory2,
-            contentDescription = null,
-            tint = MedicalGreen,
-            modifier = Modifier.size(17.dp)
-          )
-          Spacer(modifier = Modifier.width(6.dp))
-          Column {
-            Text(
-              "Inventory Master (စတော့အချုပ်)",
-              fontWeight = FontWeight.Bold,
-              fontSize = 12.5.sp,
-              color = DarkGrayText
+      if (isMobilePortrait) {
+        Column(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 6.dp)
+        ) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+              Icons.Default.Inventory2,
+              contentDescription = null,
+              tint = MedicalGreen,
+              modifier = Modifier.size(17.dp)
             )
-            Text(
-              "Financial Valuation, Health Alerts & Reorder",
-              fontSize = 8.5.sp,
-              color = SlateMuted
-            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Column {
+              Text(
+                "Inventory Master (စတော့အချုပ်)",
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.5.sp,
+                color = DarkGrayText
+              )
+              Text(
+                "Financial Valuation, Health Alerts & Reorder",
+                fontSize = 8.5.sp,
+                color = SlateMuted
+              )
+            }
+          }
+
+          Spacer(modifier = Modifier.height(6.dp))
+
+          // Sub-Tabs in scrollable row
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+          ) {
+            InventoryMasterTab.values().forEach { tab ->
+              val isSelected = currentTab == tab
+              Surface(
+                modifier = Modifier
+                  .clip(RoundedCornerShape(4.dp))
+                  .clickable { currentTab = tab },
+                shape = RoundedCornerShape(4.dp),
+                color = if (isSelected) MedicalGreen else BackgroundSurface,
+                border = BorderStroke(0.8.dp, if (isSelected) MedicalGreenDark else BorderGrey)
+              ) {
+                Text(
+                  tab.label,
+                  fontSize = 9.sp,
+                  fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                  color = if (isSelected) PureWhite else DarkGrayText,
+                  modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+              }
+            }
           }
         }
-
-        // Sub-Tabs
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-          InventoryMasterTab.values().forEach { tab ->
-            val isSelected = currentTab == tab
-            Surface(
-              modifier = Modifier
-                .clip(RoundedCornerShape(4.dp))
-                .clickable { currentTab = tab },
-              shape = RoundedCornerShape(4.dp),
-              color = if (isSelected) MedicalGreen else BackgroundSurface,
-              border = BorderStroke(0.8.dp, if (isSelected) MedicalGreenDark else BorderGrey)
-            ) {
+      } else {
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 5.dp),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+              Icons.Default.Inventory2,
+              contentDescription = null,
+              tint = MedicalGreen,
+              modifier = Modifier.size(17.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Column {
               Text(
-                tab.label,
-                fontSize = 9.sp,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) PureWhite else DarkGrayText,
-                modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp)
+                "Inventory Master (စတော့အချုပ်)",
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.5.sp,
+                color = DarkGrayText
               )
+              Text(
+                "Financial Valuation, Health Alerts & Reorder",
+                fontSize = 8.5.sp,
+                color = SlateMuted
+              )
+            }
+          }
+
+          // Sub-Tabs
+          Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            InventoryMasterTab.values().forEach { tab ->
+              val isSelected = currentTab == tab
+              Surface(
+                modifier = Modifier
+                  .clip(RoundedCornerShape(4.dp))
+                  .clickable { currentTab = tab },
+                shape = RoundedCornerShape(4.dp),
+                color = if (isSelected) MedicalGreen else BackgroundSurface,
+                border = BorderStroke(0.8.dp, if (isSelected) MedicalGreenDark else BorderGrey)
+              ) {
+                Text(
+                  tab.label,
+                  fontSize = 9.sp,
+                  fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                  color = if (isSelected) PureWhite else DarkGrayText,
+                  modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp)
+                )
+              }
             }
           }
         }
@@ -354,46 +419,100 @@ fun InventoryMasterScreen(
     ) {
       Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)) {
         // Compact Summary Bar with Toggle
-        Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .clickable { isKpiExpanded = !isKpiExpanded },
-          horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.CenterVertically
-        ) {
-          Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-            Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(15.dp))
-            Spacer(modifier = Modifier.width(6.dp))
+        if (isMobilePortrait) {
+          Column(
+            modifier = Modifier
+              .fillMaxWidth()
+              .clickable { isKpiExpanded = !isKpiExpanded }
+          ) {
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(15.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                  "စတော့တန်ဖိုး စုစုပေါင်း",
+                  fontSize = 11.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = DarkGrayText
+                )
+              }
+
+              Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                  shape = RoundedCornerShape(3.dp),
+                  color = SoftGreenContainer
+                ) {
+                  Text(
+                    "+${currencyFmt.format(totalProjectedMargin.toInt())} Ks (${String.format(Locale.US, "%.1f", overallMarginPercent)}%)",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MedicalGreenDark,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                  )
+                }
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                  if (isKpiExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                  contentDescription = "Toggle KPI details",
+                  tint = SlateMedium,
+                  modifier = Modifier.size(16.dp)
+                )
+              }
+            }
+            Spacer(modifier = Modifier.height(3.dp))
             Text(
-              "စတော့တန်ဖိုး: ${currencyFmt.format(totalStockCost.toInt())} Ks (ဝယ်) / ${currencyFmt.format(totalRetailValue.toInt())} Ks (ရောင်း)",
-              fontSize = 10.5.sp,
-              fontWeight = FontWeight.Bold,
-              color = DarkGrayText,
-              maxLines = 1,
-              overflow = TextOverflow.Ellipsis
+              "ဝယ်ရင်း: ${currencyFmt.format(totalStockCost.toInt())} Ks • ရောင်းရငွေ: ${currencyFmt.format(totalRetailValue.toInt())} Ks",
+              fontSize = 10.sp,
+              fontWeight = FontWeight.SemiBold,
+              color = SlateDark
             )
           }
-
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            Surface(
-              shape = RoundedCornerShape(3.dp),
-              color = SoftGreenContainer
-            ) {
+        } else {
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .clickable { isKpiExpanded = !isKpiExpanded },
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+              Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(15.dp))
+              Spacer(modifier = Modifier.width(6.dp))
               Text(
-                "+${currencyFmt.format(totalProjectedMargin.toInt())} Ks (${String.format(Locale.US, "%.1f", overallMarginPercent)}%)",
-                fontSize = 9.sp,
+                "စတော့တန်ဖိုး: ${currencyFmt.format(totalStockCost.toInt())} Ks (ဝယ်) / ${currencyFmt.format(totalRetailValue.toInt())} Ks (ရောင်း)",
+                fontSize = 10.5.sp,
                 fontWeight = FontWeight.Bold,
-                color = MedicalGreenDark,
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                color = DarkGrayText,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
               )
             }
-            Spacer(modifier = Modifier.width(4.dp))
-            Icon(
-              if (isKpiExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-              contentDescription = "Toggle KPI details",
-              tint = SlateMedium,
-              modifier = Modifier.size(16.dp)
-            )
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Surface(
+                shape = RoundedCornerShape(3.dp),
+                color = SoftGreenContainer
+              ) {
+                Text(
+                  "+${currencyFmt.format(totalProjectedMargin.toInt())} Ks (${String.format(Locale.US, "%.1f", overallMarginPercent)}%)",
+                  fontSize = 9.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = MedicalGreenDark,
+                  modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                )
+              }
+              Spacer(modifier = Modifier.width(4.dp))
+              Icon(
+                if (isKpiExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = "Toggle KPI details",
+                tint = SlateMedium,
+                modifier = Modifier.size(16.dp)
+              )
+            }
           }
         }
 
@@ -648,6 +767,9 @@ private fun ValuationAndLedgerView(
 ) {
   Column(modifier = Modifier.fillMaxSize()) {
     // Search, Filter & Sort Controls
+    val controlsScreenWidthDp = LocalConfiguration.current.screenWidthDp
+    val isControlsMobile = controlsScreenWidthDp < 600
+
     Surface(
       modifier = Modifier.fillMaxWidth(),
       shape = RoundedCornerShape(6.dp),
@@ -655,12 +777,8 @@ private fun ValuationAndLedgerView(
       border = BorderStroke(1.dp, BorderGrey)
     ) {
       Column(modifier = Modifier.padding(6.dp)) {
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-          // Search Box
+        if (isControlsMobile) {
+          // Mobile Search Box (Full Width)
           OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchChange,
@@ -676,7 +794,7 @@ private fun ValuationAndLedgerView(
               }
             },
             modifier = Modifier
-              .weight(1f)
+              .fillMaxWidth()
               .height(38.dp),
             shape = RoundedCornerShape(6.dp),
             colors = OutlinedTextFieldDefaults.colors(
@@ -688,85 +806,203 @@ private fun ValuationAndLedgerView(
             singleLine = true
           )
 
-          // Sort Button
-          Surface(
+          Spacer(modifier = Modifier.height(6.dp))
+
+          // Mobile Sort Button & Fast Filter Chips in scrollable row
+          Row(
             modifier = Modifier
-              .clip(RoundedCornerShape(6.dp))
-              .clickable { onToggleSort() },
-            shape = RoundedCornerShape(6.dp),
-            color = if (sortByValueDesc) SoftGreenContainer else BackgroundSurface,
-            border = BorderStroke(1.dp, if (sortByValueDesc) MedicalGreen else BorderGrey)
+              .fillMaxWidth()
+              .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            verticalAlignment = Alignment.CenterVertically
           ) {
-            Row(
-              modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
-              verticalAlignment = Alignment.CenterVertically
-            ) {
-              Icon(
-                if (sortByValueDesc) Icons.Default.ArrowDownward else Icons.Default.SortByAlpha,
-                contentDescription = null,
-                tint = if (sortByValueDesc) MedicalGreenDark else SlateDark,
-                modifier = Modifier.size(14.dp)
-              )
-              Spacer(modifier = Modifier.width(4.dp))
-              Text(
-                if (sortByValueDesc) "Sort: Value (High)" else "Sort: Name (A-Z)",
-                fontSize = 9.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = if (sortByValueDesc) MedicalGreenDark else SlateDark
-              )
-            }
-          }
-        }
-
-        Spacer(modifier = Modifier.height(6.dp))
-
-        // Fast Filter Chips
-        Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-          horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-          MasterStockFilter.values().forEach { filter ->
-            val isSelected = activeFilter == filter
-            val countStr = when (filter) {
-              MasterStockFilter.ALL -> medicines.size
-              MasterStockFilter.LOW_STOCK -> lowStockCount
-              MasterStockFilter.CRITICAL_EXPIRY -> criticalExpiryCount
-              MasterStockFilter.EXPIRING_SOON -> expiringSoonCount
-              MasterStockFilter.ZERO_STOCK -> zeroStockCount
-            }
-
             Surface(
               modifier = Modifier
-                .clip(RoundedCornerShape(4.dp))
-                .clickable { onFilterChange(filter) },
-              shape = RoundedCornerShape(4.dp),
-              color = if (isSelected) MedicalGreen else BackgroundSurface,
-              border = BorderStroke(0.8.dp, if (isSelected) MedicalGreenDark else BorderGrey)
+                .clip(RoundedCornerShape(6.dp))
+                .clickable { onToggleSort() },
+              shape = RoundedCornerShape(6.dp),
+              color = if (sortByValueDesc) SoftGreenContainer else BackgroundSurface,
+              border = BorderStroke(1.dp, if (sortByValueDesc) MedicalGreen else BorderGrey)
             ) {
               Row(
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.5.dp),
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically
               ) {
-                Text(
-                  filter.label,
-                  fontSize = 8.5.sp,
-                  fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                  color = if (isSelected) PureWhite else DarkGrayText
+                Icon(
+                  if (sortByValueDesc) Icons.Default.ArrowDownward else Icons.Default.SortByAlpha,
+                  contentDescription = null,
+                  tint = if (sortByValueDesc) MedicalGreenDark else SlateDark,
+                  modifier = Modifier.size(13.dp)
                 )
-                Spacer(modifier = Modifier.width(4.dp))
-                Surface(
-                  shape = RoundedCornerShape(3.dp),
-                  color = if (isSelected) PureWhite.copy(alpha = 0.25f) else BorderGrey
+                Spacer(modifier = Modifier.width(3.dp))
+                Text(
+                  if (sortByValueDesc) "Sort: Value (High)" else "Sort: Name (A-Z)",
+                  fontSize = 9.sp,
+                  fontWeight = FontWeight.SemiBold,
+                  color = if (sortByValueDesc) MedicalGreenDark else SlateDark
+                )
+              }
+            }
+
+            MasterStockFilter.values().forEach { filter ->
+              val isSelected = activeFilter == filter
+              val countStr = when (filter) {
+                MasterStockFilter.ALL -> medicines.size
+                MasterStockFilter.LOW_STOCK -> lowStockCount
+                MasterStockFilter.CRITICAL_EXPIRY -> criticalExpiryCount
+                MasterStockFilter.EXPIRING_SOON -> expiringSoonCount
+                MasterStockFilter.ZERO_STOCK -> zeroStockCount
+              }
+
+              Surface(
+                modifier = Modifier
+                  .clip(RoundedCornerShape(4.dp))
+                  .clickable { onFilterChange(filter) },
+                shape = RoundedCornerShape(4.dp),
+                color = if (isSelected) MedicalGreen else BackgroundSurface,
+                border = BorderStroke(0.8.dp, if (isSelected) MedicalGreenDark else BorderGrey)
+              ) {
+                Row(
+                  modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.5.dp),
+                  verticalAlignment = Alignment.CenterVertically
                 ) {
                   Text(
-                    "$countStr",
-                    fontSize = 7.5.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isSelected) PureWhite else SlateDark,
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                    filter.label,
+                    fontSize = 8.5.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    color = if (isSelected) PureWhite else DarkGrayText
                   )
+                  Spacer(modifier = Modifier.width(4.dp))
+                  Surface(
+                    shape = RoundedCornerShape(3.dp),
+                    color = if (isSelected) PureWhite.copy(alpha = 0.25f) else BorderGrey
+                  ) {
+                    Text(
+                      "$countStr",
+                      fontSize = 7.5.sp,
+                      fontWeight = FontWeight.Bold,
+                      color = if (isSelected) PureWhite else SlateDark,
+                      modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                    )
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+          ) {
+            // Search Box
+            OutlinedTextField(
+              value = searchQuery,
+              onValueChange = onSearchChange,
+              placeholder = { Text("Search trade, generic, supplier, batch...", fontSize = 10.5.sp, color = SlateMuted) },
+              leadingIcon = {
+                Icon(Icons.Default.Search, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(15.dp))
+              },
+              trailingIcon = {
+                if (searchQuery.isNotBlank()) {
+                  IconButton(onClick = { onSearchChange("") }) {
+                    Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(14.dp))
+                  }
+                }
+              },
+              modifier = Modifier
+                .weight(1f)
+                .height(38.dp),
+              shape = RoundedCornerShape(6.dp),
+              colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MedicalGreen,
+                unfocusedBorderColor = BorderGrey,
+                focusedContainerColor = PureWhite,
+                unfocusedContainerColor = PureWhite
+              ),
+              singleLine = true
+            )
+
+            // Sort Button
+            Surface(
+              modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .clickable { onToggleSort() },
+              shape = RoundedCornerShape(6.dp),
+              color = if (sortByValueDesc) SoftGreenContainer else BackgroundSurface,
+              border = BorderStroke(1.dp, if (sortByValueDesc) MedicalGreen else BorderGrey)
+            ) {
+              Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Icon(
+                  if (sortByValueDesc) Icons.Default.ArrowDownward else Icons.Default.SortByAlpha,
+                  contentDescription = null,
+                  tint = if (sortByValueDesc) MedicalGreenDark else SlateDark,
+                  modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                  if (sortByValueDesc) "Sort: Value (High)" else "Sort: Name (A-Z)",
+                  fontSize = 9.sp,
+                  fontWeight = FontWeight.SemiBold,
+                  color = if (sortByValueDesc) MedicalGreenDark else SlateDark
+                )
+              }
+            }
+          }
+
+          Spacer(modifier = Modifier.height(6.dp))
+
+          // Fast Filter Chips
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+          ) {
+            MasterStockFilter.values().forEach { filter ->
+              val isSelected = activeFilter == filter
+              val countStr = when (filter) {
+                MasterStockFilter.ALL -> medicines.size
+                MasterStockFilter.LOW_STOCK -> lowStockCount
+                MasterStockFilter.CRITICAL_EXPIRY -> criticalExpiryCount
+                MasterStockFilter.EXPIRING_SOON -> expiringSoonCount
+                MasterStockFilter.ZERO_STOCK -> zeroStockCount
+              }
+
+              Surface(
+                modifier = Modifier
+                  .clip(RoundedCornerShape(4.dp))
+                  .clickable { onFilterChange(filter) },
+                shape = RoundedCornerShape(4.dp),
+                color = if (isSelected) MedicalGreen else BackgroundSurface,
+                border = BorderStroke(0.8.dp, if (isSelected) MedicalGreenDark else BorderGrey)
+              ) {
+                Row(
+                  modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.5.dp),
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Text(
+                    filter.label,
+                    fontSize = 8.5.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    color = if (isSelected) PureWhite else DarkGrayText
+                  )
+                  Spacer(modifier = Modifier.width(4.dp))
+                  Surface(
+                    shape = RoundedCornerShape(3.dp),
+                    color = if (isSelected) PureWhite.copy(alpha = 0.25f) else BorderGrey
+                  ) {
+                    Text(
+                      "$countStr",
+                      fontSize = 7.5.sp,
+                      fontWeight = FontWeight.Bold,
+                      color = if (isSelected) PureWhite else SlateDark,
+                      modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                    )
+                  }
                 }
               }
             }
@@ -950,54 +1186,109 @@ private fun MedicineValuationCard(
       Spacer(modifier = Modifier.height(5.dp))
 
       // Financial Matrix Row (Cost vs Retail vs Margin)
-      Row(
-        modifier = Modifier
-          .fillMaxWidth()
-          .background(BackgroundSurface, RoundedCornerShape(4.dp))
-          .padding(horizontal = 6.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-      ) {
-        // Unit Cost & Retail
-        Column {
-          Text("Unit Pricing", fontSize = 7.5.sp, color = SlateMuted)
-          Text(
-            "Cost: ${currencyFmt.format(medicine.latestCostPrice.toInt())} Ks",
-            fontSize = 8.5.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = SlateDark
-          )
-          Text(
-            "Retail: ${currencyFmt.format(medicine.currentSellingPrice.toInt())} Ks (+${medicine.profitMarginPercent.toInt()}%)",
-            fontSize = 8.5.sp,
-            fontWeight = FontWeight.Bold,
-            color = MedicalGreenDark
-          )
-        }
+      val cardScreenWidthDp = LocalConfiguration.current.screenWidthDp
+      val isCardMobile = cardScreenWidthDp < 600
 
-        // Total Valuation
-        Column(horizontalAlignment = Alignment.End) {
-          Text("Total Valuation (In Stock)", fontSize = 7.5.sp, color = SlateMuted)
-          Row(verticalAlignment = Alignment.CenterVertically) {
+      if (isCardMobile) {
+        Column(
+          modifier = Modifier
+            .fillMaxWidth()
+            .background(BackgroundSurface, RoundedCornerShape(4.dp))
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+          verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
             Text(
-              "Cost: ${currencyFmt.format(totalCostValue.toInt())} Ks",
-              fontSize = 8.5.sp,
+              "Unit: Cost ${currencyFmt.format(medicine.latestCostPrice.toInt())} Ks",
+              fontSize = 9.sp,
+              fontWeight = FontWeight.Medium,
+              color = SlateDark
+            )
+            Text(
+              "Retail ${currencyFmt.format(medicine.currentSellingPrice.toInt())} Ks (+${medicine.profitMarginPercent.toInt()}%)",
+              fontSize = 9.5.sp,
+              fontWeight = FontWeight.Bold,
+              color = MedicalGreenDark
+            )
+          }
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Text(
+              "Total In Stock: ${currencyFmt.format(totalCostValue.toInt())} Ks (Cost)",
+              fontSize = 9.sp,
               color = SlateMedium
             )
-            Spacer(modifier = Modifier.width(6.dp))
             Text(
-              "Retail: ${currencyFmt.format(totalRetailValue.toInt())} Ks",
-              fontSize = 9.sp,
+              "${currencyFmt.format(totalRetailValue.toInt())} Ks (Retail)",
+              fontSize = 9.5.sp,
               fontWeight = FontWeight.Bold,
               color = DarkGrayText
             )
           }
           Text(
-            "Gross Margin: +${currencyFmt.format(grossMargin.toInt())} Ks",
-            fontSize = 8.sp,
+            "Projected Profit: +${currencyFmt.format(grossMargin.toInt())} Ks",
+            fontSize = 8.5.sp,
             fontWeight = FontWeight.SemiBold,
             color = StatusPurple
           )
+        }
+      } else {
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .background(BackgroundSurface, RoundedCornerShape(4.dp))
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          // Unit Cost & Retail
+          Column {
+            Text("Unit Pricing", fontSize = 7.5.sp, color = SlateMuted)
+            Text(
+              "Cost: ${currencyFmt.format(medicine.latestCostPrice.toInt())} Ks",
+              fontSize = 8.5.sp,
+              fontWeight = FontWeight.SemiBold,
+              color = SlateDark
+            )
+            Text(
+              "Retail: ${currencyFmt.format(medicine.currentSellingPrice.toInt())} Ks (+${medicine.profitMarginPercent.toInt()}%)",
+              fontSize = 8.5.sp,
+              fontWeight = FontWeight.Bold,
+              color = MedicalGreenDark
+            )
+          }
+
+          // Total Valuation
+          Column(horizontalAlignment = Alignment.End) {
+            Text("Total Valuation (In Stock)", fontSize = 7.5.sp, color = SlateMuted)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Text(
+                "Cost: ${currencyFmt.format(totalCostValue.toInt())} Ks",
+                fontSize = 8.5.sp,
+                color = SlateMedium
+              )
+              Spacer(modifier = Modifier.width(6.dp))
+              Text(
+                "Retail: ${currencyFmt.format(totalRetailValue.toInt())} Ks",
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                color = DarkGrayText
+              )
+            }
+            Text(
+              "Gross Margin: +${currencyFmt.format(grossMargin.toInt())} Ks",
+              fontSize = 8.sp,
+              fontWeight = FontWeight.SemiBold,
+              color = StatusPurple
+            )
+          }
         }
       }
 
