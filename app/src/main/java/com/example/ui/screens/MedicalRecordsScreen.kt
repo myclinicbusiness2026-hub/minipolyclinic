@@ -1363,9 +1363,9 @@ private fun ConsultationVisitTimelineCard(
             horizontalArrangement = Arrangement.SpaceAround
           ) {
             VitalBox("BP", consultation.vitals.bloodPressure.ifBlank { "120/80" })
-            VitalBox("Pulse", "${consultation.vitals.pulseBpm} bpm")
+            VitalBox("Pulse", "${consultation.vitals.pulseRate} bpm")
             VitalBox("Temp", consultation.vitals.formattedTemperatureF)
-            VitalBox("SpO2", "${consultation.vitals.spO2}%")
+            VitalBox("SpO2", "${consultation.vitals.oxygenSaturation}%")
             if (consultation.vitals.weightKg > 0) {
               VitalBox("Weight", "${consultation.vitals.weightKg} kg")
             }
@@ -1453,7 +1453,7 @@ private fun ConsultationVisitTimelineCard(
                 border = BorderStroke(0.6.dp, Color(0xFF93C5FD))
               ) {
                 Text(
-                  "🔬 ${inv.testName}",
+                  "🔬 $inv",
                   fontSize = 9.5.sp,
                   fontWeight = FontWeight.Medium,
                   color = SkyBlueDark,
@@ -1502,7 +1502,7 @@ private fun ConsultationVisitTimelineCard(
                     fontWeight = FontWeight.Bold,
                     color = MedicalGreenDark
                   )
-                  Text("${drug.quantity} ${drug.unitType} • ${drug.instructions}", fontSize = 9.5.sp, color = SlateMedium)
+                  Text("${drug.quantity} • ${drug.instructions}", fontSize = 9.5.sp, color = SlateMedium)
                 }
               }
             }
@@ -1527,7 +1527,7 @@ private fun ConsultationVisitTimelineCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                   ) {
-                    Text("• ${proc.name} [${proc.category.name}]", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+                    Text("• ${proc.name} [${proc.category}]", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
                     Text(
                       "${proc.price.toInt()} MMK",
                       fontSize = 9.5.sp,
