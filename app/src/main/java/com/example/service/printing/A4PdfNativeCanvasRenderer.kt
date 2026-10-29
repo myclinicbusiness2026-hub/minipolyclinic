@@ -198,8 +198,9 @@ object A4PdfNativeCanvasRenderer {
     val isPrnFollowUp = followUpStr.contains("PRN", ignoreCase = true) || followUpStr.contains("မသက်သာမှ")
     val isNoneFollowUp = followUpStr.isBlank() || followUpStr.equals("None", ignoreCase = true) || followUpStr.contains("မလို")
     val hasFollowUp = isPrnFollowUp || (!isNoneFollowUp && (!consultation.followUpDueDate.isNullOrBlank() || consultation.nextVaccineSchedule.isNotBlank() || followUpStr.isNotBlank()))
-    if (hasInstructions || hasFollowUp) {
-      currentY = drawBottomSplitSection(canvas, width, currentY, consultation)
+    val maxAvailableY = height - 76f
+    if (currentY < maxAvailableY - 22f && (hasInstructions || hasFollowUp)) {
+      currentY = drawBottomSplitSection(canvas, width, currentY, consultation, maxAvailableY)
     }
 
     // 10. Official Footer & Physician Signature Block
@@ -349,8 +350,9 @@ object A4PdfNativeCanvasRenderer {
     val isPrnFollowUp = followUpStr.contains("PRN", ignoreCase = true) || followUpStr.contains("မသက်သာမှ")
     val isNoneFollowUp = followUpStr.isBlank() || followUpStr.equals("None", ignoreCase = true) || followUpStr.contains("မလို")
     val hasFollowUp = isPrnFollowUp || (!isNoneFollowUp && (!consultation.followUpDueDate.isNullOrBlank() || consultation.nextVaccineSchedule.isNotBlank() || followUpStr.isNotBlank()))
-    if (hasInstructions || hasFollowUp) {
-      currentY = drawBottomSplitSection(canvas, width, currentY, consultation)
+    val maxAvailableY = height - 76f
+    if (currentY < maxAvailableY - 22f && (hasInstructions || hasFollowUp)) {
+      currentY = drawBottomSplitSection(canvas, width, currentY, consultation, maxAvailableY)
     }
 
     // 5. Full Doctor Signature Block & Official Footer in English
@@ -732,7 +734,9 @@ object A4PdfNativeCanvasRenderer {
     paint.color = Color.rgb(0x1B, 0x5E, 0x20)
     paint.textSize = 14f
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    val clinicTitleMm = printSettings.clinicNameMm.ifBlank { "“‘ရွှေခေတ်’” အထွေထွေရောဂါကုဆေးခန်း" }
+    val cleanNameMm = printSettings.clinicNameMm.replace("“", "").replace("”", "").replace("\"", "").replace("'", "").trim().ifBlank { "ရွှေခေတ်" }
+    val cleanSubMm = printSettings.clinicSubtitleMm.ifBlank { "အထွေထွေရောဂါကုဆေးခန်း" }
+    val clinicTitleMm = "“$cleanNameMm” $cleanSubMm"
     canvas.drawText(clinicTitleMm, textStartX, 36f, paint)
 
     paint.color = Color.rgb(0x2E, 0x7D, 0x32)
@@ -1302,8 +1306,8 @@ object A4PdfNativeCanvasRenderer {
     val colY = currentY + 12f
     canvas.drawText("#", 28f, colY, paint)
     canvas.drawText("DRUG & FORMULATION", 52f, colY, paint)
-    canvas.drawText("DOSAGE & DIRECTION", 310f, colY, paint)
-    canvas.drawText("DURATION", width - 85f, colY, paint)
+    canvas.drawText("DOSAGE & DIRECTION", 280f, colY, paint)
+    canvas.drawText("DURATION", width - 75f, colY, paint)
     currentY += 18f
 
     // Rows
@@ -1331,11 +1335,11 @@ object A4PdfNativeCanvasRenderer {
       // Dosage & Direction (Include doctor's notes if external)
       paint.typeface = Typeface.DEFAULT
       val directionText = formatDosageAndDirection(rx)
-      canvas.drawText(directionText.take(40), 310f, textRowY, paint)
+      canvas.drawText(directionText.take(38), 280f, textRowY, paint)
 
       // Duration
       val durationText = rx.duration.ifBlank { "5 Days" }
-      canvas.drawText(durationText, width - 85f, textRowY, paint)
+      canvas.drawText(durationText, width - 75f, textRowY, paint)
 
       currentY += rowH
     }
@@ -1445,7 +1449,8 @@ object A4PdfNativeCanvasRenderer {
         paint.color = Color.rgb(0x11, 0x5E, 0x59)
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         paint.textSize = 9f
-        canvas.drawText("â€¢  []", 28f, currentY + 11.5f, paint)
+        val catText = if (proc.category.isNotBlank()) " [" + proc.category + "]" else ""
+        canvas.drawText("• " + proc.name + catText, 28f, currentY + 11.5f, paint)
 
         // Date / Time
         if (dt.isNotBlank()) {
@@ -1453,7 +1458,7 @@ object A4PdfNativeCanvasRenderer {
           paint.color = Color.rgb(0x64, 0x74, 0x8B)
           paint.textSize = 8f
           paint.textAlign = Paint.Align.RIGHT
-          canvas.drawText("Done: ", width - 28f, currentY + 11.5f, paint)
+          canvas.drawText("Done: " + dt, width - 28f, currentY + 11.5f, paint)
           paint.textAlign = Paint.Align.LEFT
         }
 
@@ -1462,7 +1467,7 @@ object A4PdfNativeCanvasRenderer {
           paint.typeface = Typeface.DEFAULT
           paint.color = Color.rgb(0x33, 0x41, 0x55)
           paint.textSize = 8.5f
-          val noteEndY = drawWrappedText(canvas, "Notes: ", 34f, currentY + 22f, width - 68f, 11f, paint, maxLines = 4)
+          val noteEndY = drawWrappedText(canvas, "Notes: " + proc.notes, 34f, currentY + 22f, width - 68f, 11f, paint, maxLines = 4)
           currentY = maxOf(currentY + boxH + 4f, noteEndY + 4f)
         } else {
           currentY += boxH + 4f
@@ -1503,7 +1508,8 @@ object A4PdfNativeCanvasRenderer {
     canvas: Canvas,
     width: Float,
     topY: Float,
-    consultation: ConsultationRecord
+    consultation: ConsultationRecord,
+    maxBottomY: Float = 766f
   ): Float {
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     val rawFollowUp = consultation.followUpAppointment.trim()
@@ -1536,7 +1542,10 @@ object A4PdfNativeCanvasRenderer {
 
       var instY = currentY + 23f
       instructions.forEach { line ->
-        instY = drawWrappedText(canvas, line, 22f, instY, width - 44f, 12.5f, paint, maxLines = 4)
+        if (instY + 12f <= maxBottomY) {
+          instY = drawWrappedText(canvas, line, 22f, instY, width - 44f, 11.5f, paint, maxLines = 2)
+          instY += 1.5f
+        }
         instY += 2f
       }
       return instY + 6f

@@ -1,0 +1,10 @@
+{
+  "versionCode": 2,
+  "versionName": "1.1.0",
+  "minSupportedVersion": 1,
+  "releaseNotes": "• Supabase Cloud Two-Way Non-Destructive Merge (Patients, Consultations, Invoices, Medicines, Treatment Cards, Expenses, Procedures, Vaccines, Suppliers)\n• Real-Time In-App Auto-Update with live % progress, download speed, and in-place upgrade\n• EMR & Day-Care Treatment Cards sync integration\n• Enhanced Chief Complaint navigation & duration/severity responsiveness\n• Clean A4 Print Layout with repositioned Provisional Diagnosis",
+  "releaseNotesMm": "• Supabase Cloud တွင် ဆေးခန်းဒေတာအားလုံး (လူနာများ၊ ဆေးမှတ်တမ်းများ၊ ဘောင်ချာများ၊ ဆေးဝါးများ၊ ရက်ချိန်းကုသမှုကတ်များ၊ ကုန်ကျစရိတ်၊ ကုသမှုနှုန်းထား၊ ကာကွယ်ဆေး၊ ဆေးရောင်းသူ) အားလုံးကို နှစ်ဖက်အပြန်အလှန် ပျောက်ဆုံးမှုမရှိဘဲ Auto Sync လုပ်ဆောင်နိုင်ခြင်း\n• အက်ပ်အတွင်းမှ Version အသစ်ကို တိုက်ရိုက် Auto Update (% နှင့် အမြန်နှုန်းအပြည့်အစုံဖြင့်) ဒေတာမပျက်ဘဲ အဆင့်မြှင့်တင်နိုင်ခြင်း\n• Chief Complaint ရောဂါလက္ခဏာ Duration/Severity ခလုတ်များ ချောမွေ့စွာ ရွေးချယ်နိုင်ခြင်း\n• A4 ဆေးစာရွက်တွင် Provisional Diagnosis ကို သပ်ရပ်စွာ ပုံနှိပ်ထုတ်ဝေနိုင်ခြင်း",
+  "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
+  "publishedAt": "2026-10-29",
+  "apkSizeBytes": 21300000
+}

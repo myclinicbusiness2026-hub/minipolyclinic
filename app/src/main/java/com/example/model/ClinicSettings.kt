@@ -7,7 +7,7 @@ package com.example.model
  */
 data class ClinicSettings(
   val clinicNameEn: String = "Shwe Khit General Clinic",
-  val clinicNameMm: String = "“ရွှေခေတ်”",
+  val clinicNameMm: String = "ရွှေခေတ်",
   val clinicSubtitleMm: String = "အထွေထွေရောဂါကုဆေးခန်း",
   val addressMm: String = "အမှတ်(၁၂)၊ လမ်းမတော်လမ်း၊ မန္တလေးမြို့",
   val clinicAddress: String = "အမှတ်(၁၂)၊ လမ်းမတော်လမ်း၊ မန္တလေးမြို့",

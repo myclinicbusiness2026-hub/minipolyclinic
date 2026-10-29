@@ -408,6 +408,17 @@ fun MiniPolyclinicMainApp(
               }
             )
 
+            DrawerSettingsRow(
+              icon = Icons.Default.SystemUpdate,
+              iconTint = Color(0xFF0F766E),
+              title = "Check for App Updates (ဗားရှင်းအသစ် စစ်ဆေးမည်)",
+              subTitle = "လက်ရှိ: v${com.aistudio.shwekhitclinic.vxqmp.BuildConfig.VERSION_NAME} • In-App Auto Update",
+              onClick = {
+                coroutineScope.launch { drawerState.close() }
+                clinicViewModel.checkForUpdates(isManualCheck = true)
+              }
+            )
+
             Spacer(modifier = Modifier.height(2.dp))
 
             // Group 2: User Role Setting
@@ -762,6 +773,9 @@ fun MiniPolyclinicMainApp(
       onDismiss = { showClinicSettingsDialog = false },
       onSave = { updated ->
         clinicViewModel.updateClinicSettings(updated)
+      },
+      onCheckUpdates = {
+        clinicViewModel.checkForUpdates(isManualCheck = true)
       }
     )
   }
@@ -867,6 +881,20 @@ fun MiniPolyclinicMainApp(
         val res = clinicViewModel.changePassword(currentUser?.id ?: "", oldPass, newPass)
         callback(res.first, res.second)
       }
+    )
+  }
+
+  val updateState by clinicViewModel.updateState.collectAsState()
+  val isUpdateDialogVisible by clinicViewModel.isUpdateDialogVisible.collectAsState()
+
+  if (isUpdateDialogVisible && updateState !is com.example.service.update.UpdateState.Idle) {
+    com.example.ui.components.AppUpdateDialog(
+      updateState = updateState,
+      currentVersionName = com.aistudio.shwekhitclinic.vxqmp.BuildConfig.VERSION_NAME,
+      onStartDownload = { info -> clinicViewModel.startDownloadUpdate(context, info) },
+      onInstall = { clinicViewModel.installDownloadedUpdate(context) },
+      onRetry = { clinicViewModel.checkForUpdates(isManualCheck = true) },
+      onDismiss = { clinicViewModel.dismissUpdateDialog() }
     )
   }
 }

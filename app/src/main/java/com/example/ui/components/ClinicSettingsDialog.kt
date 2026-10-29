@@ -32,7 +32,8 @@ import com.example.ui.theme.*
 fun ClinicSettingsDialog(
   currentSettings: ClinicSettings,
   onDismiss: () -> Unit,
-  onSave: (ClinicSettings) -> Unit
+  onSave: (ClinicSettings) -> Unit,
+  onCheckUpdates: (() -> Unit)? = null
 ) {
   var clinicNameMm by remember { mutableStateOf(currentSettings.clinicNameMm) }
   var clinicNameEn by remember { mutableStateOf(currentSettings.clinicNameEn) }
@@ -573,6 +574,42 @@ fun ClinicSettingsDialog(
                   fontSize = 10.sp,
                   color = Color(0xFF1E40AF)
                 )
+              }
+            }
+
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+              OutlinedButton(
+                onClick = {
+                  val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                  val clip = android.content.ClipData.newPlainText("Supabase SQL", com.example.service.sync.SupabaseSyncManager.CLOUD_SCHEMA_SQL)
+                  clipboard.setPrimaryClip(clip)
+                  android.widget.Toast.makeText(context, "Supabase SQL Script ကို Clipboard သို့ Copy ကူးယူပြီးပါပြီ", android.widget.Toast.LENGTH_SHORT).show()
+                },
+                modifier = Modifier.weight(1.1f),
+                shape = RoundedCornerShape(6.dp)
+              ) {
+                Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Copy Supabase SQL", fontSize = 10.sp)
+              }
+
+              if (onCheckUpdates != null) {
+                Button(
+                  onClick = {
+                    onDismiss()
+                    onCheckUpdates()
+                  },
+                  modifier = Modifier.weight(1.2f),
+                  shape = RoundedCornerShape(6.dp),
+                  colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F766E))
+                ) {
+                  Icon(Icons.Default.SystemUpdate, contentDescription = null, modifier = Modifier.size(14.dp))
+                  Spacer(modifier = Modifier.width(4.dp))
+                  Text("Check App Update", fontSize = 10.sp)
+                }
               }
             }
           }

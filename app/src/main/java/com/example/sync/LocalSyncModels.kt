@@ -1,6 +1,7 @@
 package com.example.sync
 
 import com.example.model.*
+import com.example.ui.screens.treatment.*
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -53,6 +54,11 @@ data class SyncDataPayload(
   val invoices: List<Invoice>,
   val medicines: List<Medicine>,
   val users: List<UserAccount> = emptyList(),
+  val treatmentCards: List<TreatmentCard> = emptyList(),
+  val expenses: List<ExpenseRecord> = emptyList(),
+  val procedures: List<ProcedureItem> = emptyList(),
+  val suppliers: List<Supplier> = emptyList(),
+  val vaccines: List<VaccineRecord> = emptyList(),
   val clinicSettings: ClinicSettings? = null,
   val deletedPatientIds: List<String> = emptyList(),
   val deletedConsultationIds: List<String> = emptyList(),
@@ -266,6 +272,155 @@ data class SyncDataPayload(
       userArr.put(uo)
     }
     root.put("users", userArr)
+
+    // Treatment Cards
+    val tcArr = JSONArray()
+    treatmentCards.forEach { card ->
+      val tco = JSONObject().apply {
+        put("id", card.id)
+        put("patientId", card.patientId)
+        put("patientName", card.patientName)
+        put("patientHn", card.patientHn)
+        put("doctorName", card.doctorName)
+        put("prescribedDate", card.prescribedDate)
+        put("medicationId", card.medicationId)
+        put("medicationName", card.medicationName)
+        put("dosage", card.dosage)
+        put("route", card.route.name)
+        put("frequency", card.frequency)
+        put("totalDays", card.totalDays)
+        put("totalSessions", card.totalSessions)
+        put("instructions", card.instructions)
+        put("sessionFee", card.sessionFee)
+        put("medicationFee", card.medicationFee)
+        put("isBilledPerSession", card.isBilledPerSession)
+        put("cardStatus", card.cardStatus.name)
+        put("discontinueReason", card.discontinueReason)
+        put("discontinuedBy", card.discontinuedBy)
+        put("discontinuedAt", card.discontinuedAt)
+        put("notes", card.notes)
+
+        val sessArr = JSONArray()
+        card.sessions.forEach { s ->
+          val so = JSONObject().apply {
+            put("id", s.id)
+            put("sessionNumber", s.sessionNumber)
+            put("scheduledDate", s.scheduledDate)
+            put("scheduledTime", s.scheduledTime)
+            put("administeredAt", s.administeredAt ?: "")
+            put("administeredBy", s.administeredBy)
+            put("status", s.status.name)
+            put("isClinicMed", s.isClinicMed)
+            put("medicationFee", s.medicationFee)
+            put("sessionFee", s.sessionFee)
+            put("invoiceId", s.invoiceId ?: "")
+            put("notes", s.notes)
+
+            val consArr = JSONArray()
+            s.consumables.forEach { c ->
+              consArr.put(JSONObject().apply {
+                put("id", c.id)
+                put("medicineId", c.medicineId)
+                put("name", c.name)
+                put("quantity", c.quantity)
+                put("unitPrice", c.unitPrice)
+              })
+            }
+            put("consumables", consArr)
+          }
+          sessArr.put(so)
+        }
+        put("sessions", sessArr)
+      }
+      tcArr.put(tco)
+    }
+    root.put("treatmentCards", tcArr)
+
+    // Expenses
+    val expArr = JSONArray()
+    expenses.forEach { e ->
+      val eo = JSONObject().apply {
+        put("id", e.id)
+        put("voucherNo", e.voucherNo)
+        put("date", e.date)
+        put("category", e.category)
+        put("title", e.title)
+        put("amount", e.amount)
+        put("payee", e.payee)
+        put("paymentMethod", e.paymentMethod.name)
+        put("recordedBy", e.recordedBy)
+        put("notes", e.notes)
+      }
+      expArr.put(eo)
+    }
+    root.put("expenses", expArr)
+
+    // Procedures
+    val procArr = JSONArray()
+    procedures.forEach { p ->
+      val po = JSONObject().apply {
+        put("id", p.id)
+        put("code", p.code)
+        put("name", p.name)
+        put("myanmarName", p.myanmarName)
+        put("category", p.category)
+        put("price", p.price)
+        put("standardFee", p.standardFee)
+        put("consumableCost", p.consumableCost)
+        put("notes", p.notes)
+        put("dateTime", p.dateTime)
+
+        val conArr = JSONArray()
+        p.consumableItems.forEach { c ->
+          conArr.put(JSONObject().apply {
+            put("id", c.id)
+            put("medicineId", c.medicineId)
+            put("name", c.name)
+            put("quantity", c.quantity)
+            put("unitPrice", c.unitPrice)
+            put("unitType", c.unitType)
+          })
+        }
+        put("consumableItems", conArr)
+      }
+      procArr.put(po)
+    }
+    root.put("procedures", procArr)
+
+    // Suppliers
+    val supArr = JSONArray()
+    suppliers.forEach { s ->
+      val so = JSONObject().apply {
+        put("id", s.id)
+        put("name", s.name)
+        put("contactPerson", s.contactPerson)
+        put("phone", s.phone)
+        put("address", s.address)
+        put("email", s.email)
+      }
+      supArr.put(so)
+    }
+    root.put("suppliers", supArr)
+
+    // Vaccines
+    val vacArr = JSONArray()
+    vaccines.forEach { v ->
+      val vo = JSONObject().apply {
+        put("id", v.id)
+        put("patientId", v.patientId)
+        put("patientName", v.patientName)
+        put("vaccineName", v.vaccineName)
+        put("doseNumber", v.doseNumber)
+        put("givenDate", v.givenDate)
+        put("nextDueDate", v.nextDueDate ?: "")
+        put("batchNumber", v.batchNumber)
+        put("givenBy", v.givenBy)
+        put("remarks", v.remarks)
+        put("regimeName", v.regimeName)
+      }
+      vacArr.put(vo)
+    }
+    root.put("vaccines", vacArr)
 
     if (clinicSettings != null) {
       val so = JSONObject().apply {

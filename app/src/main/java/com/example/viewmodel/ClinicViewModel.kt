@@ -9,6 +9,10 @@ import com.example.model.*
 import com.example.ui.screens.treatment.*
 import com.example.service.sync.LocalWifiSyncService
 import com.example.service.sync.SupabaseSyncManager
+import com.example.service.update.AppUpdateManager
+import com.example.service.update.AppUpdateInfo
+import com.example.service.update.UpdateState
+import com.aistudio.shwekhitclinic.vxqmp.BuildConfig
 import com.example.sync.LocalWifiSyncManager
 import com.example.sync.SyncAuditEntry
 import com.example.sync.SyncDataPayload
@@ -101,6 +105,10 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   val draftConsultations = MutableStateFlow<Map<String, ConsultationRecord>>(emptyMap())
 
   init {
+    viewModelScope.launch(Dispatchers.IO) {
+      kotlinx.coroutines.delay(2500)
+      checkForUpdates(isManualCheck = false)
+    }
     loadOrSeedAllData()
     LocalWifiSyncService.currentDataSupplier = { syncManager.getLocalDataPayloadJson() }
     LocalWifiSyncService.onDataReceivedToMerge = { syncManager.processIncomingSyncPayload(it) }
@@ -515,6 +523,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
     }
+    autoSyncToSupabaseIfEnabled()
   }
 
   fun registerPatient(
@@ -2183,6 +2192,11 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       invoices = _invoices.value,
       medicines = _medicines.value,
       users = _users.value,
+      treatmentCards = _treatmentCards.value,
+      expenses = _expenses.value,
+      procedures = _procedures.value,
+      suppliers = _suppliers.value,
+      vaccines = _vaccines.value,
       deletedPatientIds = ClinicDataPersistence.loadDeletedPatientIds(ctx).toList(),
       deletedConsultationIds = ClinicDataPersistence.loadDeletedConsultationIds(ctx).toList()
     )
@@ -2211,48 +2225,149 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         ClinicDataPersistence.saveDeletedConsultationIds(ctx, delConsSet)
       }
 
-      // 2. Patients
+      // 2. Patients (Non-destructive ID-based merge)
       if (root.has("patients")) {
         val parsedPatients = SyncPayloadParser.parsePatients(root.getJSONArray("patients"))
-        val filteredPatients = parsedPatients.filter { !delPatSet.contains(it.id) }
-        _patients.value = filteredPatients
-        ClinicDataPersistence.savePatients(ctx, filteredPatients)
-        if (_selectedPatientId.value == null || !filteredPatients.any { it.id == _selectedPatientId.value }) {
-          _selectedPatientId.value = filteredPatients.firstOrNull { it.status == QueueStatus.WAITING || it.status == QueueStatus.IN_CONSULTATION }?.id
+        val currentPatMap = _patients.value.associateBy { it.id }.toMutableMap()
+        parsedPatients.forEach { p ->
+          if (!delPatSet.contains(p.id)) {
+            currentPatMap[p.id] = p
+          }
+        }
+        val mergedPatients = currentPatMap.values.filter { !delPatSet.contains(it.id) }
+        _patients.value = mergedPatients
+        ClinicDataPersistence.savePatients(ctx, mergedPatients)
+        if (_selectedPatientId.value == null || !mergedPatients.any { it.id == _selectedPatientId.value }) {
+          _selectedPatientId.value = mergedPatients.firstOrNull { it.status == QueueStatus.WAITING || it.status == QueueStatus.IN_CONSULTATION }?.id
         }
       }
 
-      // 3. Consultations
+      // 3. Consultations (Non-destructive ID-based merge)
       if (root.has("consultations")) {
         val parsedCons = SyncPayloadParser.parseConsultations(root.getJSONArray("consultations"))
-        val filteredCons = parsedCons.filter { !delConsSet.contains(it.id) && !delPatSet.contains(it.patientId) }
-        _consultations.value = filteredCons
-        ClinicDataPersistence.saveConsultations(ctx, filteredCons)
+        val currentConsMap = _consultations.value.associateBy { it.id }.toMutableMap()
+        parsedCons.forEach { c ->
+          if (!delConsSet.contains(c.id) && !delPatSet.contains(c.patientId)) {
+            currentConsMap[c.id] = c
+          }
+        }
+        val mergedCons = currentConsMap.values.filter { !delConsSet.contains(it.id) && !delPatSet.contains(it.patientId) }
+        _consultations.value = mergedCons
+        ClinicDataPersistence.saveConsultations(ctx, mergedCons)
       }
 
-      // 4. Invoices
+      // 4. Invoices (Non-destructive ID-based merge)
       if (root.has("invoices")) {
         val parsedInvoices = SyncPayloadParser.parseInvoices(root.getJSONArray("invoices"))
-        val filteredInvoices = parsedInvoices.filter { !delPatSet.contains(it.patientId) }
-        _invoices.value = filteredInvoices
-        ClinicDataPersistence.saveInvoices(ctx, filteredInvoices)
+        val currentInvMap = _invoices.value.associateBy { it.id }.toMutableMap()
+        parsedInvoices.forEach { inv ->
+          if (!delPatSet.contains(inv.patientId)) {
+            currentInvMap[inv.id] = inv
+          }
+        }
+        val mergedInvoices = currentInvMap.values.filter { !delPatSet.contains(it.patientId) }
+        _invoices.value = mergedInvoices
+        ClinicDataPersistence.saveInvoices(ctx, mergedInvoices)
       }
 
-      // 5. Medicines
+      // 5. Medicines (Non-destructive ID-based merge with stock batch merging)
       if (root.has("medicines")) {
         val parsedMedicines = SyncPayloadParser.parseMedicines(root.getJSONArray("medicines"))
         if (parsedMedicines.isNotEmpty()) {
-          _medicines.value = parsedMedicines
-          ClinicDataPersistence.saveMedicines(ctx, parsedMedicines)
+          val currentMedMap = _medicines.value.associateBy { it.id }.toMutableMap()
+          parsedMedicines.forEach { m ->
+            val existing = currentMedMap[m.id]
+            if (existing == null) {
+              currentMedMap[m.id] = m
+            } else {
+              val batchMap = existing.batches.associateBy { it.batchNumber }.toMutableMap()
+              m.batches.forEach { b -> batchMap[b.batchNumber] = b }
+              currentMedMap[m.id] = existing.copy(
+                name = m.name,
+                genericName = m.genericName,
+                category = m.category,
+                dosageForm = m.dosageForm,
+                unitType = m.unitType,
+                batches = batchMap.values.toList()
+              )
+            }
+          }
+          val mergedMeds = currentMedMap.values.toList()
+          _medicines.value = mergedMeds
+          ClinicDataPersistence.saveMedicines(ctx, mergedMeds)
         }
       }
 
-      // 6. Users
+      // 6. Users (Non-destructive merge)
       if (root.has("users")) {
         val parsedUsers = SyncPayloadParser.parseUsers(root.getJSONArray("users"))
         if (parsedUsers.isNotEmpty()) {
-          _users.value = parsedUsers
-          ClinicDataPersistence.saveUsers(ctx, parsedUsers)
+          val currentUserMap = _users.value.associateBy { it.username.lowercase() }.toMutableMap()
+          parsedUsers.forEach { u -> currentUserMap[u.username.lowercase()] = u }
+          val mergedUsers = currentUserMap.values.toList()
+          _users.value = mergedUsers
+          ClinicDataPersistence.saveUsers(ctx, mergedUsers)
+        }
+      }
+
+      // 7. Day-Care Treatment Cards (Non-destructive ID-based merge)
+      if (root.has("treatmentCards") || root.has("treatment_cards")) {
+        val arr = root.optJSONArray("treatmentCards") ?: root.optJSONArray("treatment_cards")
+        val parsedCards = SyncPayloadParser.parseTreatmentCards(arr)
+        if (parsedCards.isNotEmpty()) {
+          val currentTcMap = _treatmentCards.value.associateBy { it.id }.toMutableMap()
+          parsedCards.forEach { card -> currentTcMap[card.id] = card }
+          val mergedCards = currentTcMap.values.toList()
+          _treatmentCards.value = mergedCards
+          ClinicDataPersistence.saveTreatmentCards(ctx, mergedCards)
+        }
+      }
+
+      // 8. Expenses (Non-destructive ID-based merge)
+      if (root.has("expenses")) {
+        val parsedExp = SyncPayloadParser.parseExpenses(root.getJSONArray("expenses"))
+        if (parsedExp.isNotEmpty()) {
+          val currentExpMap = _expenses.value.associateBy { it.id }.toMutableMap()
+          parsedExp.forEach { e -> currentExpMap[e.id] = e }
+          val mergedExp = currentExpMap.values.toList()
+          _expenses.value = mergedExp
+          ClinicDataPersistence.saveExpenses(ctx, mergedExp)
+        }
+      }
+
+      // 9. Procedures (Non-destructive ID-based merge)
+      if (root.has("procedures")) {
+        val parsedProc = SyncPayloadParser.parseProcedures(root.getJSONArray("procedures"))
+        if (parsedProc.isNotEmpty()) {
+          val currentProcMap = _procedures.value.associateBy { it.id }.toMutableMap()
+          parsedProc.forEach { p -> currentProcMap[p.id] = p }
+          val mergedProc = currentProcMap.values.toList()
+          _procedures.value = mergedProc
+          ClinicDataPersistence.saveProcedures(ctx, mergedProc)
+        }
+      }
+
+      // 10. Suppliers (Non-destructive ID-based merge)
+      if (root.has("suppliers")) {
+        val parsedSup = SyncPayloadParser.parseSuppliers(root.getJSONArray("suppliers"))
+        if (parsedSup.isNotEmpty()) {
+          val currentSupMap = _suppliers.value.associateBy { it.id }.toMutableMap()
+          parsedSup.forEach { s -> currentSupMap[s.id] = s }
+          val mergedSup = currentSupMap.values.toList()
+          _suppliers.value = mergedSup
+          ClinicDataPersistence.saveSuppliers(ctx, mergedSup)
+        }
+      }
+
+      // 11. Vaccines (Non-destructive ID-based merge)
+      if (root.has("vaccines")) {
+        val parsedVac = SyncPayloadParser.parseVaccines(root.getJSONArray("vaccines"))
+        if (parsedVac.isNotEmpty()) {
+          val currentVacMap = _vaccines.value.associateBy { it.id }.toMutableMap()
+          parsedVac.forEach { v -> currentVacMap[v.id] = v }
+          val mergedVac = currentVacMap.values.toList()
+          _vaccines.value = mergedVac
+          ClinicDataPersistence.saveVaccines(ctx, mergedVac)
         }
       }
 
@@ -2266,6 +2381,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       false
     }
   }
+
+  
 
   fun clearDemoDataForLiveClinic(resetStockToZero: Boolean) {
     val ctx = getApplication<Application>()
@@ -2441,6 +2558,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val payload = exportFullBackupJson()
     val res = SupabaseSyncManager.syncDataToCloud(set.supabaseUrl, set.supabaseAnonKey, payload)
     isSyncing.value = false
+    if (res.first && SupabaseSyncManager.lastMergedJson != null) {
+      restoreFullBackupJson(SupabaseSyncManager.lastMergedJson!!)
+    }
     res
   }
 
@@ -2496,4 +2616,81 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     syncManager.stop()
     LocalWifiSyncService.stopHub()
   }
+
+  // --- In-App Auto Update System ---
+  val updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
+  val isUpdateDialogVisible = MutableStateFlow(false)
+  private var downloadedApkFile: java.io.File? = null
+
+  fun checkForUpdates(isManualCheck: Boolean = false) {
+    viewModelScope.launch(Dispatchers.IO) {
+      if (isManualCheck) {
+        updateState.value = UpdateState.Checking
+        isUpdateDialogVisible.value = true
+      }
+      val res = AppUpdateManager.checkForUpdates(
+        currentVersionCode = BuildConfig.VERSION_CODE,
+        currentVersionName = BuildConfig.VERSION_NAME
+      )
+      withContext(Dispatchers.Main) {
+        updateState.value = res
+        if (res is UpdateState.UpdateAvailable || isManualCheck) {
+          isUpdateDialogVisible.value = true
+        }
+      }
+    }
+  }
+
+  fun startDownloadUpdate(context: android.content.Context, info: AppUpdateInfo) {
+    viewModelScope.launch(Dispatchers.IO) {
+      val (ok, file) = AppUpdateManager.downloadApk(context, info) { progress ->
+        updateState.value = progress
+      }
+      withContext(Dispatchers.Main) {
+        if (ok && file != null && file.exists()) {
+          downloadedApkFile = file
+          updateState.value = UpdateState.ReadyToInstall(file, info)
+          if (AppUpdateManager.canRequestPackageInstalls(context)) {
+            AppUpdateManager.launchInstaller(context, file)
+          } else {
+            AppUpdateManager.openInstallPermissionSettings(context)
+          }
+        } else {
+          updateState.value = UpdateState.Error("ဒေါင်းလုဒ် မအောင်မြင်ပါ (Download failed)")
+        }
+      }
+    }
+  }
+
+  fun installDownloadedUpdate(context: android.content.Context) {
+    val file = downloadedApkFile
+    if (file != null && file.exists()) {
+      if (!AppUpdateManager.canRequestPackageInstalls(context)) {
+        AppUpdateManager.openInstallPermissionSettings(context)
+      }
+      AppUpdateManager.launchInstaller(context, file)
+    } else {
+      updateState.value = UpdateState.Error("APK ဖိုင် ရှာမတွေ့ပါ။ ပြန်လည်ဒေါင်းလုဒ်လုပ်ပါ")
+    }
+  }
+
+  fun dismissUpdateDialog() {
+    isUpdateDialogVisible.value = false
+    if (updateState.value !is UpdateState.ReadyToInstall) {
+      updateState.value = UpdateState.Idle
+    }
+  }
+
+  fun autoSyncToSupabaseIfEnabled() {
+    if (clinicSettings.value.enableSupabaseSync &&
+        clinicSettings.value.supabaseUrl.isNotBlank() &&
+        clinicSettings.value.supabaseAnonKey.isNotBlank()) {
+      viewModelScope.launch(Dispatchers.IO) {
+        try {
+          syncWithSupabaseCloud()
+        } catch (_: Exception) {}
+      }
+    }
+  }
+
 }
