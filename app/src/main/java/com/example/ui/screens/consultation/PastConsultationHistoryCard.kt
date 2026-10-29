@@ -24,6 +24,7 @@ import com.example.model.PrescribedDrug
 import com.example.model.ProcedureItem
 import com.example.ui.components.A4HandwritingNotesCanvasView
 import com.example.ui.theme.*
+import com.example.ui.components.FormattedClinicalSectionView
 
 @Composable
 fun PastConsultationHistoryCard(
@@ -273,7 +274,7 @@ fun PastConsultationHistoryCard(
                     ) {
                       Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                         Text("Chief Complaint: ", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = SlateDark)
-                        Text(record.subjective, fontSize = 10.sp, color = DarkGrayText)
+                        FormattedClinicalSectionView(rawText = record.subjective)
                       }
                       if (onCopyComplaint != null) {
                         TextButton(

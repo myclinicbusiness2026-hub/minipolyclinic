@@ -1064,21 +1064,48 @@ fun ColumnScope.A4UnifiedSinglePageContent(
 
   if (incDemographics) {
     A4PatientDemographicsAndVitalsTable(patient = patient, consultation = consultation)
-    Spacer(modifier = Modifier.height(8.dp))
+    Spacer(modifier = Modifier.height(6.dp))
   }
 
-  // Chief Complaint
-  if (patient?.chiefComplaint?.isNotBlank() == true) {
-    Row(
-      modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-      verticalAlignment = Alignment.CenterVertically
+  // Provisional Diagnosis Box (Placed prominently right below Vitals)
+  if (consultation.diagnosisList.isNotEmpty() || consultation.assessment.isNotBlank()) {
+    Surface(
+      color = Color(0xFFF0FDF4),
+      shape = RoundedCornerShape(4.dp),
+      border = BorderStroke(0.8.dp, if (isGrayscale) BorderGray else Color(0xFFA7F3D0)),
+      modifier = Modifier.fillMaxWidth()
     ) {
-      Text("Chief Complaint: ", fontWeight = FontWeight.Bold, fontSize = 8.5.sp, color = DarkGrayText)
-      Text(patient.chiefComplaint, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = SlateDark)
+      Row(
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Text("Provisional Diagnosis: ", fontWeight = FontWeight.Bold, fontSize = 9.5.sp, color = DarkGrayText)
+        val diagText = when {
+          consultation.diagnosisList.isNotEmpty() -> consultation.diagnosisList.joinToString(" • ")
+          else -> consultation.assessment
+        }
+        if (diagText.isNotBlank()) {
+          Text(diagText, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = if (isGrayscale) DarkGrayText else MedicalGreenDark)
+        }
+      }
     }
+    Spacer(modifier = Modifier.height(6.dp))
   }
 
-  // 2. Clinical Notes in handwriting (shown if present, real size without stretching)
+  // Chief Complaint & Clinical History (Formatted with subheadings)
+  if (consultation.subjective.isNotBlank() || patient?.chiefComplaint?.isNotBlank() == true) {
+    val fullSubjective = buildString {
+      if (consultation.subjective.isNotBlank()) {
+        append(consultation.subjective)
+      } else if (patient?.chiefComplaint?.isNotBlank() == true) {
+        append("[CHIEF COMPLAINTS]\n${patient.chiefComplaint}")
+      }
+    }
+    FormattedClinicalSectionView(rawText = fullSubjective)
+    Spacer(modifier = Modifier.height(6.dp))
+  }
+
+  // 2. Clinical Notes in handwriting / Examination
   val firstPage = consultation.drawingPages.firstOrNull() ?: DrawingPage()
   val hasStrokes = firstPage.strokes.isNotEmpty()
   val textNotes = buildString {
@@ -1092,10 +1119,9 @@ fun ColumnScope.A4UnifiedSinglePageContent(
   }.trim()
   val hasTextNotes = textNotes.isNotBlank()
   if (incCanvas && (hasStrokes || hasTextNotes)) {
-    Spacer(modifier = Modifier.height(8.dp))
-    Text("Clinical Notes:", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
-    Spacer(modifier = Modifier.height(3.dp))
     if (hasStrokes) {
+      Text("Clinical Anatomy & Notes:", fontWeight = FontWeight.Bold, fontSize = 9.5.sp, color = DarkGrayText)
+      Spacer(modifier = Modifier.height(3.dp))
       A4HandwritingNotesCanvasView(
         page = firstPage,
         modifier = Modifier
@@ -1105,32 +1131,8 @@ fun ColumnScope.A4UnifiedSinglePageContent(
       )
     }
     if (hasTextNotes) {
-      Text("Notes: $textNotes", fontSize = 9.5.sp, color = DarkGrayText, modifier = Modifier.padding(top = 2.dp))
-    }
-  }
-
-  // Diagnosis Box (Placed under handwriting medical record - only if recorded)
-  if (consultation.diagnosisList.isNotEmpty() || consultation.assessment.isNotBlank()) {
-    Spacer(modifier = Modifier.height(8.dp))
-    Surface(
-      color = Color(0xFFF8FAFC),
-      shape = RoundedCornerShape(4.dp),
-      border = BorderStroke(0.8.dp, if (isGrayscale) BorderGray else Color(0xFFA7F3D0)),
-      modifier = Modifier.fillMaxWidth()
-    ) {
-      Row(
-        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-      ) {
-        Text("Provisional Diagnosis: ", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
-        val diagText = when {
-          consultation.diagnosisList.isNotEmpty() -> consultation.diagnosisList.joinToString(" • ")
-          else -> consultation.assessment
-        }
-        if (diagText.isNotBlank()) {
-          Text(diagText, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (isGrayscale) DarkGrayText else MedicalGreenDark)
-        }
-      }
+      FormattedClinicalSectionView(rawText = textNotes)
+      Spacer(modifier = Modifier.height(4.dp))
     }
   }
 

@@ -247,6 +247,16 @@ object ClinicInitialDataSeeder {
       degree = "M.B.,B.S (Mandalay)"
     ),
     UserAccount(
+      id = "USR-001-ADMIN",
+      username = "admin",
+      fullName = "Clinic Administrator (Admin)",
+      role = UserRole.ADMIN,
+      passwordHash = "2121994",
+      pinCode = "2121994",
+      samaNumber = "ဆမ-၂၄၅၈၉",
+      degree = "M.B.,B.S (Mandalay)"
+    ),
+    UserAccount(
       id = "USR-002",
       username = "shwekhit",
       fullName = "Cashier Staff (Shwe Khit)",

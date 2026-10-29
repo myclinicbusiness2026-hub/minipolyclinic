@@ -645,7 +645,7 @@ fun MedicalRecordsScreen(
   }
 
   editingConsultation?.let { consult ->
-    EditConsultationDialog(
+    StructuredClinicalEditDialog(
       record = consult,
       onDismiss = { editingConsultation = null },
       onSave = { updated ->
@@ -1379,7 +1379,7 @@ private fun ConsultationVisitTimelineCard(
         // 1. Chief Complaint & History
         if (consultation.subjective.isNotBlank()) {
           Text("Chief Complaint & Clinical History:", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
-          Text(consultation.subjective, fontSize = 10.5.sp, color = SlateDark)
+          FormattedClinicalSectionView(rawText = consultation.subjective)
           Spacer(modifier = Modifier.height(6.dp))
         }
 
@@ -1387,7 +1387,7 @@ private fun ConsultationVisitTimelineCard(
         val findings = consultation.objective.ifBlank { consultation.canvasNotes }
         if (findings.isNotBlank()) {
           Text("Physical Examination & Findings:", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
-          Text(findings, fontSize = 10.5.sp, color = SlateDark)
+          FormattedClinicalSectionView(rawText = findings)
           Spacer(modifier = Modifier.height(6.dp))
         }
 
@@ -1420,19 +1420,55 @@ private fun ConsultationVisitTimelineCard(
           Text("Prescriptions (Rx - ${consultation.prescriptions.size} Items):", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
           Spacer(modifier = Modifier.height(2.dp))
           consultation.prescriptions.forEachIndexed { i, drug ->
-            Row(
+            val medName = drug.effectiveName.ifBlank { drug.name.ifBlank { drug.medicineName } }
+            Column(
               modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 1.5.dp),
-              horizontalArrangement = Arrangement.SpaceBetween
+                .padding(vertical = 2.dp)
             ) {
-              Text(
-                "${i + 1}. ${drug.name} (${drug.dosage}) - ${drug.frequency} x ${drug.duration}",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Medium,
-                color = DarkGrayText
-              )
-              Text("Qty: ${drug.quantity} • ${drug.instructions}", fontSize = 9.5.sp, color = SlateMedium)
+              Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                  Text(
+                    "${i + 1}. $medName ${if (drug.dosage.isNotBlank()) "(${drug.dosage})" else ""}",
+                    fontSize = 10.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = DarkGrayText
+                  )
+                  if (drug.isExternal) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Surface(
+                      shape = RoundedCornerShape(3.dp),
+                      color = Color(0xFFFEF3C7)
+                    ) {
+                      Text(
+                        "ပြင်ပဝယ်ယူရန် (External Pharmacy)",
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF92400E),
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                      )
+                    }
+                  }
+                }
+                Text("Qty: ${drug.quantity}", fontSize = 9.5.sp, fontWeight = FontWeight.Medium, color = SlateDark)
+              }
+              val details = buildString {
+                if (drug.frequency.isNotBlank()) append(drug.frequency)
+                if (drug.duration.isNotBlank()) append(" x ${drug.duration}")
+                if (drug.instructions.isNotBlank()) append(" • [ညွှန်ကြားချက်/မှတ်ချက်: ${drug.instructions}]")
+              }
+              if (details.isNotBlank()) {
+                Text(
+                  details,
+                  fontSize = 9.sp,
+                  color = if (drug.isExternal) Color(0xFFB45309) else SlateMedium,
+                  modifier = Modifier.padding(start = 12.dp)
+                )
+              }
             }
           }
           Spacer(modifier = Modifier.height(6.dp))

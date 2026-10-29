@@ -325,346 +325,15 @@ fun ClinicalHistorySection(
 
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         activeComplaints.forEachIndexed { index, complaint ->
-          Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFFBFDFB)),
-            border = BorderStroke(1.dp, Color(0xFFC8E6C9))
-          ) {
-            Column(modifier = Modifier.padding(10.dp)) {
-              // Header for Complaint #N
-              Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-              ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                  Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = MedicalGreen
-                  ) {
-                    Text(
-                      "#${index + 1}",
-                      fontSize = 9.5.sp,
-                      fontWeight = FontWeight.Bold,
-                      color = PureWhite,
-                      modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                    )
-                  }
-                  Spacer(modifier = Modifier.width(6.dp))
-                  Text(
-                    complaint.name,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
-                    color = DarkGrayText
-                  )
-                  if (complaint.isCustom) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("[Custom]", fontSize = 9.sp, color = Color(0xFFE65100), fontWeight = FontWeight.Bold)
-                  }
-                }
-
-                IconButton(
-                  onClick = {
-                    activeComplaints.removeAt(index)
-                    syncHistory()
-                  },
-                  modifier = Modifier.size(22.dp)
-                ) {
-                  Icon(Icons.Default.Close, contentDescription = "Remove", tint = SlateMedium, modifier = Modifier.size(15.dp))
-                }
-              }
-
-              Spacer(modifier = Modifier.height(6.dp))
-
-              // 1. Duration
-              Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-              ) {
-                Text("Duration:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = SlateDark, modifier = Modifier.width(68.dp))
-                Row(
-                  horizontalArrangement = Arrangement.spacedBy(4.dp),
-                  modifier = Modifier.horizontalScroll(rememberScrollState())
-                ) {
-                  listOf("1 day", "2-3 days", "5 days", "1 week", "2 weeks", "> 1 month").forEach { dur ->
-                    val isDurSelected = complaint.duration == dur && complaint.customDuration.isBlank()
-                    Surface(
-                      shape = RoundedCornerShape(4.dp),
-                      color = if (isDurSelected) MedicalGreen else Color(0xFFE2E8F0),
-                      modifier = Modifier.clickable {
-                        complaint.duration = dur
-                        complaint.customDuration = ""
-                        syncHistory()
-                      }
-                    ) {
-                      Text(
-                        dur,
-                        fontSize = 9.sp,
-                        fontWeight = if (isDurSelected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isDurSelected) PureWhite else DarkGrayText,
-                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                      )
-                    }
-                  }
-                }
-              }
-              Spacer(modifier = Modifier.height(3.dp))
-              OutlinedTextField(
-                value = complaint.customDuration,
-                onValueChange = {
-                  complaint.customDuration = it
-                  syncHistory()
-                },
-                placeholder = { Text("Custom duration (e.g. 4 hours, 3 weeks, since morning...)", fontSize = 9.5.sp, color = SlateMuted) },
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .padding(start = 68.dp),
-                textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
-                shape = RoundedCornerShape(4.dp),
-                singleLine = false, minLines = 1, maxLines = 3
-              )
-
-              Spacer(modifier = Modifier.height(6.dp))
-
-              // 2. Severity & Onset
-              Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-              ) {
-                Text("Severity:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = SlateDark, modifier = Modifier.width(68.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                  listOf("Mild (+)", "Moderate (++)", "Severe (+++)").forEach { sev ->
-                    val isSevSelected = complaint.severity == sev
-                    Surface(
-                      shape = RoundedCornerShape(4.dp),
-                      color = if (isSevSelected) Color(0xFF0288D1) else Color(0xFFE2E8F0),
-                      modifier = Modifier.clickable {
-                        complaint.severity = sev
-                        syncHistory()
-                      }
-                    ) {
-                      Text(
-                        sev,
-                        fontSize = 9.sp,
-                        fontWeight = if (isSevSelected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isSevSelected) PureWhite else DarkGrayText,
-                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                      )
-                    }
-                  }
-                }
-              }
-
-              Spacer(modifier = Modifier.height(4.dp))
-
-              Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-              ) {
-                Text("Onset:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = SlateDark, modifier = Modifier.width(68.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                  listOf("Sudden", "Gradual", "Intermittent", "Continuous").forEach { on ->
-                    val isSelected = complaint.onset == on
-                    Surface(
-                      shape = RoundedCornerShape(4.dp),
-                      color = if (isSelected) Color(0xFF6A1B9A) else Color(0xFFE2E8F0),
-                      modifier = Modifier.clickable {
-                        complaint.onset = on
-                        syncHistory()
-                      }
-                    ) {
-                      Text(
-                        on,
-                        fontSize = 9.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isSelected) PureWhite else DarkGrayText,
-                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                      )
-                    }
-                  }
-                }
-              }
-
-              Spacer(modifier = Modifier.height(6.dp))
-
-              // 3. Character / Quality
-              Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-              ) {
-                Text("Character:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = SlateDark, modifier = Modifier.width(68.dp))
-                Row(
-                  horizontalArrangement = Arrangement.spacedBy(4.dp),
-                  modifier = Modifier.horizontalScroll(rememberScrollState())
-                ) {
-                  listOf("Sharp", "Dull ache", "Colicky", "Burning", "Throbbing", "Cramping", "Productive", "Dry cough", "Wheezy").forEach { ch ->
-                    val isCharSelected = complaint.character == ch && complaint.customCharacter.isBlank()
-                    Surface(
-                      shape = RoundedCornerShape(4.dp),
-                      color = if (isCharSelected) Color(0xFFFF8F00) else Color(0xFFE2E8F0),
-                      modifier = Modifier.clickable {
-                        complaint.character = if (isCharSelected) "" else ch
-                        complaint.customCharacter = ""
-                        syncHistory()
-                      }
-                    ) {
-                      Text(
-                        ch,
-                        fontSize = 9.sp,
-                        fontWeight = if (isCharSelected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isCharSelected) PureWhite else DarkGrayText,
-                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                      )
-                    }
-                  }
-                }
-              }
-              Spacer(modifier = Modifier.height(3.dp))
-              OutlinedTextField(
-                value = complaint.customCharacter,
-                onValueChange = {
-                  complaint.customCharacter = it
-                  syncHistory()
-                },
-                placeholder = { Text("Custom character (e.g. nocturnal, barking, crushing, radiating...)", fontSize = 9.5.sp, color = SlateMuted) },
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .padding(start = 68.dp),
-                textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
-                shape = RoundedCornerShape(4.dp),
-                singleLine = false, minLines = 1, maxLines = 3
-              )
-
-              Spacer(modifier = Modifier.height(6.dp))
-
-              // 4. Relieving Factors
-              Text("Relieving Factors:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
-              Spacer(modifier = Modifier.height(3.dp))
-              FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalArrangement = Arrangement.spacedBy(3.dp),
-                modifier = Modifier.fillMaxWidth()
-              ) {
-                listOf("Rest", "Medication / Analgesic", "Sitting forward", "Food / Eating", "Fasting", "Warm compress", "Lying flat").forEach { factor ->
-                  val isPicked = complaint.relievingFactors.contains(factor)
-                  FilterChip(
-                    selected = isPicked,
-                    onClick = {
-                      if (isPicked) complaint.relievingFactors.remove(factor) else complaint.relievingFactors.add(factor)
-                      syncHistory()
-                    },
-                    label = { Text(factor, fontSize = 9.sp) },
-                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFE8F5E9), selectedLabelColor = MedicalGreenDark)
-                  )
-                }
-              }
-              Spacer(modifier = Modifier.height(3.dp))
-              OutlinedTextField(
-                value = complaint.customRelieving,
-                onValueChange = {
-                  complaint.customRelieving = it
-                  syncHistory()
-                },
-                placeholder = { Text("Custom relieving factor (e.g. Antacids, cool air, cold drink...)", fontSize = 9.5.sp, color = SlateMuted) },
-                modifier = Modifier.fillMaxWidth(),
-                textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
-                shape = RoundedCornerShape(4.dp),
-                singleLine = false, minLines = 1, maxLines = 3
-              )
-
-              Spacer(modifier = Modifier.height(6.dp))
-
-              // 5. Aggravating Factors
-              Text("Aggravating Factors:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFFC62828))
-              Spacer(modifier = Modifier.height(3.dp))
-              FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalArrangement = Arrangement.spacedBy(3.dp),
-                modifier = Modifier.fillMaxWidth()
-              ) {
-                listOf("Movement / Exertion", "Deep breathing", "After meals", "Night / Cold air", "Stress", "Palpation / Pressure", "Walking").forEach { factor ->
-                  val isPicked = complaint.aggravatingFactors.contains(factor)
-                  FilterChip(
-                    selected = isPicked,
-                    onClick = {
-                      if (isPicked) complaint.aggravatingFactors.remove(factor) else complaint.aggravatingFactors.add(factor)
-                      syncHistory()
-                    },
-                    label = { Text(factor, fontSize = 9.sp) },
-                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFFFEBEE), selectedLabelColor = Color(0xFFC62828))
-                  )
-                }
-              }
-              Spacer(modifier = Modifier.height(3.dp))
-              OutlinedTextField(
-                value = complaint.customAggravating,
-                onValueChange = {
-                  complaint.customAggravating = it
-                  syncHistory()
-                },
-                placeholder = { Text("Custom aggravating factor (e.g. oily food, bending forward...)", fontSize = 9.5.sp, color = SlateMuted) },
-                modifier = Modifier.fillMaxWidth(),
-                textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
-                shape = RoundedCornerShape(4.dp),
-                singleLine = false, minLines = 1, maxLines = 3
-              )
-
-              Spacer(modifier = Modifier.height(6.dp))
-
-              // 6. Associated Symptoms
-              Text("Associated Symptoms:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0277BD))
-              Spacer(modifier = Modifier.height(3.dp))
-              FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalArrangement = Arrangement.spacedBy(3.dp),
-                modifier = Modifier.fillMaxWidth()
-              ) {
-                listOf("Nausea / Vomiting", "Fever", "Chills & Rigors", "Sweating (+)", "Radiation", "Dizziness", "Diarrhea", "Anorexia", "Palpitations").forEach { factor ->
-                  val isPicked = complaint.associatedSymptoms.contains(factor)
-                  FilterChip(
-                    selected = isPicked,
-                    onClick = {
-                      if (isPicked) complaint.associatedSymptoms.remove(factor) else complaint.associatedSymptoms.add(factor)
-                      syncHistory()
-                    },
-                    label = { Text(factor, fontSize = 9.sp) },
-                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFE1F5FE), selectedLabelColor = Color(0xFF0277BD))
-                  )
-                }
-              }
-              Spacer(modifier = Modifier.height(3.dp))
-              OutlinedTextField(
-                value = complaint.customAssociated,
-                onValueChange = {
-                  complaint.customAssociated = it
-                  syncHistory()
-                },
-                placeholder = { Text("Custom associated symptom (e.g. radiates to back, yellowish sputum...)", fontSize = 9.5.sp, color = SlateMuted) },
-                modifier = Modifier.fillMaxWidth(),
-                textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
-                shape = RoundedCornerShape(4.dp),
-                singleLine = false, minLines = 1, maxLines = 3
-              )
-
-              Spacer(modifier = Modifier.height(6.dp))
-
-              // 7. Complaint Specific Notes
-              OutlinedTextField(
-                value = complaint.notes,
-                onValueChange = {
-                  complaint.notes = it
-                  syncHistory()
-                },
-                placeholder = { Text("Specific notes for this complaint (optional)...", fontSize = 9.5.sp, color = SlateMuted) },
-                modifier = Modifier.fillMaxWidth(),
-                textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
-                shape = RoundedCornerShape(4.dp),
-                singleLine = false, minLines = 1, maxLines = 4,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
-              )
+          ComplaintDetailCard(
+            index = index,
+            complaint = complaint,
+            onSync = { syncHistory() },
+            onRemove = {
+              activeComplaints.removeAt(index)
+              syncHistory()
             }
-          }
+          )
         }
       }
     }
@@ -1427,5 +1096,371 @@ fun ClinicalHistorySection(
         syncHistory()
       }
     )
+  }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ComplaintDetailCard(
+  index: Int,
+  complaint: ComplaintItem,
+  onSync: () -> Unit,
+  onRemove: () -> Unit
+) {
+  var localDuration by remember(complaint.id) { mutableStateOf(complaint.customDuration) }
+  var localCharacter by remember(complaint.id) { mutableStateOf(complaint.customCharacter) }
+  var localRelieving by remember(complaint.id) { mutableStateOf(complaint.customRelieving) }
+  var localAggravating by remember(complaint.id) { mutableStateOf(complaint.customAggravating) }
+  var localAssociated by remember(complaint.id) { mutableStateOf(complaint.customAssociated) }
+  var localNotes by remember(complaint.id) { mutableStateOf(complaint.notes) }
+
+  Card(
+    modifier = Modifier.fillMaxWidth(),
+    shape = RoundedCornerShape(8.dp),
+    colors = CardDefaults.cardColors(containerColor = Color(0xFFFBFDFB)),
+    border = BorderStroke(1.dp, Color(0xFFC8E6C9))
+  ) {
+    Column(modifier = Modifier.padding(10.dp)) {
+      // Header for Complaint #N
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          Surface(
+            shape = RoundedCornerShape(4.dp),
+            color = MedicalGreen
+          ) {
+            Text(
+              "#${index + 1}",
+              fontSize = 9.5.sp,
+              fontWeight = FontWeight.Bold,
+              color = PureWhite,
+              modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+            )
+          }
+          Spacer(modifier = Modifier.width(6.dp))
+          Text(
+            complaint.name,
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp,
+            color = DarkGrayText
+          )
+          if (complaint.isCustom) {
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("[Custom]", fontSize = 9.sp, color = Color(0xFFE65100), fontWeight = FontWeight.Bold)
+          }
+        }
+
+        IconButton(
+          onClick = onRemove,
+          modifier = Modifier.size(22.dp)
+        ) {
+          Icon(Icons.Default.Close, contentDescription = "Remove", tint = SlateMedium, modifier = Modifier.size(15.dp))
+        }
+      }
+
+      Spacer(modifier = Modifier.height(6.dp))
+
+      // 1. Duration
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+      ) {
+        Text("Duration:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = SlateDark, modifier = Modifier.width(68.dp))
+        Row(
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
+          modifier = Modifier.horizontalScroll(rememberScrollState())
+        ) {
+          listOf("1 day", "2-3 days", "5 days", "1 week", "2 weeks", "> 1 month").forEach { dur ->
+            val isDurSelected = complaint.duration == dur && localDuration.isBlank()
+            Surface(
+              shape = RoundedCornerShape(4.dp),
+              color = if (isDurSelected) MedicalGreen else Color(0xFFE2E8F0),
+              modifier = Modifier.clickable {
+                complaint.duration = dur
+                complaint.customDuration = ""
+                localDuration = ""
+                onSync()
+              }
+            ) {
+              Text(
+                dur,
+                fontSize = 9.sp,
+                fontWeight = if (isDurSelected) FontWeight.Bold else FontWeight.Normal,
+                color = if (isDurSelected) PureWhite else DarkGrayText,
+                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+              )
+            }
+          }
+        }
+      }
+      Spacer(modifier = Modifier.height(3.dp))
+      OutlinedTextField(
+        value = localDuration,
+        onValueChange = {
+          localDuration = it
+          complaint.customDuration = it
+          onSync()
+        },
+        placeholder = { Text("Custom duration (e.g. 4 hours, 3 weeks, since morning...)", fontSize = 9.5.sp, color = SlateMuted) },
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(start = 68.dp),
+        textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
+        shape = RoundedCornerShape(4.dp),
+        singleLine = false, minLines = 1, maxLines = 3,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
+      )
+
+      Spacer(modifier = Modifier.height(6.dp))
+
+      // 2. Severity & Onset
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+      ) {
+        Text("Severity:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = SlateDark, modifier = Modifier.width(68.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+          listOf("Mild (+)", "Moderate (++)", "Severe (+++)").forEach { sev ->
+            val isSevSelected = complaint.severity == sev
+            Surface(
+              shape = RoundedCornerShape(4.dp),
+              color = if (isSevSelected) Color(0xFF0288D1) else Color(0xFFE2E8F0),
+              modifier = Modifier.clickable {
+                complaint.severity = sev
+                onSync()
+              }
+            ) {
+              Text(
+                sev,
+                fontSize = 9.sp,
+                fontWeight = if (isSevSelected) FontWeight.Bold else FontWeight.Normal,
+                color = if (isSevSelected) PureWhite else DarkGrayText,
+                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+              )
+            }
+          }
+        }
+      }
+
+      Spacer(modifier = Modifier.height(4.dp))
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+      ) {
+        Text("Onset:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = SlateDark, modifier = Modifier.width(68.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+          listOf("Sudden / Acute", "Gradual", "Intermittent", "Chronic").forEach { ons ->
+            val isOnsetSelected = complaint.onset == ons
+            Surface(
+              shape = RoundedCornerShape(4.dp),
+              color = if (isOnsetSelected) Color(0xFF7E22CE) else Color(0xFFE2E8F0),
+              modifier = Modifier.clickable {
+                complaint.onset = ons
+                onSync()
+              }
+            ) {
+              Text(
+                ons,
+                fontSize = 9.sp,
+                fontWeight = if (isOnsetSelected) FontWeight.Bold else FontWeight.Normal,
+                color = if (isOnsetSelected) PureWhite else DarkGrayText,
+                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+              )
+            }
+          }
+        }
+      }
+
+      Spacer(modifier = Modifier.height(6.dp))
+
+      // 3. Pain / Symptom Character
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+      ) {
+        Text("Character:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = SlateDark, modifier = Modifier.width(68.dp))
+        Row(
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
+          modifier = Modifier.horizontalScroll(rememberScrollState())
+        ) {
+          listOf("Sharp / Stabbing", "Dull aching", "Burning", "Throbbing", "Colicky", "Tightness / Pressure", "Cramping", "Dry", "Productive").forEach { char ->
+            val isCharSelected = complaint.character == char
+            Surface(
+              shape = RoundedCornerShape(4.dp),
+              color = if (isCharSelected) Color(0xFFE65100) else Color(0xFFE2E8F0),
+              modifier = Modifier.clickable {
+                complaint.character = if (isCharSelected) "" else char
+                onSync()
+              }
+            ) {
+              Text(
+                char,
+                fontSize = 9.sp,
+                fontWeight = if (isCharSelected) FontWeight.Bold else FontWeight.Normal,
+                color = if (isCharSelected) PureWhite else DarkGrayText,
+                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+              )
+            }
+          }
+        }
+      }
+      Spacer(modifier = Modifier.height(3.dp))
+      OutlinedTextField(
+        value = localCharacter,
+        onValueChange = {
+          localCharacter = it
+          complaint.customCharacter = it
+          onSync()
+        },
+        placeholder = { Text("Custom character (e.g. nocturnal, barking, crushing, radiating...)", fontSize = 9.5.sp, color = SlateMuted) },
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(start = 68.dp),
+        textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
+        shape = RoundedCornerShape(4.dp),
+        singleLine = false, minLines = 1, maxLines = 3,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
+      )
+
+      Spacer(modifier = Modifier.height(6.dp))
+
+      // 4. Relieving Factors
+      Text("Relieving Factors:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+      Spacer(modifier = Modifier.height(3.dp))
+      FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+        modifier = Modifier.fillMaxWidth()
+      ) {
+        listOf("Rest", "Medication / Analgesic", "Sitting forward", "Food / Eating", "Fasting", "Warm compress", "Lying flat").forEach { factor ->
+          val isPicked = complaint.relievingFactors.contains(factor)
+          FilterChip(
+            selected = isPicked,
+            onClick = {
+              if (isPicked) complaint.relievingFactors.remove(factor) else complaint.relievingFactors.add(factor)
+              onSync()
+            },
+            label = { Text(factor, fontSize = 9.sp) },
+            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFE8F5E9), selectedLabelColor = MedicalGreenDark)
+          )
+        }
+      }
+      Spacer(modifier = Modifier.height(3.dp))
+      OutlinedTextField(
+        value = localRelieving,
+        onValueChange = {
+          localRelieving = it
+          complaint.customRelieving = it
+          onSync()
+        },
+        placeholder = { Text("Custom relieving factor (e.g. Antacids, cool air, cold drink...)", fontSize = 9.5.sp, color = SlateMuted) },
+        modifier = Modifier.fillMaxWidth(),
+        textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
+        shape = RoundedCornerShape(4.dp),
+        singleLine = false, minLines = 1, maxLines = 3,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
+      )
+
+      Spacer(modifier = Modifier.height(6.dp))
+
+      // 5. Aggravating Factors
+      Text("Aggravating Factors:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFFC62828))
+      Spacer(modifier = Modifier.height(3.dp))
+      FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+        modifier = Modifier.fillMaxWidth()
+      ) {
+        listOf("Movement / Exertion", "Deep breathing", "After meals", "Night / Cold air", "Stress", "Palpation / Pressure", "Walking").forEach { factor ->
+          val isPicked = complaint.aggravatingFactors.contains(factor)
+          FilterChip(
+            selected = isPicked,
+            onClick = {
+              if (isPicked) complaint.aggravatingFactors.remove(factor) else complaint.aggravatingFactors.add(factor)
+              onSync()
+            },
+            label = { Text(factor, fontSize = 9.sp) },
+            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFFFEBEE), selectedLabelColor = Color(0xFFC62828))
+          )
+        }
+      }
+      Spacer(modifier = Modifier.height(3.dp))
+      OutlinedTextField(
+        value = localAggravating,
+        onValueChange = {
+          localAggravating = it
+          complaint.customAggravating = it
+          onSync()
+        },
+        placeholder = { Text("Custom aggravating factor (e.g. oily food, bending forward...)", fontSize = 9.5.sp, color = SlateMuted) },
+        modifier = Modifier.fillMaxWidth(),
+        textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
+        shape = RoundedCornerShape(4.dp),
+        singleLine = false, minLines = 1, maxLines = 3,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
+      )
+
+      Spacer(modifier = Modifier.height(6.dp))
+
+      // 6. Associated Symptoms
+      Text("Associated Symptoms:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0277BD))
+      Spacer(modifier = Modifier.height(3.dp))
+      FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+        modifier = Modifier.fillMaxWidth()
+      ) {
+        listOf("Nausea / Vomiting", "Fever", "Chills & Rigors", "Sweating (+)", "Radiation", "Dizziness", "Diarrhea", "Anorexia", "Palpitations").forEach { factor ->
+          val isPicked = complaint.associatedSymptoms.contains(factor)
+          FilterChip(
+            selected = isPicked,
+            onClick = {
+              if (isPicked) complaint.associatedSymptoms.remove(factor) else complaint.associatedSymptoms.add(factor)
+              onSync()
+            },
+            label = { Text(factor, fontSize = 9.sp) },
+            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFE1F5FE), selectedLabelColor = Color(0xFF0277BD))
+          )
+        }
+      }
+      Spacer(modifier = Modifier.height(3.dp))
+      OutlinedTextField(
+        value = localAssociated,
+        onValueChange = {
+          localAssociated = it
+          complaint.customAssociated = it
+          onSync()
+        },
+        placeholder = { Text("Custom associated symptom (e.g. radiates to back, yellowish sputum...)", fontSize = 9.5.sp, color = SlateMuted) },
+        modifier = Modifier.fillMaxWidth(),
+        textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
+        shape = RoundedCornerShape(4.dp),
+        singleLine = false, minLines = 1, maxLines = 3,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
+      )
+
+      Spacer(modifier = Modifier.height(6.dp))
+
+      // 7. Complaint Specific Notes
+      Text("Complaint Specific Notes (မှတ်ချက်):", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+      Spacer(modifier = Modifier.height(3.dp))
+      OutlinedTextField(
+        value = localNotes,
+        onValueChange = {
+          localNotes = it
+          complaint.notes = it
+          onSync()
+        },
+        placeholder = { Text("Specific notes for this complaint (Space & Enter supported)...", fontSize = 9.5.sp, color = SlateMuted) },
+        modifier = Modifier.fillMaxWidth(),
+        textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
+        shape = RoundedCornerShape(4.dp),
+        singleLine = false, minLines = 2, maxLines = 4,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
+      )
+    }
   }
 }

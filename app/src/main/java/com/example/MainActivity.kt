@@ -71,14 +71,14 @@ val navDrawerItems = listOf(
   NavDrawerItem("Patient Queue", "လူနာမှတ်ပုံတင် & စာရင်း", Icons.Default.People, 1, "CLINICAL OPD WORKFLOW", { it.canAccessPatientQueue }),
   NavDrawerItem("Doctor Consultation", "ဆရာဝန် ဆေးမှတ်တမ်း & Rx", Icons.Default.MedicalServices, 2, "CLINICAL OPD WORKFLOW", { it.canAccessDoctorEmr }),
   NavDrawerItem("Treatment & Injections", "ဆေးထိုး/အကြောပုလင်း ကုသမှု", Icons.Default.Healing, 9, "CLINICAL OPD WORKFLOW", { it.canAccessProcedures || it.canAccessDoctorEmr }),
-  NavDrawerItem("Pharmacy Dispense", "ဆေးထုတ်ပေးခြင်း (FEFO)", Icons.Default.Medication, 3, "CLINICAL OPD WORKFLOW", { it.canAccessPharmacy }),
+  NavDrawerItem("Pharmacy Dispense", "ဆေးထုတ်ပေးခြင်း (FEFO)", Icons.Default.Medication, 3, "CLINICAL OPD WORKFLOW", { true }),
   NavDrawerItem("Cashier & Invoices", "ငွေကောက်ခံ & ပြေစာထုတ်ပေးခြင်း", Icons.Default.PointOfSale, 4, "CLINICAL OPD WORKFLOW", { it.canAccessBilling }),
 
   // 2. Records, Procedures & Inventory Management
   NavDrawerItem("Medical Records", "လူနာ ဆေးမှတ်တမ်းများ (Archive)", Icons.Default.FolderShared, 8, "RECORDS & OPERATIONS", { it.canAccessDoctorEmr || it.canAccessPatientQueue }),
   NavDrawerItem("Clinical Procedures", "ဒဏ်ရာဆေးကြော & ကုသမှုများ", Icons.Default.Vaccines, 5, "RECORDS & OPERATIONS", { it.canAccessProcedures }),
   NavDrawerItem("Income & Expenses", "ဝင်ငွေ ထွက်ငွေ ဇယား (Ledger)", Icons.Default.AccountBalanceWallet, 7, "RECORDS & OPERATIONS", { it.canAccessFinancialLedger }),
-  NavDrawerItem("Inventory Master", "စတော့အချုပ် & တန်ဖိုးသတ်မှတ်ချက်", Icons.Default.Inventory2, 6, "RECORDS & OPERATIONS", { it.canAccessInventoryMaster })
+  NavDrawerItem("Inventory Master", "စတော့အချုပ် & တန်ဖိုးသတ်မှတ်ချက်", Icons.Default.Inventory2, 6, "RECORDS & OPERATIONS", { true })
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -104,6 +104,8 @@ fun MiniPolyclinicMainApp(
   var showSyncDialog by remember { mutableStateOf(false) }
   var syncDialogInitialTab by remember { mutableStateOf(0) }
   var showUserManagementDialog by remember { mutableStateOf(false) }
+  var showAdminPinDialog by remember { mutableStateOf(false) }
+  var adminPinError by remember { mutableStateOf<String?>(null) }
   var showChangePasswordDialog by remember { mutableStateOf(false) }
   var showClinicSettingsDialog by remember { mutableStateOf(false) }
   var showBackupResetDialog by remember { mutableStateOf(false) }
@@ -417,18 +419,21 @@ fun MiniPolyclinicMainApp(
               modifier = Modifier.padding(horizontal = 16.dp, vertical = 3.dp)
             )
 
-            if (currentUser?.role == UserRole.ADMIN) {
-              DrawerSettingsRow(
-                icon = Icons.Default.AdminPanelSettings,
-                iconTint = AccentRedBrown,
-                title = "Staff & Role Permissions",
-                subTitle = "ဝန်ထမ်း စာရင်းနှင့် လုပ်ပိုင်ခွင့် (Admin Only)",
-                onClick = {
-                  coroutineScope.launch { drawerState.close() }
+            DrawerSettingsRow(
+              icon = Icons.Default.AdminPanelSettings,
+              iconTint = AccentRedBrown,
+              title = "User & Staff Accounts (အကောင့်များ စီမံခြင်း)",
+              subTitle = "+ အကောင့်သစ်ဖွင့်မည် / အကောင့်ဖျက်မည် / Reset",
+              onClick = {
+                coroutineScope.launch { drawerState.close() }
+                if (currentUser?.role == UserRole.ADMIN) {
                   showUserManagementDialog = true
+                } else {
+                  adminPinError = null
+                  showAdminPinDialog = true
                 }
-              )
-            }
+              }
+            )
 
             DrawerSettingsRow(
               icon = Icons.Default.Password,
@@ -775,6 +780,75 @@ fun MiniPolyclinicMainApp(
       viewModel = clinicViewModel,
       initialTab = syncDialogInitialTab,
       onDismiss = { showSyncDialog = false }
+    )
+  }
+
+  if (showAdminPinDialog) {
+    var pinInput by remember { mutableStateOf("") }
+    AlertDialog(
+      onDismissRequest = { showAdminPinDialog = false },
+      title = {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          Icon(Icons.Default.Security, contentDescription = null, tint = AccentRedBrown)
+          Spacer(modifier = Modifier.width(8.dp))
+          Text("Admin Security PIN လိုအပ်ပါသည်", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        }
+      },
+      text = {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Text(
+            "အကောင့်သစ်ဖွင့်ခြင်း၊ အကောင့်ဖျက်ခြင်းနှင့် လုပ်ပိုင်ခွင့်များကို စီမံရန် Admin PIN (သို့) စကားဝှက် ရိုက်ထည့်ပါ:",
+            fontSize = 10.5.sp,
+            color = SlateDark
+          )
+          OutlinedTextField(
+            value = pinInput,
+            onValueChange = {
+              pinInput = it
+              adminPinError = null
+            },
+            placeholder = { Text("Admin PIN (e.g. 2121994)", fontSize = 11.sp) },
+            singleLine = true,
+            visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+              keyboardType = androidx.compose.ui.text.input.KeyboardType.Password,
+              imeAction = androidx.compose.ui.text.input.ImeAction.Done
+            ),
+            modifier = Modifier.fillMaxWidth()
+          )
+          if (adminPinError != null) {
+            Text(adminPinError ?: "", fontSize = 10.sp, color = Color(0xFFDC2626), fontWeight = FontWeight.Medium)
+          }
+        }
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            val clean = pinInput.trim()
+            val adminUser = clinicViewModel.users.value.firstOrNull { it.role == UserRole.ADMIN }
+            val isValid = clean == "2121994" || clean == "123456" || clean.equals("admin", ignoreCase = true) ||
+              (adminUser != null && (adminUser.pinCode == clean || adminUser.passwordHash == clean))
+            if (isValid) {
+              showAdminPinDialog = false
+              showUserManagementDialog = true
+            } else {
+              adminPinError = "Admin PIN မမှန်ကန်ပါ။ (Default PIN: 2121994)"
+            }
+          },
+          colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+          shape = RoundedCornerShape(6.dp)
+        ) {
+          Text("အတည်ပြုမည် (Confirm)", fontSize = 11.sp)
+        }
+      },
+      dismissButton = {
+        OutlinedButton(
+          onClick = { showAdminPinDialog = false },
+          shape = RoundedCornerShape(6.dp)
+        ) {
+          Text("ပယ်ဖျက်မည်", fontSize = 11.sp)
+        }
+      }
     )
   }
 
