@@ -32,6 +32,8 @@ import com.example.ui.components.EditPatientDialog
 import com.example.ui.components.FollowUpPatientDialog
 import com.example.ui.components.MedicalAttachmentsDialog
 import com.example.ui.components.VaccinationTrackerDialog
+import com.example.ui.components.StructuredClinicalEditDialog
+import com.example.ui.components.FormattedClinicalSectionView
 import com.example.ui.theme.*
 import com.example.util.BurmeseDateUtils
 import com.example.viewmodel.ClinicViewModel
@@ -644,11 +646,11 @@ fun MedicalRecordsScreen(
     )
   }
 
-  editingConsultation?.let { consult ->
+  editingConsultation?.let { consult: ConsultationRecord ->
     StructuredClinicalEditDialog(
       record = consult,
       onDismiss = { editingConsultation = null },
-      onSave = { updated ->
+      onSave = { updated: ConsultationRecord ->
         viewModel.updateConsultation(updated)
         editingConsultation = null
         android.widget.Toast.makeText(context, "ဆေးမှတ်တမ်း အောင်မြင်စွာ ပြင်ဆင်သိမ်းဆည်းပြီးပါပြီ", android.widget.Toast.LENGTH_SHORT).show()
