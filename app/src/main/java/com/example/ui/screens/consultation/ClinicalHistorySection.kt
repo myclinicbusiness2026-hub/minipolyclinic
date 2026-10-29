@@ -1,4 +1,4 @@
-﻿package com.example.ui.screens.consultation
+package com.example.ui.screens.consultation
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -1107,6 +1107,15 @@ private fun ComplaintDetailCard(
   onSync: () -> Unit,
   onRemove: () -> Unit
 ) {
+  var selectedDuration by remember(complaint.id, complaint.duration) { mutableStateOf(complaint.duration) }
+  var selectedSeverity by remember(complaint.id, complaint.severity) { mutableStateOf(complaint.severity) }
+  var selectedOnset by remember(complaint.id, complaint.onset) { mutableStateOf(complaint.onset) }
+  var selectedCharacter by remember(complaint.id, complaint.character) { mutableStateOf(complaint.character) }
+
+  val relievingList = remember(complaint.id) { mutableStateListOf<String>().apply { addAll(complaint.relievingFactors) } }
+  val aggravatingList = remember(complaint.id) { mutableStateListOf<String>().apply { addAll(complaint.aggravatingFactors) } }
+  val associatedList = remember(complaint.id) { mutableStateListOf<String>().apply { addAll(complaint.associatedSymptoms) } }
+
   var localDuration by remember(complaint.id) { mutableStateOf(complaint.customDuration) }
   var localCharacter by remember(complaint.id) { mutableStateOf(complaint.customCharacter) }
   var localRelieving by remember(complaint.id) { mutableStateOf(complaint.customRelieving) }
@@ -1174,12 +1183,13 @@ private fun ComplaintDetailCard(
           modifier = Modifier.horizontalScroll(rememberScrollState())
         ) {
           listOf("1 day", "2-3 days", "5 days", "1 week", "2 weeks", "> 1 month").forEach { dur ->
-            val isDurSelected = complaint.duration == dur && localDuration.isBlank()
+            val isDurSelected = selectedDuration == dur && localDuration.isBlank()
             Surface(
               shape = RoundedCornerShape(4.dp),
               color = if (isDurSelected) MedicalGreen else Color(0xFFE2E8F0),
               modifier = Modifier.clickable {
-                complaint.duration = dur
+                selectedDuration = if (isDurSelected) "" else dur
+                complaint.duration = selectedDuration
                 complaint.customDuration = ""
                 localDuration = ""
                 onSync()
@@ -1222,14 +1232,18 @@ private fun ComplaintDetailCard(
         modifier = Modifier.fillMaxWidth()
       ) {
         Text("Severity:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = SlateDark, modifier = Modifier.width(68.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
+          modifier = Modifier.horizontalScroll(rememberScrollState())
+        ) {
           listOf("Mild (+)", "Moderate (++)", "Severe (+++)").forEach { sev ->
-            val isSevSelected = complaint.severity == sev
+            val isSevSelected = selectedSeverity == sev
             Surface(
               shape = RoundedCornerShape(4.dp),
               color = if (isSevSelected) Color(0xFF0288D1) else Color(0xFFE2E8F0),
               modifier = Modifier.clickable {
-                complaint.severity = sev
+                selectedSeverity = if (isSevSelected) "" else sev
+                complaint.severity = selectedSeverity
                 onSync()
               }
             ) {
@@ -1251,14 +1265,18 @@ private fun ComplaintDetailCard(
         modifier = Modifier.fillMaxWidth()
       ) {
         Text("Onset:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = SlateDark, modifier = Modifier.width(68.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
+          modifier = Modifier.horizontalScroll(rememberScrollState())
+        ) {
           listOf("Sudden / Acute", "Gradual", "Intermittent", "Chronic").forEach { ons ->
-            val isOnsetSelected = complaint.onset == ons
+            val isOnsetSelected = selectedOnset == ons
             Surface(
               shape = RoundedCornerShape(4.dp),
               color = if (isOnsetSelected) Color(0xFF7E22CE) else Color(0xFFE2E8F0),
               modifier = Modifier.clickable {
-                complaint.onset = ons
+                selectedOnset = if (isOnsetSelected) "" else ons
+                complaint.onset = selectedOnset
                 onSync()
               }
             ) {
@@ -1287,12 +1305,13 @@ private fun ComplaintDetailCard(
           modifier = Modifier.horizontalScroll(rememberScrollState())
         ) {
           listOf("Sharp / Stabbing", "Dull aching", "Burning", "Throbbing", "Colicky", "Tightness / Pressure", "Cramping", "Dry", "Productive").forEach { char ->
-            val isCharSelected = complaint.character == char
+            val isCharSelected = selectedCharacter == char
             Surface(
               shape = RoundedCornerShape(4.dp),
               color = if (isCharSelected) Color(0xFFE65100) else Color(0xFFE2E8F0),
               modifier = Modifier.clickable {
-                complaint.character = if (isCharSelected) "" else char
+                selectedCharacter = if (isCharSelected) "" else char
+                complaint.character = selectedCharacter
                 onSync()
               }
             ) {
@@ -1336,11 +1355,17 @@ private fun ComplaintDetailCard(
         modifier = Modifier.fillMaxWidth()
       ) {
         listOf("Rest", "Medication / Analgesic", "Sitting forward", "Food / Eating", "Fasting", "Warm compress", "Lying flat").forEach { factor ->
-          val isPicked = complaint.relievingFactors.contains(factor)
+          val isPicked = relievingList.contains(factor)
           FilterChip(
             selected = isPicked,
             onClick = {
-              if (isPicked) complaint.relievingFactors.remove(factor) else complaint.relievingFactors.add(factor)
+              if (isPicked) {
+                relievingList.remove(factor)
+                complaint.relievingFactors.remove(factor)
+              } else {
+                relievingList.add(factor)
+                if (!complaint.relievingFactors.contains(factor)) complaint.relievingFactors.add(factor)
+              }
               onSync()
             },
             label = { Text(factor, fontSize = 9.sp) },
@@ -1375,11 +1400,17 @@ private fun ComplaintDetailCard(
         modifier = Modifier.fillMaxWidth()
       ) {
         listOf("Movement / Exertion", "Deep breathing", "After meals", "Night / Cold air", "Stress", "Palpation / Pressure", "Walking").forEach { factor ->
-          val isPicked = complaint.aggravatingFactors.contains(factor)
+          val isPicked = aggravatingList.contains(factor)
           FilterChip(
             selected = isPicked,
             onClick = {
-              if (isPicked) complaint.aggravatingFactors.remove(factor) else complaint.aggravatingFactors.add(factor)
+              if (isPicked) {
+                aggravatingList.remove(factor)
+                complaint.aggravatingFactors.remove(factor)
+              } else {
+                aggravatingList.add(factor)
+                if (!complaint.aggravatingFactors.contains(factor)) complaint.aggravatingFactors.add(factor)
+              }
               onSync()
             },
             label = { Text(factor, fontSize = 9.sp) },
@@ -1414,11 +1445,17 @@ private fun ComplaintDetailCard(
         modifier = Modifier.fillMaxWidth()
       ) {
         listOf("Nausea / Vomiting", "Fever", "Chills & Rigors", "Sweating (+)", "Radiation", "Dizziness", "Diarrhea", "Anorexia", "Palpitations").forEach { factor ->
-          val isPicked = complaint.associatedSymptoms.contains(factor)
+          val isPicked = associatedList.contains(factor)
           FilterChip(
             selected = isPicked,
             onClick = {
-              if (isPicked) complaint.associatedSymptoms.remove(factor) else complaint.associatedSymptoms.add(factor)
+              if (isPicked) {
+                associatedList.remove(factor)
+                complaint.associatedSymptoms.remove(factor)
+              } else {
+                associatedList.add(factor)
+                if (!complaint.associatedSymptoms.contains(factor)) complaint.associatedSymptoms.add(factor)
+              }
               onSync()
             },
             label = { Text(factor, fontSize = 9.sp) },

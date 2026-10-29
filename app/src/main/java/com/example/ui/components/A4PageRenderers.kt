@@ -399,7 +399,7 @@ fun A4SuggestedInvestigationsSection(
         modifier = Modifier.size(13.dp)
       )
       Spacer(modifier = Modifier.width(4.dp))
-      Text("Suggested Diagnostic & Laboratory Investigations:", fontWeight = FontWeight.Bold, fontSize = 9.5.sp, color = DarkGrayText)
+      Text("Suggested Diagnostic Investigations:", fontWeight = FontWeight.Bold, fontSize = 9.5.sp, color = DarkGrayText)
     }
     Spacer(modifier = Modifier.height(3.dp))
     Column(modifier = Modifier.fillMaxWidth().border(0.8.dp, BorderGray)) {
@@ -609,7 +609,7 @@ fun A4PrescriptionTable(
         } else {
           effectiveDrugName
         }
-        val drugTitle = if (isExt) "$baseTitle  [ပြင်ပဝယ်ရန်/External]" else baseTitle
+        val drugTitle = if (isExt) "$baseTitle  [External]" else baseTitle
         Row(
           modifier = Modifier
             .fillMaxWidth()
@@ -919,6 +919,30 @@ fun ColumnScope.A4OfficialPrescriptionPageContent(
     printSettings = printSettings
   )
 
+  // Provisional Diagnosis Context on Prescription Sheet
+  val diagContinuation = when {
+    consultation.diagnosisList.isNotEmpty() -> consultation.diagnosisList.joinToString(" • ")
+    consultation.assessment.isNotBlank() -> consultation.assessment
+    else -> ""
+  }
+  if (diagContinuation.isNotBlank()) {
+    Surface(
+      color = Color(0xFFF0FDF4),
+      shape = RoundedCornerShape(4.dp),
+      border = BorderStroke(0.8.dp, if (isGrayscale) BorderGray else Color(0xFFA7F3D0)),
+      modifier = Modifier.fillMaxWidth()
+    ) {
+      Row(
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Text("Provisional Diagnosis: ", fontWeight = FontWeight.Bold, fontSize = 9.sp, color = DarkGrayText)
+        Text(diagContinuation, fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = if (isGrayscale) DarkGrayText else MedicalGreenDark)
+      }
+    }
+    Spacer(modifier = Modifier.height(5.dp))
+  }
+
   Spacer(modifier = Modifier.height(3.dp))
 
   // 3. Procedure that is shown IF PRESENT:
@@ -1067,31 +1091,6 @@ fun ColumnScope.A4UnifiedSinglePageContent(
     Spacer(modifier = Modifier.height(6.dp))
   }
 
-  // Provisional Diagnosis Box (Placed prominently right below Vitals)
-  if (consultation.diagnosisList.isNotEmpty() || consultation.assessment.isNotBlank()) {
-    Surface(
-      color = Color(0xFFF0FDF4),
-      shape = RoundedCornerShape(4.dp),
-      border = BorderStroke(0.8.dp, if (isGrayscale) BorderGray else Color(0xFFA7F3D0)),
-      modifier = Modifier.fillMaxWidth()
-    ) {
-      Row(
-        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
-        verticalAlignment = Alignment.CenterVertically
-      ) {
-        Text("Provisional Diagnosis: ", fontWeight = FontWeight.Bold, fontSize = 9.5.sp, color = DarkGrayText)
-        val diagText = when {
-          consultation.diagnosisList.isNotEmpty() -> consultation.diagnosisList.joinToString(" • ")
-          else -> consultation.assessment
-        }
-        if (diagText.isNotBlank()) {
-          Text(diagText, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = if (isGrayscale) DarkGrayText else MedicalGreenDark)
-        }
-      }
-    }
-    Spacer(modifier = Modifier.height(6.dp))
-  }
-
   // Chief Complaint & Clinical History (Formatted with subheadings)
   if (consultation.subjective.isNotBlank() || patient?.chiefComplaint?.isNotBlank() == true) {
     val fullSubjective = buildString {
@@ -1134,6 +1133,31 @@ fun ColumnScope.A4UnifiedSinglePageContent(
       FormattedClinicalSectionView(rawText = textNotes)
       Spacer(modifier = Modifier.height(4.dp))
     }
+  }
+
+  // Provisional Diagnosis Box (Placed after History & Physical Examination)
+  if (consultation.diagnosisList.isNotEmpty() || consultation.assessment.isNotBlank()) {
+    Surface(
+      color = Color(0xFFF0FDF4),
+      shape = RoundedCornerShape(4.dp),
+      border = BorderStroke(0.8.dp, if (isGrayscale) BorderGray else Color(0xFFA7F3D0)),
+      modifier = Modifier.fillMaxWidth()
+    ) {
+      Row(
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Text("Provisional Diagnosis: ", fontWeight = FontWeight.Bold, fontSize = 9.5.sp, color = DarkGrayText)
+        val diagText = when {
+          consultation.diagnosisList.isNotEmpty() -> consultation.diagnosisList.joinToString(" • ")
+          else -> consultation.assessment
+        }
+        if (diagText.isNotBlank()) {
+          Text(diagText, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = if (isGrayscale) DarkGrayText else MedicalGreenDark)
+        }
+      }
+    }
+    Spacer(modifier = Modifier.height(6.dp))
   }
 
   // 3. Procedure that is shown IF PRESENT

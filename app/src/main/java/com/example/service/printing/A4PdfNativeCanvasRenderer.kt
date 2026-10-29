@@ -158,17 +158,7 @@ object A4PdfNativeCanvasRenderer {
     // 4. Vitals Row (6 Stat Boxes)
     currentY = drawVitalsRow(canvas, width, currentY, consultation, patient)
 
-    // 5. Provisional Diagnosis Box (Placed prominently right below Vitals so never pushed or lost)
-    val diagText = when {
-      consultation.diagnosisList.isNotEmpty() -> consultation.diagnosisList.joinToString(" • ")
-      consultation.assessment.isNotBlank() -> consultation.assessment
-      else -> ""
-    }
-    if (diagText.isNotBlank()) {
-      currentY = drawDiagnosisBox(canvas, width, currentY, diagText)
-    }
-
-    // 6. Clinical Examination & History Section
+    // 5. Clinical Examination & History Section
     val hasHistory = !patient?.chiefComplaint.isNullOrBlank() || consultation.subjective.isNotBlank()
     val hasExam = consultation.objective.isNotBlank()
 
@@ -180,6 +170,16 @@ object A4PdfNativeCanvasRenderer {
     } else if (hasExam) {
       val lines = getObjectiveLines(consultation)
       currentY = drawSingleColumnClinicalSection(canvas, width, currentY, "Physical Examination & Clinical Findings:", lines, maxLines = 25)
+    }
+
+    // 6. Provisional Diagnosis Box (Placed under History & Physical Examination)
+    val diagText = when {
+      consultation.diagnosisList.isNotEmpty() -> consultation.diagnosisList.joinToString(" • ")
+      consultation.assessment.isNotBlank() -> consultation.assessment
+      else -> ""
+    }
+    if (diagText.isNotBlank()) {
+      currentY = drawDiagnosisBox(canvas, width, currentY, diagText)
     }
 
     // 7. Prescriptions (Rx) Section (Only if present)
@@ -234,17 +234,7 @@ object A4PdfNativeCanvasRenderer {
     // 4. Vitals Row (6 Stat Boxes)
     currentY = drawVitalsRow(canvas, width, currentY, consultation, patient)
 
-    // 5. Provisional Diagnosis Box (Placed prominently right below Vitals)
-    val diagTextMulti = when {
-      consultation.diagnosisList.isNotEmpty() -> consultation.diagnosisList.joinToString(" • ")
-      consultation.assessment.isNotBlank() -> consultation.assessment
-      else -> ""
-    }
-    if (diagTextMulti.isNotBlank()) {
-      currentY = drawDiagnosisBox(canvas, width, currentY, diagTextMulti)
-    }
-
-    // 6. Clinical Examination & History Section
+    // 5. Clinical Examination & History Section
     val hasHistory = !patient?.chiefComplaint.isNullOrBlank() || consultation.subjective.isNotBlank()
     val hasExam = consultation.objective.isNotBlank()
 
@@ -256,6 +246,16 @@ object A4PdfNativeCanvasRenderer {
     } else if (hasExam) {
       val lines = getObjectiveLines(consultation)
       currentY = drawSingleColumnClinicalSection(canvas, width, currentY, "Physical Examination & Clinical Findings:", lines, maxLines = 25)
+    }
+
+    // 6. Provisional Diagnosis Box (Placed under History & Physical Examination)
+    val diagTextMulti = when {
+      consultation.diagnosisList.isNotEmpty() -> consultation.diagnosisList.joinToString(" • ")
+      consultation.assessment.isNotBlank() -> consultation.assessment
+      else -> ""
+    }
+    if (diagTextMulti.isNotBlank()) {
+      currentY = drawDiagnosisBox(canvas, width, currentY, diagTextMulti)
     }
 
     // 7. Dynamic Flow: Fill remaining vertical space on Page 1 with Prescriptions
@@ -1330,7 +1330,7 @@ object A4PdfNativeCanvasRenderer {
 
       // Dosage & Direction (Include doctor's notes if external)
       paint.typeface = Typeface.DEFAULT
-      val directionText = formatDosageAndDirection(rx) + if (rx.isExternal && rx.instructions.isNotBlank()) " (${rx.instructions})" else ""
+      val directionText = formatDosageAndDirection(rx)
       canvas.drawText(directionText.take(40), 310f, textRowY, paint)
 
       // Duration
@@ -1472,14 +1472,25 @@ object A4PdfNativeCanvasRenderer {
 
     if (consultation.suggestedInvestigations.isNotEmpty()) {
       paint.color = Color.rgb(0x0F, 0x76, 0x6E)
-      paint.textSize = 10f
+      paint.textSize = 9.5f
       paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-      canvas.drawText("Diagnostic Investigations (ဓာတ်ခွဲစစ်ဆေးချက်များ):", 22f, currentY + 10f, paint)
+      canvas.drawText("Suggested Diagnostic Investigations:", 22f, currentY + 10f, paint)
+      currentY += 15f
+
       paint.typeface = Typeface.DEFAULT
-      paint.color = Color.rgb(0x33, 0x41, 0x55)
-      val labs = consultation.suggestedInvestigations.joinToString(", ")
-      val endY = drawWrappedText(canvas, labs, 150f, currentY + 10f, width - 172f, 13f, paint, maxLines = 8)
-      currentY = maxOf(currentY + 16f, endY + 4f)
+      paint.color = Color.rgb(0x1E, 0x29, 0x3B)
+      paint.textSize = 8.5f
+      val labs = consultation.suggestedInvestigations
+      labs.chunked(2).forEach { rowItems ->
+        val textL = "• ${rowItems[0]}"
+        canvas.drawText(textL, 28f, currentY + 9f, paint)
+        if (rowItems.size > 1) {
+          val textR = "• ${rowItems[1]}"
+          canvas.drawText(textR, width / 2f + 10f, currentY + 9f, paint)
+        }
+        currentY += 14f
+      }
+      currentY += 2f
     }
 
     return currentY + 4f
