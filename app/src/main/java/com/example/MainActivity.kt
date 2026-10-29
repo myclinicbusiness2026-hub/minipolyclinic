@@ -412,7 +412,7 @@ fun MiniPolyclinicMainApp(
               icon = Icons.Default.SystemUpdate,
               iconTint = Color(0xFF0F766E),
               title = "Check for App Updates (ဗားရှင်းအသစ် စစ်ဆေးမည်)",
-              subTitle = "လက်ရှိ: v${com.aistudio.shwekhitclinic.vxqmp.BuildConfig.VERSION_NAME} • In-App Auto Update",
+              subTitle = "လက်ရှိ: v${com.example.BuildConfig.VERSION_NAME} • In-App Auto Update",
               onClick = {
                 coroutineScope.launch { drawerState.close() }
                 clinicViewModel.checkForUpdates(isManualCheck = true)
@@ -890,7 +890,7 @@ fun MiniPolyclinicMainApp(
   if (isUpdateDialogVisible && updateState !is com.example.service.update.UpdateState.Idle) {
     com.example.ui.components.AppUpdateDialog(
       updateState = updateState,
-      currentVersionName = com.aistudio.shwekhitclinic.vxqmp.BuildConfig.VERSION_NAME,
+      currentVersionName = com.example.BuildConfig.VERSION_NAME,
       onStartDownload = { info -> clinicViewModel.startDownloadUpdate(context, info) },
       onInstall = { clinicViewModel.installDownloadedUpdate(context) },
       onRetry = { clinicViewModel.checkForUpdates(isManualCheck = true) },

@@ -23,6 +23,7 @@ data class A4PrintOptions(
 data class A4PrintSettings(
   val clinicNameEn: String = "Shwe Khit General Clinic",
   val clinicNameMm: String = "“ရွှေခေတ်” အထွေထွေရောဂါကုဆေးခန်း",
+  val clinicSubtitleMm: String = "အထွေထွေရောဂါကုဆေးခန်း",
   val clinicAddress: String = "အမှတ်(၁၂)၊ လမ်းမတော်လမ်း၊ မန္တလေးမြို့",
   val clinicPhone: String = "09-421001122, 09-790112233",
   val clinicHours: String = "8:00 AM – 8:00 PM",
@@ -43,6 +44,7 @@ data class A4PrintSettings(
       return A4PrintSettings(
         clinicNameEn = s.clinicNameEn,
         clinicNameMm = if (s.clinicSubtitleMm.isNotBlank()) "\"${s.clinicNameMm}\" ${s.clinicSubtitleMm}" else s.clinicNameMm,
+        clinicSubtitleMm = s.clinicSubtitleMm,
         clinicAddress = s.clinicAddress,
         clinicPhone = s.clinicPhone,
         clinicHours = s.clinicHours,

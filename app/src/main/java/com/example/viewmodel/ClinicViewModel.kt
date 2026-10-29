@@ -12,7 +12,7 @@ import com.example.service.sync.SupabaseSyncManager
 import com.example.service.update.AppUpdateManager
 import com.example.service.update.AppUpdateInfo
 import com.example.service.update.UpdateState
-import com.aistudio.shwekhitclinic.vxqmp.BuildConfig
+import com.example.BuildConfig
 import com.example.sync.LocalWifiSyncManager
 import com.example.sync.SyncAuditEntry
 import com.example.sync.SyncDataPayload
