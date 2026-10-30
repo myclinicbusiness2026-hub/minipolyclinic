@@ -552,7 +552,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     temp: Double = 98.4,
     spo2: Int = 98,
     weight: Double = 60.0,
-    rbs: Double? = 110.0
+    rbs: Double? = null
   ) {
     val currentList = _patients.value
     val nextToken = (currentList.maxOfOrNull { it.tokenNumber } ?: 0) + 1
@@ -562,7 +562,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       temperatureCelsius = if (temp > 50) (temp - 32) * 5 / 9 else temp,
       oxygenSaturation = spo2,
       weightKg = weight,
-      rbs = rbs ?: 110.0
+      rbs = rbs
     )
     val patient = Patient(
       id = UUID.randomUUID().toString(),
@@ -580,6 +580,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       chiefComplaint = chiefComplaint
     )
     addPatient(patient)
+
   }
 
   fun registerDirectInjectionPatient(
@@ -596,7 +597,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     temp: Double = 98.4,
     spo2: Int = 98,
     weight: Double = 60.0,
-    rbs: Double? = 110.0
+    rbs: Double? = null
   ) {
     val currentList = _patients.value
     val nextToken = (currentList.maxOfOrNull { it.tokenNumber } ?: 0) + 1
@@ -606,7 +607,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       temperatureCelsius = if (temp > 50) (temp - 32) * 5 / 9 else temp,
       oxygenSaturation = spo2,
       weightKg = weight,
-      rbs = rbs ?: 110.0
+      rbs = rbs
     )
     val patient = Patient(
       id = UUID.randomUUID().toString(),
@@ -742,7 +743,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     temp: Double = 98.4,
     spo2: Int = 98,
     weight: Double = 60.0,
-    rbs: Double? = 110.0
+    rbs: Double? = null
   ) {
     val currentList = _patients.value
     val orig = currentList.find { it.hn.equals(existingHn, ignoreCase = true) || it.id == existingHn }
@@ -753,7 +754,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       temperatureCelsius = if (temp > 50) (temp - 32) * 5 / 9 else temp,
       oxygenSaturation = spo2,
       weightKg = weight,
-      rbs = rbs ?: 110.0
+      rbs = rbs
     )
     val patient = Patient(
       id = UUID.randomUUID().toString(),
@@ -775,6 +776,15 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       followUpReason = followUpReason
     )
     addPatient(patient)
+    if (orig != null && !orig.followUpDueDate.isNullOrBlank()) {
+      val clearedList = _patients.value.map { p ->
+        if (p.id == orig.id) p.copy(followUpDueDate = null, isReminderSent = false) else p
+      }
+      _patients.value = clearedList
+      viewModelScope.launch(Dispatchers.IO) {
+        ClinicDataPersistence.savePatients(context, clearedList)
+      }
+    }
   }
 
 
@@ -783,7 +793,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val vs = VitalSigns(
       bloodPressure = "${point.bpSystolic}/${point.bpDiastolic} mmHg",
       pulseRate = point.pulse,
-      rbs = point.rbs ?: 110.0,
+      rbs = point.rbs,
       weightKg = point.weightKg ?: 60.0
     )
     updatePatientVitals(patientId, vs)
@@ -882,8 +892,23 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     _vaccines.value = _vaccines.value.filter { it.id != recordId }
   }
 
-  fun markReminderSent(vaccineId: String) {
-    // update status marker
+    fun markReminderSent(targetId: String) {
+    val updatedPatients = _patients.value.map { p ->
+      if (p.id == targetId || p.hn.equals(targetId, ignoreCase = true)) {
+        p.copy(isReminderSent = true)
+      } else {
+        p
+      }
+    }
+    _patients.value = updatedPatients
+    viewModelScope.launch(Dispatchers.IO) {
+      ClinicDataPersistence.savePatients(context, updatedPatients)
+    }
+
+    val updatedVaccines = _vaccines.value.map { v ->
+      if (v.id == targetId) v.copy(isReminderSent = true) else v
+    }
+    _vaccines.value = updatedVaccines
   }
 
   // --- Draft Consultation Handling ---

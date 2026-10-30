@@ -236,8 +236,8 @@ fun PatientBannerCard(
               Text("Temp: ${v.temperatureCelsius}°", fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, color = DarkGrayText)
               Text("SpO2: ${v.oxygenSaturation}%", fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, color = DarkGrayText)
               Text("Wt: ${v.weightKg}kg", fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, color = DarkGrayText)
-              if (v.rbs > 0) {
-                Text("RBS: ${v.rbs}", fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, color = DarkGrayText)
+              if ((v.rbs ?: 0.0) > 0) {
+                Text("RBS: ${v.rbs?.toInt()} mg/dL", fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, color = DarkGrayText)
               }
             }
 

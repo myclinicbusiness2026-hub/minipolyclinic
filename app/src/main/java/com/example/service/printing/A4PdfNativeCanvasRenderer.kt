@@ -9,21 +9,47 @@ import com.example.ui.components.A4PageDescriptor
 import com.example.ui.components.A4PrintSettings
 import com.example.ui.components.formatDosageAndDirection
 
-/**
- * A4PdfNativeCanvasRenderer
- * 
- * High-fidelity native vector canvas renderer for A4 clinical documents.
- * Produces crisp, infinitely sharp vector PDFs directly on Android Canvas.
- * Supports dynamic pagination (auto multi-page flow) with comfortable line-height,
- * professional international English clinical headings (no bilingual clutter for doctors),
- * and dedicated full-sheet rendering for Medical Leave Certificates and Clinical Referral Letters.
- */
-object A4PdfNativeCanvasRenderer {
-  private const val PAGE_WIDTH = 595 // A4 standard pt at 72dpi
-  private const val PAGE_HEIGHT = 842
+  /**
+   * Helper function to calculate how many prescriptions can fit on Page 1
+   * when flowing dynamically across multiple pages in a waterfall layout.
+   */
+  fun calculateRxFitOnPageOne(
+    consultation: ConsultationRecord,
+    patient: Patient? = null,
+    height: Float = 842f
+  ): Int {
+    val headerBottom = 16f + 62f // 78f
+    val demoBottom = headerBottom + 6f + 22f + 5f // 111f
+    val allergies = patient?.knownAllergies?.takeIf { it.isNotEmpty() } ?: patient?.allergies?.takeIf { it.isNotEmpty() }
+    val allergiesH = 18f + 5f // 23f
+    val vitalsH = 34f + 6f // 40f
+    val p1Top = demoBottom + allergiesH + vitalsH // ~174f
+
+    val subjectiveLines = getSubjectiveLines(consultation, patient).size
+    val objectiveLines = getObjectiveLines(consultation).size
+    val clinicalLineCount = maxOf(subjectiveLines, objectiveLines)
+    val clinicalH = 15f + (clinicalLineCount * 14.5f).coerceAtLeast(30f) + 6f
+
+    val diagText = when {
+      consultation.diagnosisList.isNotEmpty() -> consultation.diagnosisList.joinToString(" • ")
+      consultation.assessment.isNotBlank() -> consultation.assessment
+      else -> ""
+    }
+    val diagH = if (diagText.isNotBlank()) 26f else 0f
+
+    val contentStartY = p1Top + clinicalH + diagH
+    val maxPageOneY = height - 58f
+    val spaceLeft = maxPageOneY - contentStartY - 30f // 30f for Prescription (Rx) table header
+
+    val rxList = consultation.prescriptions
+    if (rxList.isEmpty() || spaceLeft < 18f) return 0
+    return ((spaceLeft) / 18f).toInt().coerceIn(0, rxList.size)
+  }
 
   /**
    * Dynamically calculate how many A4 pages are needed strictly for the base EMR consultation.
+   * If all content fits comfortably on 1 page before the signature, returns 1.
+   * Otherwise returns 2, triggering the dynamic continuous waterfall flow.
    */
   fun computeEmrPages(
     consultation: ConsultationRecord,
@@ -36,21 +62,44 @@ object A4PdfNativeCanvasRenderer {
       return 1 + validSheets
     }
 
-    // Measure total required content height to fill Page 1 as much as possible before overflowing
-    var estY = 205f // Full Header (~115) + Demographics (~34) + Vitals (~32) + Allergies (~0..18) + Diagnosis (~24)
+    var estY = 175f // Full Header (~78) + Demographics (~28) + Allergies (~23) + Vitals (~40)
     val subjectiveLines = getSubjectiveLines(consultation, patient).size
     val objectiveLines = getObjectiveLines(consultation).size
     val clinicalLineCount = maxOf(subjectiveLines, objectiveLines)
-    estY += (clinicalLineCount * 14.5f).coerceAtLeast(30f)
+    estY += 15f + (clinicalLineCount * 14.5f).coerceAtLeast(30f) + 6f
+
+    val diagText = when {
+      consultation.diagnosisList.isNotEmpty() -> consultation.diagnosisList.joinToString(" • ")
+      consultation.assessment.isNotBlank() -> consultation.assessment
+      else -> ""
+    }
+    if (diagText.isNotBlank()) {
+      estY += 26f
+    }
 
     val rxCount = consultation.prescriptions.size
-    val rxHeight = if (rxCount > 0) 30f + rxCount * 18f else 0f
-    val procHeight = if (consultation.selectedProcedures.isNotEmpty() || consultation.suggestedInvestigations.isNotEmpty()) 45f else 0f
-    val instrHeight = 65f // instructions & follow-up
+    if (rxCount > 0) {
+      estY += 30f + rxCount * 18f
+    }
 
-    val totalEst = estY + rxHeight + procHeight + instrHeight
-    // Single page printable limit before signature is ~750pt
-    return if (totalEst > 750f) 2 else 1
+    val validProcs = consultation.selectedProcedures.filter { it.name.isNotBlank() }
+    if (validProcs.isNotEmpty()) {
+      estY += 16f
+      validProcs.forEach { p ->
+        estY += if (p.notes.isNotBlank()) 30f else 18f
+      }
+    }
+
+    val validInvs = consultation.suggestedInvestigations.filter { it.isNotBlank() }
+    if (validInvs.isNotEmpty()) {
+      estY += 16f + (Math.ceil(validInvs.size / 2.0).toFloat() * 14f)
+    }
+
+    // Patient Instructions & Follow-up
+    estY += 72f
+
+    // Single page printable limit before signature is 735pt (height 842 - bottom margin 74 - padding)
+    return if (estY > 735f) 2 else 1
   }
 
   /**
@@ -207,8 +256,8 @@ object A4PdfNativeCanvasRenderer {
     drawFooterAndSignature(canvas, width, height, consultation, printSettings, pageNumber = pageNumber, totalPages = totalPages)
   }
 
-  // =========================================================================
-  // 2. MULTI-PAGE: PAGE 1 (Continuous Dynamic Flow - Fills Page 1 Before Overflow)
+    // =========================================================================
+  // 2. MULTI-PAGE: PAGE 1 (Continuous Dynamic Waterfall Flow)
   // =========================================================================
   private fun drawPageOneMultiPageContent(
     canvas: Canvas,
@@ -235,18 +284,18 @@ object A4PdfNativeCanvasRenderer {
     // 4. Vitals Row (6 Stat Boxes)
     currentY = drawVitalsRow(canvas, width, currentY, consultation, patient)
 
-    // 5. Clinical Examination & History Section
+    // 5. Clinical Examination & History Section (maxLines = 40 to avoid artificial cutoff)
     val hasHistory = !patient?.chiefComplaint.isNullOrBlank() || consultation.subjective.isNotBlank()
     val hasExam = consultation.objective.isNotBlank()
 
     if (hasHistory && hasExam) {
-      currentY = drawTwoColumnClinicalSection(canvas, width, currentY, consultation, patient, maxLines = 25)
+      currentY = drawTwoColumnClinicalSection(canvas, width, currentY, consultation, patient, maxLines = 40)
     } else if (hasHistory) {
       val lines = getSubjectiveLines(consultation, patient)
-      currentY = drawSingleColumnClinicalSection(canvas, width, currentY, "Chief Complaint & Clinical History:", lines, maxLines = 25)
+      currentY = drawSingleColumnClinicalSection(canvas, width, currentY, "Chief Complaint & Clinical History:", lines, maxLines = 40)
     } else if (hasExam) {
       val lines = getObjectiveLines(consultation)
-      currentY = drawSingleColumnClinicalSection(canvas, width, currentY, "Physical Examination & Clinical Findings:", lines, maxLines = 25)
+      currentY = drawSingleColumnClinicalSection(canvas, width, currentY, "Physical Examination & Clinical Findings:", lines, maxLines = 40)
     }
 
     // 6. Provisional Diagnosis Box (Placed under History & Physical Examination)
@@ -259,13 +308,9 @@ object A4PdfNativeCanvasRenderer {
       currentY = drawDiagnosisBox(canvas, width, currentY, diagTextMulti)
     }
 
-    // 7. Dynamic Flow: Fill remaining vertical space on Page 1 with Prescriptions
+    // 7. Dynamic Waterfall Flow: Fill remaining vertical space on Page 1 with Prescriptions
     val rxList = consultation.prescriptions
-    val maxPageOneY = height - 52f
-    val spaceLeft = maxPageOneY - currentY - 30f // 30f for Rx table header
-    val rxRowsCanFit = if (spaceLeft >= 20f && rxList.isNotEmpty()) {
-      (spaceLeft / 18f).toInt().coerceAtLeast(0)
-    } else 0
+    val rxRowsCanFit = calculateRxFitOnPageOne(consultation, patient, height)
 
     if (rxRowsCanFit > 0 && rxList.isNotEmpty()) {
       val p1Rx = rxList.take(rxRowsCanFit)
@@ -278,9 +323,11 @@ object A4PdfNativeCanvasRenderer {
     paint.textSize = 8.5f
     paint.textAlign = Paint.Align.CENTER
     val continueNotice = if (rxRowsCanFit in 1 until rxList.size) {
-      "▼ Continued on Page 2 (Remaining Prescriptions & Orders) ▼"
+      "▼ Continued on Page 2 (Remaining Prescriptions & Treatment Orders) ▼"
+    } else if (rxRowsCanFit == 0) {
+      "▼ Continued on Page 2 (Prescriptions, Treatment Orders & Attending Physician Seal) ▼"
     } else {
-      "▼ Continued on Page 2 (Orders & Attending Physician Seal) ▼"
+      "▼ Continued on Page 2 (Clinical Procedures, Investigations & Attending Physician Seal) ▼"
     }
     canvas.drawText(continueNotice, width / 2f, height - 38f, paint)
     paint.textAlign = Paint.Align.LEFT
@@ -302,49 +349,49 @@ object A4PdfNativeCanvasRenderer {
     pageNumber: Int,
     totalPages: Int
   ) {
-    // 1. Clean Mini Continuation Header: "Shwe Khit General Medicine Clinic" (NO patient demographic or diagnosis repetition)
+    // 1. Clean Mini Continuation Header
     var currentY = drawMiniContinuationHeader(canvas, width, consultation, patient, printSettings, pageNumber)
 
-    // Calculate how many prescriptions fit on Page 1
-    val headerBottom = 115f
-    val p1EstTop = headerBottom + 6f + 34f + 32f + (if (consultation.diagnosisList.isNotEmpty() || consultation.assessment.isNotBlank()) 24f else 0f)
-    val subjectiveLines = getSubjectiveLines(consultation, patient).size
-    val objectiveLines = getObjectiveLines(consultation).size
-    val clinicalLineCount = maxOf(subjectiveLines, objectiveLines).coerceAtMost(14)
-    val estClinicalH = (clinicalLineCount * 14.5f).coerceAtLeast(30f)
-    val p1EstY = p1EstTop + estClinicalH
-    val maxPageOneY = height - 52f
-    val spaceLeft = maxPageOneY - p1EstY - 30f
-    val rxList = consultation.prescriptions
-    val rxRowsOnP1 = if (spaceLeft >= 20f && rxList.isNotEmpty()) {
-      (spaceLeft / 18f).toInt().coerceAtLeast(0)
-    } else 0
-
-    val remainingRx = if (rxRowsOnP1 in 1 until rxList.size) {
-      rxList.drop(rxRowsOnP1)
-    } else if (rxRowsOnP1 == 0) {
-      rxList
-    } else {
-      emptyList()
-    }
+    // Compact patient reminder sub-bar on Page 2
+    val hn = patient?.hn ?: "HN-2026-0101"
+    val name = patient?.name ?: consultation.patientName
+    val age = patient?.age ?: 45
+    val pGender = patient?.gender?.name
+    val gender = if (pGender == "FEMALE") "F" else "M"
+    val date = consultation.timestamp.ifBlank { "2026-10-19" }.take(16)
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    paint.color = Color.rgb(0x47, 0x55, 0x69)
+    paint.textSize = 8.5f
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+    canvas.drawText("Patient: $name  |  HN: $hn  |  Age/Sex: " + age + "y/" + gender + "  |  Date: " + date, 22f, currentY + 11f, paint)
+    paint.color = Color.rgb(0xE2, 0xE8, 0xF0)
+    paint.strokeWidth = 0.6f
+    canvas.drawLine(22f, currentY + 16f, width - 22f, currentY + 16f, paint)
+    currentY += 22f
 
     // 2. Remaining Prescriptions (if any)
+    val rxList = consultation.prescriptions
+    val rxRowsOnP1 = calculateRxFitOnPageOne(consultation, patient, height)
+    val remainingRx = if (rxRowsOnP1 in 0 until rxList.size) rxList.drop(rxRowsOnP1) else emptyList()
+
     if (remainingRx.isNotEmpty()) {
       currentY = drawPrescriptionsTableSlice(
         canvas = canvas,
         width = width,
         topY = currentY,
         prescriptions = remainingRx,
-        startIndex = if (rxRowsOnP1 in 1 until rxList.size) rxRowsOnP1 else 0
+        startIndex = rxRowsOnP1
       )
     }
 
     // 3. Procedures & Investigations (if any)
-    if (consultation.selectedProcedures.isNotEmpty() || consultation.suggestedInvestigations.isNotEmpty()) {
+    val validProcs = consultation.selectedProcedures.filter { it.name.isNotBlank() }
+    val validInvs = consultation.suggestedInvestigations.filter { it.isNotBlank() }
+    if (validProcs.isNotEmpty() || validInvs.isNotEmpty()) {
       currentY = drawProceduresAndInvestigations(canvas, width, currentY, consultation)
     }
 
-    // 4. Patient Instructions & Follow-up (with safe margin wrapping!)
+    // 4. Patient Instructions & Follow-up
     val hasInstructions = consultation.patientInstructions.isNotBlank()
     val followUpStr = consultation.followUpAppointment.trim()
     val isPrnFollowUp = followUpStr.contains("PRN", ignoreCase = true) || followUpStr.contains("မသက်သာမှ")
@@ -930,7 +977,7 @@ object A4PdfNativeCanvasRenderer {
       "TEMPERATURE" to "${String.format(java.util.Locale.US, "%.1f", vitals.temperatureCelsius)} °F",
       "SPO2" to "${vitals.oxygenSaturation}%",
       "WEIGHT" to "${String.format(java.util.Locale.US, "%.1f", vitals.weightKg)} kg",
-      "RBS" to (vitals.rbs?.let { "${it.toInt()} mg/dL" } ?: "110 mg/dL")
+      "RBS" to (vitals.rbs?.let { if (it > 0) "${it.toInt()} mg/dL" else "-" } ?: "-")
     )
 
     vitalsList.forEachIndexed { idx, pair ->
@@ -1424,14 +1471,15 @@ object A4PdfNativeCanvasRenderer {
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     var currentY = topY
 
-    if (consultation.selectedProcedures.isNotEmpty()) {
+    val validProcs = consultation.selectedProcedures.filter { it.name.isNotBlank() }
+    if (validProcs.isNotEmpty()) {
       paint.color = Color.rgb(0x0F, 0x76, 0x6E)
       paint.textSize = 10f
       paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-      canvas.drawText("Clinical Procedures & Minor Surgery (ကုသမှုလုပ်ဆောင်ချက်များ):", 22f, currentY + 10f, paint)
+      canvas.drawText("Clinical Procedures & Minor Surgery:", 22f, currentY + 10f, paint)
       currentY += 15f
 
-      consultation.selectedProcedures.forEach { proc ->
+      validProcs.forEach { proc ->
         val dt = proc.dateTime.ifBlank { consultation.timestamp }
         val hasNotes = proc.notes.isNotBlank()
         val boxH = if (hasNotes) 27f else 17f

@@ -109,6 +109,9 @@ fun MiniPolyclinicMainApp(
   var showChangePasswordDialog by remember { mutableStateOf(false) }
   var showClinicSettingsDialog by remember { mutableStateOf(false) }
   var showBackupResetDialog by remember { mutableStateOf(false) }
+  var isUserRoleExpanded by remember { mutableStateOf(false) }
+  var isPrinterExpanded by remember { mutableStateOf(false) }
+  var isNetworkExpanded by remember { mutableStateOf(false) }
 
   LaunchedEffect(Unit) {
     try {
@@ -421,121 +424,147 @@ fun MiniPolyclinicMainApp(
 
             Spacer(modifier = Modifier.height(2.dp))
 
-            // Group 2: User Role Setting
-            Text(
-              "USER ROLE SETTING (အကောင့် & လုပ်ပိုင်ခွင့်)",
-              fontSize = 9.sp,
-              fontWeight = FontWeight.Bold,
-              color = SlateMuted,
-              modifier = Modifier.padding(horizontal = 16.dp, vertical = 3.dp)
-            )
-
-            DrawerSettingsRow(
+            // Group 2: User Role Setting (Accordion)
+            DrawerAccordionHeader(
               icon = Icons.Default.AdminPanelSettings,
               iconTint = AccentRedBrown,
-              title = "User & Staff Accounts (အကောင့်များ စီမံခြင်း)",
-              subTitle = "+ အကောင့်သစ်ဖွင့်မည် / အကောင့်ဖျက်မည် / Reset",
-              onClick = {
-                coroutineScope.launch { drawerState.close() }
-                if (currentUser?.role == UserRole.ADMIN) {
-                  showUserManagementDialog = true
-                } else {
-                  adminPinError = null
-                  showAdminPinDialog = true
-                }
-              }
+              title = "User Role & Accounts (အကောင့် & လုပ်ပိုင်ခွင့်)",
+              subTitle = "အကောင့်စီမံခြင်း & စကားဝှက်",
+              isExpanded = isUserRoleExpanded,
+              onClick = { isUserRoleExpanded = !isUserRoleExpanded }
             )
 
-            DrawerSettingsRow(
-              icon = Icons.Default.Password,
-              iconTint = MedicalGreen,
-              title = "Change Password",
-              subTitle = "စကားဝှက် ပြောင်းလဲမည်",
-              onClick = {
-                coroutineScope.launch { drawerState.close() }
-                showChangePasswordDialog = true
+            AnimatedVisibility(visible = isUserRoleExpanded) {
+              Column(
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .padding(start = 12.dp, top = 2.dp, bottom = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+              ) {
+                DrawerSettingsRow(
+                  icon = Icons.Default.ManageAccounts,
+                  iconTint = AccentRedBrown,
+                  title = "User & Staff Accounts (အကောင့်များ)",
+                  subTitle = "+ အကောင့်သစ်ဖွင့် / ဖျက် / Role စီမံခြင်း",
+                  onClick = {
+                    coroutineScope.launch { drawerState.close() }
+                    if (currentUser?.role == UserRole.ADMIN) {
+                      showUserManagementDialog = true
+                    } else {
+                      adminPinError = null
+                      showAdminPinDialog = true
+                    }
+                  }
+                )
+                DrawerSettingsRow(
+                  icon = Icons.Default.Password,
+                  iconTint = MedicalGreen,
+                  title = "Change Password",
+                  subTitle = "စကားဝှက် ပြောင်းလဲမည်",
+                  onClick = {
+                    coroutineScope.launch { drawerState.close() }
+                    showChangePasswordDialog = true
+                  }
+                )
               }
-            )
+            }
 
             Spacer(modifier = Modifier.height(2.dp))
 
-            // Group 3: Printer Setting
-            Text(
-              "PRINTER SETTING (ပရင်တာ ဆက်တင်များ)",
-              fontSize = 9.sp,
-              fontWeight = FontWeight.Bold,
-              color = SlateMuted,
-              modifier = Modifier.padding(horizontal = 16.dp, vertical = 3.dp)
-            )
-
-            DrawerSettingsRow(
-              icon = Icons.Default.Description,
-              iconTint = MedicalGreenDark,
-              title = "A4 Printer Setup",
-              subTitle = "A4 ဆေးမှတ်တမ်း & စာရွက် ဆက်တင်",
-              onClick = {
-                coroutineScope.launch { drawerState.close() }
-                context.startActivity(android.content.Intent(context, com.example.ui.screens.A4PrinterSettingsActivity::class.java))
-              }
-            )
-
-            DrawerSettingsRow(
+            // Group 3: Printer Setting (Accordion)
+            DrawerAccordionHeader(
               icon = Icons.Default.Print,
-              iconTint = MedicalGreen,
-              title = "Thermal Printer Setup",
-              subTitle = "XP-T361 (80mm Bluetooth / USB)",
-              onClick = {
-                coroutineScope.launch { drawerState.close() }
-                context.startActivity(android.content.Intent(context, com.example.ui.screens.PrinterSettingsActivity::class.java))
-              }
+              iconTint = MedicalGreenDark,
+              title = "Printer Settings (ပရင်တာ ဆက်တင်များ)",
+              subTitle = "A4 & Thermal POS ပရင်တာများ",
+              isExpanded = isPrinterExpanded,
+              onClick = { isPrinterExpanded = !isPrinterExpanded }
             )
+
+            AnimatedVisibility(visible = isPrinterExpanded) {
+              Column(
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .padding(start = 12.dp, top = 2.dp, bottom = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+              ) {
+                DrawerSettingsRow(
+                  icon = Icons.Default.Description,
+                  iconTint = MedicalGreenDark,
+                  title = "A4 Printer Setup",
+                  subTitle = "A4 ဆေးမှတ်တမ်း & စာရွက် ဆက်တင်",
+                  onClick = {
+                    coroutineScope.launch { drawerState.close() }
+                    context.startActivity(android.content.Intent(context, com.example.ui.screens.A4PrinterSettingsActivity::class.java))
+                  }
+                )
+                DrawerSettingsRow(
+                  icon = Icons.Default.ReceiptLong,
+                  iconTint = MedicalGreen,
+                  title = "Thermal POS Printer Setup",
+                  subTitle = "XP-T361 (80mm Bluetooth / USB)",
+                  onClick = {
+                    coroutineScope.launch { drawerState.close() }
+                    context.startActivity(android.content.Intent(context, com.example.ui.screens.PrinterSettingsActivity::class.java))
+                  }
+                )
+              }
+            }
 
             Spacer(modifier = Modifier.height(2.dp))
 
-            // Group 4: Network Setting
-            Text(
-              "NETWORK SETTING (ကွန်ရက် & ဒေတာ စင့်ခ်)",
-              fontSize = 9.sp,
-              fontWeight = FontWeight.Bold,
-              color = SlateMuted,
-              modifier = Modifier.padding(horizontal = 16.dp, vertical = 3.dp)
-            )
-
-            DrawerSettingsRow(
+            // Group 4: Network Setting (Accordion)
+            DrawerAccordionHeader(
               icon = Icons.Default.Wifi,
               iconTint = OceanGreenPrimary,
-              title = "Local Sync (Wi-Fi Peer)",
-              subTitle = "ကြိုးမဲ့ Local Wi-Fi တိုက်ရိုက်ချိတ်ဆက်မှု",
-              onClick = {
-                syncDialogInitialTab = 0
-                coroutineScope.launch { drawerState.close() }
-                showSyncDialog = true
-              }
+              title = "Network & Sync Settings (ဒေတာ စင့်ခ်)",
+              subTitle = "Wi-Fi Peer & Supabase Cloud",
+              isExpanded = isNetworkExpanded,
+              onClick = { isNetworkExpanded = !isNetworkExpanded }
             )
 
-            DrawerSettingsRow(
-              icon = Icons.Default.CloudDone,
-              iconTint = SkyBlueDark,
-              title = "Cloud Sync (Supabase)",
-              subTitle = "အွန်လိုင်း Cloud Database စင့်ခ်လုပ်ရန်",
-              onClick = {
-                syncDialogInitialTab = 1
-                coroutineScope.launch { drawerState.close() }
-                showSyncDialog = true
+            AnimatedVisibility(visible = isNetworkExpanded) {
+              Column(
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .padding(start = 12.dp, top = 2.dp, bottom = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+              ) {
+                DrawerSettingsRow(
+                  icon = Icons.Default.WifiTethering,
+                  iconTint = OceanGreenPrimary,
+                  title = "Local Sync (Wi-Fi Peer)",
+                  subTitle = "ကြိုးမဲ့ Local Wi-Fi တိုက်ရိုက်ချိတ်ဆက်မှု",
+                  onClick = {
+                    syncDialogInitialTab = 0
+                    coroutineScope.launch { drawerState.close() }
+                    showSyncDialog = true
+                  }
+                )
+                DrawerSettingsRow(
+                  icon = Icons.Default.CloudDone,
+                  iconTint = SkyBlueDark,
+                  title = "Cloud Sync (Supabase)",
+                  subTitle = "အွန်လိုင်း Cloud Database စင့်ခ်လုပ်ရန်",
+                  onClick = {
+                    syncDialogInitialTab = 1
+                    coroutineScope.launch { drawerState.close() }
+                    showSyncDialog = true
+                  }
+                )
+                DrawerSettingsRow(
+                  icon = Icons.Default.Sync,
+                  iconTint = if (isSyncing) StatusWarning else StatusSuccess,
+                  title = "Sync Logs (ချိတ်ဆက်မှု မှတ်တမ်းများ)",
+                  subTitle = if (isSyncing) "Syncing in progress..." else "Offline SQLite DB (Healthy)",
+                  onClick = {
+                    syncDialogInitialTab = 2
+                    coroutineScope.launch { drawerState.close() }
+                    showSyncDialog = true
+                  }
+                )
               }
-            )
-
-            DrawerSettingsRow(
-              icon = Icons.Default.Sync,
-              iconTint = if (isSyncing) StatusWarning else StatusSuccess,
-              title = "Sync Logs (ချိတ်ဆက်မှု မှတ်တမ်းများ)",
-              subTitle = if (isSyncing) "Syncing in progress..." else "Offline SQLite DB (Healthy)",
-              onClick = {
-                syncDialogInitialTab = 2
-                coroutineScope.launch { drawerState.close() }
-                showSyncDialog = true
-              }
-            )
+            }
 
             Spacer(modifier = Modifier.height(6.dp))
 
@@ -900,6 +929,42 @@ fun MiniPolyclinicMainApp(
 }
 
 @Composable
+private fun DrawerAccordionHeader(
+  icon: ImageVector,
+  iconTint: Color,
+  title: String,
+  subTitle: String,
+  isExpanded: Boolean,
+  onClick: () -> Unit
+) {
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      .padding(horizontal = 12.dp, vertical = 2.dp)
+      .clip(RoundedCornerShape(6.dp))
+      .background(if (isExpanded) SoftGreenContainer.copy(alpha = 0.6f) else BackgroundSurface)
+      .clickable(onClick = onClick)
+      .padding(horizontal = 10.dp, vertical = 7.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.SpaceBetween
+  ) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+      Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(16.dp))
+      Spacer(modifier = Modifier.width(8.dp))
+      Column {
+        Text(title, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DarkGrayText, maxLines = 1)
+        Text(subTitle, fontSize = 8.5.sp, color = SlateMedium, maxLines = 1)
+      }
+    }
+    Icon(
+      if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+      contentDescription = null,
+      tint = SlateMedium,
+      modifier = Modifier.size(16.dp)
+    )
+  }
+}
+
 private fun DrawerSettingsRow(
   icon: ImageVector,
   iconTint: Color,

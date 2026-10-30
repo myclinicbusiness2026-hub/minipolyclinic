@@ -1371,8 +1371,8 @@ private fun ConsultationVisitTimelineCard(
             if (consultation.vitals.weightKg > 0) {
               VitalBox("Weight", "${consultation.vitals.weightKg} kg")
             }
-            if (consultation.vitals.rbs > 0) {
-              VitalBox("RBS", "${consultation.vitals.rbs} mg/dL")
+            if ((consultation.vitals.rbs ?: 0.0) > 0) {
+              VitalBox("RBS", "${consultation.vitals.rbs!!.toInt()} mg/dL")
             }
           }
         }

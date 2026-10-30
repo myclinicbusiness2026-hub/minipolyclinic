@@ -152,6 +152,10 @@ data class SyncDataPayload(
         pro.put("name", proc.name)
         pro.put("category", proc.category)
         pro.put("price", proc.price)
+        pro.put("standardFee", proc.standardFee)
+        pro.put("consumableCost", proc.consumableCost)
+        pro.put("notes", proc.notes)
+        pro.put("dateTime", proc.dateTime)
         prArr.put(pro)
       }
       co.put("procedures", prArr)

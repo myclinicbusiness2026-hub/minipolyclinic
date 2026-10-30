@@ -223,7 +223,7 @@ fun A4PatientDemographicsAndVitalsTable(
         Text("•", fontSize = 8.sp, color = BorderGray)
         Row(verticalAlignment = Alignment.CenterVertically) {
           Text("RBS: ", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = SlateMedium)
-          Text("${vitals.rbs.toInt()} mg/dL", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+          Text("${vitals?.rbs?.toInt() ?: "-"} mg/dL", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
         }
       }
     }

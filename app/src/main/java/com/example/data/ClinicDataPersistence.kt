@@ -214,7 +214,7 @@ object ClinicDataPersistence {
             temperatureCelsius = vObj.optDouble("temp", 98.4),
             oxygenSaturation = vObj.optInt("spo2", 98),
             weightKg = vObj.optDouble("weight", 60.0),
-            rbs = vObj.optDouble("rbs", 110.0),
+            rbs = if (vObj.has("rbs") && !vObj.isNull("rbs")) vObj.getDouble("rbs") else null,
             heightCm = vObj.optDouble("height", 165.0)
           )
         } else VitalSigns()
@@ -404,6 +404,10 @@ object ClinicDataPersistence {
             put("name", p.name)
             put("category", p.category)
             put("price", p.price)
+            put("standardFee", p.standardFee)
+            put("consumableCost", p.consumableCost)
+            put("notes", p.notes)
+            put("dateTime", p.dateTime)
             put("description", p.description)
           }
           procArr.put(pObj)
@@ -477,6 +481,10 @@ object ClinicDataPersistence {
                 name = po.optString("name"),
                 category = po.optString("category"),
                 price = po.optDouble("price", 0.0),
+                standardFee = po.optDouble("standardFee", po.optDouble("price", 0.0)),
+                consumableCost = po.optDouble("consumableCost", 0.0),
+                notes = po.optString("notes"),
+                dateTime = po.optString("dateTime"),
                 description = po.optString("description")
               )
             )

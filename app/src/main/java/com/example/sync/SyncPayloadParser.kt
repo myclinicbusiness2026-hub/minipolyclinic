@@ -21,7 +21,7 @@ object SyncPayloadParser {
           temperatureCelsius = vo.optDouble("temp", 98.4),
           oxygenSaturation = vo.optInt("spo2", 98),
           weightKg = vo.optDouble("weight", 60.0),
-          rbs = vo.optDouble("rbs", 110.0),
+          rbs = if (vo.has("rbs") && !vo.isNull("rbs")) vo.getDouble("rbs") else null,
           heightCm = vo.optDouble("height", 165.0)
         )
       } else VitalSigns()
@@ -105,6 +105,29 @@ object SyncPayloadParser {
         for (j in 0 until dArr.length()) diagnoses.add(dArr.getString(j))
       }
 
+      val procArr = o.optJSONArray("selectedProcedures") ?: o.optJSONArray("procedures")
+      val procedures = mutableListOf<ProcedureItem>()
+      if (procArr != null) {
+        for (k in 0 until procArr.length()) {
+          val po = procArr.getJSONObject(k)
+          procedures.add(
+            ProcedureItem(
+              id = po.optString("id", UUID.randomUUID().toString()),
+              code = po.optString("code"),
+              name = po.optString("name"),
+              myanmarName = po.optString("myanmarName", po.optString("name")),
+              category = po.optString("category", "Minor Surgery"),
+              price = po.optDouble("price", 0.0),
+              standardFee = po.optDouble("standardFee", po.optDouble("price", 0.0)),
+              consumableCost = po.optDouble("consumableCost", 0.0),
+              notes = po.optString("notes"),
+              dateTime = po.optString("dateTime"),
+              description = po.optString("description")
+            )
+          )
+        }
+      }
+
       list.add(
         ConsultationRecord(
           id = o.optString("id"),
@@ -119,6 +142,7 @@ object SyncPayloadParser {
           plan = o.optString("plan"),
           diagnosisList = diagnoses,
           prescriptions = rxs,
+          selectedProcedures = procedures,
           attachments = attachments,
           consultationFee = o.optDouble("consultationFee", 8000.0),
           timestamp = o.optString("timestamp")

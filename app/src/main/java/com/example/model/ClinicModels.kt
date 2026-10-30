@@ -27,7 +27,7 @@ data class VitalSigns(
   val temperatureCelsius: Double = 98.4,
   val oxygenSaturation: Int = 98,
   val weightKg: Double = 60.0,
-  val rbs: Double = 110.0,
+  val rbs: Double? = null,
   val heightCm: Double = 165.0
 ) {
   val bmi: Double get() {
