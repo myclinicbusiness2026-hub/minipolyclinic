@@ -28,6 +28,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.model.ClinicSettings
 import com.example.model.Medicine
 import com.example.model.Patient
+import com.example.ui.screens.treatment.CocktailDrugItem
 import com.example.ui.screens.treatment.TreatmentCard
 import com.example.ui.screens.treatment.TreatmentCardFactory
 import com.example.ui.screens.treatment.TreatmentRoute

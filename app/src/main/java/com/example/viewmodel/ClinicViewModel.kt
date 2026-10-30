@@ -1138,7 +1138,14 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val patient = _patients.value.find { it.id == patientId } ?: return
     val treatmentOrderDetails = treatmentOrders.map { card ->
       val doseStr = if (card.dosage.isNotBlank()) " (${card.dosage})" else ""
-      val routeStr = card.route.displayName
+      val routeStr = when (card.route) {
+        TreatmentRoute.IM -> "IM"
+        TreatmentRoute.IV_PUSH -> "IV Push"
+        TreatmentRoute.IV_INFUSION -> "IV Infusion"
+        TreatmentRoute.SC -> "SC"
+        TreatmentRoute.NEBULIZATION -> "Nebulization"
+        TreatmentRoute.DRESSING -> "Dressing"
+      }
       val freqStr = if (card.frequency.isNotBlank()) " - ${card.frequency}" else ""
       "${routeStr}: ${card.displayName}$doseStr$freqStr"
     }
