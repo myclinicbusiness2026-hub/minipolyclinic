@@ -782,7 +782,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       }
       _patients.value = clearedList
       viewModelScope.launch(Dispatchers.IO) {
-        ClinicDataPersistence.savePatients(context, clearedList)
+        ClinicDataPersistence.savePatients(getApplication(), clearedList)
       }
     }
   }
@@ -892,7 +892,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     _vaccines.value = _vaccines.value.filter { it.id != recordId }
   }
 
-    fun markReminderSent(targetId: String) {
+      fun markReminderSent(targetId: String) {
     val updatedPatients = _patients.value.map { p ->
       if (p.id == targetId || p.hn.equals(targetId, ignoreCase = true)) {
         p.copy(isReminderSent = true)
@@ -902,13 +902,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
     _patients.value = updatedPatients
     viewModelScope.launch(Dispatchers.IO) {
-      ClinicDataPersistence.savePatients(context, updatedPatients)
+      ClinicDataPersistence.savePatients(getApplication(), updatedPatients)
     }
-
-    val updatedVaccines = _vaccines.value.map { v ->
-      if (v.id == targetId) v.copy(isReminderSent = true) else v
-    }
-    _vaccines.value = updatedVaccines
   }
 
   // --- Draft Consultation Handling ---

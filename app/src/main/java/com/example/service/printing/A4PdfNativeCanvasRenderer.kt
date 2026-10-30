@@ -9,7 +9,20 @@ import com.example.ui.components.A4PageDescriptor
 import com.example.ui.components.A4PrintSettings
 import com.example.ui.components.formatDosageAndDirection
 
-  /**
+/**
+ * A4PdfNativeCanvasRenderer
+ * 
+ * High-fidelity native vector canvas renderer for A4 clinical documents.
+ * Produces crisp, infinitely sharp vector PDFs directly on Android Canvas.
+ * Supports dynamic pagination (auto multi-page waterfall flow) with comfortable line-height,
+ * professional international English clinical headings,
+ * and dedicated full-sheet rendering for Medical Leave Certificates and Clinical Referral Letters.
+ */
+object A4PdfNativeCanvasRenderer {
+  private const val PAGE_WIDTH = 595 // A4 standard pt at 72dpi
+  private const val PAGE_HEIGHT = 842
+
+/**
    * Helper function to calculate how many prescriptions can fit on Page 1
    * when flowing dynamically across multiple pages in a waterfall layout.
    */

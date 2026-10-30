@@ -1,5 +1,7 @@
 package com.example
 
+import androidx.compose.animation.AnimatedVisibility
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -965,6 +967,7 @@ private fun DrawerAccordionHeader(
   }
 }
 
+@Composable
 private fun DrawerSettingsRow(
   icon: ImageVector,
   iconTint: Color,
