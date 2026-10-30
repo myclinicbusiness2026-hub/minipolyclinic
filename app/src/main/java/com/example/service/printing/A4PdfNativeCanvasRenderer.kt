@@ -100,7 +100,7 @@ object A4PdfNativeCanvasRenderer {
   fun didProceduresFitOnPageOne(
     consultation: ConsultationRecord,
     patient: Patient?,
-    height: Float = PAGE_HEIGHT
+    height: Float = 842f
   ): Boolean {
     val validProcs = consultation.selectedProcedures.filter { it.name.isNotBlank() }
     if (validProcs.isEmpty()) return false
