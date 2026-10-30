@@ -1,4 +1,4 @@
-﻿package com.example.ui.screens
+package com.example.ui.screens
 import com.example.ui.screens.consultation.*
 import com.example.ui.screens.treatment.*
 
@@ -400,7 +400,9 @@ fun DoctorConsultationScreen(
               sessions = sessions,
               sessionFee = route.getDefaultFee(clinicSettings),
               medicationFee = drug.unitPrice,
-              instructions = drug.instructions
+              instructions = drug.instructions,
+              isPayPerVisit = true,
+              isPrepaidFullCourse = false
             )
             finalTreatmentCards.add(card)
           }

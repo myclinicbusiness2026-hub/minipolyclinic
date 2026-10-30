@@ -64,13 +64,14 @@ data class TreatmentSession(
   val administeredBy: String = "",
   val status: TreatmentStatus = TreatmentStatus.PENDING,
   val isClinicMed: Boolean = true,
+  val isPrepaid: Boolean = false,
   val medicationFee: Double = 0.0,
   val sessionFee: Double = 3000.0,
   val consumables: List<TreatmentConsumable> = emptyList(),
   val invoiceId: String? = null,
   val notes: String = ""
 ) {
-  val totalSessionCost: Double get() = (if (isClinicMed) medicationFee else 0.0) + sessionFee + consumables.sumOf { it.totalPrice }
+  val totalSessionCost: Double get() = (if (isClinicMed && !isPrepaid) medicationFee else 0.0) + (if (isPrepaid) 0.0 else sessionFee) + consumables.sumOf { it.totalPrice }
 }
 
 /**
@@ -97,6 +98,8 @@ data class TreatmentCard(
   val sessionFee: Double = 3000.0,
   val medicationFee: Double = 0.0,
   val isBilledPerSession: Boolean = true,
+  val isPayPerVisit: Boolean = true,
+  val isPrepaidFullCourse: Boolean = false,
   val consultationInvoiceId: String? = null,
   val cardStatus: TreatmentStatus = TreatmentStatus.IN_PROGRESS,
   val discontinueReason: String = "",
@@ -224,6 +227,32 @@ object TreatmentCardFactory {
         sessionFee = 5000.0,
         medicationFee = 3500.0,
         instructions = "Nebulize with 6L/min O2 for 15 mins. Check SPO2 and pulse."
+      ),
+      TreatmentCard(
+        patientId = "",
+        patientName = "",
+        medicationName = "Wound Dressing (Clean & Aseptic)",
+        dosage = "Regular Dressing",
+        route = TreatmentRoute.DRESSING,
+        frequency = "Daily",
+        totalDays = 3,
+        totalSessions = 3,
+        sessionFee = 5000.0,
+        medicationFee = 2000.0,
+        instructions = "Clean with Normal Saline & Povidone Iodine. Apply sterile gauze & micropore."
+      ),
+      TreatmentCard(
+        patientId = "",
+        patientName = "",
+        medicationName = "Suture Removal / Stitch Off",
+        dosage = "Complete",
+        route = TreatmentRoute.DRESSING,
+        frequency = "Stat",
+        totalDays = 1,
+        totalSessions = 1,
+        sessionFee = 5000.0,
+        medicationFee = 1000.0,
+        instructions = "Clean wound edges. Remove alternating or all sutures aseptically."
       )
     )
   }

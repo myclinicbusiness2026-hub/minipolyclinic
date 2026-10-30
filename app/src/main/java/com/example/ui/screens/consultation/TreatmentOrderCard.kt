@@ -42,6 +42,7 @@ fun TreatmentOrderCard(
   treatmentOrders: List<TreatmentCard>,
   onOpenAddOrder: () -> Unit,
   onRemoveOrder: (Int) -> Unit,
+  onTogglePaymentMode: ((Int) -> Unit)? = null,
   currencyFmt: NumberFormat
 ) {
   Card(
@@ -132,12 +133,14 @@ fun TreatmentOrderCard(
                       TreatmentRoute.IV_INFUSION -> Color(0xFFEFF6FF)
                       TreatmentRoute.IV_PUSH -> Color(0xFFF0FDF4)
                       TreatmentRoute.NEBULIZATION -> Color(0xFFFDF4FF)
+                      TreatmentRoute.DRESSING -> Color(0xFFFFFBEB)
                       else -> SoftGreenContainer
                     },
                     border = BorderStroke(0.6.dp, when (card.route) {
                       TreatmentRoute.IV_INFUSION -> SkyBluePrimary
                       TreatmentRoute.IV_PUSH -> MedicalGreen
                       TreatmentRoute.NEBULIZATION -> Color(0xFFC026D3)
+                      TreatmentRoute.DRESSING -> Color(0xFFD97706)
                       else -> MedicalGreenDark
                     })
                   ) {
@@ -149,6 +152,7 @@ fun TreatmentOrderCard(
                         TreatmentRoute.IV_INFUSION -> SkyBlueDark
                         TreatmentRoute.IV_PUSH -> MedicalGreenDark
                         TreatmentRoute.NEBULIZATION -> Color(0xFF86198F)
+                        TreatmentRoute.DRESSING -> Color(0xFFB45309)
                         else -> MedicalGreenDark
                       },
                       modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
@@ -163,10 +167,32 @@ fun TreatmentOrderCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                   )
+
+                  Spacer(modifier = Modifier.width(6.dp))
+                  // Billing Mode Tag
+                  Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = if (card.isPrepaidFullCourse || !card.isPayPerVisit) Color(0xFFEDE9FE) else Color(0xFFE0F2FE),
+                    border = BorderStroke(0.5.dp, if (card.isPrepaidFullCourse || !card.isPayPerVisit) Color(0xFF7C3AED) else Color(0xFF0284C7)),
+                    modifier = Modifier.clickable { onTogglePaymentMode?.invoke(index) }
+                  ) {
+                    Text(
+                      if (card.isPrepaidFullCourse || !card.isPayPerVisit) "Full Course (အကြေရှင်း)" else "Pay per Visit (တစ်ကြိမ်ချင်း)",
+                      fontSize = 8.5.sp,
+                      fontWeight = FontWeight.Bold,
+                      color = if (card.isPrepaidFullCourse || !card.isPayPerVisit) Color(0xFF6D28D9) else Color(0xFF0369A1),
+                      modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                    )
+                  }
                 }
                 Spacer(modifier = Modifier.height(2.dp))
+                val billingModeNote = if (card.isPrepaidFullCourse || !card.isPayPerVisit) {
+                  "အကြေရှင်း: ${currencyFmt.format((card.medicationFee + card.sessionFee) * card.totalSessions)} Ks (စုစုပေါင်း ${card.totalSessions} ကြိမ်)"
+                } else {
+                  "၁ ကြိမ်လျှင်: ${currencyFmt.format(card.medicationFee + card.sessionFee)} Ks (ယနေ့ ၁ ကြိမ်သာ ရှင်းမည်)"
+                }
                 Text(
-                  "${card.frequency} x ${card.totalDays} Days (${card.totalSessions} doses) • ဆေးဖိုး: ${currencyFmt.format(card.medicationFee)} Ks + ဝန်ဆောင်ခ: ${currencyFmt.format(card.sessionFee)} Ks",
+                  "${card.frequency} x ${card.totalDays} Days (${card.totalSessions} doses) • $billingModeNote",
                   fontSize = 10.sp,
                   color = SlateMedium,
                   maxLines = 1,
@@ -220,6 +246,7 @@ fun AddTreatmentOrderModal(
   var instructions by remember { mutableStateOf("Slow IV push over 3-5 mins.") }
   var searchQuery by remember { mutableStateOf("") }
   var splitVialMode by remember { mutableStateOf(false) }
+  var isPayPerVisit by remember { mutableStateOf(true) }
 
   val filteredMedicines = remember(medicines, searchQuery) {
     if (searchQuery.isBlank()) emptyList()
@@ -338,6 +365,100 @@ fun AddTreatmentOrderModal(
             }
           }
 
+          // Quick Presets
+          Text("အသုံးများသော Presets (Quick Routine Orders):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+          ) {
+            ElevatedAssistChip(
+              onClick = {
+                medicationName = "Inj. Ceftriaxone 1g"
+                dosage = "1 g"
+                selectedRoute = TreatmentRoute.IV_PUSH
+                frequency = "12 hrly"
+                totalDaysText = "3"
+                medFeeText = "4500"
+                sessionFeeText = "3000"
+                instructions = "Slow IV push over 3-5 mins."
+                isPayPerVisit = true
+              },
+              label = { Text("Inj. Ceftriaxone 1g (IV Push)", fontSize = 10.sp) }
+            )
+            ElevatedAssistChip(
+              onClick = {
+                medicationName = "Daily Dressing (အနာဆေးထည့်ခြင်း)"
+                dosage = "1 time"
+                selectedRoute = TreatmentRoute.DRESSING
+                frequency = "Daily"
+                totalDaysText = "3"
+                medFeeText = "0"
+                sessionFeeText = "3000"
+                instructions = "Clean and aseptic dressing with normal saline & betadine."
+                isPayPerVisit = true
+              },
+              label = { Text("🩹 Wound Dressing", fontSize = 10.sp) }
+            )
+            ElevatedAssistChip(
+              onClick = {
+                medicationName = "Nebulizer (Salbutamol 2.5mg + NS)"
+                dosage = "1 nebule"
+                selectedRoute = TreatmentRoute.NEBULIZATION
+                frequency = "BD"
+                totalDaysText = "2"
+                medFeeText = "1500"
+                sessionFeeText = "2000"
+                instructions = "Nebulize with 6 L/min Oxygen over 10-15 mins."
+                isPayPerVisit = true
+              },
+              label = { Text("🫁 Nebulizer Therapy", fontSize = 10.sp) }
+            )
+            ElevatedAssistChip(
+              onClick = {
+                medicationName = "5% Dextrose Saline 500ml + Neurobion"
+                dosage = "1 Bottle"
+                selectedRoute = TreatmentRoute.IV_INFUSION
+                frequency = "Daily"
+                totalDaysText = "1"
+                medFeeText = "12000"
+                sessionFeeText = "8000"
+                instructions = "IV infusion 30-40 drops/min."
+                isPayPerVisit = true
+              },
+              label = { Text("💧 IV Drip 500ml", fontSize = 10.sp) }
+            )
+            ElevatedAssistChip(
+              onClick = {
+                medicationName = "Depo-Provera (Medroxyprogesterone 150mg)"
+                dosage = "1 vial (1ml)"
+                selectedRoute = TreatmentRoute.IM
+                frequency = "Stat"
+                totalDaysText = "1"
+                medFeeText = "7000"
+                sessionFeeText = "2500"
+                instructions = "Deep IM into gluteal / deltoid muscle."
+                isPayPerVisit = true
+              },
+              label = { Text("💉 Depo-Provera IM", fontSize = 10.sp) }
+            )
+            ElevatedAssistChip(
+              onClick = {
+                medicationName = "Suture Removal (ချုပ်ရိုးဖြည်ခြင်း)"
+                dosage = "1 procedure"
+                selectedRoute = TreatmentRoute.DRESSING
+                frequency = "Stat"
+                totalDaysText = "1"
+                medFeeText = "0"
+                sessionFeeText = "3000"
+                instructions = "Aseptic stitch off and wound cleaning."
+                isPayPerVisit = true
+              },
+              label = { Text("✂️ Suture Removal", fontSize = 10.sp) }
+            )
+          }
+
           // 2. Medication Name & Dosage
           Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
@@ -450,6 +571,26 @@ fun AddTreatmentOrderModal(
             )
           }
 
+          // Payment Option (Pay per Visit vs Full Course Upfront)
+          Text("ငွေပေးချေမှုပုံစံ (Payment & Billing Option):", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+          ) {
+            FilterChip(
+              selected = isPayPerVisit,
+              onClick = { isPayPerVisit = true },
+              label = { Text("တစ်ကြိမ်ချင်းရှင်းမည် (Pay per Visit - Default)", fontSize = 10.sp) },
+              colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MedicalGreen, selectedLabelColor = PureWhite)
+            )
+            FilterChip(
+              selected = !isPayPerVisit,
+              onClick = { isPayPerVisit = false },
+              label = { Text("တစ်ခေါက်တည်း အကြေရှင်းမည် (Full Course Upfront)", fontSize = 10.sp) },
+              colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFF7C3AED), selectedLabelColor = PureWhite)
+            )
+          }
+
           // 5. Fee breakdown
           Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
@@ -516,10 +657,14 @@ fun AddTreatmentOrderModal(
                 frequency = frequency.ifBlank { "12 hrly" },
                 totalDays = days,
                 totalSessions = sessions.size,
-                sessions = sessions,
+                sessions = sessions.mapIndexed { idx, s ->
+                  if (!isPayPerVisit) s.copy(isPrepaid = true) else s
+                },
                 sessionFee = sessionFee,
                 medicationFee = medFee,
-                instructions = instructions
+                instructions = instructions,
+                isPayPerVisit = isPayPerVisit,
+                isPrepaidFullCourse = !isPayPerVisit
               )
               onConfirm(card)
               onDismiss()

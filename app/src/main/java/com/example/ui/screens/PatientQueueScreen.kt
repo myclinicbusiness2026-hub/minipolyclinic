@@ -453,8 +453,30 @@ fun PatientQueueScreen(
       onDismiss = { showRegisterDialog = false },
       onRegister = { name, age, gender, phone, address, bloodType, allergies, chiefComplaint, bp, pulse, temp, spo2, weight, rbs, isDirectInjection ->
         if (isDirectInjection) {
-          viewModel.registerDirectInjectionPatient(
-            name, age, gender, phone, address, bloodType, allergies, chiefComplaint, bp, pulse, temp, spo2, weight, rbs
+          val (procName, fee) = when {
+            chiefComplaint.contains("Dressing", ignoreCase = true) || chiefComplaint.contains("ဆေးထည့်", ignoreCase = true) -> Pair(chiefComplaint, 3000.0)
+            chiefComplaint.contains("Nebulizer", ignoreCase = true) || chiefComplaint.contains("ဆေးရှူ", ignoreCase = true) -> Pair(chiefComplaint, 2000.0)
+            chiefComplaint.contains("Suture", ignoreCase = true) || chiefComplaint.contains("ချုပ်ရိုး", ignoreCase = true) -> Pair(chiefComplaint, 3000.0)
+            chiefComplaint.contains("Vitals", ignoreCase = true) || chiefComplaint.contains("သွေးပေါင်", ignoreCase = true) -> Pair(chiefComplaint, 1000.0)
+            else -> Pair(chiefComplaint, 2000.0)
+          }
+          viewModel.registerDirectProcedurePatient(
+            name = name,
+            age = age,
+            gender = gender,
+            phone = phone,
+            address = address,
+            bloodType = bloodType,
+            allergies = allergies,
+            chiefComplaint = chiefComplaint,
+            procedureName = procName,
+            procedureFee = fee,
+            bp = bp,
+            pulse = pulse,
+            temp = temp,
+            spo2 = spo2,
+            weight = weight,
+            rbs = rbs
           )
         } else {
           viewModel.registerPatient(
@@ -861,6 +883,16 @@ fun PatientQueueItemCard(
                   }
                 )
               }
+              if (patient.status != QueueStatus.WAITING && patient.status != QueueStatus.IN_CONSULTATION) {
+                DropdownMenuItem(
+                  text = { Text("ဆရာဝန်ထံ လွှဲပြောင်းမည် (Transfer to Doctor)", fontSize = 11.sp, color = SkyBlueDark) },
+                  leadingIcon = { Icon(Icons.Default.SwapHoriz, contentDescription = null, tint = SkyBluePrimary, modifier = Modifier.size(16.dp)) },
+                  onClick = {
+                    showMenu = false
+                    viewModel.transferPatientToDoctor(patient.id)
+                  }
+                )
+              }
               HorizontalDivider()
               DropdownMenuItem(
                 text = { Text("ဖျက်မည် (Delete)", fontSize = 11.sp, color = Color(0xFFDC2626)) },
@@ -995,6 +1027,18 @@ fun PatientQueueItemCard(
               Text("ဆေးမှတ်တမ်း", fontSize = 10.sp, color = DarkGrayText, fontWeight = FontWeight.SemiBold)
             }
 
+            if (patient.status == QueueStatus.AT_BILLING) {
+              OutlinedButton(
+                onClick = { viewModel.transferPatientToDoctor(patient.id) },
+                shape = RoundedCornerShape(6.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.height(28.dp)
+              ) {
+                Icon(Icons.Default.SwapHoriz, contentDescription = null, modifier = Modifier.size(12.dp), tint = OceanGreenPrimary)
+                Spacer(modifier = Modifier.width(3.dp))
+                Text("ဆရာဝန်ထံလွှဲ", fontSize = 10.sp, color = OceanGreenPrimary, fontWeight = FontWeight.SemiBold)
+              }
+            }
             if (patient.status == QueueStatus.COMPLETED) {
               Button(
                 onClick = { onRegisterFollowUp(patient) },

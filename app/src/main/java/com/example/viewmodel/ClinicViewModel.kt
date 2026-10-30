@@ -1,4 +1,4 @@
-﻿package com.example.viewmodel
+package com.example.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
@@ -26,6 +26,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 
 class ClinicViewModel(application: Application) : AndroidViewModel(application) {
@@ -583,7 +586,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
   }
 
-  fun registerDirectInjectionPatient(
+  fun registerDirectProcedurePatient(
     name: String,
     age: Int,
     gender: Gender,
@@ -591,13 +594,16 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     address: String,
     bloodType: String = "O+",
     allergies: List<String> = emptyList(),
-    chiefComplaint: String = "တိုက်ရိုက်ဆေးထိုး / Day-Care (Direct Injection)",
+    chiefComplaint: String = "တိုက်ရိုက် Day-Care / သူနာပြုကုသမှု",
+    procedureName: String = "အနာဆေးထည့်ခြင်း (Wound Dressing)",
+    procedureFee: Double = 3000.0,
     bp: String = "120/80 mmHg",
     pulse: Int = 76,
     temp: Double = 98.4,
     spo2: Int = 98,
     weight: Double = 60.0,
-    rbs: Double? = null
+    rbs: Double? = null,
+    recurringDays: Int = 1
   ) {
     val currentList = _patients.value
     val nextToken = (currentList.maxOfOrNull { it.tokenNumber } ?: 0) + 1
@@ -622,23 +628,36 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       registrationTime = BurmeseDateUtils.getNowFormatted(),
       vitals = vitals,
       knownAllergies = allergies,
-      chiefComplaint = chiefComplaint.ifBlank { "တိုက်ရိုက်ဆေးထိုး / Day-Care (Direct Injection)" }
+      chiefComplaint = chiefComplaint
     )
     val updatedPatients = currentList + patient
     _patients.value = updatedPatients
     ClinicDataPersistence.savePatients(getApplication(), updatedPatients)
 
-    // Immediately generate a direct invoice with 0 doctor fee so cashier can bill injection/meds
+    val invId = "INV-${UUID.randomUUID().toString().take(8)}"
+    val invNo = "INV-${1000 + _invoices.value.size + 1}"
+    val invoiceItems = mutableListOf<InvoiceItem>()
+    if (procedureFee > 0) {
+      invoiceItems.add(
+        InvoiceItem(
+          name = procedureName,
+          quantity = 1,
+          unitPrice = procedureFee,
+          totalPrice = procedureFee,
+          isProcedure = true
+        )
+      )
+    }
     val invoice = Invoice(
-      id = "INV-",
-      invoiceNumber = "INV-",
+      id = invId,
+      invoiceNumber = invNo,
       consultationId = "",
       patientId = patient.id,
       patientName = patient.name,
-      items = emptyList(),
+      items = invoiceItems,
       consultationFee = 0.0,
       serviceFee = 0.0,
-      totalAmount = 0.0,
+      totalAmount = procedureFee,
       paidAmount = 0.0,
       paymentStatus = "Unpaid",
       cashierName = _currentUser.value?.fullName ?: "Counter Cashier",
@@ -647,6 +666,117 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val updatedInvoices = _invoices.value + invoice
     _invoices.value = updatedInvoices
     ClinicDataPersistence.saveInvoices(getApplication(), updatedInvoices)
+
+    if (recurringDays > 1) {
+      val route = when {
+        procedureName.contains("Dressing", ignoreCase = true) || procedureName.contains("ဆေးထည့်", ignoreCase = true) -> TreatmentRoute.DRESSING
+        procedureName.contains("Nebulizer", ignoreCase = true) || procedureName.contains("ဆေးရှူ", ignoreCase = true) -> TreatmentRoute.NEBULIZATION
+        else -> TreatmentRoute.IM
+      }
+      val sessions = TreatmentCardFactory.generateSessions(
+        startDateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
+        frequency = "Daily",
+        days = recurringDays,
+        medicationFee = 0.0,
+        sessionFee = procedureFee
+      )
+      val card = TreatmentCard(
+        patientId = patient.id,
+        patientName = patient.name,
+        patientHn = patient.hn,
+        doctorName = "Direct Nursing / Day-Care",
+        medicationName = procedureName,
+        dosage = "1 procedure",
+        route = route,
+        frequency = "Daily",
+        totalDays = recurringDays,
+        totalSessions = sessions.size,
+        sessions = sessions.mapIndexed { idx, s ->
+          if (idx == 0) s.copy(invoiceId = invoice.id, isPrepaid = true) else s
+        },
+        sessionFee = procedureFee,
+        medicationFee = 0.0,
+        instructions = "Direct procedure care: $procedureName",
+        isPayPerVisit = true,
+        isPrepaidFullCourse = false,
+        consultationInvoiceId = invoice.id
+      )
+      val currentCards = _treatmentCards.value
+      val mergedCards = currentCards + card
+      _treatmentCards.value = mergedCards
+      ClinicDataPersistence.saveTreatmentCards(getApplication(), mergedCards)
+    }
+
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
+  }
+
+  fun registerDirectInjectionPatient(
+    name: String,
+    age: Int,
+    gender: Gender,
+    phone: String,
+    address: String,
+    bloodType: String = "O+",
+    allergies: List<String> = emptyList(),
+    chiefComplaint: String = "တိုက်ရိုက်ဆေးထိုး / Day-Care (Direct Injection)",
+    bp: String = "120/80 mmHg",
+    pulse: Int = 76,
+    temp: Double = 98.4,
+    spo2: Int = 98,
+    weight: Double = 60.0,
+    rbs: Double? = null
+  ) {
+    registerDirectProcedurePatient(
+      name = name,
+      age = age,
+      gender = gender,
+      phone = phone,
+      address = address,
+      bloodType = bloodType,
+      allergies = allergies,
+      chiefComplaint = chiefComplaint,
+      procedureName = "တိုက်ရိုက်ဆေးထိုး (Direct Injection)",
+      procedureFee = 2000.0,
+      bp = bp,
+      pulse = pulse,
+      temp = temp,
+      spo2 = spo2,
+      weight = weight,
+      rbs = rbs
+    )
+  }
+
+  fun transferPatientToDoctor(patientId: String) {
+    val currentPatients = _patients.value
+    val updatedPatients = currentPatients.map { p ->
+      if (p.id == patientId) {
+        p.copy(
+          status = QueueStatus.WAITING,
+          chiefComplaint = "[Referred to Doctor] ${p.chiefComplaint}"
+        )
+      } else p
+    }
+    _patients.value = updatedPatients
+    ClinicDataPersistence.savePatients(getApplication(), updatedPatients)
+
+    val currentInvoices = _invoices.value
+    val inv = currentInvoices.find { it.patientId == patientId && it.paymentStatus != "Paid" }
+    if (inv != null) {
+      val docFee = clinicSettings.value.consultationFee
+      val updatedInv = inv.copy(
+        consultationFee = docFee,
+        totalAmount = inv.totalAmount + docFee
+      )
+      val updatedInvs = currentInvoices.map { if (it.id == updatedInv.id) updatedInv else it }
+      _invoices.value = updatedInvs
+      ClinicDataPersistence.saveInvoices(getApplication(), updatedInvs)
+    }
+
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
   }
 
   fun updatePatient(updatedPatient: Patient) {
@@ -1058,22 +1188,47 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
     // Build Billing Invoice automatically
     val invoiceItems = mutableListOf<InvoiceItem>()
+
+    // Identify which prescribed drugs are handled by Day-Care Treatment Cards to prevent double-billing and full-course over-deduction
+    val treatmentCardMedNames = treatmentOrders.map {
+      it.medicationName
+        .replace(Regex("(?i)^inj\\.?\\s*"), "")
+        .replace(Regex("(?i)^iv\\s*"), "")
+        .replace(Regex("(?i)^im\\s*"), "")
+        .replace(Regex("(?i)^sc\\s*"), "")
+        .trim().lowercase()
+    }.filter { it.isNotBlank() }
+
     prescriptions.forEach { drug ->
       val drugName = drug.effectiveName.ifBlank { drug.name.ifBlank { drug.medicineName } }
-      val displayName = if (drug.dosage.isNotBlank() && !drugName.contains(drug.dosage, ignoreCase = true)) {
-        "$drugName (${drug.dosage}) x ${drug.quantity}"
-      } else {
-        "$drugName x ${drug.quantity}"
+      val cleanDrug = drugName
+        .replace(Regex("(?i)^inj\\.?\\s*"), "")
+        .replace(Regex("(?i)^iv\\s*"), "")
+        .replace(Regex("(?i)^im\\s*"), "")
+        .replace(Regex("(?i)^sc\\s*"), "")
+        .trim().lowercase()
+
+      val isCoveredByTreatmentCard = treatmentOrders.any { card ->
+        (card.medicationId.isNotBlank() && card.medicationId == drug.medicineId) ||
+        (cleanDrug.isNotBlank() && (card.medicationName.contains(cleanDrug, ignoreCase = true) || cleanDrug.contains(card.medicationName, ignoreCase = true)))
       }
-      invoiceItems.add(
-        InvoiceItem(
-          name = displayName,
-          quantity = drug.quantity,
-          unitPrice = drug.unitPrice,
-          totalPrice = drug.totalPrice,
-          isProcedure = false
+
+      if (!isCoveredByTreatmentCard) {
+        val displayName = if (drug.dosage.isNotBlank() && !drugName.contains(drug.dosage, ignoreCase = true)) {
+          "$drugName (${drug.dosage}) x ${drug.quantity}"
+        } else {
+          "$drugName x ${drug.quantity}"
+        }
+        invoiceItems.add(
+          InvoiceItem(
+            name = displayName,
+            quantity = drug.quantity,
+            unitPrice = drug.unitPrice,
+            totalPrice = drug.totalPrice,
+            isProcedure = false
+          )
         )
-      )
+      }
     }
     selectedProcedures.forEach { proc ->
       invoiceItems.add(
@@ -1089,7 +1244,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
     treatmentOrders.forEach { card ->
       val sFee = if (card.sessionFee > 0) card.sessionFee else card.route.getDefaultFee(clinicSettings.value)
-      val totalFee = card.medicationFee + sFee
+      val totalFeePerDose = card.medicationFee + sFee
       val routeShort = card.route.label.split(" ").first()
       val cleanMedName = card.medicationName
         .replace(Regex("(?i)^inj\\.?\\s*"), "")
@@ -1100,16 +1255,33 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       val doseStr = if (card.dosage.isNotBlank() && !cleanMedName.contains(card.dosage, ignoreCase = true)) " ${card.dosage}" else ""
       val freqStr = if (card.frequency.isNotBlank()) " ${card.frequency.split(" ").first().lowercase()}" else ""
       val routeSuffix = card.route.label.split("(").first().trim()
-      val itemName = "$routeShort $cleanMedName$doseStr$freqStr ($routeSuffix)".trim()
-      invoiceItems.add(
-        InvoiceItem(
-          name = itemName,
-          quantity = 1,
-          unitPrice = totalFee,
-          totalPrice = totalFee,
-          isProcedure = true
+
+      if (card.isPrepaidFullCourse || !card.isPayPerVisit) {
+        // Full Course Upfront Billing: all sessions charged now
+        val totalFullFee = totalFeePerDose * card.totalSessions
+        val itemName = "$routeShort $cleanMedName$doseStr$freqStr (Full Course ${card.totalSessions} Doses)".trim()
+        invoiceItems.add(
+          InvoiceItem(
+            name = itemName,
+            quantity = 1,
+            unitPrice = totalFullFee,
+            totalPrice = totalFullFee,
+            isProcedure = true
+          )
         )
-      )
+      } else {
+        // Pay per Visit (Default): only 1st dose charged today
+        val itemName = "$routeShort $cleanMedName$doseStr$freqStr (Dose 1/${card.totalSessions})".trim()
+        invoiceItems.add(
+          InvoiceItem(
+            name = itemName,
+            quantity = 1,
+            unitPrice = totalFeePerDose,
+            totalPrice = totalFeePerDose,
+            isProcedure = true
+          )
+        )
+      }
     }
 
     val totalItemsPrice = invoiceItems.sumOf { it.totalPrice }
@@ -1139,12 +1311,19 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     if (treatmentOrders.isNotEmpty()) {
       val ctx = getApplication<Application>()
       val taggedCards = treatmentOrders.map { card ->
+        val isPrepaidCourse = card.isPrepaidFullCourse || !card.isPayPerVisit
         val updatedSessions = card.sessions.mapIndexed { idx, s ->
-          if (idx == 0) s.copy(invoiceId = invoice.id) else s
+          if (isPrepaidCourse) {
+            s.copy(invoiceId = invoice.id, isPrepaid = true)
+          } else {
+            if (idx == 0) s.copy(invoiceId = invoice.id, isPrepaid = true) else s
+          }
         }
         card.copy(
           consultationInvoiceId = invoice.id,
-          sessions = updatedSessions
+          sessions = updatedSessions,
+          isPrepaidFullCourse = isPrepaidCourse,
+          isPayPerVisit = !isPrepaidCourse
         )
       }
       val currentCards = _treatmentCards.value
@@ -1278,7 +1457,18 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     for (item in items) {
       val med = medMap[item.medicineId] ?: medMap.values.find { it.name.equals(item.medicineName, ignoreCase = true) }
       if (med != null) {
-        var remainingToDeduct = item.quantity
+        val matchingCard = _treatmentCards.value.find { card ->
+          card.patientId == patientId &&
+          (card.medicationId == item.medicineId ||
+           card.medicationName.contains(item.medicineName, ignoreCase = true) ||
+           item.medicineName.contains(card.medicationName, ignoreCase = true))
+        }
+        val actualDeductQuantity = if (matchingCard != null && matchingCard.isPayPerVisit && !matchingCard.isPrepaidFullCourse) {
+          1 // Pay-per-visit: only deduct 1 dose/vial on day 1
+        } else {
+          item.quantity
+        }
+        var remainingToDeduct = actualDeductQuantity
         val updatedBatches = med.allBatches.map { batch ->
           if (remainingToDeduct > 0 && batch.quantity > 0) {
             val deduct = minOf(batch.quantity, remainingToDeduct)
@@ -1803,7 +1993,10 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
     // 1. Build line items for this visit (bundled med + injection administration fee)
     val invoiceItems = mutableListOf<InvoiceItem>()
-    val sessionTotalFee = (if (isClinicMed) medPrice else 0.0) + sessionFee
+    val isPrepaid = session.isPrepaid || card.isPrepaidFullCourse
+    val effectiveMedPrice = if (isPrepaid) 0.0 else (if (isClinicMed) medPrice else 0.0)
+    val effectiveSessionFee = if (isPrepaid) 0.0 else sessionFee
+    val sessionTotalFee = effectiveMedPrice + effectiveSessionFee
     if (sessionTotalFee > 0) {
       val routeShort = card.route.label.split(" ").first()
       val cleanMedName = card.medicationName
@@ -1841,13 +2034,13 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val totalCost = invoiceItems.sumOf { it.totalPrice }
 
     val isAlreadyBilled = (session.invoiceId?.isNotBlank() == true && !session.invoiceId.startsWith("INV-TC-")) ||
-      (!card.consultationInvoiceId.isNullOrBlank() && session.sessionNumber == 1)
+      (!card.consultationInvoiceId.isNullOrBlank() && (session.sessionNumber == 1 || isPrepaid))
 
     var invoice: Invoice? = null
     if (isAlreadyBilled) {
       // Deduct stock for consumables and clinic medicine without creating duplicate invoice
       val tempItems = mutableListOf<InvoiceItem>()
-      if (isClinicMed && card.medicationName.isNotBlank()) {
+      if (!isPrepaid && isClinicMed && card.medicationName.isNotBlank()) {
         tempItems.add(InvoiceItem(name = card.medicationName, quantity = 1, unitPrice = medPrice, totalPrice = medPrice, isProcedure = false))
       }
       consumables.forEach { c ->

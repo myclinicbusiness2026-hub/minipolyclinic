@@ -119,7 +119,7 @@ fun RegisterPatientDialog(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Visit Type Selection: Doctor Consultation vs Direct Injection / Day-Care
+        // Visit Type Selection: Doctor Consultation vs Direct Care / Day-Care
         Text("လာရောက်သည့် ရည်ရွယ်ချက် (Visit Type):", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = SlateDark)
         Spacer(modifier = Modifier.height(4.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -154,7 +154,7 @@ fun RegisterPatientDialog(
               .clickable {
                 isDirectInjection = true
                 if (chiefComplaint.isBlank()) {
-                  chiefComplaint = "တိုက်ရိုက်ဆေးထိုး / Day-Care (Direct Injection)"
+                  chiefComplaint = "တိုက်ရိုက် Day-Care / သူနာပြုကုသမှု"
                 }
               },
             shape = RoundedCornerShape(8.dp),
@@ -170,22 +170,53 @@ fun RegisterPatientDialog(
                 onClick = {
                   isDirectInjection = true
                   if (chiefComplaint.isBlank()) {
-                  chiefComplaint = "တိုက်ရိုက်ဆေးထိုး / Day-Care (Direct Injection)"
+                    chiefComplaint = "တိုက်ရိုက် Day-Care / သူနာပြုကုသမှု"
                   }
                 },
                 colors = RadioButtonDefaults.colors(selectedColor = SkyBluePrimary)
               )
               Spacer(modifier = Modifier.width(4.dp))
               Column {
-                Text("တိုက်ရိုက်ဆေးထိုး", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
-                Text("Direct Injection (No Doc)", fontSize = 9.sp, color = SkyBlueDark)
+                Text("တိုက်ရိုက် Day-Care / သူနာပြု", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+                Text("Direct Care (No Doc Fee)", fontSize = 8.5.sp, color = SkyBlueDark)
               }
             }
           }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        if (isDirectInjection) {
+          Spacer(modifier = Modifier.height(6.dp))
+          Text("တိုက်ရိုက်ကုသမှု အမျိုးအစား ရွေးချယ်ရန်:", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+          ) {
+            ElevatedAssistChip(
+              onClick = { chiefComplaint = "အနာဆေးထည့်ခြင်း (Wound Dressing)" },
+              label = { Text("🩹 အနာဆေးထည့်", fontSize = 10.sp) }
+            )
+            ElevatedAssistChip(
+              onClick = { chiefComplaint = "ဆေးရှူခြင်း (Nebulizer Therapy)" },
+              label = { Text("🫁 ဆေးရှူခြင်း", fontSize = 10.sp) }
+            )
+            ElevatedAssistChip(
+              onClick = { chiefComplaint = "တိုက်ရိုက်ဆေးထိုး (Direct Injection)" },
+              label = { Text("💉 ဆေးထိုးခြင်း", fontSize = 10.sp) }
+            )
+            ElevatedAssistChip(
+              onClick = { chiefComplaint = "ချုပ်ရိုးဖြည်ခြင်း (Suture Removal)" },
+              label = { Text("✂️ ချုပ်ရိုးဖြည်", fontSize = 10.sp) }
+            )
+            ElevatedAssistChip(
+              onClick = { chiefComplaint = "သွေးပေါင်/ဆီးချိုစစ် (Vitals & RBS Check)" },
+              label = { Text("🩺 Vitals / RBS", fontSize = 10.sp) }
+            )
+          }
+        }
 
+        Spacer(modifier = Modifier.height(12.dp))
         // Basic Info
         OutlinedTextField(
           value = name,

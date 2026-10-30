@@ -256,6 +256,15 @@ fun ConsultationPrescriptionAndBillingPane(
       treatmentOrders = orderedTreatmentCards,
       onOpenAddOrder = onOpenAddTreatmentOrder,
       onRemoveOrder = { index -> orderedTreatmentCards.removeAt(index) },
+      onTogglePaymentMode = { index ->
+        val c = orderedTreatmentCards[index]
+        val newPayPerVisit = !c.isPayPerVisit
+        orderedTreatmentCards[index] = c.copy(
+          isPayPerVisit = newPayPerVisit,
+          isPrepaidFullCourse = !newPayPerVisit,
+          sessions = c.sessions.map { s -> if (!newPayPerVisit) s.copy(isPrepaid = true) else s.copy(isPrepaid = false) }
+        )
+      },
       currencyFmt = currencyFmt
     )
 

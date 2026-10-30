@@ -782,9 +782,10 @@ fun AdministerSessionModal(
   onDismiss: () -> Unit,
   onConfirm: (isClinicMed: Boolean, medPrice: Double, sessionFee: Double, consumables: List<TreatmentConsumable>, notes: String) -> Unit
 ) {
-  var isClinicMed by remember { mutableStateOf(session.isClinicMed && session.medicationFee > 0) }
-  var medPriceText by remember { mutableStateOf((if (session.medicationFee > 0) session.medicationFee else card.medicationFee).toInt().toString()) }
-  var sessionFeeText by remember { mutableStateOf(card.sessionFee.toInt().toString()) }
+  val isPrepaid = session.isPrepaid || card.isPrepaidFullCourse
+  var isClinicMed by remember { mutableStateOf(!isPrepaid && session.isClinicMed && session.medicationFee > 0) }
+  var medPriceText by remember { mutableStateOf((if (isPrepaid) 0.0 else (if (session.medicationFee > 0) session.medicationFee else card.medicationFee)).toInt().toString()) }
+  var sessionFeeText by remember { mutableStateOf((if (isPrepaid) 0.0 else card.sessionFee).toInt().toString()) }
   var notes by remember { mutableStateOf(session.notes) }
   val selectedConsumables = remember { mutableStateListOf<TreatmentConsumable>() }
   var storeSearchQuery by remember { mutableStateOf("") }
@@ -862,6 +863,26 @@ fun AdministerSessionModal(
             .weight(1f)
             .verticalScroll(rememberScrollState())
         ) {
+          if (isPrepaid) {
+            Surface(
+              shape = RoundedCornerShape(8.dp),
+              color = Color(0xFFEDE9FE),
+              border = BorderStroke(1.dp, Color(0xFF7C3AED)),
+              modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            ) {
+              Row(
+                modifier = Modifier.padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF7C3AED), modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                  Text("✨ အကြေရှင်းပြီးသား ဆေးထိုးကတ် (Prepaid Full Course)", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF5B21B6))
+                  Text("ဆေးဖိုးနှင့် ဝန်ဆောင်ခကို ရက်စွဲအစတွင် အကြေရှင်းပြီးဖြစ်သဖြင့် ယခုကြိမ်အတွက် ထပ်မံကောက်ခံရန် မလိုပါ (0 Ks)", fontSize = 9.5.sp, color = Color(0xFF6D28D9))
+                }
+              }
+            }
+          }
           // 1. Medicine Source Toggle
           Text("၁။ ဆေးအရင်းအမြစ် (Medication Source):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SlateDark)
           Spacer(modifier = Modifier.height(4.dp))
@@ -1259,6 +1280,7 @@ fun CreateTreatmentCardModal(
   var instructions by remember { mutableStateOf("Slow IV push over 3-5 mins.") }
   var storeSearchQuery by remember { mutableStateOf("") }
   var splitVialMode by remember { mutableStateOf(false) }
+  var isPayPerVisit by remember { mutableStateOf(true) }
 
   val filteredStoreMeds = remember(medicines, storeSearchQuery) {
     if (storeSearchQuery.isBlank()) emptyList()
@@ -1439,12 +1461,12 @@ fun CreateTreatmentCardModal(
           }
 
           // Quick Presets
-          Text("အသုံးများသော Preset များ:", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+          Text("အသုံးများသော Preset များ (Routine & Injections):", fontSize = 11.sp, fontWeight = FontWeight.Bold)
           Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
           ) {
-            AssistChip(
+            ElevatedAssistChip(
               onClick = {
                 medicationName = "Inj. Ceftriaxone 1g"
                 dosage = "1 g"
@@ -1453,10 +1475,40 @@ fun CreateTreatmentCardModal(
                 totalDaysText = "3"
                 medFeeText = "4500"
                 sessionFeeText = "3000"
+                instructions = "Slow IV push over 3-5 mins."
+                isPayPerVisit = true
               },
-              label = { Text("Ceftriaxone 12 hrly", fontSize = 10.sp) }
+              label = { Text("Inj. Ceftriaxone 12h", fontSize = 10.sp) }
             )
-            AssistChip(
+            ElevatedAssistChip(
+              onClick = {
+                medicationName = "Daily Dressing (အနာဆေးထည့်ခြင်း)"
+                dosage = "1 time"
+                selectedRoute = TreatmentRoute.DRESSING
+                frequency = "Daily"
+                totalDaysText = "3"
+                medFeeText = "0"
+                sessionFeeText = "3000"
+                instructions = "Aseptic normal saline & betadine dressing."
+                isPayPerVisit = true
+              },
+              label = { Text("🩹 Wound Dressing", fontSize = 10.sp) }
+            )
+            ElevatedAssistChip(
+              onClick = {
+                medicationName = "Nebulizer (Salbutamol 2.5mg + NS)"
+                dosage = "1 nebule"
+                selectedRoute = TreatmentRoute.NEBULIZATION
+                frequency = "BD"
+                totalDaysText = "2"
+                medFeeText = "1500"
+                sessionFeeText = "2000"
+                instructions = "Nebulize with Oxygen 6L/min."
+                isPayPerVisit = true
+              },
+              label = { Text("🫁 Nebulizer", fontSize = 10.sp) }
+            )
+            ElevatedAssistChip(
               onClick = {
                 medicationName = "5% Dextrose Saline 500ml + Vitamins"
                 dosage = "1 Bottle"
@@ -1465,10 +1517,12 @@ fun CreateTreatmentCardModal(
                 totalDaysText = "1"
                 medFeeText = "12000"
                 sessionFeeText = "8000"
+                instructions = "IV Drip 30-40 drops/min."
+                isPayPerVisit = true
               },
-              label = { Text("IV Drip 500ml", fontSize = 10.sp) }
+              label = { Text("💧 IV Drip 500ml", fontSize = 10.sp) }
             )
-            AssistChip(
+            ElevatedAssistChip(
               onClick = {
                 medicationName = "Depo-Provera (Medroxyprogesterone)"
                 dosage = "150mg/1ml"
@@ -1477,11 +1531,26 @@ fun CreateTreatmentCardModal(
                 totalDaysText = "1"
                 medFeeText = "7000"
                 sessionFeeText = "2500"
+                instructions = "Deep IM injection."
+                isPayPerVisit = true
               },
-              label = { Text("Depo-Provera IM", fontSize = 10.sp) }
+              label = { Text("💉 Depo-Provera", fontSize = 10.sp) }
+            )
+            ElevatedAssistChip(
+              onClick = {
+                medicationName = "Suture Removal (ချုပ်ရိုးဖြည်ခြင်း)"
+                dosage = "1 procedure"
+                selectedRoute = TreatmentRoute.DRESSING
+                frequency = "Stat"
+                totalDaysText = "1"
+                medFeeText = "0"
+                sessionFeeText = "3000"
+                instructions = "Stitch off and wound cleansing."
+                isPayPerVisit = true
+              },
+              label = { Text("✂️ Stitch Off", fontSize = 10.sp) }
             )
           }
-
           OutlinedTextField(
             value = medicationName,
             onValueChange = { medicationName = it },
@@ -1549,6 +1618,26 @@ fun CreateTreatmentCardModal(
             )
           }
 
+          // Payment Option (Pay per Visit vs Full Course Upfront)
+          Text("ငွေပေးချေမှုပုံစံ (Payment Option):", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+          ) {
+            FilterChip(
+              selected = isPayPerVisit,
+              onClick = { isPayPerVisit = true },
+              label = { Text("တစ်ကြိမ်ချင်းရှင်းမည် (Pay per Visit - Default)", fontSize = 10.sp) },
+              colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MedicalGreen, selectedLabelColor = PureWhite)
+            )
+            FilterChip(
+              selected = !isPayPerVisit,
+              onClick = { isPayPerVisit = false },
+              label = { Text("တစ်ခေါက်တည်း အကြေရှင်းမည် (Full Course Upfront)", fontSize = 10.sp) },
+              colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFF7C3AED), selectedLabelColor = PureWhite)
+            )
+          }
+
           Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
               value = medFeeText,
@@ -1601,10 +1690,14 @@ fun CreateTreatmentCardModal(
               frequency = frequency,
               totalDays = days,
               totalSessions = sessions.size,
-              sessions = sessions,
+              sessions = sessions.mapIndexed { idx, s ->
+                if (!isPayPerVisit) s.copy(isPrepaid = true) else s
+              },
               sessionFee = sessionFee,
               medicationFee = medFee,
-              instructions = instructions
+              instructions = instructions,
+              isPayPerVisit = isPayPerVisit,
+              isPrepaidFullCourse = !isPayPerVisit
             )
             onCreate(newCard)
           },

@@ -718,6 +718,8 @@ object ClinicDataPersistence {
         put("sessionFee", card.sessionFee)
         put("medicationFee", card.medicationFee)
         put("isBilledPerSession", card.isBilledPerSession)
+        put("isPayPerVisit", card.isPayPerVisit)
+        put("isPrepaidFullCourse", card.isPrepaidFullCourse)
         put("cardStatus", card.cardStatus.name)
         put("discontinueReason", card.discontinueReason)
         put("discontinuedBy", card.discontinuedBy)
@@ -735,6 +737,7 @@ object ClinicDataPersistence {
             put("administeredBy", s.administeredBy)
             put("status", s.status.name)
             put("isClinicMed", s.isClinicMed)
+            put("isPrepaid", s.isPrepaid)
             put("medicationFee", s.medicationFee)
             put("sessionFee", s.sessionFee)
             put("invoiceId", s.invoiceId ?: "")
@@ -805,6 +808,7 @@ object ClinicDataPersistence {
                 administeredBy = so.optString("administeredBy"),
                 status = status,
                 isClinicMed = so.optBoolean("isClinicMed", true),
+                isPrepaid = so.optBoolean("isPrepaid", false),
                 medicationFee = so.optDouble("medicationFee", 0.0),
                 sessionFee = so.optDouble("sessionFee", 3000.0),
                 consumables = consumables,
@@ -844,6 +848,8 @@ object ClinicDataPersistence {
             sessionFee = o.optDouble("sessionFee", 3000.0),
             medicationFee = o.optDouble("medicationFee", 0.0),
             isBilledPerSession = o.optBoolean("isBilledPerSession", true),
+            isPayPerVisit = o.optBoolean("isPayPerVisit", true),
+            isPrepaidFullCourse = o.optBoolean("isPrepaidFullCourse", false),
             cardStatus = cardStatus,
             discontinueReason = o.optString("discontinueReason"),
             discontinuedBy = o.optString("discontinuedBy"),
