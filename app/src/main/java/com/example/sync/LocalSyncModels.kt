@@ -311,6 +311,7 @@ data class SyncDataPayload(
         put("discontinuedAt", card.discontinuedAt)
         put("notes", card.notes)
         put("isCocktail", card.isCocktail)
+        put("isPatientSupplied", card.isPatientSupplied)
 
         val ckArr = JSONArray()
         card.cocktailItems.forEach { item ->

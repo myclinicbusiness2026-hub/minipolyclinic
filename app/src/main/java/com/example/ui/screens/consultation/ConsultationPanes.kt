@@ -243,15 +243,7 @@ fun ConsultationPrescriptionAndBillingPane(
   currencyFmt: NumberFormat
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-    // 1. Prescription Builder & FEFO Search
-    PrescriptionBuilderCard(
-      prescribedDrugs = prescribedDrugs,
-      onOpenAddDrug = onOpenAddDrug,
-      onRemoveDrug = { index -> prescribedDrugs.removeAt(index) },
-      currencyFmt = currencyFmt
-    )
-
-    // 1.5. Day-Care Injections & Treatment Order Card
+    // 1. Day-Care Injections & Treatment Order Card (Clinical Treatment & Injections)
     TreatmentOrderCard(
       treatmentOrders = orderedTreatmentCards,
       onOpenAddOrder = onOpenAddTreatmentOrder,
@@ -268,7 +260,15 @@ fun ConsultationPrescriptionAndBillingPane(
       currencyFmt = currencyFmt
     )
 
-    // 2. 1-Tap Procedure Presets & Custom Procedure Builder
+    // 2. Prescription Builder & FEFO Search (Oral Take-Home Prescriptions)
+    PrescriptionBuilderCard(
+      prescribedDrugs = prescribedDrugs,
+      onOpenAddDrug = onOpenAddDrug,
+      onRemoveDrug = { index -> prescribedDrugs.removeAt(index) },
+      currencyFmt = currencyFmt
+    )
+
+    // 3. 1-Tap Procedure Presets & Custom Procedure Builder
     ProcedureManagementCard(
       procedures = procedures,
       selectedProcedures = selectedProcedures,

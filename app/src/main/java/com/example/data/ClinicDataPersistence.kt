@@ -24,6 +24,8 @@ object ClinicDataPersistence {
   private const val KEY_DELETED_MEDICINE_IDS = "deleted_medicine_ids"
   private const val KEY_TREATMENT_CARDS = "treatment_cards"
   private const val KEY_CLINIC_SETTINGS = "clinic_settings"
+  private const val KEY_DRAFT_CONSULTATIONS = "draft_consultations"
+  private const val KEY_SELECTED_PATIENT_ID = "selected_patient_id"
 
   private fun getPrefs(context: Context) =
     context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -358,86 +360,191 @@ object ClinicDataPersistence {
     }
   }
 
+  fun serializeConsultationRecord(c: ConsultationRecord): JSONObject {
+    return JSONObject().apply {
+      put("id", c.id)
+      put("patientId", c.patientId)
+      put("patientName", c.patientName)
+      put("doctorName", c.doctorName)
+      put("doctorDegree", c.doctorDegree)
+      put("doctorSama", c.doctorSama)
+      put("subjective", c.subjective)
+      put("objective", c.objective)
+      put("assessment", c.assessment)
+      put("plan", c.plan)
+      put("diagnosisList", JSONArray(c.diagnosisList))
+      put("consultationFee", c.consultationFee)
+      put("canvasNotes", c.canvasNotes)
+      put("followUpAppointment", c.followUpAppointment)
+      put("followUpDueDate", c.followUpDueDate ?: "")
+      put("nextVaccineSchedule", c.nextVaccineSchedule)
+      put("patientInstructions", c.patientInstructions)
+      put("timestamp", c.timestamp)
+
+      val rxArr = JSONArray()
+      c.prescriptions.forEach { rx ->
+        val rObj = JSONObject().apply {
+          put("medicineId", rx.medicineId)
+          put("medicineName", rx.medicineName)
+          put("dosage", rx.dosage)
+          put("frequency", rx.frequency)
+          put("duration", rx.duration)
+          put("quantity", rx.quantity)
+          put("unitPrice", rx.unitPrice)
+          put("instructions", rx.instructions)
+        }
+        rxArr.put(rObj)
+      }
+      put("prescriptions", rxArr)
+
+      val procArr = JSONArray()
+      c.selectedProcedures.forEach { p ->
+        val pObj = JSONObject().apply {
+          put("id", p.id)
+          put("code", p.code)
+          put("name", p.name)
+          put("category", p.category)
+          put("price", p.price)
+          put("standardFee", p.standardFee)
+          put("consumableCost", p.consumableCost)
+          put("notes", p.notes)
+          put("dateTime", p.dateTime)
+          put("description", p.description)
+        }
+        procArr.put(pObj)
+      }
+      put("selectedProcedures", procArr)
+
+      val toArr = JSONArray()
+      c.treatmentOrderDetails.forEach { toArr.put(it) }
+      put("treatmentOrderDetails", toArr)
+
+      val attArr = JSONArray()
+      c.attachments.forEach { a ->
+        val aObj = JSONObject().apply {
+          put("id", a.id)
+          put("title", a.title)
+          put("category", a.category)
+          put("date", a.date)
+          put("imageUri", a.imageUri)
+          put("filePath", a.filePath)
+          put("fileType", a.fileType)
+          put("fileName", a.fileName)
+          put("notes", a.notes)
+        }
+        attArr.put(aObj)
+      }
+      put("attachments", attArr)
+    }
+  }
+
+  fun parseConsultationRecordObject(o: JSONObject): ConsultationRecord {
+    val dArr = o.optJSONArray("diagnosisList")
+    val diagnoses = mutableListOf<String>()
+    if (dArr != null) {
+      for (j in 0 until dArr.length()) diagnoses.add(dArr.getString(j))
+    }
+
+    val rxArr = o.optJSONArray("prescriptions")
+    val prescriptions = mutableListOf<PrescribedDrug>()
+    if (rxArr != null) {
+      for (j in 0 until rxArr.length()) {
+        val ro = rxArr.getJSONObject(j)
+        prescriptions.add(
+          PrescribedDrug(
+            medicineId = ro.optString("medicineId"),
+            medicineName = ro.optString("medicineName"),
+            dosage = ro.optString("dosage"),
+            frequency = ro.optString("frequency"),
+            duration = ro.optString("duration"),
+            quantity = ro.optInt("quantity", 1),
+            unitPrice = ro.optDouble("unitPrice", 0.0),
+            instructions = ro.optString("instructions")
+          )
+        )
+      }
+    }
+
+    val procArr = o.optJSONArray("selectedProcedures")
+    val procedures = mutableListOf<ProcedureItem>()
+    if (procArr != null) {
+      for (j in 0 until procArr.length()) {
+        val po = procArr.getJSONObject(j)
+        procedures.add(
+          ProcedureItem(
+            id = po.optString("id"),
+            code = po.optString("code", po.optString("id").take(6).uppercase()),
+            name = po.optString("name"),
+            category = po.optString("category"),
+            price = po.optDouble("price", 0.0),
+            standardFee = po.optDouble("standardFee", po.optDouble("price", 0.0)),
+            consumableCost = po.optDouble("consumableCost", 0.0),
+            notes = po.optString("notes"),
+            dateTime = po.optString("dateTime"),
+            description = po.optString("description")
+          )
+        )
+      }
+    }
+
+    val attArr = o.optJSONArray("attachments")
+    val attachments = mutableListOf<MedicalAttachment>()
+    if (attArr != null) {
+      for (j in 0 until attArr.length()) {
+        val ao = attArr.getJSONObject(j)
+        attachments.add(
+          MedicalAttachment(
+            id = ao.optString("id", UUID.randomUUID().toString()),
+            title = ao.optString("title"),
+            category = ao.optString("category", "Lab Report"),
+            date = ao.optString("date"),
+            imageUri = ao.optString("imageUri"),
+            filePath = ao.optString("filePath", ao.optString("imageUri")),
+            fileType = ao.optString("fileType", "Image"),
+            fileName = ao.optString("fileName", ao.optString("title")),
+            notes = ao.optString("notes")
+          )
+        )
+      }
+    }
+
+    val toArr = o.optJSONArray("treatmentOrderDetails")
+    val treatmentOrderDetails = mutableListOf<String>()
+    if (toArr != null) {
+      for (j in 0 until toArr.length()) treatmentOrderDetails.add(toArr.getString(j))
+    }
+
+    return ConsultationRecord(
+      id = o.optString("id"),
+      patientId = o.optString("patientId"),
+      patientName = o.optString("patientName"),
+      doctorName = o.optString("doctorName"),
+      doctorDegree = o.optString("doctorDegree"),
+      doctorSama = o.optString("doctorSama"),
+      subjective = o.optString("subjective"),
+      objective = o.optString("objective"),
+      assessment = o.optString("assessment"),
+      plan = o.optString("plan"),
+      diagnosisList = diagnoses,
+      prescriptions = prescriptions,
+      selectedProcedures = procedures,
+      treatmentOrderDetails = treatmentOrderDetails,
+      consultationFee = o.optDouble("consultationFee", 8000.0),
+      canvasNotes = o.optString("canvasNotes"),
+      followUpAppointment = o.optString("followUpAppointment"),
+      followUpDueDate = o.optString("followUpDueDate").ifBlank { null },
+      nextVaccineSchedule = o.optString("nextVaccineSchedule"),
+      patientInstructions = o.optString("patientInstructions"),
+      attachments = attachments,
+      timestamp = o.optString("timestamp")
+    )
+  }
+
   // 3. Consultations
   fun saveConsultations(context: Context, list: List<ConsultationRecord>) {
     val arr = JSONArray()
     list.forEach { c ->
-      val obj = JSONObject().apply {
-        put("id", c.id)
-        put("patientId", c.patientId)
-        put("patientName", c.patientName)
-        put("doctorName", c.doctorName)
-        put("doctorDegree", c.doctorDegree)
-        put("doctorSama", c.doctorSama)
-        put("subjective", c.subjective)
-        put("objective", c.objective)
-        put("assessment", c.assessment)
-        put("plan", c.plan)
-        put("diagnosisList", JSONArray(c.diagnosisList))
-        put("consultationFee", c.consultationFee)
-        put("canvasNotes", c.canvasNotes)
-        put("followUpAppointment", c.followUpAppointment)
-        put("followUpDueDate", c.followUpDueDate ?: "")
-        put("nextVaccineSchedule", c.nextVaccineSchedule)
-        put("patientInstructions", c.patientInstructions)
-        put("timestamp", c.timestamp)
-
-        val rxArr = JSONArray()
-        c.prescriptions.forEach { rx ->
-          val rObj = JSONObject().apply {
-            put("medicineId", rx.medicineId)
-            put("medicineName", rx.medicineName)
-            put("dosage", rx.dosage)
-            put("frequency", rx.frequency)
-            put("duration", rx.duration)
-            put("quantity", rx.quantity)
-            put("unitPrice", rx.unitPrice)
-            put("instructions", rx.instructions)
-          }
-          rxArr.put(rObj)
-        }
-        put("prescriptions", rxArr)
-
-        val procArr = JSONArray()
-        c.selectedProcedures.forEach { p ->
-          val pObj = JSONObject().apply {
-            put("id", p.id)
-            put("code", p.code)
-            put("name", p.name)
-            put("category", p.category)
-            put("price", p.price)
-            put("standardFee", p.standardFee)
-            put("consumableCost", p.consumableCost)
-            put("notes", p.notes)
-            put("dateTime", p.dateTime)
-            put("description", p.description)
-          }
-          procArr.put(pObj)
-        }
-        put("selectedProcedures", procArr)
-
-        val toArr = JSONArray()
-        c.treatmentOrderDetails.forEach { toArr.put(it) }
-        put("treatmentOrderDetails", toArr)
-
-        val attArr = JSONArray()
-        c.attachments.forEach { a ->
-          val aObj = JSONObject().apply {
-            put("id", a.id)
-            put("title", a.title)
-            put("category", a.category)
-            put("date", a.date)
-            put("imageUri", a.imageUri)
-            put("filePath", a.filePath)
-            put("fileType", a.fileType)
-            put("fileName", a.fileName)
-            put("notes", a.notes)
-          }
-          attArr.put(aObj)
-        }
-        put("attachments", attArr)
-      }
-      arr.put(obj)
+      arr.put(serializeConsultationRecord(c))
     }
     getPrefs(context).edit().putString(KEY_CONSULTATIONS, arr.toString()).apply()
   }
@@ -449,111 +556,47 @@ object ClinicDataPersistence {
       val list = mutableListOf<ConsultationRecord>()
       for (i in 0 until arr.length()) {
         val o = arr.getJSONObject(i)
-        val dArr = o.optJSONArray("diagnosisList")
-        val diagnoses = mutableListOf<String>()
-        if (dArr != null) {
-          for (j in 0 until dArr.length()) diagnoses.add(dArr.getString(j))
-        }
-
-        val rxArr = o.optJSONArray("prescriptions")
-        val prescriptions = mutableListOf<PrescribedDrug>()
-        if (rxArr != null) {
-          for (j in 0 until rxArr.length()) {
-            val ro = rxArr.getJSONObject(j)
-            prescriptions.add(
-              PrescribedDrug(
-                medicineId = ro.optString("medicineId"),
-                medicineName = ro.optString("medicineName"),
-                dosage = ro.optString("dosage"),
-                frequency = ro.optString("frequency"),
-                duration = ro.optString("duration"),
-                quantity = ro.optInt("quantity", 1),
-                unitPrice = ro.optDouble("unitPrice", 0.0),
-                instructions = ro.optString("instructions")
-              )
-            )
-          }
-        }
-
-        val procArr = o.optJSONArray("selectedProcedures")
-        val procedures = mutableListOf<ProcedureItem>()
-        if (procArr != null) {
-          for (j in 0 until procArr.length()) {
-            val po = procArr.getJSONObject(j)
-            procedures.add(
-              ProcedureItem(
-                id = po.optString("id"),
-                code = po.optString("code", po.optString("id").take(6).uppercase()),
-                name = po.optString("name"),
-                category = po.optString("category"),
-                price = po.optDouble("price", 0.0),
-                standardFee = po.optDouble("standardFee", po.optDouble("price", 0.0)),
-                consumableCost = po.optDouble("consumableCost", 0.0),
-                notes = po.optString("notes"),
-                dateTime = po.optString("dateTime"),
-                description = po.optString("description")
-              )
-            )
-          }
-        }
-
-        val attArr = o.optJSONArray("attachments")
-        val attachments = mutableListOf<MedicalAttachment>()
-        if (attArr != null) {
-          for (j in 0 until attArr.length()) {
-            val ao = attArr.getJSONObject(j)
-            attachments.add(
-              MedicalAttachment(
-                id = ao.optString("id", UUID.randomUUID().toString()),
-                title = ao.optString("title"),
-                category = ao.optString("category", "Lab Report"),
-                date = ao.optString("date"),
-                imageUri = ao.optString("imageUri"),
-                filePath = ao.optString("filePath", ao.optString("imageUri")),
-                fileType = ao.optString("fileType", "Image"),
-                fileName = ao.optString("fileName", ao.optString("title")),
-                notes = ao.optString("notes")
-              )
-            )
-          }
-        }
-
-        val toArr = o.optJSONArray("treatmentOrderDetails")
-        val treatmentOrderDetails = mutableListOf<String>()
-        if (toArr != null) {
-          for (j in 0 until toArr.length()) treatmentOrderDetails.add(toArr.getString(j))
-        }
-
-        list.add(
-          ConsultationRecord(
-            id = o.optString("id"),
-            patientId = o.optString("patientId"),
-            patientName = o.optString("patientName"),
-            doctorName = o.optString("doctorName"),
-            doctorDegree = o.optString("doctorDegree"),
-            doctorSama = o.optString("doctorSama"),
-            subjective = o.optString("subjective"),
-            objective = o.optString("objective"),
-            assessment = o.optString("assessment"),
-            plan = o.optString("plan"),
-            diagnosisList = diagnoses,
-            prescriptions = prescriptions,
-            selectedProcedures = procedures,
-            treatmentOrderDetails = treatmentOrderDetails,
-            consultationFee = o.optDouble("consultationFee", 8000.0),
-            canvasNotes = o.optString("canvasNotes"),
-            followUpAppointment = o.optString("followUpAppointment"),
-            followUpDueDate = o.optString("followUpDueDate").ifBlank { null },
-            nextVaccineSchedule = o.optString("nextVaccineSchedule"),
-            patientInstructions = o.optString("patientInstructions"),
-            attachments = attachments,
-            timestamp = o.optString("timestamp")
-          )
-        )
+        list.add(parseConsultationRecordObject(o))
       }
       list
     } catch (_: Exception) {
       null
+    }
+  }
+
+  // 3.5 Persistent Consultation Drafts & Selected Patient ID (Guarantees no lost drafts on app exit)
+  fun saveSelectedPatientId(context: Context, patientId: String?) {
+    getPrefs(context).edit().putString(KEY_SELECTED_PATIENT_ID, patientId ?: "").apply()
+  }
+
+  fun loadSelectedPatientId(context: Context): String? {
+    val str = getPrefs(context).getString(KEY_SELECTED_PATIENT_ID, null)
+    return if (str.isNullOrBlank()) null else str
+  }
+
+  fun saveDraftConsultations(context: Context, drafts: Map<String, ConsultationRecord>) {
+    val arr = JSONArray()
+    drafts.values.forEach { c ->
+      arr.put(serializeConsultationRecord(c))
+    }
+    getPrefs(context).edit().putString(KEY_DRAFT_CONSULTATIONS, arr.toString()).apply()
+  }
+
+  fun loadDraftConsultations(context: Context): Map<String, ConsultationRecord> {
+    val str = getPrefs(context).getString(KEY_DRAFT_CONSULTATIONS, null) ?: return emptyMap()
+    return try {
+      val arr = JSONArray(str)
+      val map = mutableMapOf<String, ConsultationRecord>()
+      for (i in 0 until arr.length()) {
+        val o = arr.getJSONObject(i)
+        val c = parseConsultationRecordObject(o)
+        if (c.patientId.isNotBlank()) {
+          map[c.patientId] = c
+        }
+      }
+      map
+    } catch (_: Exception) {
+      emptyMap()
     }
   }
 
@@ -739,6 +782,7 @@ object ClinicDataPersistence {
         put("discontinuedAt", card.discontinuedAt)
         put("notes", card.notes)
         put("isCocktail", card.isCocktail)
+        put("isPatientSupplied", card.isPatientSupplied)
 
         val ckArr = JSONArray()
         card.cocktailItems.forEach { item ->
@@ -899,6 +943,7 @@ object ClinicDataPersistence {
             isPrepaidFullCourse = o.optBoolean("isPrepaidFullCourse", false),
             isCocktail = isCocktail,
             cocktailItems = cocktailItems,
+            isPatientSupplied = o.optBoolean("isPatientSupplied", false),
             cardStatus = cardStatus,
             discontinueReason = o.optString("discontinueReason"),
             discontinuedBy = o.optString("discontinuedBy"),

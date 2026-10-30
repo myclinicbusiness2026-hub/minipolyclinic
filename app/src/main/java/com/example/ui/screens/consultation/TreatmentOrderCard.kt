@@ -237,7 +237,13 @@ fun AddTreatmentOrderModal(
   onDismiss: () -> Unit,
   onConfirm: (TreatmentCard) -> Unit
 ) {
+  var isCocktail by remember { mutableStateOf(false) }
+  var isPatientSupplied by remember { mutableStateOf(false) }
+
   var medicationName by remember { mutableStateOf("Inj. Ceftriaxone 1g") }
+  var cocktailTitle by remember { mutableStateOf("") }
+  val cocktailItems = remember { mutableStateListOf<CocktailDrugItem>() }
+
   var dosage by remember { mutableStateOf("1 g") }
   var selectedRoute by remember { mutableStateOf(TreatmentRoute.IV_PUSH) }
   var frequency by remember { mutableStateOf("12 hrly") }
@@ -248,8 +254,6 @@ fun AddTreatmentOrderModal(
   var searchQuery by remember { mutableStateOf("") }
   var splitVialMode by remember { mutableStateOf(false) }
   var isPayPerVisit by remember { mutableStateOf(true) }
-  var isCocktail by remember { mutableStateOf(false) }
-  val cocktailItems = remember { mutableStateListOf<CocktailDrugItem>() }
 
   val filteredMedicines = remember(medicines, searchQuery) {
     if (searchQuery.isBlank()) emptyList()
@@ -261,7 +265,7 @@ fun AddTreatmentOrderModal(
   }
 
   val days = totalDaysText.toIntOrNull() ?: 3
-  val medFee = medFeeText.toDoubleOrNull() ?: 0.0
+  val medFee = if (isPatientSupplied) 0.0 else (medFeeText.toDoubleOrNull() ?: 0.0)
   val sessionFee = sessionFeeText.toDoubleOrNull() ?: selectedRoute.getDefaultFee(clinicSettings)
 
   Dialog(
@@ -273,7 +277,7 @@ fun AddTreatmentOrderModal(
       color = PureWhite,
       modifier = Modifier
         .fillMaxWidth(0.92f)
-        .fillMaxHeight(0.9f)
+        .fillMaxHeight(0.92f)
         .padding(8.dp)
     ) {
       Column(
@@ -308,7 +312,7 @@ fun AddTreatmentOrderModal(
           }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Column(
           modifier = Modifier
@@ -316,225 +320,344 @@ fun AddTreatmentOrderModal(
             .verticalScroll(rememberScrollState()),
           verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-          // 1. Search Medicine from Inventory
-          OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            placeholder = { Text("Store ဆေးစာရင်းမှ ရှာဖွေရွေးချယ်ရန် (Optional)...", fontSize = 11.sp) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(16.dp)) },
-            trailingIcon = {
-              if (searchQuery.isNotBlank()) {
-                IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(20.dp)) {
-                  Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(14.dp))
+          // 1. Order Type Mode Selector: Single Drug vs Cocktail Mix
+          Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = Color(0xFFF1F5F9),
+            modifier = Modifier.fillMaxWidth()
+          ) {
+            Row(modifier = Modifier.padding(3.dp)) {
+              Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = if (!isCocktail) MedicalGreen else Color.Transparent,
+                modifier = Modifier
+                  .weight(1f)
+                  .clickable {
+                    isCocktail = false
+                    if (!isPatientSupplied) medFeeText = "4500"
+                  }
+                  .padding(vertical = 6.dp),
+                contentColor = if (!isCocktail) PureWhite else SlateMedium
+              ) {
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.Center,
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Icon(Icons.Default.Medication, contentDescription = null, modifier = Modifier.size(15.dp))
+                  Spacer(modifier = Modifier.width(4.dp))
+                  Text("Single Drug (ဆေး ၁ မျိုး)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
               }
-            },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-          )
 
-          if (filteredMedicines.isNotEmpty()) {
-            Surface(
-              shape = RoundedCornerShape(6.dp),
-              color = Color(0xFFF8FAFC),
-              border = BorderStroke(1.dp, BorderGrey),
-              modifier = Modifier.fillMaxWidth()
-            ) {
-              Column(modifier = Modifier.padding(4.dp)) {
-                filteredMedicines.forEach { med ->
-                  Row(
-                    modifier = Modifier
-                      .fillMaxWidth()
-                      .clickable {
-                        medicationName = med.name
-                        medFeeText = med.sellingPrice.toInt().toString()
-                        if (med.standardDosage.isNotBlank()) {
-                          dosage = med.standardDosage
-                        }
-                        searchQuery = ""
-                      }
-                      .padding(horizontal = 8.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                  ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                      Text(med.name, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
-                      Text("Stock: ${med.totalStock} ${med.unitType} • Price: ${med.sellingPrice.toInt()} Ks", fontSize = 10.sp, color = SlateMuted)
+              Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = if (isCocktail) MedicalGreen else Color.Transparent,
+                modifier = Modifier
+                  .weight(1f)
+                  .clickable {
+                    isCocktail = true
+                    if (selectedRoute == TreatmentRoute.IM || selectedRoute == TreatmentRoute.DRESSING) {
+                      selectedRoute = TreatmentRoute.IV_INFUSION
                     }
-                    Text("Select", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+                    if (!isPatientSupplied) {
+                      medFeeText = cocktailItems.sumOf { it.totalPrice }.toInt().toString()
+                    }
                   }
-                  HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 0.5.dp)
+                  .padding(vertical = 6.dp),
+                contentColor = if (isCocktail) PureWhite else SlateMedium
+              ) {
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.Center,
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Icon(Icons.Default.Science, contentDescription = null, modifier = Modifier.size(15.dp))
+                  Spacer(modifier = Modifier.width(4.dp))
+                  Text("Cocktail / IV Mix (တွဲဖက်ဆေး)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
               }
             }
           }
 
-          // Quick Presets
-          Text("အသုံးများသော Presets (Quick Routine Orders):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SlateDark)
-          Row(
+          // 2. Patient-Supplied / External Medicine Toggle Banner
+          Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = if (isPatientSupplied) Color(0xFFFEF3C7) else Color(0xFFF8FAFC),
+            border = BorderStroke(1.dp, if (isPatientSupplied) Color(0xFFF59E0B) else BorderGrey),
             modifier = Modifier
               .fillMaxWidth()
-              .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+              .clickable {
+                isPatientSupplied = !isPatientSupplied
+                if (isPatientSupplied) {
+                  medFeeText = "0"
+                } else {
+                  medFeeText = if (isCocktail) cocktailItems.sumOf { it.totalPrice }.toInt().toString() else "4500"
+                }
+              }
           ) {
-            ElevatedAssistChip(
-              onClick = {
-                medicationName = "Inj. Ceftriaxone 1g"
-                dosage = "1 g"
-                selectedRoute = TreatmentRoute.IV_PUSH
-                frequency = "12 hrly"
-                totalDaysText = "3"
-                medFeeText = "4500"
-                sessionFeeText = "3000"
-                instructions = "Slow IV push over 3-5 mins."
-                isPayPerVisit = true
-              },
-              label = { Text("Inj. Ceftriaxone 1g (IV Push)", fontSize = 10.sp) }
-            )
-            ElevatedAssistChip(
-              onClick = {
-                medicationName = "Daily Dressing (အနာဆေးထည့်ခြင်း)"
-                dosage = "1 time"
-                selectedRoute = TreatmentRoute.DRESSING
-                frequency = "Daily"
-                totalDaysText = "3"
-                medFeeText = "0"
-                sessionFeeText = "3000"
-                instructions = "Clean and aseptic dressing with normal saline & betadine."
-                isPayPerVisit = true
-              },
-              label = { Text("🩹 Wound Dressing", fontSize = 10.sp) }
-            )
-            ElevatedAssistChip(
-              onClick = {
-                medicationName = "Nebulizer (Salbutamol 2.5mg + NS)"
-                dosage = "1 nebule"
-                selectedRoute = TreatmentRoute.NEBULIZATION
-                frequency = "BD"
-                totalDaysText = "2"
-                medFeeText = "1500"
-                sessionFeeText = "2000"
-                instructions = "Nebulize with 6 L/min Oxygen over 10-15 mins."
-                isPayPerVisit = true
-              },
-              label = { Text("🫁 Nebulizer Therapy", fontSize = 10.sp) }
-            )
-            ElevatedAssistChip(
-              onClick = {
-                medicationName = "IV Todol 30 mg + NS 3cc"
-                dosage = "30 mg"
-                selectedRoute = TreatmentRoute.IV_PUSH
-                frequency = "Stat"
-                totalDaysText = "1"
-                medFeeText = "3500"
-                sessionFeeText = "2000"
-                instructions = "Slow IV push over 2-3 mins. Check for NSAID hypersensitivity."
-                isPayPerVisit = true
-                isCocktail = true
-                cocktailItems.clear()
-                cocktailItems.add(CocktailDrugItem(name = "Todol (Ketorolac)", dosage = "30mg", quantity = 1, unitPrice = 2500.0))
-                cocktailItems.add(CocktailDrugItem(name = "Normal Saline (0.9%)", dosage = "3cc", quantity = 1, unitPrice = 1000.0))
-              },
-              label = { Text("💉 IV Todol + NS 3cc", fontSize = 10.sp) }
-            )
-            ElevatedAssistChip(
-              onClick = {
-                medicationName = "IV 0.9% NS + Burplex + Vit-C"
-                dosage = "500ml Drip"
-                selectedRoute = TreatmentRoute.IV_INFUSION
-                frequency = "Daily"
-                totalDaysText = "1"
-                medFeeText = "8500"
-                sessionFeeText = "8000"
-                instructions = "IV infusion 30 drops/min with sterile infusion set. Monitor vitals."
-                isPayPerVisit = true
-                isCocktail = true
-                cocktailItems.clear()
-                cocktailItems.add(CocktailDrugItem(name = "0.9% Normal Saline", dosage = "500ml", quantity = 1, unitPrice = 3000.0))
-                cocktailItems.add(CocktailDrugItem(name = "Burplex (Vitamin B-Complex)", dosage = "1 amp", quantity = 1, unitPrice = 2500.0))
-                cocktailItems.add(CocktailDrugItem(name = "Vitamin C Inj", dosage = "500mg", quantity = 1, unitPrice = 3000.0))
-              },
-              label = { Text("💧 IV NS + Burplex + Vit-C", fontSize = 10.sp) }
-            )
-            ElevatedAssistChip(
-              onClick = {
-                medicationName = "5% Dextrose Saline + Neurobion & Vit C"
-                dosage = "500ml Drip"
-                selectedRoute = TreatmentRoute.IV_INFUSION
-                frequency = "Daily"
-                totalDaysText = "1"
-                medFeeText = "12000"
-                sessionFeeText = "8000"
-                instructions = "IV Drip 30-40 drops/min with micro-filter set. Monitor vitals."
-                isPayPerVisit = true
-                isCocktail = true
-                cocktailItems.clear()
-                cocktailItems.add(CocktailDrugItem(name = "5% Dextrose Saline", dosage = "500ml", quantity = 1, unitPrice = 3500.0))
-                cocktailItems.add(CocktailDrugItem(name = "Inj. Neurobion", dosage = "1 amp", quantity = 1, unitPrice = 4500.0))
-                cocktailItems.add(CocktailDrugItem(name = "Inj. Vitamin C", dosage = "500mg", quantity = 1, unitPrice = 4000.0))
-              },
-              label = { Text("💧 5% DS + Vitamins", fontSize = 10.sp) }
-            )
-            ElevatedAssistChip(
-              onClick = {
-                medicationName = "Depo-Provera (Medroxyprogesterone 150mg)"
-                dosage = "1 vial (1ml)"
-                selectedRoute = TreatmentRoute.IM
-                frequency = "Stat"
-                totalDaysText = "1"
-                medFeeText = "7000"
-                sessionFeeText = "2500"
-                instructions = "Deep IM into gluteal / deltoid muscle."
-                isPayPerVisit = true
-              },
-              label = { Text("💉 Depo-Provera IM", fontSize = 10.sp) }
-            )
-            ElevatedAssistChip(
-              onClick = {
-                medicationName = "Suture Removal (ချုပ်ရိုးဖြည်ခြင်း)"
-                dosage = "1 procedure"
-                selectedRoute = TreatmentRoute.DRESSING
-                frequency = "Stat"
-                totalDaysText = "1"
-                medFeeText = "0"
-                sessionFeeText = "3000"
-                instructions = "Aseptic stitch off and wound cleaning."
-                isPayPerVisit = true
-              },
-              label = { Text("✂️ Suture Removal", fontSize = 10.sp) }
-            )
-          }
-
-          // 2. Medication Name & Dosage
-          Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-              value = medicationName,
-              onValueChange = { medicationName = it },
-              label = { Text("ဆေးအမည် (Medication Name)", fontSize = 11.sp) },
-              singleLine = true,
-              modifier = Modifier.weight(1.4f)
-            )
-            OutlinedTextField(
-              value = dosage,
-              onValueChange = { dosage = it },
-              label = { Text("ဆေးပမာဏ (Dosage)", fontSize = 11.sp) },
-              singleLine = true,
-              modifier = Modifier.weight(0.8f)
-            )
-          }
-
-          // Dosage Quick Chips
-          Row(
-            modifier = Modifier
-              .fillMaxWidth()
-              .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-          ) {
-            listOf("30 mg", "75 mg", "300 mg", "500 mg", "1 g", "1.2 g", "1 Amp", "1 Vial", "1 Bottle").forEach { d ->
-              AssistChip(
-                onClick = { dosage = d },
-                label = { Text(d, fontSize = 9.5.sp) }
+            Row(
+              modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Checkbox(
+                checked = isPatientSupplied,
+                onCheckedChange = {
+                  isPatientSupplied = it
+                  if (it) {
+                    medFeeText = "0"
+                  } else {
+                    medFeeText = if (isCocktail) cocktailItems.sumOf { c -> c.totalPrice }.toInt().toString() else "4500"
+                  }
+                },
+                colors = CheckboxDefaults.colors(checkedColor = Color(0xFFD97706))
               )
+              Spacer(modifier = Modifier.width(4.dp))
+              Column {
+                Text(
+                  "လူနာပါ ဆေးဝါး (Patient-Supplied / External Medicine)",
+                  fontSize = 11.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = if (isPatientSupplied) Color(0xFF92400E) else SlateDark
+                )
+                Text(
+                  if (isPatientSupplied) "လူနာမှ ကိုယ်တိုင်ယူဆောင်လာသောဆေး (ဆေးဖိုး 0 Ks • Store မနှုတ်ပါ • ဝန်ဆောင်ခသာ ယူမည်)"
+                  else "ဆေးခန်း Store ဆေးသုံးစွဲမည် (Stock နှုတ်ပြီး ဆေးဖိုးတွက်ချက်မည်)",
+                  fontSize = 9.sp,
+                  color = if (isPatientSupplied) Color(0xFFB45309) else SlateMuted
+                )
+              }
+            }
+          }
+
+          if (!isCocktail) {
+            // === Single Drug Mode ===
+            // Search Store
+            OutlinedTextField(
+              value = searchQuery,
+              onValueChange = { searchQuery = it },
+              placeholder = { Text("Store ဆေးစာရင်းမှ ရှာဖွေရွေးချယ်ရန် (Optional)...", fontSize = 11.sp) },
+              leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(16.dp)) },
+              trailingIcon = {
+                if (searchQuery.isNotBlank()) {
+                  IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(20.dp)) {
+                    Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(14.dp))
+                  }
+                }
+              },
+              singleLine = true,
+              modifier = Modifier.fillMaxWidth()
+            )
+
+            if (filteredMedicines.isNotEmpty()) {
+              Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = Color(0xFFF8FAFC),
+                border = BorderStroke(1.dp, BorderGrey),
+                modifier = Modifier.fillMaxWidth()
+              ) {
+                Column(modifier = Modifier.padding(4.dp)) {
+                  filteredMedicines.forEach { med ->
+                    Row(
+                      modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                          medicationName = med.name
+                          if (!isPatientSupplied) {
+                            medFeeText = med.sellingPrice.toInt().toString()
+                          }
+                          if (med.standardDosage.isNotBlank()) {
+                            dosage = med.standardDosage
+                          }
+                          searchQuery = ""
+                        }
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                      horizontalArrangement = Arrangement.SpaceBetween,
+                      verticalAlignment = Alignment.CenterVertically
+                    ) {
+                      Column(modifier = Modifier.weight(1f)) {
+                        Text(med.name, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+                        Text("Stock: ${med.totalStock} ${med.unitType} • Price: ${med.sellingPrice.toInt()} Ks", fontSize = 9.5.sp, color = SlateMuted)
+                      }
+                      Text("Select", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+                    }
+                    HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 0.5.dp)
+                  }
+                }
+              }
+            }
+
+            // Medication Name & Dosage
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+              OutlinedTextField(
+                value = medicationName,
+                onValueChange = { medicationName = it },
+                label = { Text("ဆေးအမည် (Medication Name)", fontSize = 11.sp) },
+                singleLine = true,
+                modifier = Modifier.weight(1.4f)
+              )
+              OutlinedTextField(
+                value = dosage,
+                onValueChange = { dosage = it },
+                label = { Text("ဆေးပမာဏ (Dosage)", fontSize = 11.sp) },
+                singleLine = true,
+                modifier = Modifier.weight(0.8f)
+              )
+            }
+
+            // Dosage Quick Chips
+            Row(
+              modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+              horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+              listOf("30 mg", "75 mg", "300 mg", "500 mg", "1 g", "1.2 g", "1 Amp", "1 Vial", "1 Bottle").forEach { d ->
+                AssistChip(
+                  onClick = { dosage = d },
+                  label = { Text(d, fontSize = 9.5.sp) }
+                )
+              }
+            }
+          } else {
+            // === Cocktail / IV Mix Mode ===
+            OutlinedTextField(
+              value = cocktailTitle,
+              onValueChange = { cocktailTitle = it },
+              label = { Text("Cocktail အမည် (Cocktail Title / Order Name)", fontSize = 11.sp) },
+              placeholder = { Text("ဥပမာ - IV NS + Burplex + Vit-C သို့မဟုတ် IV Todol + NS 3cc", fontSize = 10.sp) },
+              singleLine = true,
+              modifier = Modifier.fillMaxWidth()
+            )
+
+            // Search to Add Drugs to Cocktail
+            OutlinedTextField(
+              value = searchQuery,
+              onValueChange = { searchQuery = it },
+              placeholder = { Text("+ Store ဆေးစာရင်းမှ ဆေးထည့်သွင်းရန် ရှာဖွေပါ (Add Drug)...", fontSize = 11.sp) },
+              leadingIcon = { Icon(Icons.Default.AddCircleOutline, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(16.dp)) },
+              trailingIcon = {
+                if (searchQuery.isNotBlank()) {
+                  IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(20.dp)) {
+                    Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(14.dp))
+                  }
+                }
+              },
+              singleLine = true,
+              modifier = Modifier.fillMaxWidth()
+            )
+
+            if (filteredMedicines.isNotEmpty()) {
+              Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = Color(0xFFF8FAFC),
+                border = BorderStroke(1.dp, BorderGrey),
+                modifier = Modifier.fillMaxWidth()
+              ) {
+                Column(modifier = Modifier.padding(4.dp)) {
+                  filteredMedicines.forEach { med ->
+                    Row(
+                      modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                          cocktailItems.add(
+                            CocktailDrugItem(
+                              medicineId = med.id,
+                              name = med.name,
+                              dosage = med.standardDosage.ifBlank { "1 amp" },
+                              quantity = 1,
+                              unitPrice = med.sellingPrice
+                            )
+                          )
+                          if (!isPatientSupplied) {
+                            medFeeText = cocktailItems.sumOf { it.totalPrice }.toInt().toString()
+                          }
+                          if (cocktailTitle.isBlank()) {
+                            cocktailTitle = cocktailItems.joinToString(" + ") { it.name.replace(Regex("(?i)^inj\\.?\\s*"), "") }
+                          }
+                          searchQuery = ""
+                        }
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                      horizontalArrangement = Arrangement.SpaceBetween,
+                      verticalAlignment = Alignment.CenterVertically
+                    ) {
+                      Column(modifier = Modifier.weight(1f)) {
+                        Text(med.name, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+                        Text("Stock: ${med.totalStock} ${med.unitType} • Price: ${med.sellingPrice.toInt()} Ks", fontSize = 9.5.sp, color = SlateMuted)
+                      }
+                      Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Add, contentDescription = null, tint = MedicalGreenDark, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text("Add to Mix", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+                      }
+                    }
+                    HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 0.5.dp)
+                  }
+                }
+              }
+            }
+
+            // Constituent Drugs List
+            Text(
+              "တွဲစပ်ထားသော ဆေးများ (Constituent Drugs - ${cocktailItems.size} items):",
+              fontSize = 11.sp,
+              fontWeight = FontWeight.Bold,
+              color = SlateDark
+            )
+
+            if (cocktailItems.isEmpty()) {
+              Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = Color(0xFFF8FAFC),
+                border = BorderStroke(1.dp, BorderGrey),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+              ) {
+                Text(
+                  "Cocktail တွင် ပါဝင်မည့် ဆေး ၂ မျိုး သို့မဟုတ် ၃ မျိုးကို အထက်ပါ Store ရှာဖွေမှုမှ ရွေးချယ်ထည့်သွင်းပါ",
+                  fontSize = 10.sp,
+                  color = SlateMuted,
+                  modifier = Modifier.padding(10.dp)
+                )
+              }
+            } else {
+              Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                cocktailItems.forEachIndexed { idx, item ->
+                  Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = Color(0xFFF0FDF4),
+                    border = BorderStroke(1.dp, Color(0xFFBBF7D0)),
+                    modifier = Modifier.fillMaxWidth()
+                  ) {
+                    Row(
+                      modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                      verticalAlignment = Alignment.CenterVertically
+                    ) {
+                      Column(modifier = Modifier.weight(1f)) {
+                        Text(item.name, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+                        Text(
+                          "Dose: ${item.dosage.ifBlank { "-" }} • Qty: ${item.quantity} • ${item.unitPrice.toInt()} Ks/unit",
+                          fontSize = 9.5.sp,
+                          color = SlateMedium
+                        )
+                      }
+
+                      IconButton(
+                        onClick = {
+                          cocktailItems.removeAt(idx)
+                          if (!isPatientSupplied) {
+                            medFeeText = cocktailItems.sumOf { it.totalPrice }.toInt().toString()
+                          }
+                        },
+                        modifier = Modifier.size(24.dp)
+                      ) {
+                        Icon(Icons.Default.Delete, contentDescription = "Remove", tint = StatusCritical, modifier = Modifier.size(15.dp))
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
 
@@ -550,7 +673,10 @@ fun AddTreatmentOrderModal(
               val isSel = selectedRoute == r
               FilterChip(
                 selected = isSel,
-                onClick = { selectedRoute = r },
+                onClick = {
+                  selectedRoute = r
+                  sessionFeeText = r.getDefaultFee(clinicSettings).toInt().toString()
+                },
                 label = { Text(r.label, fontSize = 10.sp) },
                 colors = FilterChipDefaults.filterChipColors(
                   selectedContainerColor = MedicalGreen,
@@ -597,7 +723,7 @@ fun AddTreatmentOrderModal(
             }
           }
 
-          // Split-Vial / Pediatric billing option (Vertical Column Layout for Mobile readability)
+          // 5. Billing Calculation Mode
           Text("ဆေးပုလင်း တွက်ချက်မှုပုံစံ (Billing Calculation):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SlateDark)
           Column(verticalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.fillMaxWidth()) {
             Surface(
@@ -649,7 +775,7 @@ fun AddTreatmentOrderModal(
             }
           }
 
-          // Payment Option (Vertical Column Layout for Mobile readability)
+          // 6. Payment Option
           Text("ငွေပေးချေမှုပုံစံ (Payment Option):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SlateDark)
           Column(verticalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.fillMaxWidth()) {
             Surface(
@@ -701,11 +827,12 @@ fun AddTreatmentOrderModal(
             }
           }
 
-          // 5. Fee breakdown
+          // 7. Fee breakdown
           Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
-              value = medFeeText,
-              onValueChange = { medFeeText = it },
+              value = if (isPatientSupplied) "0 (လူနာပါဆေး)" else medFeeText,
+              onValueChange = { if (!isPatientSupplied) medFeeText = it },
+              enabled = !isPatientSupplied,
               label = { Text("ဆေးဖိုး (Med Fee Ks)", fontSize = 10.5.sp) },
               singleLine = true,
               modifier = Modifier.weight(1f)
@@ -719,7 +846,7 @@ fun AddTreatmentOrderModal(
             )
           }
 
-          // 6. Instructions
+          // 8. Instructions
           OutlinedTextField(
             value = instructions,
             onValueChange = { instructions = it },
@@ -746,8 +873,28 @@ fun AddTreatmentOrderModal(
             Text("မလုပ်တော့ပါ", fontSize = 11.sp)
           }
 
+          val canConfirm = if (isCocktail) {
+            cocktailTitle.isNotBlank() || cocktailItems.isNotEmpty()
+          } else {
+            medicationName.isNotBlank()
+          }
+
           Button(
             onClick = {
+              val finalMedName = if (isCocktail) {
+                cocktailTitle.ifBlank {
+                  if (cocktailItems.isNotEmpty()) cocktailItems.joinToString(" + ") { "${it.name} ${it.dosage}".trim() }
+                  else "IV Cocktail Mix"
+                }
+              } else {
+                medicationName
+              }
+              val finalDosage = if (isCocktail) {
+                "${cocktailItems.size} Drugs Mixed"
+              } else {
+                dosage
+              }
+
               val sessions = TreatmentCardFactory.generateSessions(
                 startDateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
                 frequency = frequency.ifBlank { "12 hrly" },
@@ -761,8 +908,8 @@ fun AddTreatmentOrderModal(
                 patientName = patient?.name ?: "",
                 patientHn = patient?.hn ?: "",
                 doctorName = doctorName,
-                medicationName = medicationName,
-                dosage = dosage,
+                medicationName = finalMedName,
+                dosage = finalDosage,
                 route = selectedRoute,
                 frequency = frequency.ifBlank { "12 hrly" },
                 totalDays = days,
@@ -776,12 +923,13 @@ fun AddTreatmentOrderModal(
                 isPayPerVisit = isPayPerVisit,
                 isPrepaidFullCourse = !isPayPerVisit,
                 isCocktail = isCocktail,
-                cocktailItems = cocktailItems.toList()
+                cocktailItems = if (isCocktail) cocktailItems.toList() else emptyList(),
+                isPatientSupplied = isPatientSupplied
               )
               onConfirm(card)
               onDismiss()
             },
-            enabled = medicationName.isNotBlank(),
+            enabled = canConfirm,
             colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
             modifier = Modifier
               .weight(1.3f)

@@ -391,6 +391,7 @@ object SyncPayloadParser {
           isPrepaidFullCourse = o.optBoolean("isPrepaidFullCourse", false),
           isCocktail = isCocktail,
           cocktailItems = cocktailItems,
+          isPatientSupplied = o.optBoolean("isPatientSupplied", false),
           cardStatus = cardStatus,
           discontinueReason = o.optString("discontinueReason"),
           discontinuedBy = o.optString("discontinuedBy"),

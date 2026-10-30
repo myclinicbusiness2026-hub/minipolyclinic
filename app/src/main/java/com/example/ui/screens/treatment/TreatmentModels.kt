@@ -116,6 +116,7 @@ data class TreatmentCard(
   val isPrepaidFullCourse: Boolean = false,
   val isCocktail: Boolean = false,
   val cocktailItems: List<CocktailDrugItem> = emptyList(),
+  val isPatientSupplied: Boolean = false,
   val consultationInvoiceId: String? = null,
   val cardStatus: TreatmentStatus = TreatmentStatus.IN_PROGRESS,
   val discontinueReason: String = "",
@@ -124,11 +125,13 @@ data class TreatmentCard(
   val notes: String = ""
 ) {
   val displayName: String get() {
-    if (isCocktail && cocktailItems.isNotEmpty()) {
+    val baseName = if (isCocktail && cocktailItems.isNotEmpty()) {
       val itemsStr = cocktailItems.joinToString(" + ") { it.name + if (it.dosage.isNotBlank()) " ${it.dosage}" else "" }
-      return if (medicationName.isNotBlank() && !itemsStr.contains(medicationName)) "$medicationName + $itemsStr" else itemsStr
+      if (medicationName.isNotBlank() && !itemsStr.contains(medicationName)) "$medicationName + $itemsStr" else itemsStr
+    } else {
+      medicationName
     }
-    return medicationName
+    return if (isPatientSupplied) "$baseName (Patient's Own Medicine / လူနာပါဆေး)" else baseName
   }
   val completedSessionsCount: Int get() = sessions.count { it.status == TreatmentStatus.COMPLETED }
   val isFullyCompleted: Boolean get() = cardStatus == TreatmentStatus.COMPLETED || (sessions.isNotEmpty() && sessions.all { it.status == TreatmentStatus.COMPLETED })

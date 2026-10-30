@@ -94,6 +94,48 @@ object A4PdfNativeCanvasRenderer {
   }
 
   /**
+   * Deterministically calculates whether procedures can fit on Page 1 before 680pt boundary.
+   * Both Page 1 and Page 2 reference this exact logic to guarantee procedures are never lost or duplicated.
+   */
+  fun didProceduresFitOnPageOne(
+    consultation: ConsultationRecord,
+    patient: Patient?,
+    height: Float = PAGE_HEIGHT
+  ): Boolean {
+    val validProcs = consultation.selectedProcedures.filter { it.name.isNotBlank() }
+    if (validProcs.isEmpty()) return false
+
+    val oralRx = consultation.prescriptions.filter { !isInjectable(it) }
+    val rxRowsCanFit = calculateRxFitOnPageOne(consultation, patient, height)
+    val allOralRxFitOnP1 = rxRowsCanFit >= oralRx.size
+    if (!allOralRxFitOnP1) return false
+
+    val dummyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 8.5f }
+    val p1Top = 138f
+    val colW = (PAGE_WIDTH - 44f) / 2f
+    val subLines = consultation.subjective.split("\n").filter { it.isNotBlank() }
+    val objText = if (consultation.objective.isNotBlank()) consultation.objective else consultation.canvasNotes
+    val objLines = objText.split("\n").filter { it.isNotBlank() }
+    val subWrapped = subLines.sumOf { wrapTextIntoLines(it, colW, dummyPaint).size.coerceAtLeast(1) }
+    val objWrapped = objLines.sumOf { wrapTextIntoLines(it, colW, dummyPaint).size.coerceAtLeast(1) }
+    val clinicalH = 15f + (maxOf(subWrapped, objWrapped) * 14.5f).coerceAtLeast(30f) + 6f
+
+    val diagH = if (consultation.diagnosisList.isNotEmpty() || consultation.assessment.isNotBlank()) 26f else 0f
+    val invH = if (consultation.suggestedInvestigations.isNotEmpty()) 16f + (Math.ceil(consultation.suggestedInvestigations.size / 2.0).toFloat() * 14f) else 0f
+    val injItemsCount = consultation.treatmentOrderDetails.size + consultation.prescriptions.count { isInjectable(it) }
+    val injH = if (injItemsCount > 0) 16f + (injItemsCount * 21f) else 0f
+    val rxH = if (oralRx.isNotEmpty()) 24f + (oralRx.size * 18.5f) else 0f
+
+    val procH = 16f + validProcs.sumOf { p ->
+      val noteLines = if (p.notes.isNotBlank()) wrapTextIntoLines("Notes: ${p.notes}", PAGE_WIDTH - 68f, dummyPaint).size.coerceAtLeast(1) else 0
+      (18.0 + (noteLines * 11.5) + 8.0)
+    }.toFloat()
+
+    val estEndP1 = p1Top + clinicalH + diagH + invH + injH + rxH
+    return (estEndP1 + procH <= 680f)
+  }
+
+  /**
    * Dynamically calculate how many A4 pages are needed strictly for the base EMR consultation.
    * If all content fits comfortably on 1 page before the signature, returns 1.
    * Otherwise returns 2, triggering the dynamic continuous waterfall flow.
@@ -431,7 +473,7 @@ object A4PdfNativeCanvasRenderer {
       }.toFloat()
     } else 0f
 
-    val procDrawnOnP1 = allOralRxFitOnP1 && validProcs.isNotEmpty() && (currentY + procH <= 680f)
+    val procDrawnOnP1 = didProceduresFitOnPageOne(consultation, patient, height)
     if (procDrawnOnP1) {
       currentY = drawProceduresSection(canvas, width, currentY, validProcs, consultation.timestamp)
     }
@@ -514,21 +556,10 @@ object A4PdfNativeCanvasRenderer {
       )
     }
 
-    // 5. Clinical Procedures & Minor Surgery (if not drawn on Page 1)
+    // 5. Clinical Procedures & Minor Surgery (drawn on Page 2 if not drawn on Page 1)
     val validProcs = consultation.selectedProcedures.filter { it.name.isNotBlank() }
-    val allOralRxFitOnP1 = rxRowsOnP1 >= oralRx.size
-    val dummyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 8.5f }
-    val procH = if (validProcs.isNotEmpty()) {
-      16f + validProcs.sumOf { p ->
-        val noteLines = if (p.notes.isNotBlank()) wrapTextIntoLines("Notes: ${p.notes}", width - 68f, dummyPaint).size.coerceAtLeast(1) else 0
-        (18.0 + (noteLines * 11.5) + 8.0)
-      }.toFloat()
-    } else 0f
-
-    // If procedures didn't fit on Page 1 or oral Rx had overflow, draw procedures on Page 2
-    if (validProcs.isNotEmpty() && (!allOralRxFitOnP1 || rxRowsOnP1 == 0 || (currentY + procH > 680f))) {
-      currentY = drawProceduresSection(canvas, width, currentY, validProcs, consultation.timestamp)
-    } else if (validProcs.isNotEmpty() && !allOralRxFitOnP1) {
+    val procsDrawnOnP1 = didProceduresFitOnPageOne(consultation, patient, height)
+    if (validProcs.isNotEmpty() && !procsDrawnOnP1) {
       currentY = drawProceduresSection(canvas, width, currentY, validProcs, consultation.timestamp)
     }
 
@@ -923,8 +954,12 @@ object A4PdfNativeCanvasRenderer {
     paint.textSize = 14f
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     val cleanNameMm = printSettings.clinicNameMm.replace("“", "").replace("”", "").replace("\"", "").replace("'", "").trim().ifBlank { "ရွှေခေတ်" }
-    val cleanSubMm = printSettings.clinicSubtitleMm.ifBlank { "အထွေထွေရောဂါကုဆေးခန်း" }
-    val clinicTitleMm = "“$cleanNameMm” $cleanSubMm"
+    val cleanSubMm = printSettings.clinicSubtitleMm.trim().ifBlank { "အထွေထွေရောဂါကုဆေးခန်း" }
+    val clinicTitleMm = if (cleanNameMm.contains("ဆေးခန်း") || cleanNameMm.contains(cleanSubMm)) {
+      cleanNameMm
+    } else {
+      "“$cleanNameMm” $cleanSubMm"
+    }
     canvas.drawText(clinicTitleMm, textStartX, 36f, paint)
 
     paint.color = Color.rgb(0x2E, 0x7D, 0x32)

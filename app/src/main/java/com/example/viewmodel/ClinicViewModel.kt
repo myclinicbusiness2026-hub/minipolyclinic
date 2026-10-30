@@ -171,7 +171,12 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     _patients.value = loadedPatients
-    _selectedPatientId.value = loadedPatients.firstOrNull { it.status == QueueStatus.WAITING || it.status == QueueStatus.IN_CONSULTATION }?.id
+    val savedPatientId = ClinicDataPersistence.loadSelectedPatientId(ctx)
+    _selectedPatientId.value = if (savedPatientId != null && loadedPatients.any { it.id == savedPatientId && (it.status == QueueStatus.WAITING || it.status == QueueStatus.IN_CONSULTATION) }) {
+      savedPatientId
+    } else {
+      loadedPatients.firstOrNull { it.status == QueueStatus.WAITING || it.status == QueueStatus.IN_CONSULTATION }?.id
+    }
 
     _invoices.value = (ClinicDataPersistence.loadInvoices(ctx) ?: ClinicInitialDataSeeder.getSeedInvoices())
       .filter { !deletedInvoices.contains(it.id) && !deletedPatients.contains(it.patientId) }
@@ -179,6 +184,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     _vaccines.value = ClinicDataPersistence.loadVaccines(ctx) ?: ClinicInitialDataSeeder.getSeedVaccines()
     _suppliers.value = ClinicDataPersistence.loadSuppliers(ctx) ?: ClinicInitialDataSeeder.getSeedSuppliers()
     _treatmentCards.value = ClinicDataPersistence.loadTreatmentCards(ctx) ?: emptyList()
+    draftConsultations.value = ClinicDataPersistence.loadDraftConsultations(ctx)
     clinicSettings.value = ClinicDataPersistence.loadClinicSettings(ctx)
   }
 
@@ -188,6 +194,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
   fun selectPatient(patientId: String?) {
     _selectedPatientId.value = patientId
+    ClinicDataPersistence.saveSelectedPatientId(getApplication(), patientId)
   }
 
   fun quickLogin(user: UserAccount) {
@@ -1094,6 +1101,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val map = draftConsultations.value.toMutableMap()
     map[patientId] = draft
     draftConsultations.value = map
+    ClinicDataPersistence.saveDraftConsultations(getApplication(), map)
   }
 
   fun getDraftConsultation(patientId: String): ConsultationRecord? {
@@ -1104,6 +1112,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val map = draftConsultations.value.toMutableMap()
     map.remove(patientId)
     draftConsultations.value = map
+    ClinicDataPersistence.saveDraftConsultations(getApplication(), map)
   }
 
   // --- Complete Consultation Actions ---
@@ -2009,7 +2018,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     // 1. Build line items for this visit (bundled med + injection administration fee)
     val invoiceItems = mutableListOf<InvoiceItem>()
     val isPrepaid = session.isPrepaid || card.isPrepaidFullCourse
-    val effectiveMedPrice = if (isPrepaid) 0.0 else (if (isClinicMed) medPrice else 0.0)
+    val effectiveMedPrice = if (isPrepaid || card.isPatientSupplied) 0.0 else (if (isClinicMed) medPrice else 0.0)
     val effectiveSessionFee = if (isPrepaid) 0.0 else sessionFee
     val sessionTotalFee = effectiveMedPrice + effectiveSessionFee
     if (sessionTotalFee > 0) {
@@ -2021,7 +2030,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         .replace(Regex("(?i)^sc\\s*"), "")
         .trim()
       val doseStr = if (card.dosage.isNotBlank() && !cleanMedName.contains(card.dosage, ignoreCase = true)) " ${card.dosage}" else ""
-      val itemName = "$routeShort $cleanMedName$doseStr (Dose ${session.sessionNumber}/${card.totalSessions})".trim()
+      val patientOwnedBadge = if (card.isPatientSupplied) " (Patient's Own)" else ""
+      val itemName = "$routeShort $cleanMedName$doseStr$patientOwnedBadge (Dose ${session.sessionNumber}/${card.totalSessions})".trim()
       invoiceItems.add(
         InvoiceItem(
           name = itemName,
@@ -2055,11 +2065,11 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     if (isAlreadyBilled) {
       // Deduct stock for consumables, cocktails and clinic medicine without creating duplicate invoice
       val tempItems = mutableListOf<InvoiceItem>()
-      if (card.isCocktail && card.cocktailItems.isNotEmpty()) {
+      if (!card.isPatientSupplied && card.isCocktail && card.cocktailItems.isNotEmpty()) {
         card.cocktailItems.forEach { item ->
           tempItems.add(InvoiceItem(name = item.name, quantity = item.quantity, unitPrice = item.unitPrice, totalPrice = item.totalPrice, isProcedure = false))
         }
-      } else if (!isPrepaid && isClinicMed && card.medicationName.isNotBlank()) {
+      } else if (!card.isPatientSupplied && !isPrepaid && isClinicMed && card.medicationName.isNotBlank()) {
         tempItems.add(InvoiceItem(name = card.medicationName, quantity = 1, unitPrice = medPrice, totalPrice = medPrice, isProcedure = false))
       }
       consumables.forEach { c ->
@@ -2090,12 +2100,12 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       _invoices.value = updatedInvoices
       ClinicDataPersistence.saveInvoices(ctx, updatedInvoices)
       deductInventoryForInvoice(newInv)
-      if (card.isCocktail && card.cocktailItems.isNotEmpty()) {
+      if (!card.isPatientSupplied && card.isCocktail && card.cocktailItems.isNotEmpty()) {
         val cocktailInvItems = card.cocktailItems.map { item ->
           InvoiceItem(name = item.name, quantity = item.quantity, unitPrice = item.unitPrice, totalPrice = 0.0, isProcedure = false)
         }
         deductInventoryForInvoice(Invoice(items = cocktailInvItems))
-      } else if (isClinicMed && card.medicationName.isNotBlank()) {
+      } else if (!card.isPatientSupplied && isClinicMed && card.medicationName.isNotBlank()) {
         val singleMedItem = listOf(InvoiceItem(name = card.medicationName, quantity = 1, unitPrice = medPrice, totalPrice = 0.0, isProcedure = false))
         deductInventoryForInvoice(Invoice(items = singleMedItem))
       }
@@ -2831,6 +2841,23 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   fun pullFromSupabaseCloud(callback: (Boolean, String) -> Unit) {
     viewModelScope.launch(Dispatchers.IO) {
       val res = pullFromSupabaseCloud()
+      withContext(Dispatchers.Main) {
+        callback(res.first, res.second)
+      }
+    }
+  }
+
+  suspend fun resetSupabaseCloud(): Pair<Boolean, String> = withContext(Dispatchers.IO) {
+    val set = clinicSettings.value
+    isSyncing.value = true
+    val res = SupabaseSyncManager.resetCloudData(set.supabaseUrl, set.supabaseAnonKey)
+    isSyncing.value = false
+    res
+  }
+
+  fun resetSupabaseCloud(callback: (Boolean, String) -> Unit) {
+    viewModelScope.launch(Dispatchers.IO) {
+      val res = resetSupabaseCloud()
       withContext(Dispatchers.Main) {
         callback(res.first, res.second)
       }

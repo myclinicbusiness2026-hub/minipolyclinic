@@ -589,6 +589,43 @@ END $$;
     }
   }
 
+  /**
+   * Purge / Reset all clinic data from Supabase Cloud table.
+   * Useful before entering real stock to eliminate ghost test records.
+   */
+  suspend fun resetCloudData(
+    supabaseUrl: String,
+    anonKey: String
+  ): Pair<Boolean, String> = withContext(Dispatchers.IO) {
+    val cleanUrl = sanitizeUrl(supabaseUrl)
+    val cleanKey = anonKey.trim()
+    if (cleanUrl.isBlank() || cleanKey.isBlank()) {
+      return@withContext Pair(false, "Supabase URL နှင့် Anon Key မသတ်မှတ်ရသေးပါ")
+    }
+
+    try {
+      val endpoint = "$cleanUrl/rest/v1/clinic_cloud_sync?id=eq.shwe_khit_primary_db"
+      val url = URL(endpoint)
+      val conn = (url.openConnection() as HttpURLConnection).apply {
+        connectTimeout = 8000
+        readTimeout = 12000
+        requestMethod = "DELETE"
+        setRequestProperty("apikey", cleanKey)
+        setRequestProperty("Authorization", "Bearer $cleanKey")
+      }
+      val code = conn.responseCode
+      if (code in 200..299) {
+        lastMergedJson = null
+        Pair(true, "Supabase Cloud Database ပေါ်ရှိ Data များကို အောင်မြင်စွာ ရှင်းလင်းပြီးပါပြီ")
+      } else {
+        val errStream = conn.errorStream?.bufferedReader()?.use { it.readText() } ?: ""
+        Pair(false, "Cloud reset မအောင်မြင်ပါ (HTTP $code: $errStream)")
+      }
+    } catch (e: Exception) {
+      Pair(false, "Cloud reset ချိတ်ဆက်မှု မအောင်မြင်ပါ: ${e.message}")
+    }
+  }
+
   private fun sanitizeUrl(url: String): String {
     var u = url.trim()
     while (u.endsWith("/")) {

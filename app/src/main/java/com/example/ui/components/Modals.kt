@@ -1985,6 +1985,50 @@ fun SyncStatusDialog(
                   Text("Cloud မှ Pull", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
                 }
               }
+
+              var showResetCloudConfirm by remember { mutableStateOf(false) }
+              OutlinedButton(
+                onClick = { showResetCloudConfirm = true },
+                enabled = !isSyncing,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFDC2626)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFCA5A5)),
+                modifier = Modifier.fillMaxWidth().height(34.dp),
+                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp),
+                shape = RoundedCornerShape(6.dp)
+              ) {
+                Icon(Icons.Default.DeleteSweep, contentDescription = null, tint = Color(0xFFDC2626), modifier = Modifier.size(14.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Cloud Data အဟောင်းများ အကုန်ရှင်းလင်းရန် (Purge Cloud Data)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC2626))
+              }
+
+              if (showResetCloudConfirm) {
+                AlertDialog(
+                  onDismissRequest = { showResetCloudConfirm = false },
+                  title = { Text("Cloud Database ရှင်းလင်းမည်", fontWeight = FontWeight.Bold, fontSize = 14.sp) },
+                  text = {
+                    Text("Supabase Cloud Database ပေါ်ရှိ Data အဟောင်းများအားလုံးကို လုံးဝရှင်းလင်းပစ်ရန် သေချာပါသလား?\n\n(မနက်ဖြန် ဆေးစတော့ခ်အမှန်များ မသွင်းမီ ယခင်စမ်းသပ်ထားသော Data အဟောင်းများ မရောနှောစေရန်အတွက် အသုံးပြုနိုင်ပါသည်)", fontSize = 11.5.sp)
+                  },
+                  confirmButton = {
+                    Button(
+                      onClick = {
+                        showResetCloudConfirm = false
+                        viewModel.resetSupabaseCloud { ok, msg ->
+                          statusMessage = msg
+                          isErrorStatus = !ok
+                        }
+                      },
+                      colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
+                    ) {
+                      Text("အတည်ပြုသည် (Wipe Cloud)", fontWeight = FontWeight.Bold)
+                    }
+                  },
+                  dismissButton = {
+                    OutlinedButton(onClick = { showResetCloudConfirm = false }) {
+                      Text("မလုပ်တော့ပါ")
+                    }
+                  }
+                )
+              }
             }
           }
 
