@@ -1592,7 +1592,6 @@ object A4PdfNativeCanvasRenderer {
         }
         currentY += boxH + 4f
       }
-      }
     }
 
     if (consultation.suggestedInvestigations.isNotEmpty()) {
@@ -1658,6 +1657,30 @@ object A4PdfNativeCanvasRenderer {
 
       paint.typeface = Typeface.DEFAULT
       paint.textSize = 8.5f
+      paint.color = Color.rgb(0x37, 0x41, 0x51)
+
+      var instY = currentY + 23f
+      instructions.forEach { line ->
+        if (instY + 12f <= maxBottomY) {
+          instY = drawWrappedText(canvas, line, 22f, instY, width - 44f, 11.5f, paint, maxLines = 2)
+          instY += 1.5f
+        }
+        instY += 2f
+      }
+      return instY + 6f
+    } else {
+      // 2 Columns: Left Instructions, Right Follow-up
+      val leftW = (width - 48f) * 0.54f
+      val rightX = 20f + leftW + 8f
+      val rightW = width - 20f - rightX
+
+      paint.color = Color.rgb(0x2E, 0x7D, 0x32)
+      paint.textSize = 9.5f
+      paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+      canvas.drawText("Patient Instructions & Advice:", 22f, currentY + 10f, paint)
+
+      paint.typeface = Typeface.DEFAULT
+      paint.textSize = 8f
       paint.color = Color.rgb(0x37, 0x41, 0x51)
 
       var instY = currentY + 23f
