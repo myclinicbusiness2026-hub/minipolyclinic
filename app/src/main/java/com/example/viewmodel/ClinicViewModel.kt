@@ -764,7 +764,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val currentInvoices = _invoices.value
     val inv = currentInvoices.find { it.patientId == patientId && it.paymentStatus != "Paid" }
     if (inv != null) {
-      val docFee = clinicSettings.value.consultationFee
+      val docFee = clinicSettings.value.defaultConsultationFee
       val updatedInv = inv.copy(
         consultationFee = docFee,
         totalAmount = inv.totalAmount + docFee
