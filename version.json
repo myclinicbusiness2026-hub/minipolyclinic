@@ -6,5 +6,5 @@
   "releaseNotesMm": "• A4 ဆေးမှတ်တမ်းတွင် စာမျက်နှာအကူးအပြောင်းအား စာကြောင်းရေပြည့်သည်အထိ ထည့်သွင်းပြီး မဆံ့သည့်အပိုင်းများကို ဒုတိယမျက်နှာသို့ အလိုအလျောက် ဆက်လက်စီးဆင်းစေသည့် Waterfall Dynamic Flow စနစ်\n• မီနူးဘား (Drawer) တွင် User Role, Printer, Network ဆက်တင်များကို ခေါက်သိမ်း/ဖြန့်ချနိုင်သော Accordion ဒီဇိုင်းသစ်\n• Clinical Procedures & Minor Surgery တွင် မြန်မာစာဖယ်ရှားပြီး အင်္ဂလိပ်စံနှုန်း၊ Notes နှင့် Date/Time တိကျစွာ သိမ်းဆည်း/ဖော်ပြခြင်း\n• RBS မစစ်ဆေးခဲ့ပါက 110 ဟု မပေါ်တော့ဘဲ မှန်ကန်စွာ နေရာလွတ်ထားရှိခြင်း\n• Follow-up Alert ဖုန်းခေါ်ပြီး/သတိပေးပြီးပါက စာရင်းမှ အလိုအလျောက် ပျောက်ကွယ်သွားခြင်း",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-10-30",
-  "apkSizeBytes": 21357418
+  "apkSizeBytes": 21373802
 }
