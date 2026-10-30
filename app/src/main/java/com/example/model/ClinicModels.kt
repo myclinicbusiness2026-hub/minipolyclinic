@@ -106,9 +106,31 @@ data class Medicine(
   val profitMarginPercent: Double = 25.0,
   val isAllergyWarning: Boolean = false,
   val primarySupplier: String = "AA Medical Products",
-  val standardDosage: String = ""
+  val standardDosage: String = "",
+  val medicineType: String = "" // "Oral", "Injection", "Topical", "Consumables"
 ) {
   val supplierName: String get() = primarySupplier
+  val effectiveMedicineType: String get() {
+    if (medicineType.isNotBlank()) return medicineType
+    val n = name.lowercase()
+    val df = dosageForm.lowercase()
+    val u = unitType.lowercase()
+    val c = category.lowercase()
+    return when {
+      n.contains("inj") || n.contains("iv") || n.contains("im") || n.contains("saline") || n.contains("dextrose") ||
+      df.contains("inj") || df.contains("amp") || df.contains("vial") || df.contains("infusion") ||
+      u.contains("amp") || u.contains("vial") || (u.contains("bottle") && (n.contains("drip") || n.contains("%") || n.contains("water") || n.contains("saline") || n.contains("dextrose"))) -> "Injection"
+
+      n.contains("cannula") || n.contains("syringe") || n.contains("needle") || n.contains("set") || n.contains("gauze") ||
+      n.contains("cotton") || n.contains("glove") || n.contains("suture") || n.contains("blade") || n.contains("micropore") ||
+      df.contains("consumable") || c.contains("consumable") || u.contains("piece") || u.contains("set") -> "Consumables"
+
+      n.contains("cream") || n.contains("ointment") || n.contains("gel") || n.contains("drop") || n.contains("spray") || n.contains("lotion") ||
+      df.contains("cream") || df.contains("ointment") || df.contains("drop") -> "Topical"
+
+      else -> "Oral"
+    }
+  }
   val totalStock: Int get() = batches.sumOf { it.quantity }
   val sortedBatches: List<StockBatch> get() = batches.filter { it.quantity > 0 }.sortedBy { it.expiryDate }
   val allBatches: List<StockBatch> get() = batches.sortedBy { it.expiryDate }
@@ -285,6 +307,7 @@ data class ConsultationRecord(
   val referralRecord: ReferralRecord? = null,
   val attachments: List<MedicalAttachment> = emptyList(),
   val vitals: VitalSigns = VitalSigns(),
+  val treatmentOrderDetails: List<String> = emptyList(),
   val timestamp: String = ""
 )
 

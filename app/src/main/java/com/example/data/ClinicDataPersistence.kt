@@ -286,6 +286,7 @@ object ClinicDataPersistence {
         put("dosageForm", m.dosageForm)
         put("category", m.category)
         put("unitType", m.unitType)
+        put("medicineType", m.effectiveMedicineType)
         put("minStockThreshold", m.minStockThreshold)
         put("profitMarginPercent", m.profitMarginPercent)
         put("isAllergyWarning", m.isAllergyWarning)
@@ -346,7 +347,8 @@ object ClinicDataPersistence {
             minStockThreshold = o.optInt("minStockThreshold", 20),
             profitMarginPercent = o.optDouble("profitMarginPercent", 25.0),
             isAllergyWarning = o.optBoolean("isAllergyWarning", false),
-            primarySupplier = o.optString("primarySupplier", "AA Medical")
+            primarySupplier = o.optString("primarySupplier", "AA Medical"),
+            medicineType = o.optString("medicineType", "")
           )
         )
       }
@@ -413,6 +415,10 @@ object ClinicDataPersistence {
           procArr.put(pObj)
         }
         put("selectedProcedures", procArr)
+
+        val toArr = JSONArray()
+        c.treatmentOrderDetails.forEach { toArr.put(it) }
+        put("treatmentOrderDetails", toArr)
 
         val attArr = JSONArray()
         c.attachments.forEach { a ->
@@ -512,6 +518,12 @@ object ClinicDataPersistence {
           }
         }
 
+        val toArr = o.optJSONArray("treatmentOrderDetails")
+        val treatmentOrderDetails = mutableListOf<String>()
+        if (toArr != null) {
+          for (j in 0 until toArr.length()) treatmentOrderDetails.add(toArr.getString(j))
+        }
+
         list.add(
           ConsultationRecord(
             id = o.optString("id"),
@@ -527,6 +539,7 @@ object ClinicDataPersistence {
             diagnosisList = diagnoses,
             prescriptions = prescriptions,
             selectedProcedures = procedures,
+            treatmentOrderDetails = treatmentOrderDetails,
             consultationFee = o.optDouble("consultationFee", 8000.0),
             canvasNotes = o.optString("canvasNotes"),
             followUpAppointment = o.optString("followUpAppointment"),
@@ -725,6 +738,21 @@ object ClinicDataPersistence {
         put("discontinuedBy", card.discontinuedBy)
         put("discontinuedAt", card.discontinuedAt)
         put("notes", card.notes)
+        put("isCocktail", card.isCocktail)
+
+        val ckArr = JSONArray()
+        card.cocktailItems.forEach { item ->
+          val ckObj = JSONObject().apply {
+            put("id", item.id)
+            put("medicineId", item.medicineId)
+            put("name", item.name)
+            put("dosage", item.dosage)
+            put("quantity", item.quantity)
+            put("unitPrice", item.unitPrice)
+          }
+          ckArr.put(ckObj)
+        }
+        put("cocktailItems", ckArr)
 
         val sArr = JSONArray()
         card.sessions.forEach { s ->
@@ -828,6 +856,25 @@ object ClinicDataPersistence {
         } catch (_: Exception) {
           TreatmentStatus.IN_PROGRESS
         }
+        val isCocktail = o.optBoolean("isCocktail", false)
+        val ckArr = o.optJSONArray("cocktailItems")
+        val cocktailItems = mutableListOf<CocktailDrugItem>()
+        if (ckArr != null) {
+          for (j in 0 until ckArr.length()) {
+            val cko = ckArr.getJSONObject(j)
+            cocktailItems.add(
+              CocktailDrugItem(
+                id = cko.optString("id", UUID.randomUUID().toString()),
+                medicineId = cko.optString("medicineId"),
+                name = cko.optString("name"),
+                dosage = cko.optString("dosage"),
+                quantity = cko.optInt("quantity", 1),
+                unitPrice = cko.optDouble("unitPrice", 0.0)
+              )
+            )
+          }
+        }
+
         list.add(
           TreatmentCard(
             id = o.optString("id"),
@@ -850,6 +897,8 @@ object ClinicDataPersistence {
             isBilledPerSession = o.optBoolean("isBilledPerSession", true),
             isPayPerVisit = o.optBoolean("isPayPerVisit", true),
             isPrepaidFullCourse = o.optBoolean("isPrepaidFullCourse", false),
+            isCocktail = isCocktail,
+            cocktailItems = cocktailItems,
             cardStatus = cardStatus,
             discontinueReason = o.optString("discontinueReason"),
             discontinuedBy = o.optString("discontinuedBy"),

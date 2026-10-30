@@ -61,6 +61,14 @@ fun PharmacyInventoryScreen(
   var currentTab by remember { mutableStateOf(PharmacyViewTab.INVENTORY) }
   var searchQuery by remember { mutableStateOf("") }
   var activeFilter by remember { mutableStateOf(InventoryFilter.ALL) }
+  var selectedTypeFilter by remember { mutableStateOf("All") }
+  val typeFilterOptions = listOf(
+    "All" to "All Types",
+    "Oral" to "Oral (သောက်ဆေး)",
+    "Injection" to "Injection (ထိုးဆေး/သွင်းဆေး)",
+    "Topical" to "Topical (လိမ်းဆေး)",
+    "Consumables" to "Consumables (ဆေးခန်းသုံး)"
+  )
   var selectedCategoryFilter by remember { mutableStateOf<String?>("All") }
   var showAddCategoryDialog by remember { mutableStateOf(false) }
   var medicineToDelete by remember { mutableStateOf<Medicine?>(null) }
@@ -99,6 +107,9 @@ fun PharmacyInventoryScreen(
         selectedCategoryFilter == "All" ||
         med.category.equals(selectedCategoryFilter, ignoreCase = true)
 
+    val matchesType = selectedTypeFilter == "All" ||
+        med.effectiveMedicineType.equals(selectedTypeFilter, ignoreCase = true)
+
     val earliestExpDays = med.sortedBatches.firstOrNull()?.let { getDaysUntilExpiry(it.expiryDate) } ?: 999
 
     val matchesFilter = when (activeFilter) {
@@ -108,7 +119,7 @@ fun PharmacyInventoryScreen(
       InventoryFilter.CRITICAL_EXPIRY -> earliestExpDays <= 90 // < 3 months
     }
 
-    matchesSearch && matchesCategory && matchesFilter
+    matchesSearch && matchesCategory && matchesType && matchesFilter
   }
 
   Column(
@@ -343,6 +354,39 @@ fun PharmacyInventoryScreen(
                     )
                   }
                 }
+
+                // Primary 5-Tab Medicine Classification Filter Bar
+                Row(
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                  horizontalArrangement = Arrangement.spacedBy(5.dp),
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  typeFilterOptions.forEach { (typeKey, typeLabel) ->
+                    val isTypeSelected = selectedTypeFilter == typeKey
+                    FilterChip(
+                      selected = isTypeSelected,
+                      onClick = { selectedTypeFilter = typeKey },
+                      label = { Text(typeLabel, fontSize = 10.5.sp, fontWeight = if (isTypeSelected) FontWeight.Bold else FontWeight.Normal) },
+                      shape = RoundedCornerShape(5.dp),
+                      colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = when (typeKey) {
+                          "Injection" -> Color(0xFF0F766E)
+                          "Consumables" -> Color(0xFFD97706)
+                          "Topical" -> Color(0xFF7C3AED)
+                          "Oral" -> Color(0xFF0284C7)
+                          else -> MedicalGreen
+                        },
+                        selectedLabelColor = PureWhite,
+                        containerColor = PureWhite,
+                        labelColor = SlateMedium
+                      )
+                    )
+                  }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
 
                 // Category Filter Row & + Add Category Button
                 Row(
@@ -707,6 +751,24 @@ fun EnhancedMedicineItemCard(
               verticalAlignment = Alignment.CenterVertically,
               horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+              val typeColor = when (medicine.effectiveMedicineType) {
+                "Injection" -> Color(0xFF0F766E)
+                "Consumables" -> Color(0xFFD97706)
+                "Topical" -> Color(0xFF7C3AED)
+                else -> Color(0xFF0284C7)
+              }
+              Surface(
+                shape = RoundedCornerShape(3.dp),
+                color = typeColor.copy(alpha = 0.12f)
+              ) {
+                Text(
+                  medicine.effectiveMedicineType,
+                  color = typeColor,
+                  fontSize = 8.5.sp,
+                  fontWeight = FontWeight.Bold,
+                  modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                )
+              }
               Surface(
                 shape = RoundedCornerShape(3.dp),
                 color = categoryColor.copy(alpha = 0.12f)

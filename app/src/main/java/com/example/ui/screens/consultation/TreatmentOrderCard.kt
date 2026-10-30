@@ -160,7 +160,7 @@ fun TreatmentOrderCard(
                   }
                   Spacer(modifier = Modifier.width(6.dp))
                   Text(
-                    card.medicationName,
+                    card.displayName,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.5.sp,
                     color = SlateDark,
@@ -247,13 +247,16 @@ fun AddTreatmentOrderModal(
   var searchQuery by remember { mutableStateOf("") }
   var splitVialMode by remember { mutableStateOf(false) }
   var isPayPerVisit by remember { mutableStateOf(true) }
+  var isCocktail by remember { mutableStateOf(false) }
+  val cocktailItems = remember { mutableStateListOf<CocktailDrugItem>() }
 
   val filteredMedicines = remember(medicines, searchQuery) {
     if (searchQuery.isBlank()) emptyList()
     else medicines.filter {
-      it.name.contains(searchQuery, ignoreCase = true) ||
-      it.genericName.contains(searchQuery, ignoreCase = true)
-    }.take(5)
+      (it.effectiveMedicineType in listOf("Injection", "Consumables")) &&
+      (it.name.contains(searchQuery, ignoreCase = true) ||
+       it.genericName.contains(searchQuery, ignoreCase = true))
+    }.take(8)
   }
 
   val days = totalDaysText.toIntOrNull() ?: 3
@@ -417,17 +420,59 @@ fun AddTreatmentOrderModal(
             )
             ElevatedAssistChip(
               onClick = {
-                medicationName = "5% Dextrose Saline 500ml + Neurobion"
-                dosage = "1 Bottle"
+                medicationName = "IV Todol 30 mg + NS 3cc"
+                dosage = "30 mg"
+                selectedRoute = TreatmentRoute.IV_PUSH
+                frequency = "Stat"
+                totalDaysText = "1"
+                medFeeText = "3500"
+                sessionFeeText = "2000"
+                instructions = "Slow IV push over 2-3 mins. Check for NSAID hypersensitivity."
+                isPayPerVisit = true
+                isCocktail = true
+                cocktailItems.clear()
+                cocktailItems.add(CocktailDrugItem(name = "Todol (Ketorolac)", dosage = "30mg", quantity = 1, unitPrice = 2500.0))
+                cocktailItems.add(CocktailDrugItem(name = "Normal Saline (0.9%)", dosage = "3cc", quantity = 1, unitPrice = 1000.0))
+              },
+              label = { Text("💉 IV Todol + NS 3cc", fontSize = 10.sp) }
+            )
+            ElevatedAssistChip(
+              onClick = {
+                medicationName = "IV 0.9% NS + Burplex + Vit-C"
+                dosage = "500ml Drip"
+                selectedRoute = TreatmentRoute.IV_INFUSION
+                frequency = "Daily"
+                totalDaysText = "1"
+                medFeeText = "8500"
+                sessionFeeText = "8000"
+                instructions = "IV infusion 30 drops/min with sterile infusion set. Monitor vitals."
+                isPayPerVisit = true
+                isCocktail = true
+                cocktailItems.clear()
+                cocktailItems.add(CocktailDrugItem(name = "0.9% Normal Saline", dosage = "500ml", quantity = 1, unitPrice = 3000.0))
+                cocktailItems.add(CocktailDrugItem(name = "Burplex (Vitamin B-Complex)", dosage = "1 amp", quantity = 1, unitPrice = 2500.0))
+                cocktailItems.add(CocktailDrugItem(name = "Vitamin C Inj", dosage = "500mg", quantity = 1, unitPrice = 3000.0))
+              },
+              label = { Text("💧 IV NS + Burplex + Vit-C", fontSize = 10.sp) }
+            )
+            ElevatedAssistChip(
+              onClick = {
+                medicationName = "5% Dextrose Saline + Neurobion & Vit C"
+                dosage = "500ml Drip"
                 selectedRoute = TreatmentRoute.IV_INFUSION
                 frequency = "Daily"
                 totalDaysText = "1"
                 medFeeText = "12000"
                 sessionFeeText = "8000"
-                instructions = "IV infusion 30-40 drops/min."
+                instructions = "IV Drip 30-40 drops/min with micro-filter set. Monitor vitals."
                 isPayPerVisit = true
+                isCocktail = true
+                cocktailItems.clear()
+                cocktailItems.add(CocktailDrugItem(name = "5% Dextrose Saline", dosage = "500ml", quantity = 1, unitPrice = 3500.0))
+                cocktailItems.add(CocktailDrugItem(name = "Inj. Neurobion", dosage = "1 amp", quantity = 1, unitPrice = 4500.0))
+                cocktailItems.add(CocktailDrugItem(name = "Inj. Vitamin C", dosage = "500mg", quantity = 1, unitPrice = 4000.0))
               },
-              label = { Text("💧 IV Drip 500ml", fontSize = 10.sp) }
+              label = { Text("💧 5% DS + Vitamins", fontSize = 10.sp) }
             )
             ElevatedAssistChip(
               onClick = {
@@ -551,44 +596,108 @@ fun AddTreatmentOrderModal(
             }
           }
 
-          // Split-Vial / Pediatric billing option
-          Text("ဆေးပုလင်း တွက်ချက်မှု (Billing Mode):", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-          ) {
-            FilterChip(
-              selected = !splitVialMode,
-              onClick = { splitVialMode = false },
-              label = { Text("Dose တိုင်း ဆေးဖိုးတွက်မည် (Default)", fontSize = 10.sp) },
-              colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MedicalGreen, selectedLabelColor = PureWhite)
-            )
-            FilterChip(
-              selected = splitVialMode,
-              onClick = { splitVialMode = true },
-              label = { Text("ကလေး/ခွဲထိုး (၁ ရက် ၁ လုံးသာ)", fontSize = 10.sp) },
-              colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFF0284C7), selectedLabelColor = PureWhite)
-            )
+          // Split-Vial / Pediatric billing option (Vertical Column Layout for Mobile readability)
+          Text("ဆေးပုလင်း တွက်ချက်မှုပုံစံ (Billing Calculation):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+          Column(verticalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.fillMaxWidth()) {
+            Surface(
+              shape = RoundedCornerShape(6.dp),
+              color = if (!splitVialMode) SoftGreenContainer else PureWhite,
+              border = BorderStroke(1.dp, if (!splitVialMode) MedicalGreen else BorderGrey),
+              modifier = Modifier.fillMaxWidth().clickable { splitVialMode = false }
+            ) {
+              Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                RadioButton(
+                  selected = !splitVialMode,
+                  onClick = { splitVialMode = false },
+                  colors = RadioButtonDefaults.colors(selectedColor = MedicalGreen),
+                  modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                  Text("Dose တိုင်း ဆေးဖိုးတွက်မည် (Standard Default)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+                  Text("ထိုးသည့်အကြိမ်တိုင်းအတွက် ဆေး ၁ လုံးစီ သီးခြားတွက်ချက်မည်", fontSize = 9.5.sp, color = SlateMuted)
+                }
+              }
+            }
+
+            Surface(
+              shape = RoundedCornerShape(6.dp),
+              color = if (splitVialMode) Color(0xFFF0F9FF) else PureWhite,
+              border = BorderStroke(1.dp, if (splitVialMode) Color(0xFF0284C7) else BorderGrey),
+              modifier = Modifier.fillMaxWidth().clickable { splitVialMode = true }
+            ) {
+              Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                RadioButton(
+                  selected = splitVialMode,
+                  onClick = { splitVialMode = true },
+                  colors = RadioButtonDefaults.colors(selectedColor = Color(0xFF0284C7)),
+                  modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                  Text("ကလေး/ခွဲထိုး ဆေးတွက်ချက်မှု (Split-Vial Mode)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+                  Text("၁ ရက်လျှင် ဆေး ၁ ပုလင်းသာ အားလုံးခွဲဝေထိုးမည် (ဆေးပုလင်း အပိုမဖြုန်းတီးပါ)", fontSize = 9.5.sp, color = SlateMuted)
+                }
+              }
+            }
           }
 
-          // Payment Option (Pay per Visit vs Full Course Upfront)
-          Text("ငွေပေးချေမှုပုံစံ (Payment & Billing Option):", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-          ) {
-            FilterChip(
-              selected = isPayPerVisit,
-              onClick = { isPayPerVisit = true },
-              label = { Text("တစ်ကြိမ်ချင်းရှင်းမည် (Pay per Visit - Default)", fontSize = 10.sp) },
-              colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MedicalGreen, selectedLabelColor = PureWhite)
-            )
-            FilterChip(
-              selected = !isPayPerVisit,
-              onClick = { isPayPerVisit = false },
-              label = { Text("တစ်ခေါက်တည်း အကြေရှင်းမည် (Full Course Upfront)", fontSize = 10.sp) },
-              colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFF7C3AED), selectedLabelColor = PureWhite)
-            )
+          // Payment Option (Vertical Column Layout for Mobile readability)
+          Text("ငွေပေးချေမှုပုံစံ (Payment Option):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+          Column(verticalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.fillMaxWidth()) {
+            Surface(
+              shape = RoundedCornerShape(6.dp),
+              color = if (isPayPerVisit) SoftGreenContainer else PureWhite,
+              border = BorderStroke(1.dp, if (isPayPerVisit) MedicalGreen else BorderGrey),
+              modifier = Modifier.fillMaxWidth().clickable { isPayPerVisit = true }
+            ) {
+              Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                RadioButton(
+                  selected = isPayPerVisit,
+                  onClick = { isPayPerVisit = true },
+                  colors = RadioButtonDefaults.colors(selectedColor = MedicalGreen),
+                  modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                  Text("တစ်ကြိမ်ချင်းရှင်းမည် (Pay per Visit - Default)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+                  Text("လာထိုးသည့် နေ့စဉ်အကြိမ်တိုင်းအတွက်သာ အလှည့်ကျငွေရှင်းမည် (လူနာကြိုက်)", fontSize = 9.5.sp, color = SlateMuted)
+                }
+              }
+            }
+
+            Surface(
+              shape = RoundedCornerShape(6.dp),
+              color = if (!isPayPerVisit) Color(0xFFFAF5FF) else PureWhite,
+              border = BorderStroke(1.dp, if (!isPayPerVisit) Color(0xFF7C3AED) else BorderGrey),
+              modifier = Modifier.fillMaxWidth().clickable { isPayPerVisit = false }
+            ) {
+              Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                RadioButton(
+                  selected = !isPayPerVisit,
+                  onClick = { isPayPerVisit = false },
+                  colors = RadioButtonDefaults.colors(selectedColor = Color(0xFF7C3AED)),
+                  modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                  Text("တစ်ခေါက်တည်း အကြေရှင်းမည် (Full Course Upfront)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+                  Text("ရက်ပြည့် course စာရင်းတစ်ခုလုံးကို ပထမဆုံး visit တွင် အကြေရှင်းမည်", fontSize = 9.5.sp, color = SlateMuted)
+                }
+              }
+            }
           }
 
           // 5. Fee breakdown
@@ -664,7 +773,9 @@ fun AddTreatmentOrderModal(
                 medicationFee = medFee,
                 instructions = instructions,
                 isPayPerVisit = isPayPerVisit,
-                isPrepaidFullCourse = !isPayPerVisit
+                isPrepaidFullCourse = !isPayPerVisit,
+                isCocktail = isCocktail,
+                cocktailItems = cocktailItems.toList()
               )
               onConfirm(card)
               onDismiss()

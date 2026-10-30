@@ -5,6 +5,7 @@ import java.io.File
 import com.example.model.ConsultationRecord
 import com.example.model.Patient
 import com.example.model.PrescribedDrug
+import com.example.model.ProcedureItem
 import com.example.ui.components.A4PageDescriptor
 import com.example.ui.components.A4PrintSettings
 import com.example.ui.components.formatDosageAndDirection
@@ -21,6 +22,20 @@ import com.example.ui.components.formatDosageAndDirection
 object A4PdfNativeCanvasRenderer {
   private const val PAGE_WIDTH = 595 // A4 standard pt at 72dpi
   private const val PAGE_HEIGHT = 842
+
+  /**
+   * Check if a prescribed medication is injectable/infusion/daycare route
+   */
+  fun isInjectable(drug: PrescribedDrug): Boolean {
+    val n = (drug.effectiveName.ifBlank { drug.name.ifBlank { drug.medicineName } }).lowercase()
+    val d = drug.dosage.lowercase()
+    val i = drug.instructions.lowercase()
+    return n.contains("inj") || n.contains("iv") || n.contains("im") || n.contains("sc") ||
+           n.contains("infusion") || n.contains("drip") || n.contains("saline") || n.contains("dextrose") ||
+           d.contains("inj") || d.contains("amp") || d.contains("vial") ||
+           i.contains("iv") || i.contains("im") || i.contains("sc") ||
+           i.contains("drip") || i.contains("push") || i.contains("neb")
+  }
 
   /**
    * Helper function to calculate how many prescriptions can fit on Page 1
@@ -54,21 +69,25 @@ object A4PdfNativeCanvasRenderer {
     }
     val diagH = if (diagText.isNotBlank()) 26f else 0f
 
-    val contentStartY = p1Top + clinicalH + diagH
+    val invH = if (consultation.suggestedInvestigations.isNotEmpty()) {
+      16f + (Math.ceil(consultation.suggestedInvestigations.size / 2.0).toFloat() * 14f)
+    } else 0f
+
+    val injItemsCount = consultation.treatmentOrderDetails.size + consultation.prescriptions.count { isInjectable(it) }
+    val injH = if (injItemsCount > 0) 16f + (injItemsCount * 21f) else 0f
+
+    val contentStartY = p1Top + clinicalH + diagH + invH + injH
     val maxPageOneY = height - 58f
     val spaceLeft = maxPageOneY - contentStartY - 30f // 30f for Prescription (Rx) table header
 
-    val rxList = consultation.prescriptions
-    if (rxList.isEmpty() || spaceLeft < 18f) return 0
-    val maxCanFit = ((spaceLeft) / 18.5f).toInt().coerceIn(0, rxList.size)
+    val oralRx = consultation.prescriptions.filter { !isInjectable(it) }
+    if (oralRx.isEmpty() || spaceLeft < 18f) return 0
+    val maxCanFit = ((spaceLeft) / 18.5f).toInt().coerceIn(0, oralRx.size)
 
     val validProcs = consultation.selectedProcedures.filter { it.name.isNotBlank() }
-    val validInvs = consultation.suggestedInvestigations.filter { it.isNotBlank() }
 
-    // If there are no procedures and no investigations going to Page 2,
-    // and all Rx would fit on Page 1, leave at least 3-4 Rx for Page 2 so Page 2 has Rx content!
-    if (validProcs.isEmpty() && validInvs.isEmpty() && maxCanFit == rxList.size && rxList.size > 4) {
-      return (rxList.size / 2).coerceAtLeast(3)
+    if (validProcs.isEmpty() && maxCanFit == oralRx.size && oralRx.size > 4) {
+      return (oralRx.size / 2).coerceAtLeast(3)
     }
 
     return maxCanFit
@@ -135,8 +154,8 @@ object A4PdfNativeCanvasRenderer {
     // Patient Instructions & Follow-up
     val hasInstructions = consultation.patientInstructions.isNotBlank()
     val rawFollowUp = consultation.followUpAppointment.trim()
-    val isPrn = rawFollowUp.contains("PRN", ignoreCase = true) || rawFollowUp.contains("မသက်သာမှ")
-    val isNone = rawFollowUp.isBlank() || rawFollowUp.equals("None", ignoreCase = true) || rawFollowUp.contains("None", ignoreCase = true) || rawFollowUp.contains("မလို")
+    val isPrn = rawFollowUp.contains("PRN", ignoreCase = true) || rawFollowUp.contains("မသက်သာမှ") || rawFollowUp.contains("as needed", ignoreCase = true)
+    val isNone = rawFollowUp.isBlank() || rawFollowUp.equals("None", ignoreCase = true) || rawFollowUp.contains("None", ignoreCase = true) || rawFollowUp.contains("မလို") || rawFollowUp.contains("not required", ignoreCase = true)
     val hasFollowUp = isPrn || (!isNone && !consultation.followUpDueDate.isNullOrBlank()) || (!isNone && rawFollowUp.isNotBlank())
 
     if (hasInstructions || hasFollowUp) {
@@ -278,7 +297,7 @@ object A4PdfNativeCanvasRenderer {
       currentY = drawSingleColumnClinicalSection(canvas, width, currentY, "Physical Examination & Clinical Findings:", lines, maxLines = 25)
     }
 
-    // 6. Provisional Diagnosis Box (Placed under History & Physical Examination)
+    // 6. Provisional Diagnosis Box
     val diagText = when {
       consultation.diagnosisList.isNotEmpty() -> consultation.diagnosisList.joinToString(" • ")
       consultation.assessment.isNotBlank() -> consultation.assessment
@@ -288,17 +307,29 @@ object A4PdfNativeCanvasRenderer {
       currentY = drawDiagnosisBox(canvas, width, currentY, diagText)
     }
 
-    // 7. Prescriptions (Rx) Section (Only if present)
-    if (consultation.prescriptions.isNotEmpty()) {
-      currentY = drawPrescriptionsTable(canvas, width, currentY, consultation, isExpanded = false)
+    // 7. Suggested Diagnostic Investigations
+    if (consultation.suggestedInvestigations.isNotEmpty()) {
+      currentY = drawSuggestedInvestigations(canvas, width, currentY, consultation.suggestedInvestigations)
     }
 
-    // 8. Procedures & Investigations (Only if present)
-    if (consultation.selectedProcedures.isNotEmpty() || consultation.suggestedInvestigations.isNotEmpty()) {
-      currentY = drawProceduresAndInvestigations(canvas, width, currentY, consultation)
+    // 8. Treatment & Injections (Clinical injectables & cocktails)
+    val hasInjections = consultation.treatmentOrderDetails.isNotEmpty() || consultation.prescriptions.any { isInjectable(it) }
+    if (hasInjections) {
+      currentY = drawTreatmentAndInjections(canvas, width, currentY, consultation)
     }
 
-    // 9. Bottom Split: Patient Instructions & Follow-up Appointment
+    // 9. Prescription (Rx) (Oral take-home medications only)
+    val oralRx = consultation.prescriptions.filter { !isInjectable(it) }
+    if (oralRx.isNotEmpty()) {
+      currentY = drawPrescriptionsTableSlice(canvas, width, currentY, oralRx, startIndex = 0)
+    }
+
+    // 10. Clinical Procedures & Minor Surgery
+    if (consultation.selectedProcedures.isNotEmpty()) {
+      currentY = drawProceduresSection(canvas, width, currentY, consultation.selectedProcedures, consultation.timestamp)
+    }
+
+    // 11. Bottom Split: Patient Instructions & Follow-up Appointment
     val hasInstructions = consultation.patientInstructions.isNotBlank()
     val followUpStr = consultation.followUpAppointment.trim()
     val isPrnFollowUp = followUpStr.contains("PRN", ignoreCase = true) || followUpStr.contains("မသက်သာမှ")
@@ -365,13 +396,44 @@ object A4PdfNativeCanvasRenderer {
       currentY = drawDiagnosisBox(canvas, width, currentY, diagTextMulti)
     }
 
-    // 7. Dynamic Waterfall Flow: Fill remaining vertical space on Page 1 with Prescriptions
-    val rxList = consultation.prescriptions
+    // 7. Suggested Diagnostic Investigations on Page 1 (if fits before 680pt)
+    val invH = if (consultation.suggestedInvestigations.isNotEmpty()) 16f + (Math.ceil(consultation.suggestedInvestigations.size / 2.0).toFloat() * 14f) else 0f
+    val invDrawnOnP1 = consultation.suggestedInvestigations.isNotEmpty() && (currentY + invH <= 680f)
+    if (invDrawnOnP1) {
+      currentY = drawSuggestedInvestigations(canvas, width, currentY, consultation.suggestedInvestigations)
+    }
+
+    // 8. Treatment & Injections on Page 1 (if fits before 680pt)
+    val injCount = consultation.treatmentOrderDetails.size + consultation.prescriptions.count { isInjectable(it) }
+    val injH = if (injCount > 0) 16f + (injCount * 21f) else 0f
+    val injDrawnOnP1 = injCount > 0 && (currentY + injH <= 680f)
+    if (injDrawnOnP1) {
+      currentY = drawTreatmentAndInjections(canvas, width, currentY, consultation)
+    }
+
+    // 9. Prescription (Rx) (Oral take-home medications)
+    val oralRx = consultation.prescriptions.filter { !isInjectable(it) }
     val rxRowsCanFit = calculateRxFitOnPageOne(consultation, patient, height)
 
-    if (rxRowsCanFit > 0 && rxList.isNotEmpty()) {
-      val p1Rx = rxList.take(rxRowsCanFit)
+    if (rxRowsCanFit > 0 && oralRx.isNotEmpty()) {
+      val p1Rx = oralRx.take(rxRowsCanFit)
       currentY = drawPrescriptionsTableSlice(canvas, width, currentY, p1Rx, startIndex = 0)
+    }
+
+    // 10. Dynamic Waterfall: Draw Procedures on Page 1 if all oral Rx fit and space permits before 680pt
+    val allOralRxFitOnP1 = rxRowsCanFit >= oralRx.size
+    val validProcs = consultation.selectedProcedures.filter { it.name.isNotBlank() }
+    val dummyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 8.5f }
+    val procH = if (validProcs.isNotEmpty()) {
+      16f + validProcs.sumOf { p ->
+        val noteLines = if (p.notes.isNotBlank()) wrapTextIntoLines("Notes: ${p.notes}", width - 68f, dummyPaint).size.coerceAtLeast(1) else 0
+        (18.0 + (noteLines * 11.5) + 8.0)
+      }.toFloat()
+    } else 0f
+
+    val procDrawnOnP1 = allOralRxFitOnP1 && validProcs.isNotEmpty() && (currentY + procH <= 680f)
+    if (procDrawnOnP1) {
+      currentY = drawProceduresSection(canvas, width, currentY, validProcs, consultation.timestamp)
     }
 
     // Continuation notice at bottom of Page 1 (Clear, professional English)
@@ -379,12 +441,12 @@ object A4PdfNativeCanvasRenderer {
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     paint.textSize = 8.5f
     paint.textAlign = Paint.Align.CENTER
-    val continueNotice = if (rxRowsCanFit in 1 until rxList.size) {
-      "▼ Continued on Page 2 (Remaining Prescriptions & Treatment Orders) ▼"
-    } else if (rxRowsCanFit == 0) {
-      "▼ Continued on Page 2 (Prescriptions, Treatment Orders & Attending Physician Seal) ▼"
+    val continueNotice = if (rxRowsCanFit in 1 until oralRx.size) {
+      "▼ Continued on Page 2 (Remaining Prescriptions & Attending Physician Seal) ▼"
+    } else if (!procDrawnOnP1 && validProcs.isNotEmpty()) {
+      "▼ Continued on Page 2 (Clinical Procedures, Advice & Attending Physician Seal) ▼"
     } else {
-      "▼ Continued on Page 2 (Clinical Procedures, Investigations & Attending Physician Seal) ▼"
+      "▼ Continued on Page 2 (Patient Instructions, Review & Attending Physician Seal) ▼"
     }
     canvas.drawText(continueNotice, width / 2f, height - 38f, paint)
     paint.textAlign = Paint.Align.LEFT
@@ -426,26 +488,48 @@ object A4PdfNativeCanvasRenderer {
     canvas.drawLine(22f, currentY + 16f, width - 22f, currentY + 16f, paint)
     currentY += 22f
 
-    // 2. Remaining Prescriptions (if any)
-    val rxList = consultation.prescriptions
+    // 2. Investigations on Page 2 (if overflowed from Page 1)
+    val invH = if (consultation.suggestedInvestigations.isNotEmpty()) 16f + (Math.ceil(consultation.suggestedInvestigations.size / 2.0).toFloat() * 14f) else 0f
+    // Compute P1 estimate to check if inv was drawn on P1
     val rxRowsOnP1 = calculateRxFitOnPageOne(consultation, patient, height)
-    val remainingRx = if (rxRowsOnP1 in 0 until rxList.size) rxList.drop(rxRowsOnP1) else emptyList()
+    val oralRx = consultation.prescriptions.filter { !isInjectable(it) }
 
-    if (remainingRx.isNotEmpty()) {
+    // 3. Treatment & Injections on Page 2 (if overflowed from Page 1)
+    val injCount = consultation.treatmentOrderDetails.size + consultation.prescriptions.count { isInjectable(it) }
+    // If not drawn on Page 1, draw here
+    val hasInjections = injCount > 0
+    if (hasInjections && rxRowsOnP1 == 0) {
+      currentY = drawTreatmentAndInjections(canvas, width, currentY, consultation)
+    }
+
+    // 4. Remaining Oral Prescriptions (if any)
+    val remainingOralRx = if (rxRowsOnP1 in 0 until oralRx.size) oralRx.drop(rxRowsOnP1) else (if (rxRowsOnP1 == 0) oralRx else emptyList())
+    if (remainingOralRx.isNotEmpty()) {
       currentY = drawPrescriptionsTableSlice(
         canvas = canvas,
         width = width,
         topY = currentY,
-        prescriptions = remainingRx,
+        prescriptions = remainingOralRx,
         startIndex = rxRowsOnP1
       )
     }
 
-    // 3. Procedures & Investigations (if any)
+    // 5. Clinical Procedures & Minor Surgery (if not drawn on Page 1)
     val validProcs = consultation.selectedProcedures.filter { it.name.isNotBlank() }
-    val validInvs = consultation.suggestedInvestigations.filter { it.isNotBlank() }
-    if (validProcs.isNotEmpty() || validInvs.isNotEmpty()) {
-      currentY = drawProceduresAndInvestigations(canvas, width, currentY, consultation)
+    val allOralRxFitOnP1 = rxRowsOnP1 >= oralRx.size
+    val dummyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 8.5f }
+    val procH = if (validProcs.isNotEmpty()) {
+      16f + validProcs.sumOf { p ->
+        val noteLines = if (p.notes.isNotBlank()) wrapTextIntoLines("Notes: ${p.notes}", width - 68f, dummyPaint).size.coerceAtLeast(1) else 0
+        (18.0 + (noteLines * 11.5) + 8.0)
+      }.toFloat()
+    } else 0f
+
+    // If procedures didn't fit on Page 1 or oral Rx had overflow, draw procedures on Page 2
+    if (validProcs.isNotEmpty() && (!allOralRxFitOnP1 || rxRowsOnP1 == 0 || (currentY + procH > 680f))) {
+      currentY = drawProceduresSection(canvas, width, currentY, validProcs, consultation.timestamp)
+    } else if (validProcs.isNotEmpty() && !allOralRxFitOnP1) {
+      currentY = drawProceduresSection(canvas, width, currentY, validProcs, consultation.timestamp)
     }
 
     // 4. Patient Instructions & Follow-up
@@ -1456,22 +1540,26 @@ object A4PdfNativeCanvasRenderer {
     return currentY + 8f
   }
 
-  private fun drawTreatmentAndInjectionsSection(
+  private fun drawTreatmentAndInjections(
     canvas: Canvas,
     width: Float,
     topY: Float,
     consultation: ConsultationRecord
   ): Float {
-    val injectionDrugs = consultation.prescriptions.filter { drug ->
-      drug.effectiveName.contains("Inj", ignoreCase = true) ||
-      drug.dosage.contains("Inj", ignoreCase = true) ||
-      drug.medicineName.contains("Inj", ignoreCase = true) ||
-      drug.instructions.contains("IM", ignoreCase = true) ||
-      drug.instructions.contains("IV", ignoreCase = true) ||
-      drug.instructions.contains("Neb", ignoreCase = true) ||
-      drug.instructions.contains("Drip", ignoreCase = true)
+    val items = mutableListOf<String>()
+    consultation.treatmentOrderDetails.forEach { items.add(it) }
+    consultation.prescriptions.filter { isInjectable(it) }.forEach { drug ->
+      val name = drug.effectiveName.ifBlank { drug.name.ifBlank { drug.medicineName } }
+      val dose = if (drug.dosage.isNotBlank() && !name.contains(drug.dosage)) " (${drug.dosage})" else ""
+      val dir = formatDosageAndDirection(drug)
+      val dirStr = if (dir.isNotBlank()) " - $dir" else ""
+      val dur = if (drug.duration.isNotBlank()) " (${drug.duration})" else ""
+      val line = "• $name$dose$dirStr$dur"
+      if (!items.any { it.contains(name, ignoreCase = true) }) {
+        items.add(line)
+      }
     }
-    if (injectionDrugs.isEmpty()) return topY
+    if (items.isEmpty()) return topY
 
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     var currentY = topY
@@ -1479,39 +1567,135 @@ object A4PdfNativeCanvasRenderer {
     paint.color = Color.rgb(0x0F, 0x76, 0x6E)
     paint.textSize = 10f
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    canvas.drawText("Treatment & Injections (ဆေးထိုး / ဆေးသွင်း ကုသမှု):", 22f, currentY + 10f, paint)
+    canvas.drawText("Treatment & Injections:", 22f, currentY + 10f, paint)
     currentY += 15f
 
-    injectionDrugs.forEachIndexed { idx, drug ->
-      val name = drug.effectiveName.ifBlank { drug.name.ifBlank { drug.medicineName } }
-      val route = when {
-        drug.instructions.contains("IV", ignoreCase = true) -> "IV Route"
-        drug.instructions.contains("IM", ignoreCase = true) -> "IM Route"
-        drug.instructions.contains("Neb", ignoreCase = true) -> "Nebulization"
-        else -> "Injection"
-      }
-      paint.color = Color.rgb(0xF8, 0xFA, 0xFC)
-      val cardRect = RectF(22f, currentY, width - 22f, currentY + 17f)
-      canvas.drawRoundRect(cardRect, 3f, 3f, paint)
+    items.forEach { itemText ->
+      paint.color = Color.rgb(0xF0, 0xFD, 0xFA)
+      val cardRect = RectF(22f, currentY, width - 22f, currentY + 18f)
+      canvas.drawRoundRect(cardRect, 3.5f, 3.5f, paint)
       paint.style = Paint.Style.STROKE
       paint.color = Color.rgb(0xCC, 0xF0, 0xEB)
       paint.strokeWidth = 0.6f
-      canvas.drawRoundRect(cardRect, 3f, 3f, paint)
+      canvas.drawRoundRect(cardRect, 3.5f, 3.5f, paint)
       paint.style = Paint.Style.FILL
 
       paint.color = Color.rgb(0x0F, 0x17, 0x2A)
       paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
       paint.textSize = 8.5f
-      canvas.drawText(".  () - ", 28f, currentY + 11.5f, paint)
+      val cleanText = if (itemText.startsWith("• ")) itemText else "• $itemText"
+      canvas.drawText(cleanText.take(90), 28f, currentY + 12f, paint)
 
-      paint.color = Color.rgb(0x64, 0x74, 0x8B)
-      paint.typeface = Typeface.DEFAULT
-      paint.textSize = 8f
-      paint.textAlign = Paint.Align.RIGHT
-      canvas.drawText(" x  â€¢ ", width - 28f, currentY + 11.5f, paint)
-      paint.textAlign = Paint.Align.LEFT
+      currentY += 21f
+    }
+    return currentY + 4f
+  }
 
-      currentY += 20f
+  private fun drawSuggestedInvestigations(
+    canvas: Canvas,
+    width: Float,
+    topY: Float,
+    investigations: List<String>
+  ): Float {
+    if (investigations.isEmpty()) return topY
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    var currentY = topY
+
+    paint.color = Color.rgb(0x0F, 0x76, 0x6E)
+    paint.textSize = 9.5f
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    canvas.drawText("Suggested Diagnostic Investigations:", 22f, currentY + 10f, paint)
+    currentY += 15f
+
+    paint.typeface = Typeface.DEFAULT
+    paint.color = Color.rgb(0x1E, 0x29, 0x3B)
+    paint.textSize = 8.5f
+    investigations.chunked(2).forEach { rowItems ->
+      val textL = "• ${rowItems[0]}"
+      canvas.drawText(textL, 28f, currentY + 9f, paint)
+      if (rowItems.size > 1) {
+        val textR = "• ${rowItems[1]}"
+        canvas.drawText(textR, width / 2f + 10f, currentY + 9f, paint)
+      }
+      currentY += 14f
+    }
+    return currentY + 4f
+  }
+
+  private fun drawProceduresSection(
+    canvas: Canvas,
+    width: Float,
+    topY: Float,
+    procedures: List<ProcedureItem>,
+    consultationTimestamp: String = ""
+  ): Float {
+    val validProcs = procedures.filter { it.name.isNotBlank() }
+    if (validProcs.isEmpty()) return topY
+
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    var currentY = topY
+
+    paint.color = Color.rgb(0x0F, 0x76, 0x6E)
+    paint.textSize = 10f
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    canvas.drawText("Clinical Procedures & Minor Surgery:", 22f, currentY + 10f, paint)
+    currentY += 15f
+
+    validProcs.forEach { proc ->
+      val dt = proc.dateTime.ifBlank { consultationTimestamp }
+      val hasNotes = proc.notes.isNotBlank()
+      val noteText = if (hasNotes) "Notes: ${proc.notes}" else ""
+
+      val notePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = Typeface.DEFAULT
+        textSize = 8.5f
+        color = Color.rgb(0x33, 0x41, 0x55)
+      }
+      val noteLines = if (hasNotes) {
+        wrapTextIntoLines(noteText, width - 68f, notePaint)
+      } else emptyList()
+
+      val boxH = if (hasNotes) {
+        18f + (noteLines.size * 11.5f) + 6f
+      } else {
+        17f
+      }
+
+      paint.color = Color.rgb(0xF0, 0xFD, 0xFA)
+      val boxRect = RectF(22f, currentY, width - 22f, currentY + boxH)
+      canvas.drawRoundRect(boxRect, 4f, 4f, paint)
+      paint.style = Paint.Style.STROKE
+      paint.color = Color.rgb(0x99, 0xF6, 0xE4)
+      paint.strokeWidth = 0.6f
+      canvas.drawRoundRect(boxRect, 4f, 4f, paint)
+      paint.style = Paint.Style.FILL
+
+      // Procedure Title & Category
+      paint.color = Color.rgb(0x11, 0x5E, 0x59)
+      paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+      paint.textSize = 9f
+      val catText = if (proc.category.isNotBlank()) " [" + proc.category + "]" else ""
+      canvas.drawText("• " + proc.name + catText, 28f, currentY + 11.5f, paint)
+
+      // Date / Time
+      if (dt.isNotBlank()) {
+        paint.typeface = Typeface.DEFAULT
+        paint.color = Color.rgb(0x64, 0x74, 0x8B)
+        paint.textSize = 8f
+        paint.textAlign = Paint.Align.RIGHT
+        canvas.drawText("Done: " + dt, width - 28f, currentY + 11.5f, paint)
+        paint.textAlign = Paint.Align.LEFT
+      }
+
+      // Operative / Procedure Notes - drawn cleanly inside the dynamically expanded box
+      if (hasNotes && noteLines.isNotEmpty()) {
+        var lineY = currentY + 22.5f
+        noteLines.forEach { line ->
+          canvas.drawText(line, 34f, lineY, notePaint)
+          lineY += 11.5f
+        }
+      }
+      currentY += boxH + 4f
     }
     return currentY + 4f
   }
@@ -1522,102 +1706,9 @@ object A4PdfNativeCanvasRenderer {
     topY: Float,
     consultation: ConsultationRecord
   ): Float {
-    if (consultation.selectedProcedures.isEmpty() && consultation.suggestedInvestigations.isEmpty()) {
-      return topY
-    }
-    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    var currentY = topY
-
-    val validProcs = consultation.selectedProcedures.filter { it.name.isNotBlank() }
-    if (validProcs.isNotEmpty()) {
-      paint.color = Color.rgb(0x0F, 0x76, 0x6E)
-      paint.textSize = 10f
-      paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-      canvas.drawText("Clinical Procedures & Minor Surgery:", 22f, currentY + 10f, paint)
-      currentY += 15f
-
-      validProcs.forEach { proc ->
-        val dt = proc.dateTime.ifBlank { consultation.timestamp }
-        val hasNotes = proc.notes.isNotBlank()
-        val noteText = if (hasNotes) "Notes: ${proc.notes}" else ""
-
-        val notePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-          typeface = Typeface.DEFAULT
-          textSize = 8.5f
-          color = Color.rgb(0x33, 0x41, 0x55)
-        }
-        val noteLines = if (hasNotes) {
-          wrapTextIntoLines(noteText, width - 68f, notePaint)
-        } else emptyList()
-
-        val boxH = if (hasNotes) {
-          18f + (noteLines.size * 11.5f) + 6f
-        } else {
-          17f
-        }
-
-        paint.color = Color.rgb(0xF0, 0xFD, 0xFA)
-        val boxRect = RectF(22f, currentY, width - 22f, currentY + boxH)
-        canvas.drawRoundRect(boxRect, 4f, 4f, paint)
-        paint.style = Paint.Style.STROKE
-        paint.color = Color.rgb(0x99, 0xF6, 0xE4)
-        paint.strokeWidth = 0.6f
-        canvas.drawRoundRect(boxRect, 4f, 4f, paint)
-        paint.style = Paint.Style.FILL
-
-        // Procedure Title & Category
-        paint.color = Color.rgb(0x11, 0x5E, 0x59)
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        paint.textSize = 9f
-        val catText = if (proc.category.isNotBlank()) " [" + proc.category + "]" else ""
-        canvas.drawText("• " + proc.name + catText, 28f, currentY + 11.5f, paint)
-
-        // Date / Time
-        if (dt.isNotBlank()) {
-          paint.typeface = Typeface.DEFAULT
-          paint.color = Color.rgb(0x64, 0x74, 0x8B)
-          paint.textSize = 8f
-          paint.textAlign = Paint.Align.RIGHT
-          canvas.drawText("Done: " + dt, width - 28f, currentY + 11.5f, paint)
-          paint.textAlign = Paint.Align.LEFT
-        }
-
-        // Operative / Procedure Notes - drawn cleanly inside the dynamically expanded box
-        if (hasNotes && noteLines.isNotEmpty()) {
-          var lineY = currentY + 22.5f
-          noteLines.forEach { line ->
-            canvas.drawText(line, 34f, lineY, notePaint)
-            lineY += 11.5f
-          }
-        }
-        currentY += boxH + 4f
-      }
-    }
-
-    if (consultation.suggestedInvestigations.isNotEmpty()) {
-      paint.color = Color.rgb(0x0F, 0x76, 0x6E)
-      paint.textSize = 9.5f
-      paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-      canvas.drawText("Suggested Diagnostic Investigations:", 22f, currentY + 10f, paint)
-      currentY += 15f
-
-      paint.typeface = Typeface.DEFAULT
-      paint.color = Color.rgb(0x1E, 0x29, 0x3B)
-      paint.textSize = 8.5f
-      val labs = consultation.suggestedInvestigations
-      labs.chunked(2).forEach { rowItems ->
-        val textL = "• ${rowItems[0]}"
-        canvas.drawText(textL, 28f, currentY + 9f, paint)
-        if (rowItems.size > 1) {
-          val textR = "• ${rowItems[1]}"
-          canvas.drawText(textR, width / 2f + 10f, currentY + 9f, paint)
-        }
-        currentY += 14f
-      }
-      currentY += 2f
-    }
-
-    return currentY + 4f
+    var cur = drawSuggestedInvestigations(canvas, width, topY, consultation.suggestedInvestigations)
+    cur = drawProceduresSection(canvas, width, cur, consultation.selectedProcedures, consultation.timestamp)
+    return cur
   }
 
   // =========================================================================
@@ -1640,9 +1731,9 @@ object A4PdfNativeCanvasRenderer {
       consultation.patientInstructions.lines().filter { it.isNotBlank() }
     } else {
       listOf(
-        "၁။ ဆရာဝန်ညွှန်ကြားသည့်အတိုင်း ဆေးများကို အချိန်မှန် ရက်ပြည့်အောင် သောက်သုံးပါ။ ရေများများသောက်ပါ။",
-        "၂။ ပဋိဇီဝဆေး (Antibiotics) များကို ရောဂါသက်သာသော်လည်း ရက်ပြည့်အောင် ဆက်သောက်ပါ။",
-        "၃။ ဆေးသောက်ပြီး ဓါတ်မတည့်ခြင်း (သို့မဟုတ်) ထူးခြားသော လက္ခဏာများ ခံစားရပါက ဆေးခန်းသို့ ချက်ချင်း ပြန်လည်ပြသပါ။"
+        "1. Take all medications exactly as prescribed with sufficient water.",
+        "2. Complete the full antibiotic course even if feeling improved.",
+        "3. Return to clinic immediately if you experience adverse reactions or high fever."
       )
     }
 
@@ -1698,16 +1789,16 @@ object A4PdfNativeCanvasRenderer {
       canvas.drawText("Follow-up & Next Appointment:", rightX, currentY + 10f, paint)
 
       val followUpStr = if (isPrn) {
-        "PRN (မသက်သာမှသာ ပြန်ပြရန်)"
+        "PRN (Return if symptoms persist)"
       } else if (rawFollowUp.isNotBlank() && !isNone) {
         rawFollowUp
       } else {
-        (consultation.followUpDueDate ?: "")
+        (consultation.followUpDueDate ?: "As instructed")
       }
       val subNote = if (isPrn) {
-        "ရောဂါလက္ခဏာ မသက်သာပါက သို့မဟုတ် ပိုဆိုးလာပါက ဆေးခန်းသို့ ပြန်လည်ပြသရန်"
+        "Please return to clinic if condition does not improve or worsens."
       } else {
-        "အဖျား၊ သွေးပေါင်နှင့် ကျန်းမာရေးအခြေအနေ ပြန်လည်စစ်ဆေးရန်"
+        "Please return for clinical review and vital signs re-evaluation."
       }
 
       val boxTop = currentY + 16f
@@ -1725,7 +1816,7 @@ object A4PdfNativeCanvasRenderer {
         paint.color = Color.rgb(0x1B, 0x5E, 0x20)
         paint.textSize = 8.5f
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        var fuY = drawWrappedText(canvas, "🗓️ ပြန်လည်ပြသရက်: $followUpStr", rightX + 6f, currentY + 28f, rightW - 12f, 11f, paint, maxLines = 2)
+        var fuY = drawWrappedText(canvas, "🗓️ Next Review Date: $followUpStr", rightX + 6f, currentY + 28f, rightW - 12f, 11f, paint, maxLines = 2)
 
         paint.typeface = Typeface.DEFAULT
         paint.color = Color.rgb(0x4B, 0x55, 0x63)

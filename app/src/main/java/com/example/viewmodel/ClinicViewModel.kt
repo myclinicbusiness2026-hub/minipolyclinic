@@ -1136,6 +1136,13 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     treatmentOrders: List<TreatmentCard> = emptyList()
   ) {
     val patient = _patients.value.find { it.id == patientId } ?: return
+    val treatmentOrderDetails = treatmentOrders.map { card ->
+      val doseStr = if (card.dosage.isNotBlank()) " (${card.dosage})" else ""
+      val routeStr = card.route.displayName
+      val freqStr = if (card.frequency.isNotBlank()) " - ${card.frequency}" else ""
+      "${routeStr}: ${card.displayName}$doseStr$freqStr"
+    }
+
     val consultation = ConsultationRecord(
       id = "CONS-${UUID.randomUUID().toString().take(8)}",
       patientId = patientId,
@@ -1151,6 +1158,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       prescriptions = prescriptions,
       selectedProcedures = selectedProcedures,
       suggestedInvestigations = suggestedInvestigations,
+      treatmentOrderDetails = treatmentOrderDetails,
       consultationFee = consultationFee,
       drawingPages = drawingPages,
       canvasNotes = canvasNotes,
@@ -2038,9 +2046,13 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
     var invoice: Invoice? = null
     if (isAlreadyBilled) {
-      // Deduct stock for consumables and clinic medicine without creating duplicate invoice
+      // Deduct stock for consumables, cocktails and clinic medicine without creating duplicate invoice
       val tempItems = mutableListOf<InvoiceItem>()
-      if (!isPrepaid && isClinicMed && card.medicationName.isNotBlank()) {
+      if (card.isCocktail && card.cocktailItems.isNotEmpty()) {
+        card.cocktailItems.forEach { item ->
+          tempItems.add(InvoiceItem(name = item.name, quantity = item.quantity, unitPrice = item.unitPrice, totalPrice = item.totalPrice, isProcedure = false))
+        }
+      } else if (!isPrepaid && isClinicMed && card.medicationName.isNotBlank()) {
         tempItems.add(InvoiceItem(name = card.medicationName, quantity = 1, unitPrice = medPrice, totalPrice = medPrice, isProcedure = false))
       }
       consumables.forEach { c ->
@@ -2071,6 +2083,15 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       _invoices.value = updatedInvoices
       ClinicDataPersistence.saveInvoices(ctx, updatedInvoices)
       deductInventoryForInvoice(newInv)
+      if (card.isCocktail && card.cocktailItems.isNotEmpty()) {
+        val cocktailInvItems = card.cocktailItems.map { item ->
+          InvoiceItem(name = item.name, quantity = item.quantity, unitPrice = item.unitPrice, totalPrice = 0.0, isProcedure = false)
+        }
+        deductInventoryForInvoice(Invoice(items = cocktailInvItems))
+      } else if (isClinicMed && card.medicationName.isNotBlank()) {
+        val singleMedItem = listOf(InvoiceItem(name = card.medicationName, quantity = 1, unitPrice = medPrice, totalPrice = 0.0, isProcedure = false))
+        deductInventoryForInvoice(Invoice(items = singleMedItem))
+      }
       invoice = newInv
     }
 
@@ -2157,7 +2178,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     costPrice: Double,
     profitMarginPercent: Double = 25.0,
     minThreshold: Int = 20,
-    supplierName: String = ""
+    supplierName: String = "",
+    medicineType: String = ""
   ) {
     val existing = _medicines.value.find { it.name.equals(tradeName, ignoreCase = true) }
     val newBatch = StockBatch(
@@ -2172,7 +2194,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           med.copy(
             batches = med.batches + newBatch,
             profitMarginPercent = profitMarginPercent,
-            minStockThreshold = minThreshold
+            minStockThreshold = minThreshold,
+            medicineType = if (medicineType.isNotBlank()) medicineType else med.medicineType
           )
         } else med
       }
@@ -2188,7 +2211,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         batches = listOf(newBatch),
         minStockThreshold = minThreshold,
         profitMarginPercent = profitMarginPercent,
-        primarySupplier = supplierName.ifBlank { "AA Medical Products" }
+        primarySupplier = supplierName.ifBlank { "AA Medical Products" },
+        medicineType = medicineType
       )
       val updated = _medicines.value + newMed
       _medicines.value = updated

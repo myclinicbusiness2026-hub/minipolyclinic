@@ -128,6 +128,12 @@ object SyncPayloadParser {
         }
       }
 
+      val toArr = o.optJSONArray("treatmentOrderDetails")
+      val treatmentOrderDetails = mutableListOf<String>()
+      if (toArr != null) {
+        for (j in 0 until toArr.length()) treatmentOrderDetails.add(toArr.getString(j))
+      }
+
       list.add(
         ConsultationRecord(
           id = o.optString("id"),
@@ -143,6 +149,7 @@ object SyncPayloadParser {
           diagnosisList = diagnoses,
           prescriptions = rxs,
           selectedProcedures = procedures,
+          treatmentOrderDetails = treatmentOrderDetails,
           attachments = attachments,
           consultationFee = o.optDouble("consultationFee", 8000.0),
           timestamp = o.optString("timestamp")
@@ -241,7 +248,8 @@ object SyncPayloadParser {
           batches = batches,
           minStockThreshold = o.optInt("minStockThreshold", 10),
           primarySupplier = o.optString("primarySupplier", ""),
-          isAllergyWarning = o.optBoolean("isAllergyWarning", false)
+          isAllergyWarning = o.optBoolean("isAllergyWarning", false),
+          medicineType = o.optString("medicineType", "")
         )
       )
     }
@@ -341,6 +349,25 @@ object SyncPayloadParser {
         TreatmentStatus.PENDING
       }
 
+      val isCocktail = o.optBoolean("isCocktail", false)
+      val ckArr = o.optJSONArray("cocktailItems")
+      val cocktailItems = mutableListOf<CocktailDrugItem>()
+      if (ckArr != null) {
+        for (j in 0 until ckArr.length()) {
+          val cko = ckArr.getJSONObject(j)
+          cocktailItems.add(
+            CocktailDrugItem(
+              id = cko.optString("id", UUID.randomUUID().toString()),
+              medicineId = cko.optString("medicineId"),
+              name = cko.optString("name"),
+              dosage = cko.optString("dosage"),
+              quantity = cko.optInt("quantity", 1),
+              unitPrice = cko.optDouble("unitPrice", 0.0)
+            )
+          )
+        }
+      }
+
       list.add(
         TreatmentCard(
           id = o.optString("id", UUID.randomUUID().toString()),
@@ -362,6 +389,8 @@ object SyncPayloadParser {
           isBilledPerSession = o.optBoolean("isBilledPerSession", true),
           isPayPerVisit = o.optBoolean("isPayPerVisit", true),
           isPrepaidFullCourse = o.optBoolean("isPrepaidFullCourse", false),
+          isCocktail = isCocktail,
+          cocktailItems = cocktailItems,
           cardStatus = cardStatus,
           discontinueReason = o.optString("discontinueReason"),
           discontinuedBy = o.optString("discontinuedBy"),

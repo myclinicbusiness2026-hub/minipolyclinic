@@ -75,6 +75,20 @@ data class TreatmentSession(
 }
 
 /**
+ * Constituent medicine item in an IV Cocktail or multi-drug mixed injection
+ */
+data class CocktailDrugItem(
+  val id: String = UUID.randomUUID().toString(),
+  val medicineId: String = "",
+  val name: String,
+  val dosage: String = "",
+  val quantity: Int = 1,
+  val unitPrice: Double = 0.0
+) {
+  val totalPrice: Double get() = quantity * unitPrice
+}
+
+/**
  * Modular Day-Care Treatment Card Model
  * Handles routine injections, IV drip courses, and standalone nursing visits without requiring
  * repeated doctor consultation records or clumping under surgical minor procedures.
@@ -100,6 +114,8 @@ data class TreatmentCard(
   val isBilledPerSession: Boolean = true,
   val isPayPerVisit: Boolean = true,
   val isPrepaidFullCourse: Boolean = false,
+  val isCocktail: Boolean = false,
+  val cocktailItems: List<CocktailDrugItem> = emptyList(),
   val consultationInvoiceId: String? = null,
   val cardStatus: TreatmentStatus = TreatmentStatus.IN_PROGRESS,
   val discontinueReason: String = "",
@@ -107,6 +123,13 @@ data class TreatmentCard(
   val discontinuedAt: String = "",
   val notes: String = ""
 ) {
+  val displayName: String get() {
+    if (isCocktail && cocktailItems.isNotEmpty()) {
+      val itemsStr = cocktailItems.joinToString(" + ") { it.name + if (it.dosage.isNotBlank()) " ${it.dosage}" else "" }
+      return if (medicationName.isNotBlank() && !itemsStr.contains(medicationName)) "$medicationName + $itemsStr" else itemsStr
+    }
+    return medicationName
+  }
   val completedSessionsCount: Int get() = sessions.count { it.status == TreatmentStatus.COMPLETED }
   val isFullyCompleted: Boolean get() = cardStatus == TreatmentStatus.COMPLETED || (sessions.isNotEmpty() && sessions.all { it.status == TreatmentStatus.COMPLETED })
   val isDiscontinued: Boolean get() = cardStatus == TreatmentStatus.DISCONTINUED || cardStatus == TreatmentStatus.CANCELLED
@@ -179,6 +202,43 @@ object TreatmentCardFactory {
       TreatmentCard(
         patientId = "",
         patientName = "",
+        medicationName = "IV Todol 30 mg + NS 3cc",
+        dosage = "30 mg",
+        route = TreatmentRoute.IV_PUSH,
+        frequency = "Stat",
+        totalDays = 1,
+        totalSessions = 1,
+        sessionFee = 2000.0,
+        medicationFee = 3500.0,
+        isCocktail = true,
+        cocktailItems = listOf(
+          CocktailDrugItem(name = "Todol (Ketorolac)", dosage = "30mg", quantity = 1, unitPrice = 2500.0),
+          CocktailDrugItem(name = "Normal Saline (0.9%)", dosage = "3cc flush", quantity = 1, unitPrice = 1000.0)
+        ),
+        instructions = "Slow IV push over 2-3 mins. Check for NSAID hypersensitivity."
+      ),
+      TreatmentCard(
+        patientId = "",
+        patientName = "",
+        medicationName = "IV 0.9% NS + Burplex + Vit-C",
+        dosage = "500ml Drip",
+        route = TreatmentRoute.IV_INFUSION,
+        frequency = "Daily",
+        totalDays = 1,
+        totalSessions = 1,
+        sessionFee = 8000.0,
+        medicationFee = 8500.0,
+        isCocktail = true,
+        cocktailItems = listOf(
+          CocktailDrugItem(name = "0.9% Normal Saline", dosage = "500ml", quantity = 1, unitPrice = 3000.0),
+          CocktailDrugItem(name = "Burplex (Vitamin B-Complex)", dosage = "1 amp", quantity = 1, unitPrice = 2500.0),
+          CocktailDrugItem(name = "Vitamin C Inj", dosage = "500mg (1 amp)", quantity = 1, unitPrice = 3000.0)
+        ),
+        instructions = "IV infusion 30 drops/min with sterile infusion set. Monitor vitals."
+      ),
+      TreatmentCard(
+        patientId = "",
+        patientName = "",
         medicationName = "5% Dextrose Saline 500ml + Neurobion & Vit C",
         dosage = "1 Bottle (500ml)",
         route = TreatmentRoute.IV_INFUSION,
@@ -187,7 +247,13 @@ object TreatmentCardFactory {
         totalSessions = 1,
         sessionFee = 8000.0,
         medicationFee = 12000.0,
-        instructions = "Drip at 30 drops/min with micro-filter set. Monitor vitals."
+        isCocktail = true,
+        cocktailItems = listOf(
+          CocktailDrugItem(name = "5% Dextrose Saline", dosage = "500ml", quantity = 1, unitPrice = 3500.0),
+          CocktailDrugItem(name = "Inj. Neurobion", dosage = "1 amp", quantity = 1, unitPrice = 4500.0),
+          CocktailDrugItem(name = "Inj. Vitamin C", dosage = "500mg", quantity = 1, unitPrice = 4000.0)
+        ),
+        instructions = "Drip at 30-40 drops/min with micro-filter set. Monitor vitals."
       ),
       TreatmentCard(
         patientId = "",

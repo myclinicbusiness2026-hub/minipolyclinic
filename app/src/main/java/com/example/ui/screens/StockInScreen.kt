@@ -43,6 +43,13 @@ fun StockInScreen(
   // 1. Product Info State
   var tradeName by remember { mutableStateOf("") }
   var genericName by remember { mutableStateOf("") }
+  var selectedMedicineType by remember { mutableStateOf("Oral") }
+  val medicineTypeOptions = listOf(
+    "Oral" to "Oral (သောက်ဆေး)",
+    "Injection" to "Injection (ထိုးဆေး/သွင်းဆေး)",
+    "Topical" to "Topical (လိမ်းဆေး/အပြင်သုံး)",
+    "Consumables" to "Consumables (ဆေးခန်းသုံးပစ္စည်းများ)"
+  )
   var selectedCategory by remember { mutableStateOf("Antibiotics") }
   var selectedUnitType by remember { mutableStateOf("Strip") }
   var minStockThresholdText by remember { mutableStateOf("20") }
@@ -216,6 +223,44 @@ fun StockInScreen(
             Text("1. Product Basic Information", fontWeight = FontWeight.Bold, fontSize = 12.5.sp, color = DarkGrayText)
           }
 
+          Spacer(modifier = Modifier.height(8.dp))
+
+          // Medicine Classification Type Selector (Oral / Injection / Topical / Consumables)
+          Text("ဆေးဝါးအမျိုးအစား ခွဲခြားမှု (Classification):", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = DarkGrayText)
+          Spacer(modifier = Modifier.height(4.dp))
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+          ) {
+            medicineTypeOptions.forEach { (typeKey, typeLabel) ->
+              val isSel = selectedMedicineType == typeKey
+              FilterChip(
+                selected = isSel,
+                onClick = {
+                  selectedMedicineType = typeKey
+                  when (typeKey) {
+                    "Oral" -> if (selectedUnitType in listOf("Ampoule", "Vial", "Piece", "Set", "Tube")) selectedUnitType = "Strip"
+                    "Injection" -> selectedUnitType = "Ampoule"
+                    "Topical" -> selectedUnitType = "Tube"
+                    "Consumables" -> selectedUnitType = "Piece"
+                  }
+                },
+                label = { Text(typeLabel, fontSize = 10.5.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
+                colors = FilterChipDefaults.filterChipColors(
+                  selectedContainerColor = when (typeKey) {
+                    "Injection" -> Color(0xFF0F766E)
+                    "Consumables" -> Color(0xFFD97706)
+                    "Topical" -> Color(0xFF7C3AED)
+                    else -> MedicalGreen
+                  },
+                  selectedLabelColor = PureWhite
+                )
+              )
+            }
+          }
+
           Spacer(modifier = Modifier.height(10.dp))
 
           var tradeNameDropdownExpanded by remember { mutableStateOf(false) }
@@ -277,6 +322,7 @@ fun StockInScreen(
                   onClick = {
                     tradeName = existing.name
                     genericName = existing.genericName
+                    selectedMedicineType = existing.effectiveMedicineType
                     selectedCategory = existing.category
                     selectedUnitType = existing.unitType
                     minStockThresholdText = existing.minStockThreshold.toString()
@@ -845,7 +891,8 @@ fun StockInScreen(
                 costPrice = cost,
                 profitMarginPercent = margin,
                 minThreshold = threshold,
-                supplierName = selectedSupplierName
+                supplierName = selectedSupplierName,
+                medicineType = selectedMedicineType
               )
 
               if (recordAsExpense && (cost * qty) > 0) {

@@ -539,7 +539,7 @@ fun formatDosageAndDirection(drug: PrescribedDrug): String {
     freqRaw.contains("1-0-1") || freqRaw.contains("bid", ignoreCase = true) || freqRaw.contains("bd", ignoreCase = true) || freqRaw.contains("Twice daily", ignoreCase = true) -> "1-0-1"
     freqRaw.contains("1-0-0") || freqRaw.contains("od", ignoreCase = true) || freqRaw.contains("Once daily", ignoreCase = true) || freqRaw.contains("Morning", ignoreCase = true) -> "1-0-0"
     freqRaw.contains("0-0-1") || freqRaw.contains("hs", ignoreCase = true) || freqRaw.contains("Bedtime", ignoreCase = true) || freqRaw.contains("Night", ignoreCase = true) -> "0-0-1"
-    freqRaw.contains("prn", ignoreCase = true) || freqRaw.contains("As needed", ignoreCase = true) || freqRaw.contains("လိုအပ်") -> "လိုအပ်ပါက"
+    freqRaw.contains("prn", ignoreCase = true) || freqRaw.contains("As needed", ignoreCase = true) || freqRaw.contains("လိုအပ်") -> "PRN"
     freqRaw.startsWith("(") && freqRaw.contains("-") -> freqRaw.removeSurrounding("(", ")")
     else -> {
       val stripped = freqRaw.replace(Regex("(?i)\\b(tds|tid|bid|bd|od|qid|qds)\\b"), "")
@@ -555,10 +555,10 @@ fun formatDosageAndDirection(drug: PrescribedDrug): String {
 
   val instRaw = drug.instructions.trim()
   val cleanTiming = when {
-    isInjectableOrExternal && (instRaw.contains("စားပြီး") || instRaw.contains("မစားမီ")) -> ""
-    instRaw.contains("after", ignoreCase = true) || instRaw.contains("စားပြီး") -> "စားပြီး"
-    instRaw.contains("before", ignoreCase = true) || instRaw.contains("မစားမီ") -> "မစားမီ"
-    instRaw.contains("with", ignoreCase = true) || instRaw.contains("အစာနှင့်") -> "အစာနှင့်တွဲ၍"
+    isInjectableOrExternal && (instRaw.contains("စားပြီး") || instRaw.contains("မစားမီ") || instRaw.contains("after", ignoreCase = true) || instRaw.contains("before", ignoreCase = true)) -> ""
+    instRaw.contains("after", ignoreCase = true) || instRaw.contains("စားပြီး") -> "After meal"
+    instRaw.contains("before", ignoreCase = true) || instRaw.contains("မစားမီ") -> "Before meal"
+    instRaw.contains("with", ignoreCase = true) || instRaw.contains("အစာနှင့်") -> "With food"
     instRaw.isBlank() -> ""
     else -> instRaw
   }

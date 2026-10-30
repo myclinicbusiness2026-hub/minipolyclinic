@@ -176,6 +176,10 @@ data class SyncDataPayload(
       }
       co.put("attachments", atArr)
 
+      val toArr = JSONArray()
+      c.treatmentOrderDetails.forEach { toArr.put(it) }
+      co.put("treatmentOrderDetails", toArr)
+
       consArr.put(co)
     }
     root.put("consultations", consArr)
@@ -225,6 +229,7 @@ data class SyncDataPayload(
       mo.put("dosageForm", m.dosageForm)
       mo.put("category", m.category)
       mo.put("unitType", m.unitType)
+      mo.put("medicineType", m.effectiveMedicineType)
       mo.put("profitMarginPercent", m.profitMarginPercent)
 
       val bArr = JSONArray()
@@ -305,6 +310,21 @@ data class SyncDataPayload(
         put("discontinuedBy", card.discontinuedBy)
         put("discontinuedAt", card.discontinuedAt)
         put("notes", card.notes)
+        put("isCocktail", card.isCocktail)
+
+        val ckArr = JSONArray()
+        card.cocktailItems.forEach { item ->
+          val ckObj = JSONObject().apply {
+            put("id", item.id)
+            put("medicineId", item.medicineId)
+            put("name", item.name)
+            put("dosage", item.dosage)
+            put("quantity", item.quantity)
+            put("unitPrice", item.unitPrice)
+          }
+          ckArr.put(ckObj)
+        }
+        put("cocktailItems", ckArr)
 
         val sessArr = JSONArray()
         card.sessions.forEach { s ->
