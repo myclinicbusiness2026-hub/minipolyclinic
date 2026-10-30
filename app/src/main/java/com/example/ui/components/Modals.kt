@@ -1,4 +1,4 @@
-﻿package com.example.ui.components
+package com.example.ui.components
 import com.example.viewmodel.ClinicViewModel
 import com.example.service.sync.LocalWifiSyncService
 import android.content.ClipboardManager
@@ -13,6 +13,7 @@ import kotlinx.coroutines.withContext
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn

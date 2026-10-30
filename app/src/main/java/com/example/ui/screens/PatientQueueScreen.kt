@@ -1,4 +1,4 @@
-﻿package com.example.ui.screens
+package com.example.ui.screens
 
 import android.content.Intent
 import android.net.Uri
@@ -440,7 +440,8 @@ fun PatientQueueScreen(
               onOpenTrends = { selectedTrendsPatient = patient },
               onOpenVaccines = { selectedVaccinesPatient = patient },
               onDeletePatient = { patientToDelete = it },
-              onEditPatient = { patientToEdit = it }
+              onEditPatient = { patientToEdit = it },
+              onTransferToDoctor = { p -> viewModel.transferPatientToDoctor(p.id) }
             )
           }
         }
@@ -702,7 +703,8 @@ fun PatientQueueItemCard(
   onOpenTrends: () -> Unit = {},
   onOpenVaccines: () -> Unit = {},
   onDeletePatient: (Patient) -> Unit = {},
-  onEditPatient: (Patient) -> Unit = {}
+  onEditPatient: (Patient) -> Unit = {},
+  onTransferToDoctor: ((Patient) -> Unit)? = null
 ) {
   var showMenu by remember { mutableStateOf(false) }
   val context = LocalContext.current
@@ -889,7 +891,7 @@ fun PatientQueueItemCard(
                   leadingIcon = { Icon(Icons.Default.SwapHoriz, contentDescription = null, tint = SkyBluePrimary, modifier = Modifier.size(16.dp)) },
                   onClick = {
                     showMenu = false
-                    viewModel.transferPatientToDoctor(patient.id)
+                    onTransferToDoctor?.invoke(patient)
                   }
                 )
               }
@@ -1029,7 +1031,7 @@ fun PatientQueueItemCard(
 
             if (patient.status == QueueStatus.AT_BILLING) {
               OutlinedButton(
-                onClick = { viewModel.transferPatientToDoctor(patient.id) },
+                onClick = { onTransferToDoctor?.invoke(patient) },
                 shape = RoundedCornerShape(6.dp),
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                 modifier = Modifier.height(28.dp)
