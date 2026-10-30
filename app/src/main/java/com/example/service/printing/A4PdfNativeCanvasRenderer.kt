@@ -22,7 +22,7 @@ object A4PdfNativeCanvasRenderer {
   private const val PAGE_WIDTH = 595 // A4 standard pt at 72dpi
   private const val PAGE_HEIGHT = 842
 
-/**
+  /**
    * Helper function to calculate how many prescriptions can fit on Page 1
    * when flowing dynamically across multiple pages in a waterfall layout.
    */
@@ -38,9 +38,13 @@ object A4PdfNativeCanvasRenderer {
     val vitalsH = 34f + 6f // 40f
     val p1Top = demoBottom + allergiesH + vitalsH // ~174f
 
-    val subjectiveLines = getSubjectiveLines(consultation, patient).size
-    val objectiveLines = getObjectiveLines(consultation).size
-    val clinicalLineCount = maxOf(subjectiveLines, objectiveLines)
+    val dummyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 8.5f }
+    val colW = (PAGE_WIDTH - 40f - 12f) / 2f
+    val subLines = getSubjectiveLines(consultation, patient)
+    val objLines = getObjectiveLines(consultation)
+    val subWrapped = subLines.sumOf { wrapTextIntoLines(it, colW, dummyPaint).size.coerceAtLeast(1) }
+    val objWrapped = objLines.sumOf { wrapTextIntoLines(it, colW, dummyPaint).size.coerceAtLeast(1) }
+    val clinicalLineCount = maxOf(subWrapped, objWrapped)
     val clinicalH = 15f + (clinicalLineCount * 14.5f).coerceAtLeast(30f) + 6f
 
     val diagText = when {
@@ -56,7 +60,18 @@ object A4PdfNativeCanvasRenderer {
 
     val rxList = consultation.prescriptions
     if (rxList.isEmpty() || spaceLeft < 18f) return 0
-    return ((spaceLeft) / 18f).toInt().coerceIn(0, rxList.size)
+    val maxCanFit = ((spaceLeft) / 18.5f).toInt().coerceIn(0, rxList.size)
+
+    val validProcs = consultation.selectedProcedures.filter { it.name.isNotBlank() }
+    val validInvs = consultation.suggestedInvestigations.filter { it.isNotBlank() }
+
+    // If there are no procedures and no investigations going to Page 2,
+    // and all Rx would fit on Page 1, leave at least 3-4 Rx for Page 2 so Page 2 has Rx content!
+    if (validProcs.isEmpty() && validInvs.isEmpty() && maxCanFit == rxList.size && rxList.size > 4) {
+      return (rxList.size / 2).coerceAtLeast(3)
+    }
+
+    return maxCanFit
   }
 
   /**
@@ -76,9 +91,13 @@ object A4PdfNativeCanvasRenderer {
     }
 
     var estY = 175f // Full Header (~78) + Demographics (~28) + Allergies (~23) + Vitals (~40)
-    val subjectiveLines = getSubjectiveLines(consultation, patient).size
-    val objectiveLines = getObjectiveLines(consultation).size
-    val clinicalLineCount = maxOf(subjectiveLines, objectiveLines)
+    val dummyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 8.5f }
+    val colW = (PAGE_WIDTH - 40f - 12f) / 2f
+    val subLines = getSubjectiveLines(consultation, patient)
+    val objLines = getObjectiveLines(consultation)
+    val subWrapped = subLines.sumOf { wrapTextIntoLines(it, colW, dummyPaint).size.coerceAtLeast(1) }
+    val objWrapped = objLines.sumOf { wrapTextIntoLines(it, colW, dummyPaint).size.coerceAtLeast(1) }
+    val clinicalLineCount = maxOf(subWrapped, objWrapped)
     estY += 15f + (clinicalLineCount * 14.5f).coerceAtLeast(30f) + 6f
 
     val diagText = when {
@@ -92,14 +111,17 @@ object A4PdfNativeCanvasRenderer {
 
     val rxCount = consultation.prescriptions.size
     if (rxCount > 0) {
-      estY += 30f + rxCount * 18f
+      estY += 30f + rxCount * 18.5f
     }
 
     val validProcs = consultation.selectedProcedures.filter { it.name.isNotBlank() }
     if (validProcs.isNotEmpty()) {
       estY += 16f
       validProcs.forEach { p ->
-        estY += if (p.notes.isNotBlank()) 30f else 18f
+        val noteLines = if (p.notes.isNotBlank()) {
+          wrapTextIntoLines("Notes: ${p.notes}", PAGE_WIDTH - 68f, dummyPaint).size.coerceAtLeast(1)
+        } else 0
+        estY += 18f + (noteLines * 11.5f) + 8f
       }
     }
 
@@ -108,11 +130,33 @@ object A4PdfNativeCanvasRenderer {
       estY += 16f + (Math.ceil(validInvs.size / 2.0).toFloat() * 14f)
     }
 
-    // Patient Instructions & Follow-up
-    estY += 72f
+    val contentBeforeInstructions = estY
 
-    // Single page printable limit before signature is 735pt (height 842 - bottom margin 74 - padding)
-    return if (estY > 735f) 2 else 1
+    // Patient Instructions & Follow-up
+    val hasInstructions = consultation.patientInstructions.isNotBlank()
+    val rawFollowUp = consultation.followUpAppointment.trim()
+    val isPrn = rawFollowUp.contains("PRN", ignoreCase = true) || rawFollowUp.contains("မသက်သာမှ")
+    val isNone = rawFollowUp.isBlank() || rawFollowUp.equals("None", ignoreCase = true) || rawFollowUp.contains("None", ignoreCase = true) || rawFollowUp.contains("မလို")
+    val hasFollowUp = isPrn || (!isNone && !consultation.followUpDueDate.isNullOrBlank()) || (!isNone && rawFollowUp.isNotBlank())
+
+    if (hasInstructions || hasFollowUp) {
+      val instCount = if (hasInstructions) consultation.patientInstructions.lines().filter { it.isNotBlank() }.size else 3
+      estY += 24f + (instCount * 22f) // each instruction takes ~2 wrapped lines
+    }
+
+    // FIXED SAFE CONTENT CEILING (ကိန်းသေ အကွာအဝေး သတ်မှတ်ချက်):
+    // Standard A4 height is 842pt. Doctor Signature & Seal and official footer begin at 755pt.
+    // If patient instructions & follow-up exist (~95-110pt):
+    // - Content before instructions must NOT exceed 605pt.
+    // - Overall total estY must NOT exceed 670pt.
+    // Otherwise it will crash into the signature zone, so trigger 2-page flow immediately!
+    val needsMultiPage = if (hasInstructions || hasFollowUp) {
+      contentBeforeInstructions > 605f || estY > 670f
+    } else {
+      estY > 710f
+    }
+
+    return if (needsMultiPage) 2 else 1
   }
 
   /**
@@ -260,8 +304,8 @@ object A4PdfNativeCanvasRenderer {
     val isPrnFollowUp = followUpStr.contains("PRN", ignoreCase = true) || followUpStr.contains("မသက်သာမှ")
     val isNoneFollowUp = followUpStr.isBlank() || followUpStr.equals("None", ignoreCase = true) || followUpStr.contains("မလို")
     val hasFollowUp = isPrnFollowUp || (!isNoneFollowUp && (!consultation.followUpDueDate.isNullOrBlank() || consultation.nextVaccineSchedule.isNotBlank() || followUpStr.isNotBlank()))
-    val maxAvailableY = height - 76f
-    if (currentY < maxAvailableY - 22f && (hasInstructions || hasFollowUp)) {
+    val maxAvailableY = height - 84f
+    if (currentY < maxAvailableY - 25f && (hasInstructions || hasFollowUp)) {
       currentY = drawBottomSplitSection(canvas, width, currentY, consultation, maxAvailableY)
     }
 
@@ -410,8 +454,8 @@ object A4PdfNativeCanvasRenderer {
     val isPrnFollowUp = followUpStr.contains("PRN", ignoreCase = true) || followUpStr.contains("မသက်သာမှ")
     val isNoneFollowUp = followUpStr.isBlank() || followUpStr.equals("None", ignoreCase = true) || followUpStr.contains("မလို")
     val hasFollowUp = isPrnFollowUp || (!isNoneFollowUp && (!consultation.followUpDueDate.isNullOrBlank() || consultation.nextVaccineSchedule.isNotBlank() || followUpStr.isNotBlank()))
-    val maxAvailableY = height - 76f
-    if (currentY < maxAvailableY - 22f && (hasInstructions || hasFollowUp)) {
+    val maxAvailableY = height - 84f
+    if (currentY < maxAvailableY - 25f && (hasInstructions || hasFollowUp)) {
       currentY = drawBottomSplitSection(canvas, width, currentY, consultation, maxAvailableY)
     }
 
@@ -1495,7 +1539,22 @@ object A4PdfNativeCanvasRenderer {
       validProcs.forEach { proc ->
         val dt = proc.dateTime.ifBlank { consultation.timestamp }
         val hasNotes = proc.notes.isNotBlank()
-        val boxH = if (hasNotes) 27f else 17f
+        val noteText = if (hasNotes) "Notes: ${proc.notes}" else ""
+
+        val notePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+          typeface = Typeface.DEFAULT
+          textSize = 8.5f
+          color = Color.rgb(0x33, 0x41, 0x55)
+        }
+        val noteLines = if (hasNotes) {
+          wrapTextIntoLines(noteText, width - 68f, notePaint)
+        } else emptyList()
+
+        val boxH = if (hasNotes) {
+          18f + (noteLines.size * 11.5f) + 6f
+        } else {
+          17f
+        }
 
         paint.color = Color.rgb(0xF0, 0xFD, 0xFA)
         val boxRect = RectF(22f, currentY, width - 22f, currentY + boxH)
@@ -1523,16 +1582,16 @@ object A4PdfNativeCanvasRenderer {
           paint.textAlign = Paint.Align.LEFT
         }
 
-        // Operative / Procedure Notes
-        if (hasNotes) {
-          paint.typeface = Typeface.DEFAULT
-          paint.color = Color.rgb(0x33, 0x41, 0x55)
-          paint.textSize = 8.5f
-          val noteEndY = drawWrappedText(canvas, "Notes: " + proc.notes, 34f, currentY + 22f, width - 68f, 11f, paint, maxLines = 4)
-          currentY = maxOf(currentY + boxH + 4f, noteEndY + 4f)
-        } else {
-          currentY += boxH + 4f
+        // Operative / Procedure Notes - drawn cleanly inside the dynamically expanded box
+        if (hasNotes && noteLines.isNotEmpty()) {
+          var lineY = currentY + 22.5f
+          noteLines.forEach { line ->
+            canvas.drawText(line, 34f, lineY, notePaint)
+            lineY += 11.5f
+          }
         }
+        currentY += boxH + 4f
+      }
       }
     }
 
@@ -1603,32 +1662,10 @@ object A4PdfNativeCanvasRenderer {
 
       var instY = currentY + 23f
       instructions.forEach { line ->
-        if (instY + 12f <= maxBottomY) {
-          instY = drawWrappedText(canvas, line, 22f, instY, width - 44f, 11.5f, paint, maxLines = 2)
+        if (instY + 11.5f <= maxBottomY) {
+          instY = drawWrappedText(canvas, line, 22f, instY, leftW, 11.5f, paint, maxLines = 3)
           instY += 1.5f
         }
-        instY += 2f
-      }
-      return instY + 6f
-    } else {
-      // 2 Columns: Left Instructions, Right Follow-up
-      val leftW = (width - 48f) * 0.54f
-      val rightX = 20f + leftW + 8f
-      val rightW = width - 20f - rightX
-
-      paint.color = Color.rgb(0x2E, 0x7D, 0x32)
-      paint.textSize = 9.5f
-      paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-      canvas.drawText("Patient Instructions & Advice:", 22f, currentY + 10f, paint)
-
-      paint.typeface = Typeface.DEFAULT
-      paint.textSize = 8f
-      paint.color = Color.rgb(0x37, 0x41, 0x51)
-
-      var instY = currentY + 23f
-      instructions.forEach { line ->
-        instY = drawWrappedText(canvas, line, 22f, instY, leftW, 11.5f, paint, maxLines = 4)
-        instY += 1.5f
       }
 
       // Right Column: Follow-up & Next Appointment Box
@@ -1650,26 +1687,32 @@ object A4PdfNativeCanvasRenderer {
         "အဖျား၊ သွေးပေါင်နှင့် ကျန်းမာရေးအခြေအနေ ပြန်လည်စစ်ဆေးရန်"
       }
 
-      paint.color = Color.rgb(0xF0, 0xFD, 0xF4)
-      canvas.drawRoundRect(rightX, currentY + 16f, rightX + rightW, currentY + 58f, 4f, 4f, paint)
-      paint.color = Color.rgb(0xBB, 0xF7, 0xD0)
-      paint.style = Paint.Style.STROKE
-      paint.strokeWidth = 0.8f
-      canvas.drawRoundRect(rightX, currentY + 16f, rightX + rightW, currentY + 58f, 4f, 4f, paint)
-      paint.style = Paint.Style.FILL
+      val boxTop = currentY + 16f
+      val boxBottom = (currentY + 58f).coerceAtMost(maxBottomY)
+      if (boxBottom > boxTop + 18f) {
+        paint.color = Color.rgb(0xF0, 0xFD, 0xF4)
+        canvas.drawRoundRect(rightX, boxTop, rightX + rightW, boxBottom, 4f, 4f, paint)
+        paint.color = Color.rgb(0xBB, 0xF7, 0xD0)
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 0.8f
+        canvas.drawRoundRect(rightX, boxTop, rightX + rightW, boxBottom, 4f, 4f, paint)
+        paint.style = Paint.Style.FILL
 
-      // Safe multi-line wrapping so text never exceeds the right margin
-      paint.color = Color.rgb(0x1B, 0x5E, 0x20)
-      paint.textSize = 8.5f
-      paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-      var fuY = drawWrappedText(canvas, "🗓️ ပြန်လည်ပြသရက်: $followUpStr", rightX + 6f, currentY + 28f, rightW - 12f, 11f, paint, maxLines = 2)
+        // Safe multi-line wrapping so text never exceeds the right margin
+        paint.color = Color.rgb(0x1B, 0x5E, 0x20)
+        paint.textSize = 8.5f
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        var fuY = drawWrappedText(canvas, "🗓️ ပြန်လည်ပြသရက်: $followUpStr", rightX + 6f, currentY + 28f, rightW - 12f, 11f, paint, maxLines = 2)
 
-      paint.typeface = Typeface.DEFAULT
-      paint.color = Color.rgb(0x4B, 0x55, 0x63)
-      paint.textSize = 7.5f
-      fuY = drawWrappedText(canvas, subNote, rightX + 6f, fuY + 2f, rightW - 12f, 9.5f, paint, maxLines = 2)
+        paint.typeface = Typeface.DEFAULT
+        paint.color = Color.rgb(0x4B, 0x55, 0x63)
+        paint.textSize = 7.5f
+        if (fuY + 10f <= maxBottomY) {
+          fuY = drawWrappedText(canvas, subNote, rightX + 6f, fuY + 2f, rightW - 12f, 9.5f, paint, maxLines = 2)
+        }
+      }
 
-      return maxOf(instY + 4f, fuY + 6f)
+      return maxOf(instY + 4f, boxBottom + 6f)
     }
   }
 
