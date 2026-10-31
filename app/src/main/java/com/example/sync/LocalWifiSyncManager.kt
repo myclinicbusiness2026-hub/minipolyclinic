@@ -342,7 +342,8 @@ class LocalWifiSyncManager(
       deletedPatientIds = deletedPatients,
       deletedConsultationIds = deletedConsultations,
       deletedInvoiceIds = deletedInvoices,
-      deletedMedicineIds = deletedMedicines
+      deletedMedicineIds = deletedMedicines,
+      deletedUserIds = ClinicDataPersistence.loadDeletedUserIds(context).toList()
     )
     return payload.toJsonString(context)
   }
@@ -354,6 +355,7 @@ class LocalWifiSyncManager(
       val remoteDeletedConsultationIds = SyncPayloadParser.parseStringList(root.optJSONArray("deletedConsultationIds"))
       val remoteDeletedInvoiceIds = SyncPayloadParser.parseStringList(root.optJSONArray("deletedInvoiceIds"))
       val remoteDeletedMedicineIds = SyncPayloadParser.parseStringList(root.optJSONArray("deletedMedicineIds"))
+      val remoteDeletedUserIds = SyncPayloadParser.parseStringList(root.optJSONArray("deletedUserIds"))
 
       // Update deleted tombstones locally
       val localDeletedPatientIds = ClinicDataPersistence.loadDeletedPatientIds(context)
@@ -371,6 +373,10 @@ class LocalWifiSyncManager(
       val localDeletedMedicineIds = ClinicDataPersistence.loadDeletedMedicineIds(context)
       val allDeletedMedicineIds = (localDeletedMedicineIds + remoteDeletedMedicineIds).toMutableSet()
       ClinicDataPersistence.saveDeletedMedicineIds(context, allDeletedMedicineIds)
+
+      val localDeletedUserIds = ClinicDataPersistence.loadDeletedUserIds(context)
+      val allDeletedUserIds = (localDeletedUserIds + remoteDeletedUserIds).toMutableSet()
+      ClinicDataPersistence.saveDeletedUserIds(context, allDeletedUserIds)
 
       val remotePatients = SyncPayloadParser.parsePatients(root.optJSONArray("patients"))
       val remoteConsultations = SyncPayloadParser.parseConsultations(root.optJSONArray("consultations"), context)
@@ -506,11 +512,17 @@ class LocalWifiSyncManager(
       val mergedMedicines = medMap.values.toList()
       ClinicDataPersistence.saveMedicines(context, mergedMedicines)
 
-      // Merge Users (Staff accounts created by Admin on any station)
+      // Merge Users (Staff accounts created by Admin on any station, filtered by deletedUserIds)
       val currentUsers = ClinicDataPersistence.loadUsers(context) ?: emptyList()
-      val userMap = currentUsers.associateBy { it.id }.toMutableMap()
+      val userMap = currentUsers
+        .filterNot { allDeletedUserIds.contains(it.id) || allDeletedUserIds.contains(it.username.lowercase()) }
+        .associateBy { it.id }
+        .toMutableMap()
       var newUserCount = 0
       remoteUsers.forEach { ru ->
+        if (allDeletedUserIds.contains(ru.id) || allDeletedUserIds.contains(ru.username.lowercase())) {
+          return@forEach
+        }
         val exUser = userMap[ru.id] ?: userMap.values.find { it.username.equals(ru.username, ignoreCase = true) }
         if (exUser == null) {
           userMap[ru.id] = ru

@@ -66,7 +66,8 @@ data class SyncDataPayload(
   val deletedPatientIds: List<String> = emptyList(),
   val deletedConsultationIds: List<String> = emptyList(),
   val deletedInvoiceIds: List<String> = emptyList(),
-  val deletedMedicineIds: List<String> = emptyList()
+  val deletedMedicineIds: List<String> = emptyList(),
+  val deletedUserIds: List<String> = emptyList()
 ) {
   fun toJsonString(context: Context? = null): String {
     val root = JSONObject()
@@ -302,6 +303,10 @@ data class SyncDataPayload(
     val delMedArr = JSONArray()
     deletedMedicineIds.forEach { delMedArr.put(it) }
     root.put("deletedMedicineIds", delMedArr)
+
+    val delUserArr = JSONArray()
+    deletedUserIds.forEach { delUserArr.put(it) }
+    root.put("deletedUserIds", delUserArr)
 
     // Users
     val userArr = JSONArray()

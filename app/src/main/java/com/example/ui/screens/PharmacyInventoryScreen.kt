@@ -941,30 +941,31 @@ fun EnhancedMedicineItemCard(
 
         Row(verticalAlignment = Alignment.CenterVertically) {
           if (onEditMedicine != null) {
-            IconButton(
+            OutlinedButton(
               onClick = onEditMedicine,
-              modifier = Modifier.size(24.dp)
+              shape = RoundedCornerShape(4.dp),
+              contentPadding = PaddingValues(horizontal = 7.dp, vertical = 2.dp),
+              modifier = Modifier.height(26.dp),
+              colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF0F766E)),
+              border = BorderStroke(1.dp, Color(0xFF0F766E))
             ) {
-              Icon(
-                Icons.Default.Edit,
-                contentDescription = "Edit Medicine",
-                tint = Color(0xFF0F766E),
-                modifier = Modifier.size(15.dp)
-              )
+              Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(12.dp))
+              Spacer(modifier = Modifier.width(3.dp))
+              Text("Edit Stock", fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
           }
 
           if (onDeleteMedicine != null) {
-            Spacer(modifier = Modifier.width(3.dp))
+            Spacer(modifier = Modifier.width(4.dp))
             IconButton(
               onClick = onDeleteMedicine,
-              modifier = Modifier.size(24.dp)
+              modifier = Modifier.size(26.dp)
             ) {
               Icon(
                 Icons.Default.DeleteOutline,
                 contentDescription = "Delete Medicine",
                 tint = Color(0xFFDC2626),
-                modifier = Modifier.size(15.dp)
+                modifier = Modifier.size(16.dp)
               )
             }
           }

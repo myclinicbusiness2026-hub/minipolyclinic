@@ -47,8 +47,9 @@ fun LoginScreen(
   val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
   val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
 
-  // Default credentials: Admin ("nks" / "2121994") and Cashier ("shwekhit" / "123456")
-  var username by remember { mutableStateOf("nks") }
+  val allUsers by viewModel.users.collectAsState()
+  val initialUsername = remember(allUsers) { allUsers.firstOrNull { it.isActive }?.username ?: "nks" }
+  var username by remember(initialUsername) { mutableStateOf(initialUsername) }
   var password by remember { mutableStateOf("") }
   var passwordVisible by remember { mutableStateOf(false) }
   var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -220,43 +221,47 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Quick Role Selection Chips (Admin: nks, Cashier: shwekhit)
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-          FilterChip(
-            selected = username == "nks" || username == "admin",
-            onClick = {
-              username = "nks"
-              password = ""
-              errorMessage = null
-            },
-            label = { Text("Admin (nks / admin)", fontSize = 10.5.sp, fontWeight = FontWeight.Bold) },
-            leadingIcon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = null, modifier = Modifier.size(14.dp)) },
-            modifier = Modifier.weight(1f),
-            colors = FilterChipDefaults.filterChipColors(
-              selectedContainerColor = MedicalGreen,
-              selectedLabelColor = PureWhite,
-              selectedLeadingIconColor = PureWhite
-            )
-          )
-          FilterChip(
-            selected = username == "shwekhit",
-            onClick = {
-              username = "shwekhit"
-              password = ""
-              errorMessage = null
-            },
-            label = { Text("Cashier (shwekhit)", fontSize = 10.5.sp, fontWeight = FontWeight.Bold) },
-            leadingIcon = { Icon(Icons.Default.PointOfSale, contentDescription = null, modifier = Modifier.size(14.dp)) },
-            modifier = Modifier.weight(1f),
-            colors = FilterChipDefaults.filterChipColors(
-              selectedContainerColor = MedicalGreen,
-              selectedLabelColor = PureWhite,
-              selectedLeadingIconColor = PureWhite
-            )
-          )
+        // Dynamic Quick Role Selection Chips from active registered accounts
+        if (allUsers.isNotEmpty()) {
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+          ) {
+            allUsers.filter { it.isActive }.forEach { u ->
+              val isSelected = username.equals(u.username, ignoreCase = true)
+              FilterChip(
+                selected = isSelected,
+                onClick = {
+                  username = u.username
+                  password = ""
+                  errorMessage = null
+                },
+                label = { Text("${u.role.displayName}: ${u.fullName.ifBlank { u.username }} (@${u.username})", fontSize = 10.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium) },
+                leadingIcon = {
+                  Icon(
+                    when (u.role) {
+                      UserRole.ADMIN -> Icons.Default.AdminPanelSettings
+                      UserRole.CASHIER -> Icons.Default.PointOfSale
+                      UserRole.DOCTOR -> Icons.Default.MedicalServices
+                      UserRole.PHARMACIST -> Icons.Default.LocalPharmacy
+                      else -> Icons.Default.Person
+                    },
+                    contentDescription = null,
+                    modifier = Modifier.size(13.dp)
+                  )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                  selectedContainerColor = MedicalGreen,
+                  selectedLabelColor = PureWhite,
+                  selectedLeadingIconColor = PureWhite,
+                  containerColor = PureWhite,
+                  labelColor = SlateDark
+                )
+              )
+            }
+          }
         }
 
         Spacer(modifier = Modifier.height(10.dp))

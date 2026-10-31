@@ -126,22 +126,12 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val deletedInvoices = ClinicDataPersistence.loadDeletedInvoiceIds(ctx)
     val deletedMedicines = ClinicDataPersistence.loadDeletedMedicineIds(ctx)
 
-    val seedUsers = ClinicInitialDataSeeder.getSeedUsers()
-    val savedUsers = (ClinicDataPersistence.loadUsers(ctx) ?: seedUsers).toMutableList()
-    // Retain only officially permitted clinic accounts: "nks" (Admin) and "shwekhit" (Cashier)
-    val demoUsernames = setOf("doctor", "cashier", "reception", "nurse")
-    val cleanedUsers = savedUsers.filterNot { demoUsernames.contains(it.username.lowercase().trim()) }.toMutableList()
-    if (cleanedUsers.none { it.username.equals("admin", ignoreCase = true) }) {
-      seedUsers.firstOrNull { it.username.equals("admin", ignoreCase = true) }?.let { cleanedUsers.add(0, it) }
-    }
-    if (cleanedUsers.none { it.username.equals("nks", ignoreCase = true) }) {
-      seedUsers.firstOrNull { it.username.equals("nks", ignoreCase = true) }?.let { cleanedUsers.add(0, it) }
-    }
-    if (cleanedUsers.none { it.username.equals("shwekhit", ignoreCase = true) }) {
-      seedUsers.firstOrNull { it.username.equals("shwekhit", ignoreCase = true) }?.let { cleanedUsers.add(it) }
-    }
-    _users.value = cleanedUsers
-    ClinicDataPersistence.saveUsers(ctx, cleanedUsers)
+    val deletedUsers = ClinicDataPersistence.loadDeletedUserIds(ctx)
+    val seedUsers = ClinicInitialDataSeeder.getSeedUsers().filterNot { deletedUsers.contains(it.id) || deletedUsers.contains(it.username.lowercase()) }
+    val loadedUsers = ClinicDataPersistence.loadUsers(ctx)
+    val initialUsers = (loadedUsers ?: seedUsers).filterNot { deletedUsers.contains(it.id) || deletedUsers.contains(it.username.lowercase()) }
+    _users.value = initialUsers
+    ClinicDataPersistence.saveUsers(ctx, initialUsers)
     _currentUser.value = null
     _isLoggedIn.value = false
 
@@ -202,28 +192,13 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     _isLoggedIn.value = true
   }
 
-    private fun findUserByUsernameOrAlias(cleanUsername: String): UserAccount? {
-    val exact = _users.value.find { it.username.equals(cleanUsername, ignoreCase = true) }
-    if (exact != null) return exact
-    if (cleanUsername.equals("admin", ignoreCase = true) || cleanUsername.equals("administrator", ignoreCase = true)) {
-      return _users.value.firstOrNull { it.role == UserRole.ADMIN }
-        ?: _users.value.firstOrNull { it.username.equals("nks", ignoreCase = true) }
-        ?: ClinicInitialDataSeeder.getSeedUsers().firstOrNull { it.role == UserRole.ADMIN }
-    }
-    if (cleanUsername.equals("nks", ignoreCase = true)) {
-      return _users.value.firstOrNull { it.username.equals("nks", ignoreCase = true) }
-        ?: _users.value.firstOrNull { it.role == UserRole.ADMIN }
-        ?: ClinicInitialDataSeeder.getSeedUsers().firstOrNull { it.username.equals("nks", ignoreCase = true) }
-    }
-    return null
+  private fun findUserByUsernameOrAlias(cleanUsername: String): UserAccount? {
+    return _users.value.find { it.username.equals(cleanUsername, ignoreCase = true) }
   }
 
   private fun verifyUserPasswordOrPin(user: UserAccount, cleanPassword: String): Boolean {
     if (cleanPassword.isBlank()) return false
-    if (user.pinCode == cleanPassword || user.passwordHash == cleanPassword) return true
-    if (cleanPassword == "123456" || cleanPassword == "2121994") return true
-    if (user.role == UserRole.ADMIN && (cleanPassword.equals("admin", ignoreCase = true) || cleanPassword.equals("nks", ignoreCase = true))) return true
-    return false
+    return user.pinCode == cleanPassword || user.passwordHash == cleanPassword
   }
 
   fun login(username: String, password: String): Pair<Boolean, String> {
@@ -327,6 +302,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     if (cleanUsername.isBlank() || _users.value.any { it.username.equals(cleanUsername, ignoreCase = true) }) {
       return false
     }
+    val ctx = getApplication<Application>()
+    ClinicDataPersistence.removeDeletedUserId(ctx, cleanUsername.lowercase())
     val newUser = UserAccount(
       id = UUID.randomUUID().toString(),
       username = cleanUsername,
@@ -450,12 +427,19 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   }
 
   fun deleteUserAccount(userId: String): Boolean {
+    val ctx = getApplication<Application>()
+    val userToDelete = _users.value.find { it.id == userId }
+    ClinicDataPersistence.addDeletedUserId(ctx, userId)
+    if (userToDelete != null && userToDelete.username.isNotBlank()) {
+      ClinicDataPersistence.addDeletedUserId(ctx, userToDelete.username.lowercase())
+    }
     val before = _users.value.size
     val updated = _users.value.filter { it.id != userId }
     _users.value = updated
-    ClinicDataPersistence.saveUsers(getApplication(), updated)
+    ClinicDataPersistence.saveUsers(ctx, updated)
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
+      syncWithSupabaseCloud()
     }
     return updated.size < before
   }
@@ -1798,6 +1782,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     if (inv != null) {
       val medMap = _medicines.value.associateBy { it.id }.toMutableMap()
       var modified = false
+      val now = System.currentTimeMillis()
+
       for (item in inv.items.filter { !it.isProcedure }) {
         val cleanName = item.name.split(" x ").firstOrNull()?.split("(")?.firstOrNull()?.trim() ?: item.name
         val med = medMap.values.find {
@@ -1805,7 +1791,6 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           item.name.contains(it.name, ignoreCase = true)
         }
         if (med != null && item.quantity > 0) {
-          val now = System.currentTimeMillis()
           val primaryBatch = med.batches.firstOrNull()
           val updatedBatches = if (primaryBatch != null) {
             med.batches.mapIndexed { idx, b -> if (idx == 0) b.copy(quantity = b.quantity + item.quantity, lastUpdated = now) else b }
@@ -1816,6 +1801,48 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           modified = true
         }
       }
+
+      // Return Day-Care Treatment Card items (Cocktails, Single Injections, Consumables)
+      val linkedCards = _treatmentCards.value.filter { card ->
+        card.consultationInvoiceId == invoiceId || (card.patientId == inv.patientId && card.sessions.any { it.invoiceId == invoiceId })
+      }
+      for (card in linkedCards) {
+        if (card.isPatientSupplied) continue
+        val billedDoses = if (card.isPrepaidFullCourse || !card.isPayPerVisit) card.totalSessions.coerceAtLeast(1) else 1
+        if (card.isCocktail && card.cocktailItems.isNotEmpty()) {
+          for (cItem in card.cocktailItems) {
+            val med = medMap[cItem.medicineId]
+              ?: medMap.values.find { it.name.equals(cItem.name, ignoreCase = true) }
+            val qty = (if (cItem.quantity > 0) cItem.quantity else 1) * billedDoses
+            if (med != null && qty > 0) {
+              val primaryBatch = med.batches.firstOrNull()
+              val updatedBatches = if (primaryBatch != null) {
+                med.batches.mapIndexed { idx, b -> if (idx == 0) b.copy(quantity = b.quantity + qty, lastUpdated = now) else b }
+              } else {
+                listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", qty, 0.0, lastUpdated = now))
+              }
+              medMap[med.id] = med.copy(batches = updatedBatches)
+              modified = true
+            }
+          }
+        }
+        card.sessions.filter { it.invoiceId == invoiceId }.forEach { s ->
+          for (c in s.consumables) {
+            val med = medMap[c.medicineId] ?: medMap.values.find { it.name.equals(c.name, ignoreCase = true) }
+            if (med != null && c.quantity > 0) {
+              val primaryBatch = med.batches.firstOrNull()
+              val updatedBatches = if (primaryBatch != null) {
+                med.batches.mapIndexed { idx, b -> if (idx == 0) b.copy(quantity = b.quantity + c.quantity, lastUpdated = now) else b }
+              } else {
+                listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", c.quantity, 0.0, lastUpdated = now))
+              }
+              medMap[med.id] = med.copy(batches = updatedBatches)
+              modified = true
+            }
+          }
+        }
+      }
+
       if (modified) {
         val updatedList = _medicines.value.map { medMap[it.id] ?: it }
         _medicines.value = updatedList
@@ -2587,7 +2614,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       vaccines = _vaccines.value,
       deletedPatientIds = ClinicDataPersistence.loadDeletedPatientIds(ctx).toList(),
       deletedConsultationIds = ClinicDataPersistence.loadDeletedConsultationIds(ctx).toList(),
-      deletedMedicineIds = ClinicDataPersistence.loadDeletedMedicineIds(ctx).toList()
+      deletedMedicineIds = ClinicDataPersistence.loadDeletedMedicineIds(ctx).toList(),
+      deletedUserIds = ClinicDataPersistence.loadDeletedUserIds(ctx).toList()
     )
     val root = JSONObject(payload.toJsonString(ctx))
     root.put("exportTime", BurmeseDateUtils.getNowFormatted())
@@ -2619,6 +2647,13 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         for (i in 0 until delMedArr.length()) delMedSet.add(delMedArr.getString(i))
         val currentDelMeds = ClinicDataPersistence.loadDeletedMedicineIds(ctx)
         ClinicDataPersistence.saveDeletedMedicineIds(ctx, (currentDelMeds + delMedSet).toMutableSet())
+      }
+      val delUserSet = mutableSetOf<String>()
+      val delUserArr = root.optJSONArray("deletedUserIds") ?: root.optJSONArray("deleted_user_ids")
+      if (delUserArr != null) {
+        for (i in 0 until delUserArr.length()) delUserSet.add(delUserArr.getString(i))
+        val currentDelUsers = ClinicDataPersistence.loadDeletedUserIds(ctx)
+        ClinicDataPersistence.saveDeletedUserIds(ctx, (currentDelUsers + delUserSet).toMutableSet())
       }
 
       // 2. Patients (Non-destructive ID-based merge)
@@ -2703,12 +2738,17 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         }
       }
 
-      // 6. Users (Non-destructive merge)
+      // 6. Users (Non-destructive merge with tombstone filtering)
       if (root.has("users")) {
         val parsedUsers = SyncPayloadParser.parseUsers(root.getJSONArray("users"))
+        val activeDelUsers = ClinicDataPersistence.loadDeletedUserIds(ctx) + delUserSet
         if (parsedUsers.isNotEmpty()) {
-          val currentUserMap = _users.value.associateBy { it.username.lowercase() }.toMutableMap()
-          parsedUsers.forEach { u -> currentUserMap[u.username.lowercase()] = u }
+          val currentUserMap = _users.value.filterNot { activeDelUsers.contains(it.id) || activeDelUsers.contains(it.username.lowercase()) }.associateBy { it.username.lowercase() }.toMutableMap()
+          parsedUsers.forEach { u ->
+            if (!activeDelUsers.contains(u.id) && !activeDelUsers.contains(u.username.lowercase())) {
+              currentUserMap[u.username.lowercase()] = u
+            }
+          }
           val mergedUsers = currentUserMap.values.toList()
           _users.value = mergedUsers
           ClinicDataPersistence.saveUsers(ctx, mergedUsers)

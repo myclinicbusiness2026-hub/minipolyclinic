@@ -233,6 +233,34 @@ END $$;
         }
       }
 
+      val deletedInvoiceIds = mutableSetOf<String>()
+      if (root.has("deletedInvoiceIds")) {
+        val dArr = root.optJSONArray("deletedInvoiceIds")
+        if (dArr != null) {
+          for (k in 0 until dArr.length()) deletedInvoiceIds.add(dArr.optString(k))
+        }
+      }
+      if (remoteDoc != null && (remoteDoc.has("deleted_invoice_ids") || remoteDoc.has("deletedInvoiceIds"))) {
+        val dArr = remoteDoc.optJSONArray("deleted_invoice_ids") ?: remoteDoc.optJSONArray("deletedInvoiceIds")
+        if (dArr != null) {
+          for (k in 0 until dArr.length()) deletedInvoiceIds.add(dArr.optString(k))
+        }
+      }
+
+      val deletedUserIds = mutableSetOf<String>()
+      if (root.has("deletedUserIds")) {
+        val dArr = root.optJSONArray("deletedUserIds")
+        if (dArr != null) {
+          for (k in 0 until dArr.length()) deletedUserIds.add(dArr.optString(k))
+        }
+      }
+      if (remoteDoc != null && (remoteDoc.has("deleted_user_ids") || remoteDoc.has("deletedUserIds"))) {
+        val dArr = remoteDoc.optJSONArray("deleted_user_ids") ?: remoteDoc.optJSONArray("deletedUserIds")
+        if (dArr != null) {
+          for (k in 0 until dArr.length()) deletedUserIds.add(dArr.optString(k))
+        }
+      }
+
       // --- Merge Consultations ---
       val mergedConsArr = JSONArray()
       val consMap = mutableMapOf<String, JSONObject>()
@@ -255,7 +283,7 @@ END $$;
       }
       consMap.values.forEach { mergedConsArr.put(it) }
 
-      // --- Merge Invoices ---
+      // --- Merge Invoices (filtered by deletedInvoiceIds) ---
       val mergedInvArr = JSONArray()
       val invMap = mutableMapOf<String, JSONObject>()
       if (remoteDoc != null && remoteDoc.has("invoices")) {
@@ -263,7 +291,7 @@ END $$;
         for (i in 0 until rArr.length()) {
           val o = rArr.getJSONObject(i)
           val iid = o.optString("id")
-          if (iid.isNotBlank()) invMap[iid] = o
+          if (iid.isNotBlank() && !deletedInvoiceIds.contains(iid)) invMap[iid] = o
         }
       }
       if (root.has("invoices")) {
@@ -271,7 +299,7 @@ END $$;
         for (i in 0 until lArr.length()) {
           val o = lArr.getJSONObject(i)
           val iid = o.optString("id")
-          if (iid.isNotBlank()) invMap[iid] = o
+          if (iid.isNotBlank() && !deletedInvoiceIds.contains(iid)) invMap[iid] = o
         }
       }
       invMap.values.forEach { mergedInvArr.put(it) }
@@ -452,7 +480,7 @@ END $$;
       }
       vacMap.values.forEach { mergedVacArr.put(it) }
 
-      // --- Merge Users ---
+      // --- Merge Users (filtered by deletedUserIds) ---
       val mergedUserArr = JSONArray()
       val userMap = mutableMapOf<String, JSONObject>()
       if (remoteDoc != null && remoteDoc.has("users")) {
@@ -460,7 +488,8 @@ END $$;
         for (i in 0 until rArr.length()) {
           val o = rArr.getJSONObject(i)
           val uid = o.optString("username").lowercase()
-          if (uid.isNotBlank()) userMap[uid] = o
+          val id = o.optString("id")
+          if (uid.isNotBlank() && !deletedUserIds.contains(uid) && !deletedUserIds.contains(id)) userMap[uid] = o
         }
       }
       if (root.has("users")) {
@@ -468,7 +497,8 @@ END $$;
         for (i in 0 until lArr.length()) {
           val o = lArr.getJSONObject(i)
           val uid = o.optString("username").lowercase()
-          if (uid.isNotBlank()) userMap[uid] = o
+          val id = o.optString("id")
+          if (uid.isNotBlank() && !deletedUserIds.contains(uid) && !deletedUserIds.contains(id)) userMap[uid] = o
         }
       }
       userMap.values.forEach { mergedUserArr.put(it) }
@@ -531,6 +561,18 @@ END $$;
           val delArr = JSONArray()
           deletedMedicineIds.forEach { delArr.put(it) }
           val colName = if (remoteDoc.has("deleted_medicine_ids")) "deleted_medicine_ids" else "deletedMedicineIds"
+          put(colName, delArr)
+        }
+        if (remoteDoc != null && (remoteDoc.has("deleted_invoice_ids") || remoteDoc.has("deletedInvoiceIds"))) {
+          val delArr = JSONArray()
+          deletedInvoiceIds.forEach { delArr.put(it) }
+          val colName = if (remoteDoc.has("deleted_invoice_ids")) "deleted_invoice_ids" else "deletedInvoiceIds"
+          put(colName, delArr)
+        }
+        if (remoteDoc != null && (remoteDoc.has("deleted_user_ids") || remoteDoc.has("deletedUserIds"))) {
+          val delArr = JSONArray()
+          deletedUserIds.forEach { delArr.put(it) }
+          val colName = if (remoteDoc.has("deleted_user_ids")) "deleted_user_ids" else "deletedUserIds"
           put(colName, delArr)
         }
       }

@@ -22,6 +22,7 @@ object ClinicDataPersistence {
   private const val KEY_DELETED_CONSULTATION_IDS = "deleted_consultation_ids"
   private const val KEY_DELETED_INVOICE_IDS = "deleted_invoice_ids"
   private const val KEY_DELETED_MEDICINE_IDS = "deleted_medicine_ids"
+  private const val KEY_DELETED_USER_IDS = "deleted_user_ids"
   private const val KEY_TREATMENT_CARDS = "treatment_cards"
   private const val KEY_CLINIC_SETTINGS = "clinic_settings"
   private const val KEY_DRAFT_CONSULTATIONS = "draft_consultations"
@@ -159,6 +160,42 @@ object ClinicDataPersistence {
     saveDeletedMedicineIds(context, current)
   }
 
+  fun saveDeletedUserIds(context: Context, ids: Set<String>) {
+    val arr = JSONArray()
+    ids.forEach { arr.put(it) }
+    getPrefs(context).edit().putString(KEY_DELETED_USER_IDS, arr.toString()).apply()
+  }
+
+  fun loadDeletedUserIds(context: Context): MutableSet<String> {
+    val str = getPrefs(context).getString(KEY_DELETED_USER_IDS, null) ?: return mutableSetOf()
+    return try {
+      val arr = JSONArray(str)
+      val set = mutableSetOf<String>()
+      for (i in 0 until arr.length()) {
+        val id = arr.optString(i)
+        if (id.isNotBlank()) set.add(id)
+      }
+      set
+    } catch (_: Exception) {
+      mutableSetOf()
+    }
+  }
+
+  fun addDeletedUserId(context: Context, id: String) {
+    if (id.isBlank()) return
+    val current = loadDeletedUserIds(context)
+    current.add(id)
+    saveDeletedUserIds(context, current)
+  }
+
+  fun removeDeletedUserId(context: Context, id: String) {
+    if (id.isBlank()) return
+    val current = loadDeletedUserIds(context)
+    if (current.remove(id)) {
+      saveDeletedUserIds(context, current)
+    }
+  }
+
   // 1. Patients
   fun savePatients(context: Context, list: List<Patient>) {
     val arr = JSONArray()
@@ -271,7 +308,7 @@ object ClinicDataPersistence {
           )
         )
       }
-      list
+      list.filterNot { deletedUsers.contains(it.id) || deletedUsers.contains(it.username.lowercase()) }
     } catch (_: Exception) {
       null
     }
@@ -758,6 +795,7 @@ object ClinicDataPersistence {
 
   fun loadUsers(context: Context): List<UserAccount>? {
     val str = getPrefs(context).getString(KEY_USERS, null) ?: return null
+    val deletedUsers = loadDeletedUserIds(context)
     return try {
       val arr = JSONArray(str)
       val list = mutableListOf<UserAccount>()
