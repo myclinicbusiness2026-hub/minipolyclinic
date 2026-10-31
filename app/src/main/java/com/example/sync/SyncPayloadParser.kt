@@ -67,18 +67,16 @@ object SyncPayloadParser {
           val ro = rxArr.getJSONObject(j)
           rxs.add(
             PrescribedDrug(
-              id = ro.optString("id", UUID.randomUUID().toString()),
-              name = ro.optString("name", ro.optString("medicineName")),
               medicineId = ro.optString("medicineId"),
               medicineName = ro.optString("medicineName", ro.optString("name")),
+              name = ro.optString("name", ro.optString("medicineName")),
               dosage = ro.optString("dosage"),
               frequency = ro.optString("frequency"),
               duration = ro.optString("duration"),
               quantity = ro.optInt("quantity", 1),
               unitPrice = ro.optDouble("unitPrice", 0.0),
               instructions = ro.optString("instructions", ""),
-              isExternal = ro.optBoolean("isExternal", false),
-              medicineType = ro.optString("medicineType", "")
+              isExternal = ro.optBoolean("isExternal", false)
             )
           )
         }

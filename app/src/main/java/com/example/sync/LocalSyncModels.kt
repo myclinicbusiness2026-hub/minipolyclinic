@@ -148,7 +148,6 @@ data class SyncDataPayload(
       val rxArr = JSONArray()
       c.prescriptions.forEach { rx ->
         val ro = JSONObject()
-        ro.put("id", rx.id)
         ro.put("name", rx.name)
         ro.put("medicineId", rx.medicineId)
         ro.put("medicineName", rx.medicineName)
@@ -159,7 +158,6 @@ data class SyncDataPayload(
         ro.put("unitPrice", rx.unitPrice)
         ro.put("instructions", rx.instructions)
         ro.put("isExternal", rx.isExternal)
-        ro.put("medicineType", rx.medicineType)
         rxArr.put(ro)
       }
       co.put("prescriptions", rxArr)
