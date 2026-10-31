@@ -275,7 +275,7 @@ fun DoctorConsultationScreen(
         }
       }
       val pendingCards = viewModel.treatmentCards.value.filter {
-        it.patientId == activePatient.id && it.status == TreatmentStatus.PENDING && it.consultationInvoiceId.isNullOrBlank()
+        it.patientId == activePatient.id && !it.isFullyCompleted && !it.isDiscontinued && it.consultationInvoiceId.isNullOrBlank()
       }
       if (pendingCards.isNotEmpty() && orderedTreatmentCards.isEmpty()) {
         orderedTreatmentCards.addAll(pendingCards)
