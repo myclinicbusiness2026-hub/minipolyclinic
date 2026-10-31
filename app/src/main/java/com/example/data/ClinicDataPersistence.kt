@@ -386,12 +386,14 @@ object ClinicDataPersistence {
         val rObj = JSONObject().apply {
           put("medicineId", rx.medicineId)
           put("medicineName", rx.medicineName)
+          put("name", rx.name)
           put("dosage", rx.dosage)
           put("frequency", rx.frequency)
           put("duration", rx.duration)
           put("quantity", rx.quantity)
           put("unitPrice", rx.unitPrice)
           put("instructions", rx.instructions)
+          put("isExternal", rx.isExternal)
         }
         rxArr.put(rObj)
       }
@@ -418,6 +420,18 @@ object ClinicDataPersistence {
       val toArr = JSONArray()
       c.treatmentOrderDetails.forEach { toArr.put(it) }
       put("treatmentOrderDetails", toArr)
+
+      put("suggestedInvestigations", JSONArray(c.suggestedInvestigations))
+
+      val vObj = JSONObject().apply {
+        put("bloodPressure", c.vitals.bloodPressure)
+        put("pulseRate", c.vitals.pulseRate)
+        put("temperatureCelsius", c.vitals.temperatureCelsius)
+        put("oxygenSaturation", c.vitals.oxygenSaturation)
+        put("weightKg", c.vitals.weightKg)
+        c.vitals.rbs?.let { put("rbs", it) }
+      }
+      put("vitals", vObj)
 
       val attArr = JSONArray()
       c.attachments.forEach { a ->
@@ -450,16 +464,22 @@ object ClinicDataPersistence {
     if (rxArr != null) {
       for (j in 0 until rxArr.length()) {
         val ro = rxArr.getJSONObject(j)
+        val n = ro.optString("name")
+        val mn = ro.optString("medicineName")
+        val effectiveN = if (n.isNotBlank()) n else mn
+        val effectiveMn = if (mn.isNotBlank()) mn else effectiveN
         prescriptions.add(
           PrescribedDrug(
             medicineId = ro.optString("medicineId"),
-            medicineName = ro.optString("medicineName"),
+            medicineName = effectiveMn,
+            name = effectiveN,
             dosage = ro.optString("dosage"),
             frequency = ro.optString("frequency"),
             duration = ro.optString("duration"),
             quantity = ro.optInt("quantity", 1),
             unitPrice = ro.optDouble("unitPrice", 0.0),
-            instructions = ro.optString("instructions")
+            instructions = ro.optString("instructions"),
+            isExternal = ro.optBoolean("isExternal", false)
           )
         )
       }
@@ -514,6 +534,24 @@ object ClinicDataPersistence {
       for (j in 0 until toArr.length()) treatmentOrderDetails.add(toArr.getString(j))
     }
 
+    val invArr = o.optJSONArray("suggestedInvestigations")
+    val suggestedInvestigations = mutableListOf<String>()
+    if (invArr != null) {
+      for (j in 0 until invArr.length()) suggestedInvestigations.add(invArr.getString(j))
+    }
+
+    val vo = o.optJSONObject("vitals")
+    val vitals = if (vo != null) {
+      VitalSigns(
+        bloodPressure = vo.optString("bloodPressure", "120/80 mmHg"),
+        pulseRate = vo.optInt("pulseRate", 76),
+        temperatureCelsius = vo.optDouble("temperatureCelsius", 36.9),
+        oxygenSaturation = vo.optInt("oxygenSaturation", 98),
+        weightKg = vo.optDouble("weightKg", 0.0),
+        rbs = if (vo.has("rbs")) vo.optDouble("rbs") else null
+      )
+    } else VitalSigns()
+
     return ConsultationRecord(
       id = o.optString("id"),
       patientId = o.optString("patientId"),
@@ -528,6 +566,7 @@ object ClinicDataPersistence {
       diagnosisList = diagnoses,
       prescriptions = prescriptions,
       selectedProcedures = procedures,
+      suggestedInvestigations = suggestedInvestigations,
       treatmentOrderDetails = treatmentOrderDetails,
       consultationFee = o.optDouble("consultationFee", 8000.0),
       canvasNotes = o.optString("canvasNotes"),
@@ -536,6 +575,7 @@ object ClinicDataPersistence {
       nextVaccineSchedule = o.optString("nextVaccineSchedule"),
       patientInstructions = o.optString("patientInstructions"),
       attachments = attachments,
+      vitals = vitals,
       timestamp = o.optString("timestamp")
     )
   }

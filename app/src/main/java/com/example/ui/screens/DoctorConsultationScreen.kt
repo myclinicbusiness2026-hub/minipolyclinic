@@ -153,16 +153,28 @@ fun DoctorConsultationScreen(
 
   // Clinical Notes & SOAP State
   var subjective by remember(activePatient?.id) {
-    val initialComplaint = if (activePatient != null && activePatient.isFollowUp && activePatient.followUpReason.isNotBlank()) {
+    val draft = activePatient?.id?.let { viewModel.getDraftConsultation(it) }
+    val initialComplaint = if (draft != null && draft.subjective.isNotBlank()) {
+      draft.subjective
+    } else if (activePatient != null && activePatient.isFollowUp && activePatient.followUpReason.isNotBlank()) {
       "Follow-up visit: ${activePatient.followUpReason}"
     } else {
       activePatient?.chiefComplaint ?: ""
     }
     mutableStateOf(initialComplaint)
   }
-  var objective by remember(activePatient?.id) { mutableStateOf("") }
-  var assessment by remember(activePatient?.id) { mutableStateOf("") }
-  var plan by remember(activePatient?.id) { mutableStateOf("") }
+  var objective by remember(activePatient?.id) {
+    val draft = activePatient?.id?.let { viewModel.getDraftConsultation(it) }
+    mutableStateOf(draft?.objective?.ifBlank { draft.canvasNotes } ?: "")
+  }
+  var assessment by remember(activePatient?.id) {
+    val draft = activePatient?.id?.let { viewModel.getDraftConsultation(it) }
+    mutableStateOf(draft?.assessment ?: "")
+  }
+  var plan by remember(activePatient?.id) {
+    val draft = activePatient?.id?.let { viewModel.getDraftConsultation(it) }
+    mutableStateOf(draft?.plan ?: "")
+  }
 
   // Editable Vitals State for Active Consultation
   val patientVitals = activePatient?.vitals
@@ -261,6 +273,12 @@ fun DoctorConsultationScreen(
         if (draft.attachments.isNotEmpty() && attachmentsState.isEmpty()) {
           attachmentsState.addAll(draft.attachments)
         }
+      }
+      val pendingCards = viewModel.treatmentCards.value.filter {
+        it.patientId == activePatient.id && it.status == TreatmentStatus.PENDING && it.consultationInvoiceId.isNullOrBlank()
+      }
+      if (pendingCards.isNotEmpty() && orderedTreatmentCards.isEmpty()) {
+        orderedTreatmentCards.addAll(pendingCards)
       }
     }
   }
@@ -1187,16 +1205,34 @@ fun DoctorConsultationScreen(
       onConfirm = { card ->
         orderedTreatmentCards.add(card)
         // Also add medication to prescribedDrugs for transparency on A4 print and Rx
-        if (card.medicationFee > 0 && prescribedDrugs.none { it.name.equals(card.medicationName, ignoreCase = true) }) {
+        val rxName = if (card.isCocktail && card.cocktailItems.isNotEmpty()) {
+          val itemsStr = card.cocktailItems.joinToString(" + ") { "${it.name} ${it.dosage}".trim() }
+          if (card.medicationName.isNotBlank() && !card.medicationName.contains("Mix", ignoreCase = true) && !itemsStr.contains(card.medicationName)) {
+            "${card.medicationName} ($itemsStr)"
+          } else {
+            itemsStr
+          }
+        } else {
+          card.medicationName
+        }
+        val rxDosage = if (card.isCocktail) {
+          if (card.cocktailItems.isNotEmpty()) "${card.cocktailItems.size} Drugs Mixed" else card.dosage
+        } else card.dosage.ifBlank { "${card.route.label} (${card.frequency})" }
+        val patientOwnTag = if (card.isPatientSupplied) " [လူနာပါဆေး]" else ""
+        val finalRxName = rxName + patientOwnTag
+
+        if (prescribedDrugs.none { it.name.equals(finalRxName, ignoreCase = true) }) {
           prescribedDrugs.add(
             PrescribedDrug(
-              name = card.medicationName,
-              dosage = card.dosage.ifBlank { "${card.route.label} (${card.frequency})" },
+              name = finalRxName,
+              medicineName = finalRxName,
+              dosage = rxDosage,
               frequency = card.frequency,
               duration = "${card.totalDays} Days",
               quantity = card.totalSessions,
-              unitPrice = card.medicationFee,
-              instructions = "${card.route.label} - ${card.instructions}"
+              unitPrice = if (card.isPatientSupplied) 0.0 else card.medicationFee,
+              instructions = "${card.route.label} - ${card.instructions}",
+              isExternal = card.isPatientSupplied
             )
           )
         }

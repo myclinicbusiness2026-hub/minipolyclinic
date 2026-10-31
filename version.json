@@ -1,10 +1,10 @@
 {
-  "versionCode": 7,
-  "versionName": "1.3.3",
+  "versionCode": 8,
+  "versionName": "1.3.4",
   "minSupportedVersion": 1,
-  "releaseNotes": "• Dynamic IV Cocktail Multi-Drug Builder: Build custom IV Push & Infusion mixtures from store inventory\n• Patient-Supplied Medicine Support: Mark external drugs to charge service fee only without inventory stock deduction\n• A4 Continuous Multi-Page Procedure Fix: Procedures reliably print without omission or gaps\n• A4 Header Deduplication: Clean single clinic subtitle display\n• Consultation Clinical Flow Order: Treatment & Injections placed directly before Prescription\n• Consultation Auto-Save Offline Persistence: Consultation drafts and selected patient survive app restart\n• Supabase Cloud Purge/Reset Tool: Clear test data from Supabase before entering live pharmacy stock",
-  "releaseNotesMm": "• IV Cocktail တွဲဖက်ဆေးထိုး အော်ဒါစနစ်သစ်- Store စာရင်းမှ ဆေး ၂-၃ မျိုး စိတ်ကြိုက်ပေါင်းစပ်ထိုးနှံနိုင်ခြင်း\n• လူနာပါ ဆေးဝါး (External Medicine) စနစ်- ဆေးဖိုး 0 Ks နှင့် Stock မနှုတ်ပဲ ဝန်ဆောင်ခသာ ကောက်ခံနိုင်ခြင်း\n• A4 Print စာမျက်နှာ ၂ မျက်နှာ Procedure အပြည့်အစုံ မပျောက်မပျက် ပေါ်စေခြင်း\n• A4 ခေါင်းစဉ် ဆေးခန်းအမည် နှစ်ထပ်ဖြစ်ခြင်း ဖြေရှင်းခြင်း\n• Consultation စာမျက်နှာ စီစဉ်မှုအား A4 Print စံနှုန်းအတိုင်း Treatment & Injections ကို ဆေးညွှန်းအထက်သို့ ပြောင်းလဲခြင်း\n• Consultation Draft နှင့် လူနာရွေးချယ်မှု Local Disk တွင် အလိုအလျောက် သိမ်းဆည်းထားနိုင်ခြင်း\n• Supabase Cloud Data အဟောင်းများ အကုန်ရှင်းလင်းနိုင်သော Purge Reset စနစ်",
+  "releaseNotes": "• Full Drug Names in Cocktail & Injections: Individual constituent medicines (e.g. IV Todol 30mg + NS 3cc) explicitly listed with routes and dosages across Medical Records, Consultation, and Rx\n• Medical Records Treatment Orders: Complete treatment and injection order history reliably displayed\n• Consultation History Overwrite Protection: Retains existing patient clinical history notes without being wiped out when switching screens or restarting app\n• Prescription Offline Persistence: All drug titles, dosages, and patient-supplied indicators saved and restored accurately",
+  "releaseNotesMm": "• IV Cocktail & Injections ဆေးအမည် အပြည့်အစုံဖော်ပြမှု- ရောစပ်ထိုးနှံထားသော ဆေးတစ်မျိုးချင်းစီ (ဥပမာ IV Todol 30mg + NS 3cc) အား ဆေးမှတ်တမ်းနှင့် ဆေးညွှန်းတွင် အတိအကျ ဖော်ပြပေးခြင်း\n• Medical Records တွင် ဆေးထိုးမှတ်တမ်း (Treatment & Injections) အပြည့်အစုံ ပြသပေးခြင်း\n• Consultation စာမျက်နှာမှ ခေတ္တထွက်ပြီး ပြန်ဝင်ပါက ရေးသားထားသော ရောဂါရာဇဝင် (History) များ ပျောက်မသွားစေရန် ကာကွယ်ထားခြင်း\n• ဆေးညွှန်းနှင့် လူနာပါဆေးဝါး အချက်အလက်များ Local Disk တွင် တိကျစွာ သိမ်းဆည်းထားနိုင်ခြင်း",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
-  "publishedAt": "2026-10-30",
+  "publishedAt": "2026-10-31",
   "apkSizeBytes": 21488490
 }

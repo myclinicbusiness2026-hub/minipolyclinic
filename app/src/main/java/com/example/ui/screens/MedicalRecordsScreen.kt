@@ -1504,6 +1504,7 @@ private fun ConsultationVisitTimelineCard(
         }
 
         // Day-Care Treatment & Injections
+        val hasTreatmentDetails = consultation.treatmentOrderDetails.isNotEmpty()
         val injectionDrugs = consultation.prescriptions.filter { drug ->
           drug.effectiveName.contains("Inj", ignoreCase = true) ||
           drug.dosage.contains("Inj", ignoreCase = true) ||
@@ -1512,7 +1513,7 @@ private fun ConsultationVisitTimelineCard(
           drug.instructions.contains("Neb", ignoreCase = true) ||
           drug.instructions.contains("Drip", ignoreCase = true)
         }
-        if (injectionDrugs.isNotEmpty()) {
+        if (hasTreatmentDetails || injectionDrugs.isNotEmpty()) {
           Text("Treatment & Injections (ဆေးထိုး / ဆေးသွင်းကုသမှု):", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
           Spacer(modifier = Modifier.height(2.dp))
           Surface(
@@ -1521,26 +1522,43 @@ private fun ConsultationVisitTimelineCard(
             border = BorderStroke(0.6.dp, MedicalGreen.copy(alpha = 0.4f)),
             modifier = Modifier.fillMaxWidth()
           ) {
-            Column(modifier = Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-              injectionDrugs.forEachIndexed { idx, drug ->
-                val route = when {
-                  drug.instructions.contains("IV", ignoreCase = true) -> "IV Route"
-                  drug.instructions.contains("IM", ignoreCase = true) -> "IM Route"
-                  drug.instructions.contains("Neb", ignoreCase = true) -> "Nebulization"
-                  else -> "Injection"
+            Column(modifier = Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+              if (hasTreatmentDetails) {
+                consultation.treatmentOrderDetails.forEach { orderText ->
+                  Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                  ) {
+                    Text(
+                      "💉 $orderText",
+                      fontSize = 10.sp,
+                      fontWeight = FontWeight.Bold,
+                      color = MedicalGreenDark
+                    )
+                  }
                 }
-                Row(
-                  modifier = Modifier.fillMaxWidth(),
-                  horizontalArrangement = Arrangement.SpaceBetween,
-                  verticalAlignment = Alignment.CenterVertically
-                ) {
-                  Text(
-                    "💉 ${drug.effectiveName} [${drug.dosage}] (${route})",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MedicalGreenDark
-                  )
-                  Text("${drug.quantity} • ${drug.instructions}", fontSize = 9.5.sp, color = SlateMedium)
+              } else {
+                injectionDrugs.forEachIndexed { idx, drug ->
+                  val route = when {
+                    drug.instructions.contains("IV", ignoreCase = true) -> "IV Route"
+                    drug.instructions.contains("IM", ignoreCase = true) -> "IM Route"
+                    drug.instructions.contains("Neb", ignoreCase = true) -> "Nebulization"
+                    else -> "Injection"
+                  }
+                  Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                  ) {
+                    Text(
+                      "💉 ${drug.effectiveName} [${drug.dosage}] (${route})",
+                      fontSize = 10.sp,
+                      fontWeight = FontWeight.Bold,
+                      color = MedicalGreenDark
+                    )
+                    Text("${drug.quantity} • ${drug.instructions}", fontSize = 9.5.sp, color = SlateMedium)
+                  }
                 }
               }
             }

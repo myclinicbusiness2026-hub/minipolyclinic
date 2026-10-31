@@ -1961,16 +1961,20 @@ fun CreateTreatmentCardModal(
 
         Button(
           onClick = {
+            val itemsSummary = if (cocktailItems.isNotEmpty()) {
+              cocktailItems.joinToString(" + ") { "${it.name} ${it.dosage}".trim() }
+            } else ""
             val finalMedName = if (isCocktail) {
               cocktailTitle.ifBlank {
-                if (cocktailItems.isNotEmpty()) cocktailItems.joinToString(" + ") { "${it.name} ${it.dosage}".trim() }
+                if (itemsSummary.isNotBlank()) itemsSummary
                 else "IV Cocktail Mix"
               }
             } else {
               medicationName
             }
             val finalDosage = if (isCocktail) {
-              "${cocktailItems.size} Drugs Mixed"
+              if (itemsSummary.isNotBlank()) "${cocktailItems.size} Drugs ($itemsSummary)"
+              else "${cocktailItems.size} Drugs Mixed"
             } else {
               dosage
             }

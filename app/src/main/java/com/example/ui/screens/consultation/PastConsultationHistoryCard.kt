@@ -517,6 +517,32 @@ fun PastConsultationHistoryCard(
                     }
                   }
 
+                  // Day-Care Treatment & Injections
+                  if (record.treatmentOrderDetails.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("ဆေးထိုး/အကြောဆေး အော်ဒါများ (Treatment & Injections):", fontSize = 10.sp, color = MedicalGreenDark, fontWeight = FontWeight.Bold)
+                    Column(
+                      modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                      verticalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                      record.treatmentOrderDetails.forEach { orderText ->
+                        Surface(
+                          color = PureWhite,
+                          shape = RoundedCornerShape(4.dp),
+                          border = BorderStroke(0.8.dp, Color(0xFFBBF7D0)),
+                          modifier = Modifier.fillMaxWidth()
+                        ) {
+                          Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                          ) {
+                            Text("💉 $orderText", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+                          }
+                        }
+                      }
+                    }
+                  }
+
                   // 6. Prescriptions with Individual Add Option
                   if (record.prescriptions.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(4.dp))

@@ -68,12 +68,17 @@ fun ClinicalHistorySection(
   // Auto-init remarks from reception chief complaint or existing subjective notes
   LaunchedEffect(patientId, patientChiefComplaint) {
     if (initializedFromExisting) return@LaunchedEffect
-    if (patientChiefComplaint.isNotBlank()) {
+    if (subjectiveNotes.isNotBlank()) {
+      if (subjectiveNotes.contains("[CLINICAL REMARKS]")) {
+        val extracted = subjectiveNotes.substringAfter("[CLINICAL REMARKS]").trim()
+        if (extracted.isNotBlank()) historyRemarks = extracted
+      } else if (!subjectiveNotes.contains("[CHIEF COMPLAINTS & HPI]") && !subjectiveNotes.contains("[BACKGROUND MEDICAL HISTORY]")) {
+        historyRemarks = subjectiveNotes
+      }
+    } else if (patientChiefComplaint.isNotBlank()) {
       if (historyRemarks.isBlank() || historyRemarks == "General clinical consultation") {
         historyRemarks = patientChiefComplaint
       }
-    } else if (subjectiveNotes.isNotBlank() && historyRemarks.isBlank()) {
-      historyRemarks = subjectiveNotes
     }
     initializedFromExisting = true
   }
@@ -157,7 +162,11 @@ fun ClinicalHistorySection(
     }
 
     val compiled = sections.joinToString("\n\n")
-    onSubjectiveNotesChange(compiled)
+    if (compiled.isNotBlank()) {
+      onSubjectiveNotesChange(compiled)
+    } else if (subjectiveNotes.isBlank()) {
+      onSubjectiveNotesChange(compiled)
+    }
 
     if (showSavedBadge) {
       saveFeedbackMessage = "History Saved to Record ✓"
@@ -176,8 +185,25 @@ fun ClinicalHistorySection(
     customTrauma
   ) {
     if (initializedFromExisting) {
-      kotlinx.coroutines.delay(800)
-      syncHistory(showSavedBadge = false)
+      val hasDataToSync = activeComplaints.isNotEmpty() ||
+          pastMedicalHistory.isNotEmpty() ||
+          pastSurgicalHistory.isNotEmpty() ||
+          drugAllergies.isNotEmpty() ||
+          regularMedicationsList.isNotEmpty() ||
+          socialHabits.isNotEmpty() ||
+          traumaHistory.isNotEmpty() ||
+          customPmhx.isNotBlank() ||
+          customPshx.isNotBlank() ||
+          customDrugAllergy.isNotBlank() ||
+          menstrualHistory.isNotBlank() ||
+          customSocial.isNotBlank() ||
+          customTrauma.isNotBlank() ||
+          (historyRemarks.isNotBlank() && historyRemarks != patientChiefComplaint)
+
+      if (hasDataToSync) {
+        kotlinx.coroutines.delay(800)
+        syncHistory(showSavedBadge = false)
+      }
     }
   }
 
