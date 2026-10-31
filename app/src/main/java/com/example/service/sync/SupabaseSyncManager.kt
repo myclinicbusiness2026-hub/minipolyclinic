@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS clinic_cloud_sync (
     settings JSONB DEFAULT '{}'::jsonb,
     deleted_patient_ids JSONB DEFAULT '[]'::jsonb,
     deleted_consultation_ids JSONB DEFAULT '[]'::jsonb,
+    deleted_medicine_ids JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -218,6 +219,20 @@ END $$;
         }
       }
 
+      val deletedMedicineIds = mutableSetOf<String>()
+      if (root.has("deletedMedicineIds")) {
+        val dArr = root.optJSONArray("deletedMedicineIds")
+        if (dArr != null) {
+          for (k in 0 until dArr.length()) deletedMedicineIds.add(dArr.optString(k))
+        }
+      }
+      if (remoteDoc != null && (remoteDoc.has("deleted_medicine_ids") || remoteDoc.has("deletedMedicineIds"))) {
+        val dArr = remoteDoc.optJSONArray("deleted_medicine_ids") ?: remoteDoc.optJSONArray("deletedMedicineIds")
+        if (dArr != null) {
+          for (k in 0 until dArr.length()) deletedMedicineIds.add(dArr.optString(k))
+        }
+      }
+
       // --- Merge Consultations ---
       val mergedConsArr = JSONArray()
       val consMap = mutableMapOf<String, JSONObject>()
@@ -290,7 +305,7 @@ END $$;
         for (i in 0 until rArr.length()) {
           val o = rArr.getJSONObject(i)
           val mid = o.optString("id")
-          if (mid.isNotBlank()) medMap[mid] = o
+          if (mid.isNotBlank() && !deletedMedicineIds.contains(mid)) medMap[mid] = o
         }
       }
       if (root.has("medicines")) {
@@ -298,7 +313,7 @@ END $$;
         for (i in 0 until lArr.length()) {
           val o = lArr.getJSONObject(i)
           val mid = o.optString("id")
-          if (mid.isNotBlank()) {
+          if (mid.isNotBlank() && !deletedMedicineIds.contains(mid)) {
             val existing = medMap[mid]
             if (existing != null && existing.has("batches") && o.has("batches")) {
               val bMap = mutableMapOf<String, JSONObject>()
@@ -310,7 +325,11 @@ END $$;
               val ob = o.getJSONArray("batches")
               for (k in 0 until ob.length()) {
                 val bo = ob.getJSONObject(k)
-                bMap[bo.optString("batchNumber")] = bo
+                val bNum = bo.optString("batchNumber")
+                val exBo = bMap[bNum]
+                if (exBo == null || bo.optLong("lastUpdated", 0L) >= exBo.optLong("lastUpdated", 0L)) {
+                  bMap[bNum] = bo
+                }
               }
               val mbArr = JSONArray()
               bMap.values.forEach { mbArr.put(it) }
@@ -473,6 +492,9 @@ END $$;
         val delPatArr = JSONArray()
         deletedPatientIds.forEach { delPatArr.put(it) }
         put("deletedPatientIds", delPatArr)
+        val delMedArr = JSONArray()
+        deletedMedicineIds.forEach { delMedArr.put(it) }
+        put("deletedMedicineIds", delMedArr)
       }
 
       // Build cloud payload matching remote table column capabilities
@@ -504,6 +526,12 @@ END $$;
           val delArr = JSONArray()
           deletedPatientIds.forEach { delArr.put(it) }
           put("deleted_patient_ids", delArr)
+        }
+        if (remoteDoc != null && (remoteDoc.has("deleted_medicine_ids") || remoteDoc.has("deletedMedicineIds"))) {
+          val delArr = JSONArray()
+          deletedMedicineIds.forEach { delArr.put(it) }
+          val colName = if (remoteDoc.has("deleted_medicine_ids")) "deleted_medicine_ids" else "deletedMedicineIds"
+          put(colName, delArr)
         }
       }
 

@@ -1479,14 +1479,20 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val medMap = _medicines.value.associateBy { it.id }.toMutableMap()
     val now = System.currentTimeMillis()
     for (item in items) {
+      if (item.isExternal || item.name.contains("[လူနာပါဆေး]") || item.medicineName.contains("[လူနာပါဆေး]")) {
+        continue
+      }
+      val matchingCard = _treatmentCards.value.find { card ->
+        card.patientId == patientId &&
+        (card.medicationId == item.medicineId ||
+         card.medicationName.contains(item.medicineName, ignoreCase = true) ||
+         item.medicineName.contains(card.medicationName, ignoreCase = true))
+      }
+      if (matchingCard?.isPatientSupplied == true) {
+        continue
+      }
       val med = medMap[item.medicineId] ?: medMap.values.find { it.name.equals(item.medicineName, ignoreCase = true) }
       if (med != null) {
-        val matchingCard = _treatmentCards.value.find { card ->
-          card.patientId == patientId &&
-          (card.medicationId == item.medicineId ||
-           card.medicationName.contains(item.medicineName, ignoreCase = true) ||
-           item.medicineName.contains(card.medicationName, ignoreCase = true))
-        }
         val actualDeductQuantity = if (matchingCard != null && matchingCard.isPayPerVisit && !matchingCard.isPrepaidFullCourse) {
           1 // Pay-per-visit: only deduct 1 dose/vial on day 1
         } else {
@@ -1527,6 +1533,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   }
 
   fun dispenseQuick(medicineId: String, quantity: Int) {
+    val now = System.currentTimeMillis()
     val updated = _medicines.value.map { med ->
       if (med.id == medicineId) {
         var rem = quantity
@@ -1534,7 +1541,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           if (rem > 0 && b.quantity > 0) {
             val d = minOf(b.quantity, rem)
             rem -= d
-            b.copy(quantity = b.quantity - d)
+            b.copy(quantity = b.quantity - d, lastUpdated = now)
           } else b
         }
         med.copy(batches = newBatches)
@@ -1609,6 +1616,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
     // 2. ALSO deduct store consumables and OTC items in inv.items (Syringe, Cannula, Scalp vein, OTC drugs)
     for (item in inv.items.filter { !it.isProcedure }) {
+      if (item.name.contains("[လူနာပါဆေး]") || item.name.contains("Patient's Own") || item.totalPrice == 0.0) {
+        continue
+      }
       val cleanName = item.name.split(" x ").firstOrNull()?.split("(")?.firstOrNull()?.trim() ?: item.name
       if (prescribedNames.contains(cleanName.lowercase()) || prescribedNames.contains(item.name.lowercase())) {
         continue
@@ -1710,11 +1720,12 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           item.name.contains(it.name, ignoreCase = true)
         }
         if (med != null && item.quantity > 0) {
+          val now = System.currentTimeMillis()
           val primaryBatch = med.batches.firstOrNull()
           val updatedBatches = if (primaryBatch != null) {
-            med.batches.mapIndexed { idx, b -> if (idx == 0) b.copy(quantity = b.quantity + item.quantity) else b }
+            med.batches.mapIndexed { idx, b -> if (idx == 0) b.copy(quantity = b.quantity + item.quantity, lastUpdated = now) else b }
           } else {
-            listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", item.quantity, 0.0))
+            listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", item.quantity, 0.0, lastUpdated = now))
           }
           medMap[med.id] = med.copy(batches = updatedBatches)
           modified = true
@@ -1761,11 +1772,12 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           item.name.contains(it.name, ignoreCase = true)
         }
         if (med != null && item.quantity > 0) {
+          val now = System.currentTimeMillis()
           val primaryBatch = med.batches.firstOrNull()
           val updatedBatches = if (primaryBatch != null) {
-            med.batches.mapIndexed { idx, b -> if (idx == 0) b.copy(quantity = b.quantity + item.quantity) else b }
+            med.batches.mapIndexed { idx, b -> if (idx == 0) b.copy(quantity = b.quantity + item.quantity, lastUpdated = now) else b }
           } else {
-            listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", item.quantity, 0.0))
+            listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", item.quantity, 0.0, lastUpdated = now))
           }
           medMap[med.id] = med.copy(batches = updatedBatches)
           modified = true
@@ -2206,10 +2218,26 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       costPricePerUnit = costPrice
     )
     if (existing != null) {
+      val now = System.currentTimeMillis()
+      val sameBatch = existing.batches.find { it.batchNumber.equals(batchNumber, ignoreCase = true) }
+      val updatedBatches = if (sameBatch != null) {
+        existing.batches.map { b ->
+          if (b.batchNumber.equals(batchNumber, ignoreCase = true)) {
+            b.copy(
+              quantity = b.quantity + quantity,
+              costPricePerUnit = costPrice,
+              expiryDate = expiryDate,
+              lastUpdated = now
+            )
+          } else b
+        }
+      } else {
+        existing.batches + newBatch
+      }
       val updated = _medicines.value.map { med ->
         if (med.id == existing.id) {
           med.copy(
-            batches = med.batches + newBatch,
+            batches = updatedBatches,
             profitMarginPercent = profitMarginPercent,
             minStockThreshold = minThreshold,
             medicineType = if (medicineType.isNotBlank()) medicineType else med.medicineType
@@ -2235,6 +2263,27 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       _medicines.value = updated
       ClinicDataPersistence.saveMedicines(getApplication(), updated)
     }
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
+  }
+
+  fun updateMedicine(updatedMedicine: Medicine) {
+    val ctx = getApplication<Application>()
+    val now = System.currentTimeMillis()
+    val updatedList = _medicines.value.map { med ->
+      if (med.id == updatedMedicine.id) {
+        val updatedBatches = updatedMedicine.batches.map { b ->
+          val orig = med.batches.find { it.batchNumber == b.batchNumber }
+          if (orig == null || orig.quantity != b.quantity || orig.costPricePerUnit != b.costPricePerUnit || orig.expiryDate != b.expiryDate) {
+            b.copy(lastUpdated = now)
+          } else b
+        }
+        updatedMedicine.copy(batches = updatedBatches)
+      } else med
+    }
+    _medicines.value = updatedList
+    ClinicDataPersistence.saveMedicines(ctx, updatedList)
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
     }
@@ -2452,7 +2501,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       suppliers = _suppliers.value,
       vaccines = _vaccines.value,
       deletedPatientIds = ClinicDataPersistence.loadDeletedPatientIds(ctx).toList(),
-      deletedConsultationIds = ClinicDataPersistence.loadDeletedConsultationIds(ctx).toList()
+      deletedConsultationIds = ClinicDataPersistence.loadDeletedConsultationIds(ctx).toList(),
+      deletedMedicineIds = ClinicDataPersistence.loadDeletedMedicineIds(ctx).toList()
     )
     val root = JSONObject(payload.toJsonString())
     root.put("exportTime", BurmeseDateUtils.getNowFormatted())
@@ -2477,6 +2527,13 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         val delArr = root.getJSONArray("deletedConsultationIds")
         for (i in 0 until delArr.length()) delConsSet.add(delArr.getString(i))
         ClinicDataPersistence.saveDeletedConsultationIds(ctx, delConsSet)
+      }
+      val delMedSet = mutableSetOf<String>()
+      val delMedArr = root.optJSONArray("deletedMedicineIds") ?: root.optJSONArray("deleted_medicine_ids")
+      if (delMedArr != null) {
+        for (i in 0 until delMedArr.length()) delMedSet.add(delMedArr.getString(i))
+        val currentDelMeds = ClinicDataPersistence.loadDeletedMedicineIds(ctx)
+        ClinicDataPersistence.saveDeletedMedicineIds(ctx, (currentDelMeds + delMedSet).toMutableSet())
       }
 
       // 2. Patients (Non-destructive ID-based merge)
@@ -2527,26 +2584,35 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       // 5. Medicines (Non-destructive ID-based merge with stock batch merging)
       if (root.has("medicines")) {
         val parsedMedicines = SyncPayloadParser.parseMedicines(root.getJSONArray("medicines"))
+        val activeDelMeds = ClinicDataPersistence.loadDeletedMedicineIds(ctx) + delMedSet
         if (parsedMedicines.isNotEmpty()) {
-          val currentMedMap = _medicines.value.associateBy { it.id }.toMutableMap()
+          val currentMedMap = _medicines.value.filter { !activeDelMeds.contains(it.id) }.associateBy { it.id }.toMutableMap()
           parsedMedicines.forEach { m ->
-            val existing = currentMedMap[m.id]
-            if (existing == null) {
-              currentMedMap[m.id] = m
-            } else {
-              val batchMap = existing.batches.associateBy { it.batchNumber }.toMutableMap()
-              m.batches.forEach { b -> batchMap[b.batchNumber] = b }
-              currentMedMap[m.id] = existing.copy(
-                name = m.name,
-                genericName = m.genericName,
-                category = m.category,
-                dosageForm = m.dosageForm,
-                unitType = m.unitType,
-                batches = batchMap.values.toList()
-              )
+            if (!activeDelMeds.contains(m.id)) {
+              val existing = currentMedMap[m.id]
+              if (existing == null) {
+                currentMedMap[m.id] = m
+              } else {
+                val batchMap = existing.batches.associateBy { it.batchNumber }.toMutableMap()
+                m.batches.forEach { b ->
+                  val exB = batchMap[b.batchNumber]
+                  if (exB == null || b.lastUpdated >= exB.lastUpdated) {
+                    batchMap[b.batchNumber] = b
+                  }
+                }
+                currentMedMap[m.id] = existing.copy(
+                  name = m.name,
+                  genericName = m.genericName,
+                  category = m.category,
+                  dosageForm = m.dosageForm,
+                  unitType = m.unitType,
+                  medicineType = if (m.medicineType.isNotBlank()) m.medicineType else existing.medicineType,
+                  batches = batchMap.values.toList()
+                )
+              }
             }
           }
-          val mergedMeds = currentMedMap.values.toList()
+          val mergedMeds = currentMedMap.values.filter { !activeDelMeds.contains(it.id) }
           _medicines.value = mergedMeds
           ClinicDataPersistence.saveMedicines(ctx, mergedMeds)
         }

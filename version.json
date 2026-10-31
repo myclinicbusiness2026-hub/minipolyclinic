@@ -1,9 +1,9 @@
 {
-  "versionCode": 8,
-  "versionName": "1.3.4",
+  "versionCode": 9,
+  "versionName": "1.3.5",
   "minSupportedVersion": 1,
-  "releaseNotes": "• Full Drug Names in Cocktail & Injections: Individual constituent medicines (e.g. IV Todol 30mg + NS 3cc) explicitly listed with routes and dosages across Medical Records, Consultation, and Rx\n• Medical Records Treatment Orders: Complete treatment and injection order history reliably displayed\n• Consultation History Overwrite Protection: Retains existing patient clinical history notes without being wiped out when switching screens or restarting app\n• Prescription Offline Persistence: All drug titles, dosages, and patient-supplied indicators saved and restored accurately",
-  "releaseNotesMm": "• IV Cocktail & Injections ဆေးအမည် အပြည့်အစုံဖော်ပြမှု- ရောစပ်ထိုးနှံထားသော ဆေးတစ်မျိုးချင်းစီ (ဥပမာ IV Todol 30mg + NS 3cc) အား ဆေးမှတ်တမ်းနှင့် ဆေးညွှန်းတွင် အတိအကျ ဖော်ပြပေးခြင်း\n• Medical Records တွင် ဆေးထိုးမှတ်တမ်း (Treatment & Injections) အပြည့်အစုံ ပြသပေးခြင်း\n• Consultation စာမျက်နှာမှ ခေတ္တထွက်ပြီး ပြန်ဝင်ပါက ရေးသားထားသော ရောဂါရာဇဝင် (History) များ ပျောက်မသွားစေရန် ကာကွယ်ထားခြင်း\n• ဆေးညွှန်းနှင့် လူနာပါဆေးဝါး အချက်အလက်များ Local Disk တွင် တိကျစွာ သိမ်းဆည်းထားနိုင်ခြင်း",
+  "releaseNotes": "• Pharmacy Inventory Edit Feature: Comprehensive edit button for medicines, classifications, categories, and individual stock batches\n• Deleted Medicine Tombstone Sync: Deleted medicines permanently stay deleted across Supabase Cloud and offline backups\n• Smart Timestamp Batch Merging: Higher lastUpdated timestamp resolution guarantees accurate stock quantities across stations\n• Patient-Supplied Medicine Inventory Protection: External medicines never deduct clinic pharmacy stock\n• Re-stocking Batch Accumulation: Stocking in an existing batch accumulates quantity without creating duplicate batch entries",
+  "releaseNotesMm": "• ဆေးဝါးနှင့် စတော့ခ်များ တိုက်ရိုက် Edit ပြင်ဆင်နိုင်ခြင်း- ဆေးအမည်၊ အမျိုးအစားခွဲခြားမှုနှင့် Batch အသုတ်လိုက် စတော့အရေအတွက်/စျေးနှုန်းများအား လွတ်လပ်စွာ ပြင်ဆင်နိုင်ခြင်း\n• Deleted Medicines Tombstone- ဖျက်လိုက်သောဆေးများ Cloud Sync လုပ်သည့်အခါ ပြန်လည်မပေါ်လာစေရန် ကာကွယ်ထားခြင်း\n• Smart Timestamp Batch Merging- စက်အချင်းချင်း စတော့ခ်ပေါင်းစပ်ရာတွင် နောက်ဆုံးအချိန်တံဆိပ်အား အတည်ယူစေခြင်း\n• လူနာပါဆေးဝါး (External Meds) ဆေးစတော့ခ်မှ မှားယွင်းမနှုတ်စေရန် ကာကွယ်ထားခြင်း\n• Batch တူ ဆေးထပ်သွင်းပါက စတော့ခ်ပေါင်းထည့်ပေးခြင်း",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-10-31",
   "apkSizeBytes": 21488490
