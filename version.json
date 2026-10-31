@@ -6,5 +6,5 @@
   "releaseNotesMm": "• ဆေးဝါးနှင့် စတော့ခ်များ တိုက်ရိုက် Edit ပြင်ဆင်နိုင်ခြင်း- ဆေးအမည်၊ အမျိုးအစားခွဲခြားမှုနှင့် Batch အသုတ်လိုက် စတော့အရေအတွက်/စျေးနှုန်းများအား လွတ်လပ်စွာ ပြင်ဆင်နိုင်ခြင်း\n• Deleted Medicines Tombstone- ဖျက်လိုက်သောဆေးများ Cloud Sync လုပ်သည့်အခါ ပြန်လည်မပေါ်လာစေရန် ကာကွယ်ထားခြင်း\n• Smart Timestamp Batch Merging- စက်အချင်းချင်း စတော့ခ်ပေါင်းစပ်ရာတွင် နောက်ဆုံးအချိန်တံဆိပ်အား အတည်ယူစေခြင်း\n• လူနာပါဆေးဝါး (External Meds) ဆေးစတော့ခ်မှ မှားယွင်းမနှုတ်စေရန် ကာကွယ်ထားခြင်း\n• Batch တူ ဆေးထပ်သွင်းပါက စတော့ခ်ပေါင်းထည့်ပေးခြင်း",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-10-31",
-  "apkSizeBytes": 21488490
+  "apkSizeBytes": 21521262
 }
