@@ -1,5 +1,8 @@
 package com.example.sync
 
+import android.content.Context
+import android.net.Uri
+import java.io.File
 import com.example.model.*
 import com.example.ui.screens.treatment.*
 import org.json.JSONArray
@@ -65,7 +68,7 @@ data class SyncDataPayload(
   val deletedInvoiceIds: List<String> = emptyList(),
   val deletedMedicineIds: List<String> = emptyList()
 ) {
-  fun toJsonString(): String {
+  fun toJsonString(context: Context? = null): String {
     val root = JSONObject()
     root.put("deviceId", deviceId)
     root.put("deviceName", deviceName)
@@ -128,11 +131,25 @@ data class SyncDataPayload(
       co.put("consultationFee", c.consultationFee)
       co.put("timestamp", c.timestamp)
       co.put("followUpAppointment", c.followUpAppointment)
+      co.put("followUpDueDate", c.followUpDueDate)
+      co.put("nextVaccineSchedule", c.nextVaccineSchedule)
       co.put("patientInstructions", c.patientInstructions)
+
+      val vObj = JSONObject().apply {
+        put("bloodPressure", c.vitals.bloodPressure)
+        put("pulseRate", c.vitals.pulseRate)
+        put("temperatureCelsius", c.vitals.temperatureCelsius)
+        put("oxygenSaturation", c.vitals.oxygenSaturation)
+        put("weightKg", c.vitals.weightKg)
+        c.vitals.rbs?.let { put("rbs", it) }
+      }
+      co.put("vitals", vObj)
 
       val rxArr = JSONArray()
       c.prescriptions.forEach { rx ->
         val ro = JSONObject()
+        ro.put("id", rx.id)
+        ro.put("name", rx.name)
         ro.put("medicineId", rx.medicineId)
         ro.put("medicineName", rx.medicineName)
         ro.put("dosage", rx.dosage)
@@ -141,6 +158,8 @@ data class SyncDataPayload(
         ro.put("quantity", rx.quantity)
         ro.put("unitPrice", rx.unitPrice)
         ro.put("instructions", rx.instructions)
+        ro.put("isExternal", rx.isExternal)
+        ro.put("medicineType", rx.medicineType)
         rxArr.put(ro)
       }
       co.put("prescriptions", rxArr)
@@ -172,6 +191,30 @@ data class SyncDataPayload(
         ao.put("fileType", a.fileType)
         ao.put("fileName", a.fileName)
         ao.put("notes", a.notes)
+
+        if (context != null) {
+          try {
+            val file = when {
+              a.filePath.isNotBlank() && File(a.filePath).exists() -> File(a.filePath)
+              a.imageUri.isNotBlank() && File(a.imageUri).exists() -> File(a.imageUri)
+              a.imageUri.startsWith("file://") && File(Uri.parse(a.imageUri).path ?: "").exists() -> File(Uri.parse(a.imageUri).path!!)
+              else -> null
+            }
+            val bytes = when {
+              file != null && file.length() in 1..8_000_000 -> file.readBytes()
+              a.imageUri.startsWith("content://") -> {
+                context.contentResolver.openInputStream(Uri.parse(a.imageUri))?.use { it.readBytes() }
+              }
+              else -> null
+            }
+            if (bytes != null && bytes.isNotEmpty() && bytes.size <= 8_000_000) {
+              val b64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+              ao.put("fileBase64", b64)
+            }
+          } catch (e: Exception) {
+            e.printStackTrace()
+          }
+        }
         atArr.put(ao)
       }
       co.put("attachments", atArr)

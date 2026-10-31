@@ -327,6 +327,7 @@ class LocalWifiSyncManager(
       .filter { !deletedMedicines.contains(it.id) }
     val users = ClinicDataPersistence.loadUsers(context) ?: emptyList()
 
+    val treatmentCards = ClinicDataPersistence.loadTreatmentCards(context) ?: emptyList()
     val payload = SyncDataPayload(
       deviceId = deviceId,
       deviceName = deviceName,
@@ -336,13 +337,14 @@ class LocalWifiSyncManager(
       invoices = invoices,
       medicines = medicines,
       users = users,
+      treatmentCards = treatmentCards,
       clinicSettings = ClinicDataPersistence.loadClinicSettings(context),
       deletedPatientIds = deletedPatients,
       deletedConsultationIds = deletedConsultations,
       deletedInvoiceIds = deletedInvoices,
       deletedMedicineIds = deletedMedicines
     )
-    return payload.toJsonString()
+    return payload.toJsonString(context)
   }
 
   fun processIncomingSyncPayload(jsonStr: String): Pair<Boolean, String> {
@@ -371,7 +373,7 @@ class LocalWifiSyncManager(
       ClinicDataPersistence.saveDeletedMedicineIds(context, allDeletedMedicineIds)
 
       val remotePatients = SyncPayloadParser.parsePatients(root.optJSONArray("patients"))
-      val remoteConsultations = SyncPayloadParser.parseConsultations(root.optJSONArray("consultations"))
+      val remoteConsultations = SyncPayloadParser.parseConsultations(root.optJSONArray("consultations"), context)
       val remoteInvoices = SyncPayloadParser.parseInvoices(root.optJSONArray("invoices"))
       val remoteMedicines = SyncPayloadParser.parseMedicines(root.optJSONArray("medicines"))
       val remoteUsers = SyncPayloadParser.parseUsers(root.optJSONArray("users"))
@@ -417,14 +419,38 @@ class LocalWifiSyncManager(
       var newConsCount = 0
       remoteConsultations.forEach { rc ->
         if (!allDeletedConsultationIds.contains(rc.id) && !allDeletedPatientIds.contains(rc.patientId)) {
-          if (!consMap.containsKey(rc.id)) {
+          val existing = consMap[rc.id]
+          if (existing == null) {
             consMap[rc.id] = rc
             newConsCount++
+          } else {
+            val incomingIsNewerOrMoreComplete = (rc.attachments.size >= existing.attachments.size && rc.prescriptions.size >= existing.prescriptions.size) ||
+                (rc.timestamp >= existing.timestamp)
+            if (incomingIsNewerOrMoreComplete) {
+              consMap[rc.id] = rc
+            }
           }
         }
       }
       val mergedConsultations = consMap.values.toList()
       ClinicDataPersistence.saveConsultations(context, mergedConsultations)
+
+      // Merge Treatment Cards
+      val currentTreatmentCards = ClinicDataPersistence.loadTreatmentCards(context) ?: emptyList()
+      val tcMap = currentTreatmentCards.associateBy { it.id }.toMutableMap()
+      val remoteTreatmentCards = SyncPayloadParser.parseTreatmentCards(root.optJSONArray("treatmentCards") ?: root.optJSONArray("treatment_cards"))
+      remoteTreatmentCards.forEach { rtc ->
+        if (!allDeletedPatientIds.contains(rtc.patientId)) {
+          val ex = tcMap[rtc.id]
+          if (ex == null) {
+            tcMap[rtc.id] = rtc
+          } else {
+            val winner = if (rtc.completedSessionsCount >= ex.completedSessionsCount) rtc else ex
+            tcMap[rtc.id] = winner
+          }
+        }
+      }
+      ClinicDataPersistence.saveTreatmentCards(context, tcMap.values.toList())
 
       // Merge Invoices
       val currentInvoices = ClinicDataPersistence.loadInvoices(context) ?: emptyList()

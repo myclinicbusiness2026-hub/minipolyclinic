@@ -1614,7 +1614,92 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       }
     }
 
-    // 2. ALSO deduct store consumables and OTC items in inv.items (Syringe, Cannula, Scalp vein, OTC drugs)
+    // 2. Deduct constituent medicines and consumables from Day-Care Treatment Cards (Cocktails, Injections)
+    val linkedCards = _treatmentCards.value.filter { card ->
+      card.consultationInvoiceId == inv.id || (card.patientId == inv.patientId && card.sessions.any { it.invoiceId == inv.id })
+    }
+    for (card in linkedCards) {
+      if (card.isPatientSupplied) continue
+
+      val billedDoses = if (card.isPrepaidFullCourse || !card.isPayPerVisit) {
+        card.totalSessions.coerceAtLeast(1)
+      } else {
+        1
+      }
+
+      if (card.isCocktail && card.cocktailItems.isNotEmpty()) {
+        for (cItem in card.cocktailItems) {
+          prescribedNames.add(cItem.name.lowercase().trim())
+          val med = medMap[cItem.medicineId]
+            ?: medMap.values.find { it.name.equals(cItem.name, ignoreCase = true) }
+            ?: medMap.values.find { cItem.name.contains(it.name, ignoreCase = true) || (it.genericName.isNotBlank() && cItem.name.contains(it.genericName, ignoreCase = true)) }
+          val qtyToDeduct = (if (cItem.quantity > 0) cItem.quantity else 1) * billedDoses
+          if (med != null && qtyToDeduct > 0) {
+            var remaining = qtyToDeduct
+            val updatedBatches = med.allBatches.map { b ->
+              if (remaining > 0 && b.quantity > 0) {
+                val deduct = minOf(b.quantity, remaining)
+                remaining -= deduct
+                b.copy(quantity = b.quantity - deduct, lastUpdated = now)
+              } else b
+            }
+            medMap[med.id] = med.copy(batches = updatedBatches)
+            modified = true
+          }
+        }
+      } else if (card.medicationName.isNotBlank()) {
+        val cleanMed = card.medicationName
+          .replace(Regex("(?i)^inj\\.?\\s*"), "")
+          .replace(Regex("(?i)^iv\\s*"), "")
+          .replace(Regex("(?i)^im\\s*"), "")
+          .replace(Regex("(?i)^sc\\s*"), "")
+          .trim()
+        prescribedNames.add(cleanMed.lowercase())
+        prescribedNames.add(card.medicationName.lowercase().trim())
+        val med = medMap[card.medicationId]
+          ?: medMap.values.find { it.name.equals(cleanMed, ignoreCase = true) }
+          ?: medMap.values.find { it.name.equals(card.medicationName, ignoreCase = true) }
+          ?: medMap.values.find { cleanMed.contains(it.name, ignoreCase = true) }
+        val qtyToDeduct = billedDoses
+        if (med != null && qtyToDeduct > 0) {
+          var remaining = qtyToDeduct
+          val updatedBatches = med.allBatches.map { b ->
+            if (remaining > 0 && b.quantity > 0) {
+              val deduct = minOf(b.quantity, remaining)
+              remaining -= deduct
+              b.copy(quantity = b.quantity - deduct, lastUpdated = now)
+            } else b
+          }
+          medMap[med.id] = med.copy(batches = updatedBatches)
+          modified = true
+        }
+      }
+
+      // Deduct attached consumables for billed session(s)
+      val sessionsToDeduct = card.sessions.filter { it.invoiceId == inv.id }.ifEmpty { card.sessions.take(1) }
+      sessionsToDeduct.forEach { session ->
+        for (c in session.consumables) {
+          prescribedNames.add(c.name.lowercase().trim())
+          val med = medMap[c.medicineId]
+            ?: medMap.values.find { it.name.equals(c.name, ignoreCase = true) }
+            ?: medMap.values.find { c.name.contains(it.name, ignoreCase = true) }
+          if (med != null && c.quantity > 0) {
+            var remaining = c.quantity
+            val updatedBatches = med.allBatches.map { b ->
+              if (remaining > 0 && b.quantity > 0) {
+                val deduct = minOf(b.quantity, remaining)
+                remaining -= deduct
+                b.copy(quantity = b.quantity - deduct, lastUpdated = now)
+              } else b
+            }
+            medMap[med.id] = med.copy(batches = updatedBatches)
+            modified = true
+          }
+        }
+      }
+    }
+
+    // 3. ALSO deduct store consumables and OTC items in inv.items (Syringe, Cannula, Scalp vein, OTC drugs)
     for (item in inv.items.filter { !it.isProcedure }) {
       if (item.name.contains("[လူနာပါဆေး]") || item.name.contains("Patient's Own") || item.totalPrice == 0.0) {
         continue
@@ -2504,7 +2589,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       deletedConsultationIds = ClinicDataPersistence.loadDeletedConsultationIds(ctx).toList(),
       deletedMedicineIds = ClinicDataPersistence.loadDeletedMedicineIds(ctx).toList()
     )
-    val root = JSONObject(payload.toJsonString())
+    val root = JSONObject(payload.toJsonString(ctx))
     root.put("exportTime", BurmeseDateUtils.getNowFormatted())
     root.put("clinic", clinicSettings.value.clinicNameMm)
     return root.toString(2)
@@ -2555,7 +2640,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
       // 3. Consultations (Non-destructive ID-based merge)
       if (root.has("consultations")) {
-        val parsedCons = SyncPayloadParser.parseConsultations(root.getJSONArray("consultations"))
+        val parsedCons = SyncPayloadParser.parseConsultations(root.getJSONArray("consultations"), ctx)
         val currentConsMap = _consultations.value.associateBy { it.id }.toMutableMap()
         parsedCons.forEach { c ->
           if (!delConsSet.contains(c.id) && !delPatSet.contains(c.patientId)) {

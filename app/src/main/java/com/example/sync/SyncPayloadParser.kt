@@ -1,5 +1,7 @@
 package com.example.sync
 
+import android.content.Context
+import java.io.File
 import com.example.model.*
 import com.example.ui.screens.treatment.*
 import org.json.JSONArray
@@ -53,7 +55,7 @@ object SyncPayloadParser {
     return list
   }
 
-  fun parseConsultations(arr: JSONArray?): List<ConsultationRecord> {
+  fun parseConsultations(arr: JSONArray?, context: Context? = null): List<ConsultationRecord> {
     if (arr == null) return emptyList()
     val list = mutableListOf<ConsultationRecord>()
     for (i in 0 until arr.length()) {
@@ -65,14 +67,18 @@ object SyncPayloadParser {
           val ro = rxArr.getJSONObject(j)
           rxs.add(
             PrescribedDrug(
+              id = ro.optString("id", UUID.randomUUID().toString()),
+              name = ro.optString("name", ro.optString("medicineName")),
               medicineId = ro.optString("medicineId"),
-              medicineName = ro.optString("medicineName"),
+              medicineName = ro.optString("medicineName", ro.optString("name")),
               dosage = ro.optString("dosage"),
               frequency = ro.optString("frequency"),
               duration = ro.optString("duration"),
               quantity = ro.optInt("quantity", 1),
               unitPrice = ro.optDouble("unitPrice", 0.0),
-              instructions = ro.optString("instructions", "")
+              instructions = ro.optString("instructions", ""),
+              isExternal = ro.optBoolean("isExternal", false),
+              medicineType = ro.optString("medicineType", "")
             )
           )
         }
@@ -83,14 +89,37 @@ object SyncPayloadParser {
       if (atArr != null) {
         for (j in 0 until atArr.length()) {
           val ao = atArr.getJSONObject(j)
+          val fileBase64 = ao.optString("fileBase64")
+          var finalImageUri = ao.optString("imageUri")
+          var finalFilePath = ao.optString("filePath", finalImageUri)
+
+          if (fileBase64.isNotBlank() && context != null) {
+            try {
+              val bytes = android.util.Base64.decode(fileBase64, android.util.Base64.DEFAULT)
+              val attachmentsDir = File(context.filesDir, "attachments").apply { if (!exists()) mkdirs() }
+              val isPdf = ao.optString("fileType").equals("PDF", ignoreCase = true) || ao.optString("fileName").endsWith(".pdf", ignoreCase = true)
+              val ext = if (isPdf) ".pdf" else ".jpg"
+              val attId = ao.optString("id", UUID.randomUUID().toString())
+              val safeName = "synced_${attId}$ext"
+              val destFile = File(attachmentsDir, safeName)
+              if (!destFile.exists() || destFile.length() == 0L) {
+                destFile.writeBytes(bytes)
+              }
+              finalFilePath = destFile.absolutePath
+              finalImageUri = destFile.absolutePath
+            } catch (e: Exception) {
+              e.printStackTrace()
+            }
+          }
+
           attachments.add(
             MedicalAttachment(
               id = ao.optString("id", UUID.randomUUID().toString()),
               title = ao.optString("title"),
               category = ao.optString("category", "Lab Report"),
               date = ao.optString("date"),
-              imageUri = ao.optString("imageUri"),
-              filePath = ao.optString("filePath", ao.optString("imageUri")),
+              imageUri = finalImageUri,
+              filePath = finalFilePath,
               fileType = ao.optString("fileType", "Image"),
               fileName = ao.optString("fileName", ao.optString("title")),
               notes = ao.optString("notes")
@@ -134,6 +163,24 @@ object SyncPayloadParser {
         for (j in 0 until toArr.length()) treatmentOrderDetails.add(toArr.getString(j))
       }
 
+      val siArr = o.optJSONArray("suggestedInvestigations")
+      val suggestedInvestigations = mutableListOf<String>()
+      if (siArr != null) {
+        for (j in 0 until siArr.length()) suggestedInvestigations.add(siArr.getString(j))
+      }
+
+      val vo = o.optJSONObject("vitals")
+      val vitals = if (vo != null) {
+        VitalSigns(
+          bloodPressure = vo.optString("bloodPressure", vo.optString("bp", "120/80 mmHg")),
+          pulseRate = vo.optInt("pulseRate", vo.optInt("pr", 76)),
+          temperatureCelsius = vo.optDouble("temperatureCelsius", vo.optDouble("temp", 98.4)),
+          oxygenSaturation = vo.optInt("oxygenSaturation", vo.optInt("spo2", 98)),
+          weightKg = vo.optDouble("weightKg", vo.optDouble("weight", 60.0)),
+          rbs = if (vo.has("rbs") && !vo.isNull("rbs")) vo.getDouble("rbs") else null
+        )
+      } else VitalSigns()
+
       list.add(
         ConsultationRecord(
           id = o.optString("id"),
@@ -149,9 +196,15 @@ object SyncPayloadParser {
           diagnosisList = diagnoses,
           prescriptions = rxs,
           selectedProcedures = procedures,
+          suggestedInvestigations = suggestedInvestigations,
           treatmentOrderDetails = treatmentOrderDetails,
           attachments = attachments,
+          vitals = vitals,
           consultationFee = o.optDouble("consultationFee", 8000.0),
+          followUpAppointment = o.optString("followUpAppointment"),
+          followUpDueDate = o.optString("followUpDueDate"),
+          nextVaccineSchedule = o.optString("nextVaccineSchedule"),
+          patientInstructions = o.optString("patientInstructions"),
           timestamp = o.optString("timestamp")
         )
       )

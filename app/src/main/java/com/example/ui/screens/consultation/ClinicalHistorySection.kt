@@ -65,15 +65,150 @@ fun ClinicalHistorySection(
     onActiveComplaintsCountChange(activeComplaints.size)
   }
 
-  // Auto-init remarks from reception chief complaint or existing subjective notes
-  LaunchedEffect(patientId, patientChiefComplaint) {
+  // Auto-init and re-hydrate full clinical history from existing subjective notes or reception chief complaint
+  LaunchedEffect(patientId, subjectiveNotes) {
     if (initializedFromExisting) return@LaunchedEffect
     if (subjectiveNotes.isNotBlank()) {
-      if (subjectiveNotes.contains("[CLINICAL REMARKS]")) {
-        val extracted = subjectiveNotes.substringAfter("[CLINICAL REMARKS]").trim()
-        if (extracted.isNotBlank()) historyRemarks = extracted
-      } else if (!subjectiveNotes.contains("[CHIEF COMPLAINTS & HPI]") && !subjectiveNotes.contains("[BACKGROUND MEDICAL HISTORY]")) {
-        historyRemarks = subjectiveNotes
+      try {
+        val lines = subjectiveNotes.lines()
+        var currentSection = ""
+        var currentComplaint: ComplaintItem? = null
+
+        var i = 0
+        while (i < lines.size) {
+          val rawLine = lines[i]
+          val line = rawLine.trim()
+
+          if (line == "[CHIEF COMPLAINTS & HPI]") {
+            currentSection = "COMPLAINTS"
+            if (currentComplaint != null) {
+              activeComplaints.add(currentComplaint)
+              currentComplaint = null
+            }
+            i++
+            continue
+          } else if (line == "[BACKGROUND MEDICAL HISTORY]") {
+            if (currentComplaint != null) {
+              activeComplaints.add(currentComplaint)
+              currentComplaint = null
+            }
+            currentSection = "BACKGROUND"
+            i++
+            continue
+          } else if (line == "[CLINICAL REMARKS]") {
+            if (currentComplaint != null) {
+              activeComplaints.add(currentComplaint)
+              currentComplaint = null
+            }
+            currentSection = "REMARKS"
+            historyRemarks = lines.subList(i + 1, lines.size).joinToString("\n").trim()
+            break
+          }
+
+          when (currentSection) {
+            "COMPLAINTS" -> {
+              if (line.matches(Regex("""^#\d+\..*"""))) {
+                if (currentComplaint != null) {
+                  activeComplaints.add(currentComplaint)
+                  currentComplaint = null
+                }
+                val afterNum = line.substringAfter(". ").trim()
+                val name = afterNum.substringBefore(" - ").trim()
+                val rem = afterNum.substringAfter(" - ", "")
+                val dur = rem.substringBefore(" [").trim()
+                val insideBrackets = if (rem.contains("[") && rem.contains("]")) rem.substringAfter("[").substringBefore("]") else ""
+                val bracketParts = insideBrackets.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+
+                var sev = "Moderate"
+                var charStr = ""
+                var onsetStr = "Gradual"
+                if (bracketParts.isNotEmpty()) {
+                  sev = bracketParts[0]
+                  if (bracketParts.size == 2) {
+                    onsetStr = bracketParts[1]
+                  } else if (bracketParts.size >= 3) {
+                    charStr = bracketParts[1]
+                    onsetStr = bracketParts[2]
+                  }
+                }
+
+                currentComplaint = ComplaintItem(
+                  id = "loaded_${System.currentTimeMillis()}_${activeComplaints.size}_$i",
+                  name = name,
+                  duration = dur,
+                  severity = sev,
+                  character = charStr,
+                  onset = onsetStr
+                )
+              } else if (currentComplaint != null && (line.startsWith("→") || line.startsWith("->") || rawLine.contains("→"))) {
+                val clean = rawLine.substringAfter("→").trim()
+                if (clean.contains("Relieved by:") || clean.contains("Aggravated by:")) {
+                  val parts = clean.split("|")
+                  for (p in parts) {
+                    val pt = p.trim()
+                    if (pt.startsWith("Relieved by:")) {
+                      val items = pt.substringAfter("Relieved by:").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                      currentComplaint.relievingFactors.addAll(items)
+                    } else if (pt.startsWith("Aggravated by:")) {
+                      val items = pt.substringAfter("Aggravated by:").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                      currentComplaint.aggravatingFactors.addAll(items)
+                    }
+                  }
+                }
+                if (clean.startsWith("Associated:")) {
+                  val items = clean.substringAfter("Associated:").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                  currentComplaint.associatedSymptoms.addAll(items)
+                }
+                if (clean.startsWith("Notes:")) {
+                  currentComplaint.notes = clean.substringAfter("Notes:").trim()
+                }
+              }
+            }
+            "BACKGROUND" -> {
+              if (line.startsWith("• PMHx:")) {
+                val items = line.substringAfter("• PMHx:").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                pastMedicalHistory.clear()
+                pastMedicalHistory.addAll(items)
+              } else if (line.startsWith("• PSHx:")) {
+                val items = line.substringAfter("• PSHx:").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                pastSurgicalHistory.clear()
+                pastSurgicalHistory.addAll(items)
+              } else if (line.startsWith("• Drug Allergies:")) {
+                val items = line.substringAfter("• Drug Allergies:").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                drugAllergies.clear()
+                drugAllergies.addAll(items)
+              } else if (line.startsWith("• Regular Daily Meds")) {
+                val items = line.substringAfter(":").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                regularMedicationsList.clear()
+                regularMedicationsList.addAll(items)
+              } else if (line.startsWith("• Menstrual/OBGYN:")) {
+                menstrualHistory = line.substringAfter("• Menstrual/OBGYN:").trim()
+              } else if (line.startsWith("• Social History:")) {
+                val items = line.substringAfter("• Social History:").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                socialHabits.clear()
+                socialHabits.addAll(items)
+              } else if (line.startsWith("• Trauma/Injury:")) {
+                val items = line.substringAfter("• Trauma/Injury:").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                traumaHistory.clear()
+                traumaHistory.addAll(items)
+              }
+            }
+            else -> {
+              if (!subjectiveNotes.contains("[CHIEF COMPLAINTS & HPI]") && !subjectiveNotes.contains("[BACKGROUND MEDICAL HISTORY]")) {
+                historyRemarks = subjectiveNotes.trim()
+                break
+              }
+            }
+          }
+          i++
+        }
+        if (currentComplaint != null) {
+          activeComplaints.add(currentComplaint)
+        }
+      } catch (e: Exception) {
+        if (historyRemarks.isBlank() && subjectiveNotes.isNotBlank()) {
+          historyRemarks = subjectiveNotes
+        }
       }
     } else if (patientChiefComplaint.isNotBlank()) {
       if (historyRemarks.isBlank() || historyRemarks == "General clinical consultation") {

@@ -125,11 +125,12 @@ data class TreatmentCard(
   val notes: String = ""
 ) {
   val displayName: String get() {
-    val baseName = if (isCocktail && cocktailItems.isNotEmpty()) {
-      val itemsStr = cocktailItems.joinToString(" + ") { it.name + if (it.dosage.isNotBlank()) " ${it.dosage}" else "" }
-      if (medicationName.isNotBlank() && !itemsStr.contains(medicationName)) "$medicationName + $itemsStr" else itemsStr
+    val baseName = if (medicationName.isNotBlank()) {
+      medicationName.trim()
+    } else if (isCocktail && cocktailItems.isNotEmpty()) {
+      cocktailItems.joinToString(" + ") { it.name + if (it.dosage.isNotBlank()) " ${it.dosage}" else "" }
     } else {
-      medicationName
+      "Injection / Treatment"
     }
     return if (isPatientSupplied) "$baseName (Patient's Own Medicine / လူနာပါဆေး)" else baseName
   }
