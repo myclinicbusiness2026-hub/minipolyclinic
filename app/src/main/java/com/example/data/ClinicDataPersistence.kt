@@ -308,7 +308,7 @@ object ClinicDataPersistence {
           )
         )
       }
-      list.filterNot { deletedUsers.contains(it.id) || deletedUsers.contains(it.username.lowercase()) }
+      list
     } catch (_: Exception) {
       null
     }
@@ -824,7 +824,7 @@ object ClinicDataPersistence {
           )
         )
       }
-      list
+      list.filterNot { deletedUsers.contains(it.id) || deletedUsers.contains(it.username.lowercase()) }
     } catch (_: Exception) {
       null
     }
