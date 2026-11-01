@@ -763,6 +763,7 @@ fun DoctorConsultationScreen(
             prescriptions = prescribedDrugs.toList(),
             selectedProcedures = selectedProcedures.toList(),
             suggestedInvestigations = selectedInvestigations.toList(),
+            treatmentOrderDetails = orderedTreatmentCards.map { it.orderSummaryText },
             consultationFee = consultationFeeText.toDoubleOrNull() ?: 8000.0,
             drawingPages = resolvedPages,
             canvasNotes = currentNotes,
@@ -773,7 +774,8 @@ fun DoctorConsultationScreen(
             medicalLeave = medicalLeaveState,
             referralRecord = referralState,
             attachments = attachmentsState.toList(),
-            vitals = currentVitals
+            vitals = currentVitals,
+            timestamp = BurmeseDateUtils.getNowFormatted()
           )
           viewModel.showA4DocPreview(previewRecord)
         }
@@ -1204,38 +1206,6 @@ fun DoctorConsultationScreen(
       onDismiss = { showAddTreatmentOrderModal = false },
       onConfirm = { card ->
         orderedTreatmentCards.add(card)
-        // Also add medication to prescribedDrugs for transparency on A4 print and Rx
-        val rxName = if (card.isCocktail && card.cocktailItems.isNotEmpty()) {
-          val itemsStr = card.cocktailItems.joinToString(" + ") { "${it.name} ${it.dosage}".trim() }
-          if (card.medicationName.isNotBlank() && !card.medicationName.contains("Mix", ignoreCase = true) && !itemsStr.contains(card.medicationName)) {
-            "${card.medicationName} ($itemsStr)"
-          } else {
-            itemsStr
-          }
-        } else {
-          card.medicationName
-        }
-        val rxDosage = if (card.isCocktail) {
-          if (card.cocktailItems.isNotEmpty()) "${card.cocktailItems.size} Drugs Mixed" else card.dosage
-        } else card.dosage.ifBlank { "${card.route.label} (${card.frequency})" }
-        val patientOwnTag = if (card.isPatientSupplied) " [လူနာပါဆေး]" else ""
-        val finalRxName = rxName + patientOwnTag
-
-        if (prescribedDrugs.none { it.name.equals(finalRxName, ignoreCase = true) }) {
-          prescribedDrugs.add(
-            PrescribedDrug(
-              name = finalRxName,
-              medicineName = finalRxName,
-              dosage = rxDosage,
-              frequency = card.frequency,
-              duration = "${card.totalDays} Days",
-              quantity = card.totalSessions,
-              unitPrice = if (card.isPatientSupplied) 0.0 else card.medicationFee,
-              instructions = "${card.route.label} - ${card.instructions}",
-              isExternal = card.isPatientSupplied
-            )
-          )
-        }
         showAddTreatmentOrderModal = false
       }
     )

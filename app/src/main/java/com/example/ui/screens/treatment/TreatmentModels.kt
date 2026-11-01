@@ -134,6 +134,37 @@ data class TreatmentCard(
     }
     return if (isPatientSupplied) "$baseName (Patient's Own Medicine / လူနာပါဆေး)" else baseName
   }
+  val orderSummaryText: String get() {
+    val routeShort = when (route) {
+      TreatmentRoute.IM -> "IM"
+      TreatmentRoute.IV_PUSH -> "IV"
+      TreatmentRoute.IV_INFUSION -> "IV Infusion"
+      TreatmentRoute.SC -> "SC"
+      TreatmentRoute.NEBULIZATION -> "Nebulization"
+      TreatmentRoute.DRESSING -> "Wound Dressing"
+    }
+    val cleanMed = if (isCocktail && cocktailItems.isNotEmpty()) {
+      if (medicationName.isNotBlank() && !medicationName.contains("Mix", ignoreCase = true) && !medicationName.contains("Drugs", ignoreCase = true)) {
+        medicationName.trim()
+      } else {
+        cocktailItems.joinToString(" + ") { it.name + if (it.dosage.isNotBlank()) " ${it.dosage}" else "" }
+      }
+    } else {
+      medicationName.ifBlank { "Injection" }.trim()
+    }
+    val drugNameOnly = cleanMed
+      .replace(Regex("(?i)^(im|iv\\s*push|iv\\s*infusion|iv|sc)\\s*:?\\s*"), "")
+      .trim()
+    val freq = frequency.trim()
+    val isStat = freq.contains("stat", ignoreCase = true)
+    val freqStr = if (freq.isNotBlank()) " $freq" else ""
+    val durStr = if (isStat || totalDays <= 0) "" else {
+      val dayWord = if (totalDays == 1) "1 day" else "$totalDays days"
+      " $dayWord"
+    }
+    val patientOwnStr = if (isPatientSupplied) " [လူနာပါဆေး]" else ""
+    return "$routeShort $drugNameOnly$freqStr$durStr$patientOwnStr".trim()
+  }
   val completedSessionsCount: Int get() = sessions.count { it.status == TreatmentStatus.COMPLETED }
   val isFullyCompleted: Boolean get() = cardStatus == TreatmentStatus.COMPLETED || (sessions.isNotEmpty() && sessions.all { it.status == TreatmentStatus.COMPLETED })
   val isDiscontinued: Boolean get() = cardStatus == TreatmentStatus.DISCONTINUED || cardStatus == TreatmentStatus.CANCELLED

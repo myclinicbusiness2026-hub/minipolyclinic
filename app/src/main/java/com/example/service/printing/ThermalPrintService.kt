@@ -266,8 +266,13 @@ object ThermalPrintService {
 
     // Attending Physician (Name & Degree ONLY - NO SAMA on receipt)
     val rawDocName = settings?.doctorName?.ifBlank { "Dr. Nyan Kaung Sett" } ?: "Dr. Nyan Kaung Sett"
-    val cleanDocName = rawDocName.replace("(?i)(,\\s*)?M\\.?B\\.?\\,?\\s*B\\.?S\\.?(.*)".toRegex(), "").trim()
-    val degree = settings?.doctorDegree?.ifBlank { "M.B.,B.S (MDY)" } ?: "M.B.,B.S (MDY)"
+    val cleanDocName = if (rawDocName.contains("NKS", ignoreCase = true) || rawDocName.equals("nks", ignoreCase = true) || rawDocName.isBlank()) {
+      "Dr. Nyan Kaung Sett"
+    } else {
+      rawDocName.replace("(?i)(,\\s*)?M\\.?B\\.?\\,?\\s*B\\.?S\\.?(.*)".toRegex(), "").trim()
+    }
+    val rawDegree = settings?.doctorDegree?.ifBlank { "M.B.,B.S (MDY)" } ?: "M.B.,B.S (MDY)"
+    val degree = if (rawDegree.contains("Mandalay", ignoreCase = true) || rawDegree.isBlank()) "M.B.,B.S (MDY)" else rawDegree
     paint.textSize = if (is80mm) 16f else 13f
     canvas.drawText("$cleanDocName  $degree", centerX, curY + paint.textSize * 0.8f, paint)
     curY += paint.textSize + 5f
@@ -310,8 +315,11 @@ object ThermalPrintService {
     curY += paint.textSize + 6f
 
     // Cashier & Status
+    val cleanCashier = if (cashierName.contains("NKS", ignoreCase = true) || cashierName.equals("nks", ignoreCase = true)) {
+      "Dr. Nyan Kaung Sett"
+    } else cashierName
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-    canvas.drawText("Cashier : $cashierName", leftMargin, curY + paint.textSize * 0.8f, paint)
+    canvas.drawText("Cashier : $cleanCashier", leftMargin, curY + paint.textSize * 0.8f, paint)
     paint.textAlign = Paint.Align.RIGHT
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     val isPaid = invoice.isPaid || invoice.paymentStatus.equals("Paid", ignoreCase = true)

@@ -2,6 +2,9 @@ package com.example.service.printing
 
 import android.graphics.*
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import com.example.model.ConsultationRecord
 import com.example.model.Patient
 import com.example.model.PrescribedDrug
@@ -35,6 +38,23 @@ object A4PdfNativeCanvasRenderer {
            d.contains("inj") || d.contains("amp") || d.contains("vial") ||
            i.contains("iv") || i.contains("im") || i.contains("sc") ||
            i.contains("drip") || i.contains("push") || i.contains("neb")
+  }
+
+  /**
+   * Return clean list of treatment and injection lines to avoid duplicate printing
+   */
+  fun getTreatmentAndInjectionItems(consultation: ConsultationRecord): List<String> {
+    if (consultation.treatmentOrderDetails.isNotEmpty()) {
+      return consultation.treatmentOrderDetails
+    }
+    return consultation.prescriptions.filter { isInjectable(it) }.map { drug ->
+      val name = drug.effectiveName.ifBlank { drug.name.ifBlank { drug.medicineName } }
+      val dose = if (drug.dosage.isNotBlank() && !name.contains(drug.dosage)) " ${drug.dosage}" else ""
+      val dir = formatDosageAndDirection(drug)
+      val dirStr = if (dir.isNotBlank()) " $dir" else ""
+      val dur = if (drug.duration.isNotBlank()) " ${drug.duration}" else ""
+      "$name$dose$dirStr$dur".trim()
+    }
   }
 
   /**
@@ -73,7 +93,8 @@ object A4PdfNativeCanvasRenderer {
       16f + (Math.ceil(consultation.suggestedInvestigations.size / 2.0).toFloat() * 14f)
     } else 0f
 
-    val injItemsCount = consultation.treatmentOrderDetails.size + consultation.prescriptions.count { isInjectable(it) }
+    val injItems = getTreatmentAndInjectionItems(consultation)
+    val injItemsCount = injItems.size
     val injH = if (injItemsCount > 0) 16f + (injItemsCount * 21f) else 0f
 
     val contentStartY = p1Top + clinicalH + diagH + invH + injH
@@ -122,7 +143,8 @@ object A4PdfNativeCanvasRenderer {
 
     val diagH = if (consultation.diagnosisList.isNotEmpty() || consultation.assessment.isNotBlank()) 26f else 0f
     val invH = if (consultation.suggestedInvestigations.isNotEmpty()) 16f + (Math.ceil(consultation.suggestedInvestigations.size / 2.0).toFloat() * 14f) else 0f
-    val injItemsCount = consultation.treatmentOrderDetails.size + consultation.prescriptions.count { isInjectable(it) }
+    val injItems = getTreatmentAndInjectionItems(consultation)
+    val injItemsCount = injItems.size
     val injH = if (injItemsCount > 0) 16f + (injItemsCount * 21f) else 0f
     val rxH = if (oralRx.isNotEmpty()) 24f + (oralRx.size * 18.5f) else 0f
 
@@ -446,7 +468,8 @@ object A4PdfNativeCanvasRenderer {
     }
 
     // 8. Treatment & Injections on Page 1 (if fits before 680pt)
-    val injCount = consultation.treatmentOrderDetails.size + consultation.prescriptions.count { isInjectable(it) }
+    val injItems = getTreatmentAndInjectionItems(consultation)
+    val injCount = injItems.size
     val injH = if (injCount > 0) 16f + (injCount * 21f) else 0f
     val injDrawnOnP1 = injCount > 0 && (currentY + injH <= 680f)
     if (injDrawnOnP1) {
@@ -519,7 +542,7 @@ object A4PdfNativeCanvasRenderer {
     val age = patient?.age ?: 45
     val pGender = patient?.gender?.name
     val gender = if (pGender == "FEMALE") "F" else "M"
-    val date = consultation.timestamp.ifBlank { "2026-10-19" }.take(16)
+    val date = consultation.timestamp.ifBlank { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date()) }.take(16)
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     paint.color = Color.rgb(0x47, 0x55, 0x69)
     paint.textSize = 8.5f
@@ -537,7 +560,8 @@ object A4PdfNativeCanvasRenderer {
     val oralRx = consultation.prescriptions.filter { !isInjectable(it) }
 
     // 3. Treatment & Injections on Page 2 (if overflowed from Page 1)
-    val injCount = consultation.treatmentOrderDetails.size + consultation.prescriptions.count { isInjectable(it) }
+    val injItems = getTreatmentAndInjectionItems(consultation)
+    val injCount = injItems.size
     // If not drawn on Page 1, draw here
     val hasInjections = injCount > 0
     if (hasInjections && rxRowsOnP1 == 0) {
@@ -1051,7 +1075,7 @@ object A4PdfNativeCanvasRenderer {
     val pGender = patient?.gender?.name
     val gender = if (pGender == "FEMALE") "F" else "M"
     val phone = patient?.phone ?: "09-123456789"
-    val date = consultation.timestamp.ifBlank { "2026-10-19" }
+    val date = consultation.timestamp.ifBlank { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date()) }
 
     paint.textSize = 9.5f
     val textY = topY + 15f
@@ -1581,19 +1605,7 @@ object A4PdfNativeCanvasRenderer {
     topY: Float,
     consultation: ConsultationRecord
   ): Float {
-    val items = mutableListOf<String>()
-    consultation.treatmentOrderDetails.forEach { items.add(it) }
-    consultation.prescriptions.filter { isInjectable(it) }.forEach { drug ->
-      val name = drug.effectiveName.ifBlank { drug.name.ifBlank { drug.medicineName } }
-      val dose = if (drug.dosage.isNotBlank() && !name.contains(drug.dosage)) " (${drug.dosage})" else ""
-      val dir = formatDosageAndDirection(drug)
-      val dirStr = if (dir.isNotBlank()) " - $dir" else ""
-      val dur = if (drug.duration.isNotBlank()) " (${drug.duration})" else ""
-      val line = "• $name$dose$dirStr$dur"
-      if (!items.any { it.contains(name, ignoreCase = true) }) {
-        items.add(line)
-      }
-    }
+    val items = getTreatmentAndInjectionItems(consultation)
     if (items.isEmpty()) return topY
 
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -1898,38 +1910,51 @@ object A4PdfNativeCanvasRenderer {
     paint.color = Color.rgb(0x9E, 0x9E, 0x9E)
     canvas.drawText("CONFIDENTIAL MEDICAL RECORD", 22f, height - 20f, paint)
 
-    // Right Footer: Doctor Credentials & Attending Physician Seal (Pure English as requested)
-    val sigRightX = width - 26f
-    paint.textAlign = Paint.Align.RIGHT
+    // Right Footer: Doctor Credentials & Attending Physician Seal (Pure English - Centered horizontally)
+    val sealCenterX = width - 95f
+    paint.textAlign = Paint.Align.CENTER
 
     val rawDocName = consultation.doctorName.ifBlank { printSettings.doctorName.ifBlank { "Dr. Nyan Kaung Sett" } }
-    val cleanDocName = rawDocName.replace("(?i)(,\\s*)?M\\.?B\\.?\\,?\\s*B\\.?S\\.?(.*)".toRegex(), "").trim()
-    val docDegree = consultation.doctorDegree.ifBlank { printSettings.doctorDegree.ifBlank { "M.B.,B.S (MDY)" } }
+    val cleanDocName = if (rawDocName.contains("NKS", ignoreCase = true) || rawDocName.equals("nks", ignoreCase = true) || rawDocName.isBlank()) {
+      "Dr. Nyan Kaung Sett"
+    } else {
+      rawDocName.replace("(?i)(,\\s*)?M\\.?B\\.?\\,?\\s*B\\.?S\\.?(.*)".toRegex(), "").trim()
+    }
+
+    val rawDegree = consultation.doctorDegree.ifBlank { printSettings.doctorDegree.ifBlank { "M.B.,B.S (MDY)" } }
+    val docDegree = if (rawDegree.contains("Mandalay", ignoreCase = true) || rawDegree.isBlank()) "M.B.,B.S (MDY)" else rawDegree
+
     val rawDocSama = consultation.doctorSama.ifBlank { printSettings.doctorSama.ifBlank { "47414" } }
-    val cleanSama = rawDocSama.replace("(?i)^(ဆမ|SAMA)[:\\s-]*".toRegex(), "").trim()
+    val cleanSama = rawDocSama.replace("(?i)^(ဆမ|SAMA)[:\\s-]*".toRegex(), "").trim().ifBlank { "47414" }
+
+    // Thin signature line
+    paint.color = Color.rgb(0x1B, 0x5E, 0x20)
+    paint.strokeWidth = 0.8f
+    canvas.drawLine(sealCenterX - 65f, sigY - 2f, sealCenterX + 65f, sigY - 2f, paint)
 
     paint.color = Color.rgb(0x1B, 0x5E, 0x20)
     paint.textSize = 10.5f
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    canvas.drawText(cleanDocName, sigRightX, sigY + 10f, paint)
+    canvas.drawText(cleanDocName, sealCenterX, sigY + 10f, paint)
 
     paint.color = Color.rgb(0x42, 0x42, 0x42)
     paint.textSize = 8.5f
     paint.typeface = Typeface.DEFAULT
-    canvas.drawText(docDegree, sigRightX, sigY + 23f, paint)
+    canvas.drawText(docDegree, sealCenterX, sigY + 23f, paint)
 
     paint.color = Color.rgb(0x1B, 0x5E, 0x20)
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    canvas.drawText("SAMA: $cleanSama", sigRightX, sigY + 36f, paint)
+    canvas.drawText("SAMA: $cleanSama", sealCenterX, sigY + 36f, paint)
 
     paint.color = Color.rgb(0x9E, 0x9E, 0x9E)
     paint.textSize = 7.5f
     paint.typeface = Typeface.DEFAULT
-    canvas.drawText(docLabel, sigRightX, sigY + 48f, paint)
+    canvas.drawText(docLabel, sealCenterX, sigY + 48f, paint)
 
-    // Page Number
+    // Page Number (Right-aligned at bottom)
+    paint.textAlign = Paint.Align.RIGHT
     paint.textSize = 8f
-    canvas.drawText("Page $pageNumber of $totalPages", sigRightX, height - 20f, paint)
+    canvas.drawText("Page $pageNumber of $totalPages", width - 26f, height - 20f, paint)
 
     paint.textAlign = Paint.Align.LEFT
   }

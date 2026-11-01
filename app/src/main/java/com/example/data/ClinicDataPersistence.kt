@@ -699,6 +699,10 @@ object ClinicDataPersistence {
         put("cashierName", inv.cashierName)
         put("timestamp", inv.timestamp)
         put("isInventoryDeducted", inv.isInventoryDeducted)
+        put("discountPercent", inv.discountPercent)
+        put("doctorFeeDiscount", inv.doctorFeeDiscount)
+        put("pharmacyDiscount", inv.pharmacyDiscount)
+        put("procedureDiscount", inv.procedureDiscount)
 
         val itemsArr = JSONArray()
         inv.items.forEach { item ->
@@ -760,7 +764,11 @@ object ClinicDataPersistence {
             changeAmount = o.optDouble("changeAmount", 0.0),
             cashierName = o.optString("cashierName", "Staff"),
             timestamp = o.optString("timestamp"),
-            isInventoryDeducted = o.optBoolean("isInventoryDeducted", false)
+            isInventoryDeducted = o.optBoolean("isInventoryDeducted", false),
+            discountPercent = o.optDouble("discountPercent", 0.0),
+            doctorFeeDiscount = o.optDouble("doctorFeeDiscount", 0.0),
+            pharmacyDiscount = o.optDouble("pharmacyDiscount", 0.0),
+            procedureDiscount = o.optDouble("procedureDiscount", 0.0)
           )
         )
       }

@@ -239,22 +239,22 @@ object ClinicInitialDataSeeder {
     UserAccount(
       id = "USR-001",
       username = "nks",
-      fullName = "Dr. Nyan Kaung Sett (Admin)",
+      fullName = "Dr. Nyan Kaung Sett",
       role = UserRole.ADMIN,
       passwordHash = "2121994",
       pinCode = "2121994",
-      samaNumber = "ဆမ-၂၄၅၈၉",
-      degree = "M.B.,B.S (Mandalay)"
+      samaNumber = "47414",
+      degree = "M.B.,B.S (MDY)"
     ),
     UserAccount(
       id = "USR-001-ADMIN",
       username = "admin",
-      fullName = "Clinic Administrator (Admin)",
+      fullName = "Clinic Administrator",
       role = UserRole.ADMIN,
       passwordHash = "2121994",
       pinCode = "2121994",
-      samaNumber = "ဆမ-၂၄၅၈၉",
-      degree = "M.B.,B.S (Mandalay)"
+      samaNumber = "47414",
+      degree = "M.B.,B.S (MDY)"
     ),
     UserAccount(
       id = "USR-002",

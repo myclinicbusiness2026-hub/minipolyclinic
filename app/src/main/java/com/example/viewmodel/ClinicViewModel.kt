@@ -1130,17 +1130,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   ) {
     val patient = _patients.value.find { it.id == patientId } ?: return
     val treatmentOrderDetails = treatmentOrders.map { card ->
-      val doseStr = if (card.dosage.isNotBlank() && !card.displayName.contains(card.dosage, ignoreCase = true)) " (${card.dosage})" else ""
-      val routeStr = when (card.route) {
-        TreatmentRoute.IM -> "IM"
-        TreatmentRoute.IV_PUSH -> "IV Push"
-        TreatmentRoute.IV_INFUSION -> "IV Infusion"
-        TreatmentRoute.SC -> "SC"
-        TreatmentRoute.NEBULIZATION -> "Nebulization"
-        TreatmentRoute.DRESSING -> "Dressing"
-      }
-      val freqStr = if (card.frequency.isNotBlank()) " - ${card.frequency}" else ""
-      "${routeStr}: ${card.displayName}$doseStr$freqStr"
+      card.orderSummaryText
     }
 
     val consultation = ConsultationRecord(
@@ -1253,21 +1243,11 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     treatmentOrders.forEach { card ->
       val sFee = if (card.sessionFee > 0) card.sessionFee else card.route.getDefaultFee(clinicSettings.value)
       val totalFeePerDose = card.medicationFee + sFee
-      val routeShort = card.route.label.split(" ").first()
-      val cleanMedName = card.medicationName
-        .replace(Regex("(?i)^inj\\.?\\s*"), "")
-        .replace(Regex("(?i)^iv\\s*"), "")
-        .replace(Regex("(?i)^im\\s*"), "")
-        .replace(Regex("(?i)^sc\\s*"), "")
-        .trim()
-      val doseStr = if (card.dosage.isNotBlank() && !cleanMedName.contains(card.dosage, ignoreCase = true)) " ${card.dosage}" else ""
-      val freqStr = if (card.frequency.isNotBlank()) " ${card.frequency.split(" ").first().lowercase()}" else ""
-      val routeSuffix = card.route.label.split("(").first().trim()
+      val cleanOrderText = card.orderSummaryText
 
-      if (card.isPrepaidFullCourse || !card.isPayPerVisit) {
-        // Full Course Upfront Billing: all sessions charged now
+      if (card.totalSessions > 1 && (card.isPrepaidFullCourse || !card.isPayPerVisit)) {
         val totalFullFee = totalFeePerDose * card.totalSessions
-        val itemName = "$routeShort $cleanMedName$doseStr$freqStr (Full Course ${card.totalSessions} Doses)".trim()
+        val itemName = "$cleanOrderText (Full Course ${card.totalSessions} Doses)".trim()
         invoiceItems.add(
           InvoiceItem(
             name = itemName,
@@ -1278,11 +1258,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           )
         )
       } else {
-        // Pay per Visit (Default): only 1st dose charged today
-        val itemName = "$routeShort $cleanMedName$doseStr$freqStr (Dose 1/${card.totalSessions})".trim()
         invoiceItems.add(
           InvoiceItem(
-            name = itemName,
+            name = cleanOrderText,
             quantity = 1,
             unitPrice = totalFeePerDose,
             totalPrice = totalFeePerDose,
@@ -1468,9 +1446,10 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       }
       val matchingCard = _treatmentCards.value.find { card ->
         card.patientId == patientId &&
-        (card.medicationId == item.medicineId ||
-         card.medicationName.contains(item.medicineName, ignoreCase = true) ||
-         item.medicineName.contains(card.medicationName, ignoreCase = true))
+        ((card.medicationId.isNotBlank() && card.medicationId == item.medicineId) ||
+         (item.effectiveName.isNotBlank() && card.medicationName.isNotBlank() &&
+          (card.medicationName.equals(item.effectiveName, ignoreCase = true) ||
+           card.medicationName.contains(item.effectiveName, ignoreCase = true))))
       }
       if (matchingCard?.isPatientSupplied == true) {
         continue
@@ -1582,9 +1561,12 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     if (consultation != null && consultation.prescriptions.isNotEmpty()) {
       for (item in consultation.prescriptions.filter { !it.isExternal }) {
         prescribedNames.add(item.effectiveName.lowercase().trim())
-        val med = medMap[item.medicineId] ?: medMap.values.find { it.name.equals(item.medicineName, ignoreCase = true) }
-        if (med != null && item.quantity > 0) {
-          var remaining = item.quantity
+        val med = medMap[item.medicineId]
+          ?: medMap.values.find { it.name.equals(item.effectiveName, ignoreCase = true) }
+          ?: medMap.values.find { it.name.equals(item.medicineName, ignoreCase = true) }
+        val qtyToDeduct = item.quantity
+        if (med != null && qtyToDeduct > 0) {
+          var remaining = qtyToDeduct
           val updatedBatches = med.allBatches.map { b ->
             if (remaining > 0 && b.quantity > 0) {
               val deduct = minOf(b.quantity, remaining)
@@ -1669,6 +1651,96 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             ?: medMap.values.find { c.name.contains(it.name, ignoreCase = true) }
           if (med != null && c.quantity > 0) {
             var remaining = c.quantity
+            val updatedBatches = med.allBatches.map { b ->
+              if (remaining > 0 && b.quantity > 0) {
+                val deduct = minOf(b.quantity, remaining)
+                remaining -= deduct
+                b.copy(quantity = b.quantity - deduct, lastUpdated = now)
+              } else b
+            }
+            medMap[med.id] = med.copy(batches = updatedBatches)
+            modified = true
+          }
+        }
+      }
+    }
+
+    // 2.5 Deduct consumables from clinical procedures (e.g. Minor Suturing, Wound Dressing)
+    if (consultation != null && consultation.selectedProcedures.isNotEmpty()) {
+      for (proc in consultation.selectedProcedures) {
+        val consToDeduct = if (proc.consumableItems.isNotEmpty()) {
+          proc.consumableItems
+        } else {
+          proc.consumables.map { com.example.model.ProcedureConsumable(name = it, quantity = 1) }
+        }
+        for (c in consToDeduct) {
+          prescribedNames.add(c.name.lowercase().trim())
+          val med = medMap[c.medicineId]
+            ?: medMap.values.find { it.name.equals(c.name, ignoreCase = true) }
+            ?: medMap.values.find { c.name.contains(it.name, ignoreCase = true) }
+          val qty = if (c.quantity > 0) c.quantity else 1
+          if (med != null && qty > 0) {
+            var remaining = qty
+            val updatedBatches = med.allBatches.map { b ->
+              if (remaining > 0 && b.quantity > 0) {
+                val deduct = minOf(b.quantity, remaining)
+                remaining -= deduct
+                b.copy(quantity = b.quantity - deduct, lastUpdated = now)
+              } else b
+            }
+            medMap[med.id] = med.copy(batches = updatedBatches)
+            modified = true
+          }
+        }
+      }
+    }
+
+    // 2.5 Deduct consumables from clinical procedures (e.g. Minor Suturing, Wound Dressing)
+    if (consultation != null && consultation.selectedProcedures.isNotEmpty()) {
+      for (proc in consultation.selectedProcedures) {
+        val consToDeduct = if (proc.consumableItems.isNotEmpty()) {
+          proc.consumableItems
+        } else {
+          proc.consumables.map { com.example.model.ProcedureConsumable(name = it, quantity = 1) }
+        }
+        for (c in consToDeduct) {
+          prescribedNames.add(c.name.lowercase().trim())
+          val med = medMap[c.medicineId]
+            ?: medMap.values.find { it.name.equals(c.name, ignoreCase = true) }
+            ?: medMap.values.find { c.name.contains(it.name, ignoreCase = true) }
+          val qty = if (c.quantity > 0) c.quantity else 1
+          if (med != null && qty > 0) {
+            var remaining = qty
+            val updatedBatches = med.allBatches.map { b ->
+              if (remaining > 0 && b.quantity > 0) {
+                val deduct = minOf(b.quantity, remaining)
+                remaining -= deduct
+                b.copy(quantity = b.quantity - deduct, lastUpdated = now)
+              } else b
+            }
+            medMap[med.id] = med.copy(batches = updatedBatches)
+            modified = true
+          }
+        }
+      }
+    }
+
+    // 2.5 Deduct consumables from clinical procedures (e.g. Minor Suturing, Wound Dressing)
+    if (consultation != null && consultation.selectedProcedures.isNotEmpty()) {
+      for (proc in consultation.selectedProcedures) {
+        val consToDeduct = if (proc.consumableItems.isNotEmpty()) {
+          proc.consumableItems
+        } else {
+          proc.consumables.map { com.example.model.ProcedureConsumable(name = it, quantity = 1) }
+        }
+        for (c in consToDeduct) {
+          prescribedNames.add(c.name.lowercase().trim())
+          val med = medMap[c.medicineId]
+            ?: medMap.values.find { it.name.equals(c.name, ignoreCase = true) }
+            ?: medMap.values.find { c.name.contains(it.name, ignoreCase = true) }
+          val qty = if (c.quantity > 0) c.quantity else 1
+          if (med != null && qty > 0) {
+            var remaining = qty
             val updatedBatches = med.allBatches.map { b ->
               if (remaining > 0 && b.quantity > 0) {
                 val deduct = minOf(b.quantity, remaining)

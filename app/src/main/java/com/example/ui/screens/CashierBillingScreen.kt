@@ -1,4 +1,4 @@
-﻿package com.example.ui.screens
+package com.example.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -1159,37 +1159,48 @@ private fun BillingPatientHeaderCard(
           }
         }
 
-        // Status Badge with Manual Checkbox Toggle
+        // Status Badge: Locked when paid (Cannot toggle back to unpaid)
         Surface(
           shape = RoundedCornerShape(4.dp),
           color = if (activeInvoice.isPaid) StatusSuccessContainer else StatusWarningContainer,
           border = BorderStroke(1.dp, if (activeInvoice.isPaid) StatusSuccess.copy(alpha = 0.5f) else StatusWarning.copy(alpha = 0.5f)),
-          modifier = Modifier.clickable {
-            onToggleInvoicePaid?.invoke(activeInvoice.id, !activeInvoice.isPaid)
-          }
+          modifier = if (!activeInvoice.isPaid) Modifier.clickable {
+            onToggleInvoicePaid?.invoke(activeInvoice.id, true)
+          } else Modifier
         ) {
           Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
           ) {
-            Checkbox(
-              checked = activeInvoice.isPaid,
-              onCheckedChange = { isChecked ->
-                onToggleInvoicePaid?.invoke(activeInvoice.id, isChecked)
-              },
-              modifier = Modifier.size(16.dp),
-              colors = CheckboxDefaults.colors(
-                checkedColor = MedicalGreen,
-                uncheckedColor = StatusWarning
+            if (activeInvoice.isPaid) {
+              Icon(Icons.Default.Lock, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(13.dp))
+              Spacer(modifier = Modifier.width(4.dp))
+              Text(
+                "PAID (ငွေရှင်းပြီး - ပြင်ဆင်၍မရပါ)",
+                fontWeight = FontWeight.Bold,
+                fontSize = 9.5.sp,
+                color = StatusSuccess
               )
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-              if (activeInvoice.isPaid) "PAID (ငွေရှင်းပြီး)" else "UNPAID (ငွေမရှင်းရသေး)",
-              fontWeight = FontWeight.Bold,
-              fontSize = 9.5.sp,
-              color = if (activeInvoice.isPaid) StatusSuccess else StatusWarning
-            )
+            } else {
+              Checkbox(
+                checked = false,
+                onCheckedChange = { isChecked ->
+                  if (isChecked) onToggleInvoicePaid?.invoke(activeInvoice.id, true)
+                },
+                modifier = Modifier.size(16.dp),
+                colors = CheckboxDefaults.colors(
+                  checkedColor = MedicalGreen,
+                  uncheckedColor = StatusWarning
+                )
+              )
+              Spacer(modifier = Modifier.width(4.dp))
+              Text(
+                "UNPAID (ငွေမရှင်းရသေး)",
+                fontWeight = FontWeight.Bold,
+                fontSize = 9.5.sp,
+                color = StatusWarning
+              )
+            }
           }
         }
       }
