@@ -379,13 +379,12 @@ fun DoctorConsultationScreen(
       } ?: ""
 
       val currentNotes = if (objective.isNotBlank()) objective else canvasNotesState
+      val parsedTemp = tempText.toDoubleOrNull() ?: activePatient.vitals.temperatureFahrenheit
+      val calculatedTempCelsius = if (parsedTemp > 50.0) (parsedTemp - 32.0) * 5.0 / 9.0 else parsedTemp
       val currentVitals = VitalSigns(
         bloodPressure = bpText,
         pulseRate = pulseText.toIntOrNull() ?: activePatient.vitals.pulseRate,
-        temperatureCelsius = run {
-          val t = tempText.toDoubleOrNull() ?: activePatient.vitals.temperatureFahrenheit
-          if (t > 50.0) (t - 32.0) * 5.0 / 9.0 else t
-        },
+        temperatureCelsius = calculatedTempCelsius,
         oxygenSaturation = spo2Text.toIntOrNull() ?: activePatient.vitals.oxygenSaturation,
         weightKg = weightText.toDoubleOrNull() ?: activePatient.vitals.weightKg,
         rbs = rbsText.toDoubleOrNull() ?: activePatient.vitals.rbs

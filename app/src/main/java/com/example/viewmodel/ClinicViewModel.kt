@@ -1088,35 +1088,65 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     treatmentOrders: List<TreatmentCard> = emptyList()
   ) {
     val existing = draftConsultations.value[patientId]
-    val draft = ConsultationRecord(
-      id = existing?.id ?: "DRAFT-$patientId",
-      patientId = patientId,
-      patientHn = _patients.value.find { it.id == patientId }?.hn ?: "",
-      patientName = patientName.ifBlank { existing?.patientName ?: (_patients.value.find { it.id == patientId }?.name ?: "") },
-      doctorName = doctorNameOverride.ifBlank { existing?.doctorName ?: (_currentUser.value?.fullName ?: clinicSettings.value.doctorName) },
-      doctorDegree = doctorDegreeOverride.ifBlank { existing?.doctorDegree ?: clinicSettings.value.doctorDegree },
-      doctorSama = doctorSamaOverride.ifBlank { existing?.doctorSama ?: clinicSettings.value.doctorSama },
-      subjective = subjective.ifBlank { existing?.subjective ?: "" },
-      objective = objective.ifBlank { existing?.objective ?: "" },
-      assessment = assessment.ifBlank { existing?.assessment ?: "" },
-      plan = plan.ifBlank { existing?.plan ?: "" },
-      diagnosisList = if (diagnosisList.isNotEmpty()) diagnosisList else (existing?.diagnosisList ?: emptyList()),
-      prescriptions = if (prescriptions.isNotEmpty()) prescriptions else (existing?.prescriptions ?: emptyList()),
-      selectedProcedures = if (selectedProcedures.isNotEmpty()) selectedProcedures else (existing?.selectedProcedures ?: emptyList()),
-      suggestedInvestigations = if (suggestedInvestigations.isNotEmpty()) suggestedInvestigations else (existing?.suggestedInvestigations ?: emptyList()),
-      drawingPages = if (drawingPages.isNotEmpty()) drawingPages else (existing?.drawingPages ?: emptyList()),
-      canvasNotes = canvasNotes.ifBlank { existing?.canvasNotes ?: "" },
-      followUpAppointment = followUpAppointment.ifBlank { existing?.followUpAppointment ?: "" },
-      followUpDueDate = followUpDueDate ?: existing?.followUpDueDate,
-      nextVaccineSchedule = nextVaccineSchedule.ifBlank { existing?.nextVaccineSchedule ?: "" },
-      patientInstructions = patientInstructions.ifBlank { existing?.patientInstructions ?: "" },
-      medicalLeave = medicalLeave ?: existing?.medicalLeave,
-      referralRecord = referralRecord ?: existing?.referralRecord,
-      attachments = if (attachments.isNotEmpty()) attachments else (existing?.attachments ?: emptyList()),
-      vitals = if (vitals != VitalSigns()) vitals else (existing?.vitals ?: VitalSigns()),
-      draftTreatmentCards = if (treatmentOrders.isNotEmpty()) treatmentOrders else (existing?.draftTreatmentCards ?: emptyList()),
-      timestamp = BurmeseDateUtils.getNowFormatted()
-    )
+    val draft = if (existing == null) {
+      val foundPatient = _patients.value.find { it.id == patientId }
+      ConsultationRecord(
+        id = "DRAFT-" + patientId,
+        patientId = patientId,
+        patientHn = foundPatient?.hn ?: "",
+        patientName = patientName.ifBlank { foundPatient?.name ?: "" },
+        doctorName = doctorNameOverride.ifBlank { _currentUser.value?.fullName ?: clinicSettings.value.doctorName },
+        doctorDegree = doctorDegreeOverride.ifBlank { clinicSettings.value.doctorDegree },
+        doctorSama = doctorSamaOverride.ifBlank { clinicSettings.value.doctorSama },
+        subjective = subjective,
+        objective = objective,
+        assessment = assessment,
+        plan = plan,
+        diagnosisList = diagnosisList,
+        prescriptions = prescriptions,
+        selectedProcedures = selectedProcedures,
+        suggestedInvestigations = suggestedInvestigations,
+        drawingPages = drawingPages,
+        canvasNotes = canvasNotes,
+        followUpAppointment = followUpAppointment,
+        followUpDueDate = followUpDueDate,
+        nextVaccineSchedule = nextVaccineSchedule,
+        patientInstructions = patientInstructions,
+        medicalLeave = medicalLeave,
+        referralRecord = referralRecord,
+        attachments = attachments,
+        vitals = vitals,
+        draftTreatmentCards = treatmentOrders,
+        timestamp = BurmeseDateUtils.getNowFormatted()
+      )
+    } else {
+      existing.copy(
+        patientName = if (patientName.isNotBlank()) patientName else existing.patientName,
+        doctorName = if (doctorNameOverride.isNotBlank()) doctorNameOverride else existing.doctorName,
+        doctorDegree = if (doctorDegreeOverride.isNotBlank()) doctorDegreeOverride else existing.doctorDegree,
+        doctorSama = if (doctorSamaOverride.isNotBlank()) doctorSamaOverride else existing.doctorSama,
+        subjective = if (subjective.isNotBlank()) subjective else existing.subjective,
+        objective = if (objective.isNotBlank()) objective else existing.objective,
+        assessment = if (assessment.isNotBlank()) assessment else existing.assessment,
+        plan = if (plan.isNotBlank()) plan else existing.plan,
+        diagnosisList = if (diagnosisList.isNotEmpty()) diagnosisList else existing.diagnosisList,
+        prescriptions = if (prescriptions.isNotEmpty()) prescriptions else existing.prescriptions,
+        selectedProcedures = if (selectedProcedures.isNotEmpty()) selectedProcedures else existing.selectedProcedures,
+        suggestedInvestigations = if (suggestedInvestigations.isNotEmpty()) suggestedInvestigations else existing.suggestedInvestigations,
+        drawingPages = if (drawingPages.isNotEmpty()) drawingPages else existing.drawingPages,
+        canvasNotes = if (canvasNotes.isNotBlank()) canvasNotes else existing.canvasNotes,
+        followUpAppointment = if (followUpAppointment.isNotBlank()) followUpAppointment else existing.followUpAppointment,
+        followUpDueDate = followUpDueDate ?: existing.followUpDueDate,
+        nextVaccineSchedule = if (nextVaccineSchedule.isNotBlank()) nextVaccineSchedule else existing.nextVaccineSchedule,
+        patientInstructions = if (patientInstructions.isNotBlank()) patientInstructions else existing.patientInstructions,
+        medicalLeave = medicalLeave ?: existing.medicalLeave,
+        referralRecord = referralRecord ?: existing.referralRecord,
+        attachments = if (attachments.isNotEmpty()) attachments else existing.attachments,
+        vitals = if (vitals != VitalSigns()) vitals else existing.vitals,
+        draftTreatmentCards = if (treatmentOrders.isNotEmpty()) treatmentOrders else existing.draftTreatmentCards,
+        timestamp = BurmeseDateUtils.getNowFormatted()
+      )
+    }
     val map = draftConsultations.value.toMutableMap()
     map[patientId] = draft
     draftConsultations.value = map
