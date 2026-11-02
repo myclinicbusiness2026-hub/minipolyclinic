@@ -154,9 +154,8 @@ fun DoctorConsultationScreen(
 
   // Clinical Notes & SOAP State
   var subjective by remember(activePatient?.id) {
-    val draft = activePatient?.id?.let { viewModel.getDraftConsultation(it) }
-    val initialComplaint = if (draft != null && draft.subjective.isNotBlank()) {
-      draft.subjective
+    val initialComplaint = if (activeDraft != null && activeDraft.subjective.isNotBlank()) {
+      activeDraft.subjective
     } else if (activePatient != null && activePatient.isFollowUp && activePatient.followUpReason.isNotBlank()) {
       "Follow-up visit: ${activePatient.followUpReason}"
     } else {
@@ -165,16 +164,23 @@ fun DoctorConsultationScreen(
     mutableStateOf(initialComplaint)
   }
   var objective by remember(activePatient?.id) {
-    val draft = activePatient?.id?.let { viewModel.getDraftConsultation(it) }
-    mutableStateOf(draft?.objective?.ifBlank { draft.canvasNotes } ?: "")
+    mutableStateOf(activeDraft?.objective?.ifBlank { activeDraft.canvasNotes } ?: "")
   }
   var assessment by remember(activePatient?.id) {
-    val draft = activePatient?.id?.let { viewModel.getDraftConsultation(it) }
-    mutableStateOf(draft?.assessment ?: "")
+    mutableStateOf(activeDraft?.assessment ?: "")
   }
   var plan by remember(activePatient?.id) {
-    val draft = activePatient?.id?.let { viewModel.getDraftConsultation(it) }
-    mutableStateOf(draft?.plan ?: "")
+    mutableStateOf(activeDraft?.plan ?: "")
+  }
+
+  // Stable Scroll States to prevent jumping
+  val leftScrollState = rememberScrollState()
+  val rightScrollState = rememberScrollState()
+  val mobileScrollState = rememberScrollState()
+
+  // Single memoized draft consultation retrieval
+  val activeDraft = remember(activePatient?.id) {
+    activePatient?.id?.let { viewModel.getDraftConsultation(it) }
   }
 
   // Editable Vitals State for Active Consultation
@@ -274,6 +280,9 @@ fun DoctorConsultationScreen(
         if (draft.attachments.isNotEmpty() && attachmentsState.isEmpty()) {
           attachmentsState.addAll(draft.attachments)
         }
+        if (draft.draftTreatmentCards.isNotEmpty() && orderedTreatmentCards.isEmpty()) {
+          orderedTreatmentCards.addAll(draft.draftTreatmentCards)
+        }
       }
       val pendingCards = viewModel.treatmentCards.value.filter {
         it.patientId == activePatient.id && !it.isFullyCompleted && !it.isDiscontinued && it.consultationInvoiceId.isNullOrBlank()
@@ -294,6 +303,8 @@ fun DoctorConsultationScreen(
     selectedDiagnoses.size,
     prescribedDrugs.size,
     selectedProcedures.size,
+    selectedProcedures.sumOf { it.consumableItems.size },
+    orderedTreatmentCards.size,
     selectedInvestigations.size,
     drawingPagesState.size,
     followUpAppointmentText,
@@ -336,7 +347,7 @@ fun DoctorConsultationScreen(
   }
 
   // Past consultations for 2nd visit / follow-up review
-  val pastConsultations = remember(activePatient?.id, activePatient?.hn, consultations) {
+  val pastConsultations = remember(activePatient?.id, activePatient?.hn) {
     if (activePatient != null) {
       viewModel.getPatientConsultationHistory(activePatient.id, activePatient.hn)
     } else {
@@ -371,7 +382,10 @@ fun DoctorConsultationScreen(
       val currentVitals = VitalSigns(
         bloodPressure = bpText,
         pulseRate = pulseText.toIntOrNull() ?: activePatient.vitals.pulseRate,
-        temperatureCelsius = tempText.toDoubleOrNull() ?: activePatient.vitals.temperatureCelsius,
+        temperatureCelsius = run {
+          val t = tempText.toDoubleOrNull() ?: activePatient.vitals.temperatureFahrenheit
+          if (t > 50.0) (t - 32.0) * 5.0 / 9.0 else t
+        },
         oxygenSaturation = spo2Text.toIntOrNull() ?: activePatient.vitals.oxygenSaturation,
         weightKg = weightText.toDoubleOrNull() ?: activePatient.vitals.weightKg,
         rbs = rbsText.toDoubleOrNull() ?: activePatient.vitals.rbs
@@ -745,7 +759,10 @@ fun DoctorConsultationScreen(
           val currentVitals = VitalSigns(
             bloodPressure = bpText,
             pulseRate = pulseText.toIntOrNull() ?: activePatient.vitals.pulseRate,
-            temperatureCelsius = tempText.toDoubleOrNull() ?: activePatient.vitals.temperatureCelsius,
+            temperatureCelsius = run {
+              val t = tempText.toDoubleOrNull() ?: activePatient.vitals.temperatureFahrenheit
+              if (t > 50.0) (t - 32.0) * 5.0 / 9.0 else t
+            },
             oxygenSaturation = spo2Text.toIntOrNull() ?: activePatient.vitals.oxygenSaturation,
             weightKg = weightText.toDoubleOrNull() ?: activePatient.vitals.weightKg,
             rbs = rbsText.toDoubleOrNull() ?: activePatient.vitals.rbs
@@ -797,7 +814,10 @@ fun DoctorConsultationScreen(
           val newVitals = VitalSigns(
             bloodPressure = bpText,
             pulseRate = pulseText.toIntOrNull() ?: patient.vitals.pulseRate,
-            temperatureCelsius = tempText.toDoubleOrNull() ?: patient.vitals.temperatureCelsius,
+            temperatureCelsius = run {
+              val t = tempText.toDoubleOrNull() ?: patient.vitals.temperatureFahrenheit
+              if (t > 50.0) (t - 32.0) * 5.0 / 9.0 else t
+            },
             oxygenSaturation = spo2Text.toIntOrNull() ?: patient.vitals.oxygenSaturation,
             weightKg = weightText.toDoubleOrNull() ?: patient.vitals.weightKg,
             rbs = rbsText.toDoubleOrNull() ?: patient.vitals.rbs
@@ -817,7 +837,7 @@ fun DoctorConsultationScreen(
               modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(leftScrollState),
               verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
               ConsultationClinicalRecordPane(
@@ -870,7 +890,7 @@ fun DoctorConsultationScreen(
               modifier = Modifier
                 .weight(1.1f)
                 .fillMaxHeight()
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rightScrollState),
               verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
               ConsultationPrescriptionAndBillingPane(
@@ -902,87 +922,84 @@ fun DoctorConsultationScreen(
             }
           }
         } else {
-          LazyColumn(
+          Column(
             modifier = Modifier
               .fillMaxWidth()
-              .weight(1f),
+              .weight(1f)
+              .verticalScroll(mobileScrollState),
             verticalArrangement = Arrangement.spacedBy(8.dp)
           ) {
-            item {
-              ConsultationClinicalRecordPane(
-                patient = patient,
-                viewModel = viewModel,
-                activeComplaint = activeComplaint,
-                isEditingVitals = isEditingVitals,
-                onToggleEditVitals = { isEditingVitals = !isEditingVitals },
-                onSaveVitals = onSaveVitalsAction,
-                bpText = bpText,
-                onBpChange = { bpText = it },
-                pulseText = pulseText,
-                onPulseChange = { pulseText = it },
-                tempText = tempText,
-                onTempChange = { tempText = it },
-                spo2Text = spo2Text,
-                onSpo2Change = { spo2Text = it },
-                weightText = weightText,
-                onWeightChange = { weightText = it },
-                rbsText = rbsText,
-                onRbsChange = { rbsText = it },
-                onOpenTrends = { showTrendsModal = true },
-                onOpenVaccines = { showVaccinesModal = true },
-                onOpenAttachments = { showAttachmentsModal = true },
-                attachmentsState = attachmentsState,
-                pastConsultations = pastConsultations,
-                prescribedDrugs = prescribedDrugs,
-                selectedDiagnoses = selectedDiagnoses,
-                selectedProcedures = selectedProcedures,
-                selectedInvestigations = selectedInvestigations,
-                onUpdateAssessment = { assessment = it },
-                onUpdatePlan = { plan = it },
-                onUpdateObjective = {
-                  objective = it
-                  canvasNotesState = it
-                },
-                subjective = subjective,
-                onSubjectiveChange = { subjective = it },
-                anatomyStrokes = anatomyStrokes,
-                drawingPagesState = drawingPagesState,
-                anatomyPageCount = anatomyPageCount,
-                objective = objective,
-                canvasNotesState = canvasNotesState,
-                onOpenFullscreenCanvas = { showScribbleExpanded = true },
-                onEditRecord = { record -> editingConsultation = record }
-              )
-            }
+            ConsultationClinicalRecordPane(
+              patient = patient,
+              viewModel = viewModel,
+              activeComplaint = activeComplaint,
+              isEditingVitals = isEditingVitals,
+              onToggleEditVitals = { isEditingVitals = !isEditingVitals },
+              onSaveVitals = onSaveVitalsAction,
+              bpText = bpText,
+              onBpChange = { bpText = it },
+              pulseText = pulseText,
+              onPulseChange = { pulseText = it },
+              tempText = tempText,
+              onTempChange = { tempText = it },
+              spo2Text = spo2Text,
+              onSpo2Change = { spo2Text = it },
+              weightText = weightText,
+              onWeightChange = { weightText = it },
+              rbsText = rbsText,
+              onRbsChange = { rbsText = it },
+              onOpenTrends = { showTrendsModal = true },
+              onOpenVaccines = { showVaccinesModal = true },
+              onOpenAttachments = { showAttachmentsModal = true },
+              attachmentsState = attachmentsState,
+              pastConsultations = pastConsultations,
+              prescribedDrugs = prescribedDrugs,
+              selectedDiagnoses = selectedDiagnoses,
+              selectedProcedures = selectedProcedures,
+              selectedInvestigations = selectedInvestigations,
+              onUpdateAssessment = { assessment = it },
+              onUpdatePlan = { plan = it },
+              onUpdateObjective = {
+                objective = it
+                canvasNotesState = it
+              },
+              subjective = subjective,
+              onSubjectiveChange = { subjective = it },
+              anatomyStrokes = anatomyStrokes,
+              drawingPagesState = drawingPagesState,
+              anatomyPageCount = anatomyPageCount,
+              objective = objective,
+              canvasNotesState = canvasNotesState,
+              onOpenFullscreenCanvas = { showScribbleExpanded = true },
+              onEditRecord = { record -> editingConsultation = record }
+            )
 
-            item {
-              ConsultationPrescriptionAndBillingPane(
-                prescribedDrugs = prescribedDrugs,
-                onOpenAddDrug = { showAddDrugModal = true },
-                orderedTreatmentCards = orderedTreatmentCards,
-                onOpenAddTreatmentOrder = { showAddTreatmentOrderModal = true },
-                procedures = procedures,
-                selectedProcedures = selectedProcedures,
-                medicines = medicines,
-                onOpenCustomProcedure = { showCustomProcedureModal = true },
-                consultationFeeText = consultationFeeText,
-                onConsultationFeeChange = { consultationFeeText = it },
-                serviceFeeText = serviceFeeText,
-                onServiceFeeChange = { serviceFeeText = it },
-                followUpAppointmentText = followUpAppointmentText,
-                onFollowUpAppointmentChange = { followUpAppointmentText = it },
-                medicalLeaveState = medicalLeaveState,
-                onOpenMedicalLeave = { showMedicalLeaveModal = true },
-                referralState = referralState,
-                onOpenReferral = { showReferralModal = true },
-                patientInstructionsState = patientInstructionsState,
-                onPatientInstructionsChange = { patientInstructionsState = it },
-                onOpenInstructions = { showInstructionsModal = true },
-                onPreviewA4Doc = handlePreviewA4Doc,
-                onSendToPharmacy = handleSendToPharmacy,
-                currencyFmt = currencyFmt
-              )
-            }
+            ConsultationPrescriptionAndBillingPane(
+              prescribedDrugs = prescribedDrugs,
+              onOpenAddDrug = { showAddDrugModal = true },
+              orderedTreatmentCards = orderedTreatmentCards,
+              onOpenAddTreatmentOrder = { showAddTreatmentOrderModal = true },
+              procedures = procedures,
+              selectedProcedures = selectedProcedures,
+              medicines = medicines,
+              onOpenCustomProcedure = { showCustomProcedureModal = true },
+              consultationFeeText = consultationFeeText,
+              onConsultationFeeChange = { consultationFeeText = it },
+              serviceFeeText = serviceFeeText,
+              onServiceFeeChange = { serviceFeeText = it },
+              followUpAppointmentText = followUpAppointmentText,
+              onFollowUpAppointmentChange = { followUpAppointmentText = it },
+              medicalLeaveState = medicalLeaveState,
+              onOpenMedicalLeave = { showMedicalLeaveModal = true },
+              referralState = referralState,
+              onOpenReferral = { showReferralModal = true },
+              patientInstructionsState = patientInstructionsState,
+              onPatientInstructionsChange = { patientInstructionsState = it },
+              onOpenInstructions = { showInstructionsModal = true },
+              onPreviewA4Doc = handlePreviewA4Doc,
+              onSendToPharmacy = handleSendToPharmacy,
+              currencyFmt = currencyFmt
+            )
           }
         }
       } else {

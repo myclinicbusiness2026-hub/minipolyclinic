@@ -33,7 +33,7 @@ fun PatientBannerCard(
   onBpChange: (String) -> Unit = {},
   pulseText: String = patient.vitals.pulseRate.toString(),
   onPulseChange: (String) -> Unit = {},
-  tempText: String = patient.vitals.temperatureCelsius.toString(),
+  tempText: String = String.format(java.util.Locale.US, "%.1f", patient.vitals.temperatureFahrenheit),
   onTempChange: (String) -> Unit = {},
   spo2Text: String = patient.vitals.oxygenSaturation.toString(),
   onSpo2Change: (String) -> Unit = {},
@@ -233,7 +233,7 @@ fun PatientBannerCard(
             ) {
               Text("BP: ${v.bloodPressure}", fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, color = DarkGrayText)
               Text("PR: ${v.pulseRate}", fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, color = DarkGrayText)
-              Text("Temp: ${v.temperatureCelsius}°", fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, color = DarkGrayText)
+              Text("Temp: ${v.formattedTemperatureF}", fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, color = DarkGrayText)
               Text("SpO2: ${v.oxygenSaturation}%", fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, color = DarkGrayText)
               Text("Wt: ${v.weightKg}kg", fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, color = DarkGrayText)
               if ((v.rbs ?: 0.0) > 0) {

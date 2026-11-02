@@ -320,6 +320,7 @@ data class ConsultationRecord(
   val attachments: List<MedicalAttachment> = emptyList(),
   val vitals: VitalSigns = VitalSigns(),
   val treatmentOrderDetails: List<String> = emptyList(),
+  val draftTreatmentCards: List<com.example.ui.screens.treatment.TreatmentCard> = emptyList(),
   val timestamp: String = ""
 )
 
@@ -377,7 +378,9 @@ data class Invoice(
   val doctorFeeDiscount: Double = 0.0,
   val pharmacyDiscount: Double = 0.0,
   val procedureDiscount: Double = 0.0,
-  val isInventoryDeducted: Boolean = false
+  val isInventoryDeducted: Boolean = false,
+  val isPrescriptionsDeducted: Boolean = false,
+  val deductedDrugQuantities: Map<String, Int> = emptyMap()
 ) {
   val invoiceNo: String get() = invoiceNumber
   val createdAt: String get() = timestamp

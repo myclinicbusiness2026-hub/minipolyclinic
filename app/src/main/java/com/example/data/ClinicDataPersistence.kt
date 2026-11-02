@@ -434,6 +434,194 @@ object ClinicDataPersistence {
     }
   }
 
+  
+  fun serializeTreatmentCard(card: TreatmentCard): JSONObject {
+    return JSONObject().apply {
+      put("id", card.id)
+      put("patientId", card.patientId)
+      put("patientName", card.patientName)
+      put("patientHn", card.patientHn)
+      put("doctorName", card.doctorName)
+      put("prescribedDate", card.prescribedDate)
+      put("medicationId", card.medicationId)
+      put("medicationName", card.medicationName)
+      put("dosage", card.dosage)
+      put("route", card.route.name)
+      put("frequency", card.frequency)
+      put("totalDays", card.totalDays)
+      put("totalSessions", card.totalSessions)
+      put("instructions", card.instructions)
+      put("sessionFee", card.sessionFee)
+      put("medicationFee", card.medicationFee)
+      put("isBilledPerSession", card.isBilledPerSession)
+      put("isPayPerVisit", card.isPayPerVisit)
+      put("isPrepaidFullCourse", card.isPrepaidFullCourse)
+      put("cardStatus", card.cardStatus.name)
+      put("discontinueReason", card.discontinueReason)
+      put("discontinuedBy", card.discontinuedBy)
+      put("discontinuedAt", card.discontinuedAt)
+      put("notes", card.notes)
+      put("isCocktail", card.isCocktail)
+      put("isPatientSupplied", card.isPatientSupplied)
+
+      val ckArr = JSONArray()
+      card.cocktailItems.forEach { item ->
+        val ckObj = JSONObject().apply {
+          put("id", item.id)
+          put("medicineId", item.medicineId)
+          put("name", item.name)
+          put("dosage", item.dosage)
+          put("quantity", item.quantity)
+          put("unitPrice", item.unitPrice)
+        }
+        ckArr.put(ckObj)
+      }
+      put("cocktailItems", ckArr)
+
+      val sArr = JSONArray()
+      card.sessions.forEach { s ->
+        val sObj = JSONObject().apply {
+          put("id", s.id)
+          put("sessionNumber", s.sessionNumber)
+          put("scheduledDate", s.scheduledDate)
+          put("scheduledTime", s.scheduledTime)
+          put("administeredAt", s.administeredAt ?: "")
+          put("administeredBy", s.administeredBy)
+          put("status", s.status.name)
+          put("isClinicMed", s.isClinicMed)
+          put("isPrepaid", s.isPrepaid)
+          put("medicationFee", s.medicationFee)
+          put("sessionFee", s.sessionFee)
+          put("invoiceId", s.invoiceId ?: "")
+          put("notes", s.notes)
+
+          val cArr = JSONArray()
+          s.consumables.forEach { c ->
+            val cObj = JSONObject().apply {
+              put("id", c.id)
+              put("medicineId", c.medicineId ?: "")
+              put("name", c.name)
+              put("quantity", c.quantity)
+              put("unitPrice", c.unitPrice)
+            }
+            cArr.put(cObj)
+          }
+          put("consumables", cArr)
+        }
+        sArr.put(sObj)
+      }
+      put("sessions", sArr)
+    }
+  }
+
+  fun parseTreatmentCard(o: JSONObject): TreatmentCard {
+    val sArr = o.optJSONArray("sessions")
+    val sessions = mutableListOf<TreatmentSession>()
+    if (sArr != null) {
+      for (j in 0 until sArr.length()) {
+        val so = sArr.getJSONObject(j)
+        val cArr = so.optJSONArray("consumables")
+        val consumables = mutableListOf<TreatmentConsumable>()
+        if (cArr != null) {
+          for (k in 0 until cArr.length()) {
+            val co = cArr.getJSONObject(k)
+            consumables.add(
+              TreatmentConsumable(
+                id = co.optString("id", UUID.randomUUID().toString()),
+                medicineId = co.optString("medicineId").ifBlank { null },
+                name = co.optString("name"),
+                quantity = co.optInt("quantity", 1),
+                unitPrice = co.optDouble("unitPrice", 0.0)
+              )
+            )
+          }
+        }
+        val status = try {
+          TreatmentStatus.valueOf(so.optString("status", "PENDING"))
+        } catch (_: Exception) {
+          TreatmentStatus.PENDING
+        }
+        sessions.add(
+          TreatmentSession(
+            id = so.optString("id", UUID.randomUUID().toString()),
+            sessionNumber = so.optInt("sessionNumber", j + 1),
+            scheduledDate = so.optString("scheduledDate"),
+            scheduledTime = so.optString("scheduledTime", "08:00 AM"),
+            administeredAt = so.optString("administeredAt").ifBlank { null },
+            administeredBy = so.optString("administeredBy"),
+            status = status,
+            isClinicMed = so.optBoolean("isClinicMed", true),
+            isPrepaid = so.optBoolean("isPrepaid", false),
+            medicationFee = so.optDouble("medicationFee", 0.0),
+            sessionFee = so.optDouble("sessionFee", 3000.0),
+            consumables = consumables,
+            invoiceId = so.optString("invoiceId").ifBlank { null },
+            notes = so.optString("notes")
+          )
+        )
+      }
+    }
+    val route = try {
+      TreatmentRoute.valueOf(o.optString("route", "IM"))
+    } catch (_: Exception) {
+      TreatmentRoute.IM
+    }
+    val cardStatus = try {
+      TreatmentStatus.valueOf(o.optString("cardStatus", "IN_PROGRESS"))
+    } catch (_: Exception) {
+      TreatmentStatus.IN_PROGRESS
+    }
+    val isCocktail = o.optBoolean("isCocktail", false)
+    val ckArr = o.optJSONArray("cocktailItems")
+    val cocktailItems = mutableListOf<CocktailDrugItem>()
+    if (ckArr != null) {
+      for (j in 0 until ckArr.length()) {
+        val cko = ckArr.getJSONObject(j)
+        cocktailItems.add(
+          CocktailDrugItem(
+            id = cko.optString("id", UUID.randomUUID().toString()),
+            medicineId = cko.optString("medicineId"),
+            name = cko.optString("name"),
+            dosage = cko.optString("dosage"),
+            quantity = cko.optInt("quantity", 1),
+            unitPrice = cko.optDouble("unitPrice", 0.0)
+          )
+        )
+      }
+    }
+
+    return TreatmentCard(
+      id = o.optString("id"),
+      patientId = o.optString("patientId"),
+      patientName = o.optString("patientName"),
+      patientHn = o.optString("patientHn"),
+      doctorName = o.optString("doctorName"),
+      prescribedDate = o.optString("prescribedDate"),
+      medicationId = o.optString("medicationId"),
+      medicationName = o.optString("medicationName"),
+      dosage = o.optString("dosage"),
+      route = route,
+      frequency = o.optString("frequency", "12 hrly"),
+      totalDays = o.optInt("totalDays", 3),
+      totalSessions = o.optInt("totalSessions", 6),
+      sessions = sessions,
+      instructions = o.optString("instructions"),
+      sessionFee = o.optDouble("sessionFee", 3000.0),
+      medicationFee = o.optDouble("medicationFee", 0.0),
+      isBilledPerSession = o.optBoolean("isBilledPerSession", true),
+      isPayPerVisit = o.optBoolean("isPayPerVisit", true),
+      isPrepaidFullCourse = o.optBoolean("isPrepaidFullCourse", false),
+      isCocktail = isCocktail,
+      cocktailItems = cocktailItems,
+      isPatientSupplied = o.optBoolean("isPatientSupplied", false),
+      cardStatus = cardStatus,
+      discontinueReason = o.optString("discontinueReason"),
+      discontinuedBy = o.optString("discontinuedBy"),
+      discontinuedAt = o.optString("discontinuedAt"),
+      notes = o.optString("notes")
+    )
+  }
+
   fun serializeConsultationRecord(c: ConsultationRecord): JSONObject {
     return JSONObject().apply {
       put("id", c.id)
@@ -488,6 +676,21 @@ object ClinicDataPersistence {
           put("notes", p.notes)
           put("dateTime", p.dateTime)
           put("description", p.description)
+
+          val consArr = JSONArray()
+          p.consumableItems.forEach { cons ->
+            val cObj = JSONObject().apply {
+              put("id", cons.id)
+              put("name", cons.name)
+              put("quantity", cons.quantity)
+              put("unitPrice", cons.unitPrice)
+              put("totalPrice", cons.totalPrice)
+              put("unitType", cons.unitType)
+              put("medicineId", cons.medicineId ?: "")
+            }
+            consArr.put(cObj)
+          }
+          put("consumableItems", consArr)
         }
         procArr.put(pObj)
       }
@@ -496,6 +699,12 @@ object ClinicDataPersistence {
       val toArr = JSONArray()
       c.treatmentOrderDetails.forEach { toArr.put(it) }
       put("treatmentOrderDetails", toArr)
+
+      val dtcArr = JSONArray()
+      c.draftTreatmentCards.forEach { card ->
+        dtcArr.put(serializeTreatmentCard(card))
+      }
+      put("draftTreatmentCards", dtcArr)
 
       put("suggestedInvestigations", JSONArray(c.suggestedInvestigations))
 
@@ -567,6 +776,24 @@ object ClinicDataPersistence {
     if (procArr != null) {
       for (j in 0 until procArr.length()) {
         val po = procArr.getJSONObject(j)
+        val consList = mutableListOf<ProcedureConsumable>()
+        val consArr = po.optJSONArray("consumableItems")
+        if (consArr != null) {
+          for (k in 0 until consArr.length()) {
+            val co = consArr.getJSONObject(k)
+            consList.add(
+              ProcedureConsumable(
+                id = co.optString("id", UUID.randomUUID().toString()),
+                name = co.optString("name"),
+                quantity = co.optInt("quantity", 1),
+                unitPrice = co.optDouble("unitPrice", 0.0),
+                totalPrice = co.optDouble("totalPrice", 0.0),
+                unitType = co.optString("unitType", "pcs"),
+                medicineId = co.optString("medicineId").ifBlank { null }
+              )
+            )
+          }
+        }
         procedures.add(
           ProcedureItem(
             id = po.optString("id"),
@@ -578,9 +805,19 @@ object ClinicDataPersistence {
             consumableCost = po.optDouble("consumableCost", 0.0),
             notes = po.optString("notes"),
             dateTime = po.optString("dateTime"),
-            description = po.optString("description")
+            description = po.optString("description"),
+            consumableItems = consList
           )
         )
+      }
+    }
+
+    val dtcArr = o.optJSONArray("draftTreatmentCards")
+    val draftCards = mutableListOf<TreatmentCard>()
+    if (dtcArr != null) {
+      for (j in 0 until dtcArr.length()) {
+        val dco = dtcArr.getJSONObject(j)
+        draftCards.add(parseTreatmentCard(dco))
       }
     }
 
@@ -645,6 +882,7 @@ object ClinicDataPersistence {
       selectedProcedures = procedures,
       suggestedInvestigations = suggestedInvestigations,
       treatmentOrderDetails = treatmentOrderDetails,
+      draftTreatmentCards = draftCards,
       consultationFee = o.optDouble("consultationFee", 8000.0),
       canvasNotes = o.optString("canvasNotes"),
       followUpAppointment = o.optString("followUpAppointment"),
@@ -739,6 +977,10 @@ object ClinicDataPersistence {
         put("cashierName", inv.cashierName)
         put("timestamp", inv.timestamp)
         put("isInventoryDeducted", inv.isInventoryDeducted)
+        put("isPrescriptionsDeducted", inv.isPrescriptionsDeducted)
+        val dedObj = JSONObject()
+        inv.deductedDrugQuantities.forEach { (k, v) -> dedObj.put(k, v) }
+        put("deductedDrugQuantities", dedObj)
         put("discountPercent", inv.discountPercent)
         put("doctorFeeDiscount", inv.doctorFeeDiscount)
         put("pharmacyDiscount", inv.pharmacyDiscount)
@@ -805,6 +1047,19 @@ object ClinicDataPersistence {
             cashierName = o.optString("cashierName", "Staff"),
             timestamp = o.optString("timestamp"),
             isInventoryDeducted = o.optBoolean("isInventoryDeducted", false),
+            isPrescriptionsDeducted = o.optBoolean("isPrescriptionsDeducted", false),
+            deductedDrugQuantities = run {
+              val dedMap = mutableMapOf<String, Int>()
+              val dObj = o.optJSONObject("deductedDrugQuantities")
+              if (dObj != null) {
+                val itKeys = dObj.keys()
+                while (itKeys.hasNext()) {
+                  val k = itKeys.next()
+                  dedMap[k] = dObj.optInt(k, 0)
+                }
+              }
+              dedMap
+            },
             discountPercent = o.optDouble("discountPercent", 0.0),
             doctorFeeDiscount = o.optDouble("doctorFeeDiscount", 0.0),
             pharmacyDiscount = o.optDouble("pharmacyDiscount", 0.0),
