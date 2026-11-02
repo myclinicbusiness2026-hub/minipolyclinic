@@ -140,7 +140,8 @@ fun MedicalRecordsScreen(
     }
   }
 
-  val patientConsultations = remember(activePatient?.id, consultations) {
+  val activePatientId = activePatient?.id
+  val patientConsultations = remember(activePatientId, consultations) {
     if (activePatient != null) {
       consultations.filter { it.patientId == activePatient.id }.sortedByDescending { it.timestamp }
     } else {
@@ -148,7 +149,7 @@ fun MedicalRecordsScreen(
     }
   }
 
-  val patientInvoices = remember(activePatient?.id, invoices) {
+  val patientInvoices = remember(activePatientId, invoices) {
     if (activePatient != null) {
       invoices.filter { it.patientId == activePatient.id }.sortedByDescending { it.createdAt }
     } else {

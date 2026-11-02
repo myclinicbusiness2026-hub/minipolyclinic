@@ -144,11 +144,17 @@ fun DoctorConsultationScreen(
     consultationQueuePatients.find { it.id == selectedPatientId } ?: consultationQueuePatients.firstOrNull()
   }
 
-  val activeComplaint = remember(activePatient?.id, activePatient?.isFollowUp, activePatient?.followUpReason, activePatient?.chiefComplaint) {
-    if (activePatient != null && activePatient.isFollowUp && activePatient.followUpReason.isNotBlank()) {
-      activePatient.followUpReason
+  val patientId = activePatient?.id
+  val patientHn = activePatient?.hn ?: ""
+  val isFollowUpPatient = activePatient?.isFollowUp == true
+  val followUpReasonText = activePatient?.followUpReason ?: ""
+  val chiefComplaintText = activePatient?.chiefComplaint ?: ""
+
+  val activeComplaint = remember(patientId, isFollowUpPatient, followUpReasonText, chiefComplaintText) {
+    if (isFollowUpPatient && followUpReasonText.isNotBlank()) {
+      followUpReasonText
     } else {
-      activePatient?.chiefComplaint ?: ""
+      chiefComplaintText
     }
   }
 
@@ -158,12 +164,12 @@ fun DoctorConsultationScreen(
   val mobileScrollState = rememberScrollState()
 
   // Single memoized draft consultation retrieval (declared before SOAP states)
-  val activeDraft: ConsultationRecord? = remember(activePatient?.id) {
+  val activeDraft: ConsultationRecord? = remember(patientId) {
     activePatient?.id?.let { viewModel.getDraftConsultation(it) }
   }
 
   // Clinical Notes & SOAP State
-  var subjective by remember(activePatient?.id) {
+  var subjective by remember(patientId) {
     val initialComplaint = if (activeDraft != null && activeDraft.subjective.isNotBlank()) {
       activeDraft.subjective
     } else if (activePatient != null && activePatient.isFollowUp && activePatient.followUpReason.isNotBlank()) {
@@ -173,50 +179,50 @@ fun DoctorConsultationScreen(
     }
     mutableStateOf(initialComplaint)
   }
-  var objective by remember(activePatient?.id) {
+  var objective by remember(patientId) {
     mutableStateOf(activeDraft?.objective?.ifBlank { activeDraft.canvasNotes } ?: "")
   }
-  var assessment by remember(activePatient?.id) {
+  var assessment by remember(patientId) {
     mutableStateOf(activeDraft?.assessment ?: "")
   }
-  var plan by remember(activePatient?.id) {
+  var plan by remember(patientId) {
     mutableStateOf(activeDraft?.plan ?: "")
   }
 
   // Editable Vitals State for Active Consultation
   val patientVitals = activePatient?.vitals
-  var bpText by remember(activePatient?.id) { mutableStateOf(patientVitals?.bloodPressure ?: "120/80 mmHg") }
-  var pulseText by remember(activePatient?.id) { mutableStateOf(patientVitals?.pulseRate?.toString() ?: "76") }
-  var tempText by remember(activePatient?.id) { 
+  var bpText by remember(patientId) { mutableStateOf(patientVitals?.bloodPressure ?: "120/80 mmHg") }
+  var pulseText by remember(patientId) { mutableStateOf(patientVitals?.pulseRate?.toString() ?: "76") }
+  var tempText by remember(patientId) { 
     val t = patientVitals?.temperatureFahrenheit ?: 98.4
     mutableStateOf(String.format(java.util.Locale.US, "%.1f", t)) 
   }
-  var spo2Text by remember(activePatient?.id) { mutableStateOf(patientVitals?.oxygenSaturation?.toString() ?: "98") }
-  var weightText by remember(activePatient?.id) { mutableStateOf(patientVitals?.weightKg?.toString() ?: "62.5") }
-  var rbsText by remember(activePatient?.id) { 
+  var spo2Text by remember(patientId) { mutableStateOf(patientVitals?.oxygenSaturation?.toString() ?: "98") }
+  var weightText by remember(patientId) { mutableStateOf(patientVitals?.weightKg?.toString() ?: "62.5") }
+  var rbsText by remember(patientId) { 
     val rVal = patientVitals?.rbs
     val rStr = if (rVal == null) "" else if (rVal % 1.0 == 0.0) rVal.toInt().toString() else rVal.toString()
     mutableStateOf(rStr) 
   }
-  var isEditingVitals by remember(activePatient?.id) { mutableStateOf(false) }
+  var isEditingVitals by remember(patientId) { mutableStateOf(false) }
 
-  val selectedDiagnoses = remember(activePatient?.id) { mutableStateListOf<String>() }
-  val prescribedDrugs = remember(activePatient?.id) { mutableStateListOf<PrescribedDrug>() }
-  val selectedProcedures = remember(activePatient?.id) { mutableStateListOf<ProcedureItem>() }
-  val selectedInvestigations = remember(activePatient?.id) { mutableStateListOf<String>() }
-  val orderedTreatmentCards = remember(activePatient?.id) { mutableStateListOf<TreatmentCard>() }
+  val selectedDiagnoses = remember(patientId) { mutableStateListOf<String>() }
+  val prescribedDrugs = remember(patientId) { mutableStateListOf<PrescribedDrug>() }
+  val selectedProcedures = remember(patientId) { mutableStateListOf<ProcedureItem>() }
+  val selectedInvestigations = remember(patientId) { mutableStateListOf<String>() }
+  val orderedTreatmentCards = remember(patientId) { mutableStateListOf<TreatmentCard>() }
   var showAddTreatmentOrderModal by remember { mutableStateOf(false) }
   var consultationFeeText by remember { mutableStateOf("8000") }
   var serviceFeeText by remember { mutableStateOf("0") }
-  var followUpAppointmentText by remember(activePatient?.id) { mutableStateOf("") }
+  var followUpAppointmentText by remember(patientId) { mutableStateOf("") }
 
   val defaultInstructions = """၁။ ဆရာဝန်ညွှန်ကြားသည့်အတိုင်း ဆေးများကို အချိန်မှန်၊ ရက်ပြည့်အောင် သောက်သုံးပါ။ ရေများများသောက်ပါ။
 ၂။ ပဋိဇီဝဆေး (Antibiotics) များကို ရောဂါသက်သာသော်လည်း ရက်ပြည့်အောင် ဆက်သောက်ပါ။
 ၃။ ဆေးသောက်ပြီး ဓါတ်မတည့်ခြင်း (သို့မဟုတ်) ထူးခြားသော လက္ခဏာများ ခံစားရပါက ဆေးခန်းသို့ ချက်ချင်း ပြန်လည်ပြသပါ။"""
 
-  var patientInstructionsState by remember(activePatient?.id) { mutableStateOf(defaultInstructions) }
-  var medicalLeaveState by remember(activePatient?.id) { mutableStateOf<MedicalLeaveRecord?>(null) }
-  var referralState by remember(activePatient?.id) { mutableStateOf<ReferralRecord?>(null) }
+  var patientInstructionsState by remember(patientId) { mutableStateOf(defaultInstructions) }
+  var medicalLeaveState by remember(patientId) { mutableStateOf<MedicalLeaveRecord?>(null) }
+  var referralState by remember(patientId) { mutableStateOf<ReferralRecord?>(null) }
   var showMedicalLeaveModal by remember { mutableStateOf(false) }
   var showReferralModal by remember { mutableStateOf(false) }
   var showInstructionsModal by remember { mutableStateOf(false) }
@@ -227,21 +233,21 @@ fun DoctorConsultationScreen(
   var showCustomProcedureModal by remember { mutableStateOf(false) }
   var showScribbleExpanded by remember { mutableStateOf(false) }
   var showPatientSelectorDialog by remember { mutableStateOf(false) }
-  val attachmentsState = remember(activePatient?.id) { mutableStateListOf<MedicalAttachment>() }
+  val attachmentsState = remember(patientId) { mutableStateListOf<MedicalAttachment>() }
   var showAttachmentsModal by remember { mutableStateOf(false) }
   var showTrendsModal by remember { mutableStateOf(false) }
   var showVaccinesModal by remember { mutableStateOf(false) }
   var showConfirmSaveDialog by remember { mutableStateOf(false) }
-  val anatomyStrokes = remember(activePatient?.id) { mutableStateListOf<DrawStroke>() }
-  val drawingPagesState = remember(activePatient?.id) { mutableStateListOf<DrawingPage>() }
-  var canvasNotesState by remember(activePatient?.id) { mutableStateOf("") }
-  var anatomyPageCount by remember(activePatient?.id) { mutableStateOf(1) }
+  val anatomyStrokes = remember(patientId) { mutableStateListOf<DrawStroke>() }
+  val drawingPagesState = remember(patientId) { mutableStateListOf<DrawingPage>() }
+  var canvasNotesState by remember(patientId) { mutableStateOf("") }
+  var anatomyPageCount by remember(patientId) { mutableStateOf(1) }
   var editingConsultation by remember { mutableStateOf<ConsultationRecord?>(null) }
 
   // Restore in-progress active draft for active patient if currently being edited today
   val draftConsultations by viewModel.draftConsultations.collectAsState()
   val consultations by viewModel.consultations.collectAsState()
-  LaunchedEffect(activePatient?.id) {
+  LaunchedEffect(patientId) {
     if (activePatient != null) {
       val draft = viewModel.getDraftConsultation(activePatient.id)
       if (draft != null) {
@@ -294,8 +300,7 @@ fun DoctorConsultationScreen(
   }
 
   // Auto-save clinical notes draft whenever doctor enters notes, strokes or orders
-  LaunchedEffect(
-    activePatient?.id,
+  LaunchedEffect(patientId,
     subjective,
     objective,
     assessment,
@@ -340,7 +345,7 @@ fun DoctorConsultationScreen(
   }
 
   // Past consultations for 2nd visit / follow-up review
-  val pastConsultations = remember(activePatient?.id, activePatient?.hn) {
+  val pastConsultations = remember(patientId, patientHn) {
     if (activePatient != null) {
       viewModel.getPatientConsultationHistory(activePatient.id, activePatient.hn)
     } else {
