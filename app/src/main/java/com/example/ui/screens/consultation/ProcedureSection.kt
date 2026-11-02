@@ -587,7 +587,7 @@ fun AddProcedureConsumableDialog(
           med.category.contains(searchQuery, ignoreCase = true)
 
       val matchesCategory = when (selectedCategory) {
-        "All" -> true
+        "All" -> med.effectiveMedicineType in listOf("Consumables", "Injection")
         "Consumables" -> med.category.contains("Consumable", ignoreCase = true)
         "Anesthesia / Injection" -> med.category.contains("Anesthesia", ignoreCase = true) || med.category.contains("Injection", ignoreCase = true)
         "Minor Surgery" -> med.category.contains("Minor", ignoreCase = true) || med.dosageForm.contains("Blade", ignoreCase = true) || med.dosageForm.contains("Suture", ignoreCase = true)

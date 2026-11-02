@@ -55,9 +55,10 @@ fun DrugPickerModal(
   var extNotes by remember { mutableStateOf("ပြင်ပဆေးဆိုင်တွင် ဝယ်ယူရန်") }
 
   val filteredMedicines = medicines.filter {
-    searchQuery.isBlank() ||
+    (it.effectiveMedicineType in listOf("Oral", "Topical")) &&
+    (searchQuery.isBlank() ||
         it.name.contains(searchQuery, ignoreCase = true) ||
-        it.genericName.contains(searchQuery, ignoreCase = true)
+        it.genericName.contains(searchQuery, ignoreCase = true))
   }
 
   val freqPresets = listOf(

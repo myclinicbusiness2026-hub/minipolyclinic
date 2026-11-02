@@ -1865,11 +1865,13 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
   fun deleteInvoiceAndReturnStock(invoiceId: String): Pair<Boolean, List<String>> {
     val inv = _invoices.value.find { it.id == invoiceId }
-    val restored = inv?.items?.map { it.name } ?: emptyList()
+    val restored = if (inv?.isInventoryDeducted == true) inv.items.map { it.name } else emptyList()
     if (inv != null) {
       val medMap = _medicines.value.associateBy { it.id }.toMutableMap()
       var modified = false
       val now = System.currentTimeMillis()
+
+      if (inv.isInventoryDeducted) {
 
       for (item in inv.items.filter { !it.isProcedure }) {
         val cleanName = item.name.split(" x ").firstOrNull()?.split("(")?.firstOrNull()?.trim() ?: item.name
@@ -1987,6 +1989,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         }
       }
 
+      } // end if (inv.isInventoryDeducted)
+
       // Cascade remove linked treatment cards
       if (linkedCards.isNotEmpty()) {
         val ctxLocal = getApplication<Application>()
@@ -2021,7 +2025,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     var medModified = false
 
     fun restockDrug(medId: String?, medName: String, qty: Int) {
-      if (qty <= 0) return
+      if (!inv.isInventoryDeducted || qty <= 0) return
       val med = (if (!medId.isNullOrBlank()) medMap[medId] else null)
         ?: medMap.values.find { it.name.equals(medName, ignoreCase = true) || medName.contains(it.name, ignoreCase = true) }
       if (med != null) {
