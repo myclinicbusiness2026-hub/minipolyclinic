@@ -155,6 +155,10 @@ data class TreatmentCard(
     val drugNameOnly = cleanMed
       .replace(Regex("(?i)^(im|iv\\s*push|iv\\s*infusion|iv|sc)\\s*:?\\s*"), "")
       .trim()
+    val dosageStr = if (!isCocktail && dosage.isNotBlank()) {
+      val d = dosage.trim()
+      if (drugNameOnly.contains(d, ignoreCase = true)) "" else " $d"
+    } else ""
     val freq = frequency.trim()
     val isStat = freq.contains("stat", ignoreCase = true)
     val freqStr = if (freq.isNotBlank()) " $freq" else ""
@@ -163,7 +167,7 @@ data class TreatmentCard(
       " $dayWord"
     }
     val patientOwnStr = if (isPatientSupplied) " [လူနာပါဆေး]" else ""
-    return "$routeShort $drugNameOnly$freqStr$durStr$patientOwnStr".trim()
+    return "$routeShort $drugNameOnly$dosageStr$freqStr$durStr$patientOwnStr".trim()
   }
   val completedSessionsCount: Int get() = sessions.count { it.status == TreatmentStatus.COMPLETED }
   val isFullyCompleted: Boolean get() = cardStatus == TreatmentStatus.COMPLETED || (sessions.isNotEmpty() && sessions.all { it.status == TreatmentStatus.COMPLETED })

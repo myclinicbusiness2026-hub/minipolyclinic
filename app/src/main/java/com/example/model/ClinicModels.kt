@@ -149,6 +149,7 @@ data class PrescribedDrug(
   val medicineId: String = "",
   val medicineName: String = "",
   val name: String = medicineName,
+  val genericName: String = "",
   val dosage: String = "",
   val frequency: String = "",
   val duration: String = "",
@@ -158,6 +159,15 @@ data class PrescribedDrug(
   val isExternal: Boolean = false
 ) {
   val effectiveName: String get() = if (name.isNotBlank()) name else medicineName
+  val fullDisplayName: String get() {
+    val trade = effectiveName.trim()
+    val generic = genericName.trim()
+    return if (generic.isNotBlank() && !trade.contains(generic, ignoreCase = true)) {
+      "$trade ($generic)"
+    } else {
+      trade
+    }
+  }
   val totalPrice: Double get() = quantity * unitPrice
 
   constructor(
@@ -174,6 +184,7 @@ data class PrescribedDrug(
     medicineId = medicineId,
     medicineName = medicineName,
     name = medicineName,
+    genericName = "",
     dosage = dosage,
     frequency = frequency,
     duration = duration,
@@ -283,6 +294,7 @@ data class ReferralRecord(
 data class ConsultationRecord(
   val id: String = UUID.randomUUID().toString(),
   val patientId: String,
+  val patientHn: String = "",
   val patientName: String,
   val clinicName: String = "Shwe Khit Clinic",
   val doctorName: String = "Dr. Nyan Kaung Sett M.B.,B.S(MDY)",

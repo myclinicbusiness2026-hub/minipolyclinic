@@ -146,12 +146,12 @@ fun StructuredClinicalEditDialog(
           Tab(
             selected = selectedTab == 0,
             onClick = { selectedTab = 0 },
-            text = { Text("၁။ ရောဂါအမည် & ဆေးစာရင်း (Rx)", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+            text = { Text("၁။ ရာဇဝင် & စမ်းသပ်ချက် (H & E)", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
           )
           Tab(
             selected = selectedTab == 1,
             onClick = { selectedTab = 1 },
-            text = { Text("၂။ ရာဇဝင် & စမ်းသပ်ချက် (H & E)", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+            text = { Text("၂။ ရောဂါအမည် & ဆေးစာရင်း (Rx)", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
           )
           Tab(
             selected = selectedTab == 2,
@@ -168,8 +168,8 @@ fun StructuredClinicalEditDialog(
             .padding(14.dp)
         ) {
           when (selectedTab) {
-            0 -> {
-              // TAB 0: Diagnoses & Prescriptions
+            1 -> {
+              // TAB 1: Diagnoses & Prescriptions
               Column(
                 modifier = Modifier
                   .fillMaxSize()
@@ -436,8 +436,8 @@ fun StructuredClinicalEditDialog(
               }
             }
 
-            1 -> {
-              // TAB 1: Clinical History & Examination
+            0 -> {
+              // TAB 0: Clinical History & Examination
               Column(
                 modifier = Modifier
                   .fillMaxSize()

@@ -379,17 +379,22 @@ fun DoctorConsultationScreen(
 
       // Collect all treatment orders (explicit + injectable Rx)
       val finalTreatmentCards = orderedTreatmentCards.toMutableList()
-      if (finalTreatmentCards.isEmpty()) {
-        prescribedDrugs.forEach { drug ->
-          val isInjection = drug.effectiveName.contains("Inj", ignoreCase = true) ||
-              drug.dosage.contains("Inj", ignoreCase = true) ||
-              drug.medicineName.contains("Inj", ignoreCase = true) ||
-              drug.instructions.contains("IM", ignoreCase = true) ||
-              drug.instructions.contains("IV", ignoreCase = true) ||
-              drug.instructions.contains("Drip", ignoreCase = true) ||
-              drug.instructions.contains("Infusion", ignoreCase = true) ||
-              drug.instructions.contains("Neb", ignoreCase = true)
-          if (isInjection) {
+      prescribedDrugs.forEach { drug ->
+        val isInjection = drug.effectiveName.contains("Inj", ignoreCase = true) ||
+            drug.dosage.contains("Inj", ignoreCase = true) ||
+            drug.medicineName.contains("Inj", ignoreCase = true) ||
+            drug.instructions.contains("IM", ignoreCase = true) ||
+            drug.instructions.contains("IV", ignoreCase = true) ||
+            drug.instructions.contains("Drip", ignoreCase = true) ||
+            drug.instructions.contains("Infusion", ignoreCase = true) ||
+            drug.instructions.contains("Neb", ignoreCase = true)
+        if (isInjection) {
+          val cleanDrug = drug.effectiveName.replace(Regex("(?i)^inj\\.?\\s*"), "").trim().lowercase()
+          val alreadyInCards = finalTreatmentCards.any { card ->
+            (card.medicationId.isNotBlank() && card.medicationId == drug.medicineId) ||
+            (cleanDrug.isNotBlank() && card.medicationName.lowercase().contains(cleanDrug))
+          }
+          if (!alreadyInCards) {
             val route = when {
               drug.instructions.contains("Drip", ignoreCase = true) || drug.instructions.contains("Infusion", ignoreCase = true) -> TreatmentRoute.IV_INFUSION
               drug.instructions.contains("IV", ignoreCase = true) -> TreatmentRoute.IV_PUSH

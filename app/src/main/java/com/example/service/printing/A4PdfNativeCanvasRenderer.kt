@@ -48,7 +48,7 @@ object A4PdfNativeCanvasRenderer {
       return consultation.treatmentOrderDetails
     }
     return consultation.prescriptions.filter { isInjectable(it) }.map { drug ->
-      val name = drug.effectiveName.ifBlank { drug.name.ifBlank { drug.medicineName } }
+      val name = drug.fullDisplayName
       val dose = if (drug.dosage.isNotBlank() && !name.contains(drug.dosage)) " ${drug.dosage}" else ""
       val dir = formatDosageAndDirection(drug)
       val dirStr = if (dir.isNotBlank()) " $dir" else ""
@@ -1573,7 +1573,7 @@ object A4PdfNativeCanvasRenderer {
       canvas.drawText("${idx + 1}", 28f, textRowY, paint)
 
       // Drug Name & Strength (With [External] tag if external)
-      val medName = rx.effectiveName.ifBlank { rx.name.ifBlank { rx.medicineName } }
+      val medName = rx.fullDisplayName
       val externalPrefix = if (rx.isExternal) "[External] " else ""
       val baseDrug = if (rx.dosage.isNotBlank() && !medName.contains(rx.dosage)) "$medName (${rx.dosage})" else medName
       val fullDrug = "$externalPrefix$baseDrug"

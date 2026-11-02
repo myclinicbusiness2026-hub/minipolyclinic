@@ -405,7 +405,9 @@ fun DrugPickerModal(
                   onDrugAdded(
                     PrescribedDrug(
                       medicineId = med.id,
+                      medicineName = med.name,
                       name = med.name,
+                      genericName = med.genericName,
                       dosage = dosage,
                       frequency = frequency,
                       duration = duration,

@@ -77,6 +77,7 @@ fun MedicalRecordsScreen(
   var showFollowUpConfirmDialog by remember { mutableStateOf<Patient?>(null) }
   var editingConsultation by remember { mutableStateOf<ConsultationRecord?>(null) }
   var editingPatient by remember { mutableStateOf<Patient?>(null) }
+  var recordToDelete by remember { mutableStateOf<ConsultationRecord?>(null) }
   val context = androidx.compose.ui.platform.LocalContext.current
 
   val todayIso = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
@@ -395,6 +396,7 @@ fun MedicalRecordsScreen(
                 onOpenAttachments = { consult -> attachmentsConsultation = consult },
                 onRequestFollowUpQueue = { showFollowUpConfirmDialog = activePatient },
                 onEditRecord = { consult -> editingConsultation = consult },
+                onDeleteRecord = { consult -> recordToDelete = consult },
                 onEditPatient = { p -> editingPatient = p }
               )
             } else {
@@ -449,6 +451,7 @@ fun MedicalRecordsScreen(
                 onOpenAttachments = { consult -> attachmentsConsultation = consult },
                 onRequestFollowUpQueue = { showFollowUpConfirmDialog = activePatient },
                 onEditRecord = { consult -> editingConsultation = consult },
+                onDeleteRecord = { consult -> recordToDelete = consult },
                 onEditPatient = { p -> editingPatient = p }
               )
             }
@@ -658,6 +661,33 @@ fun MedicalRecordsScreen(
     )
   }
 
+  recordToDelete?.let { consult ->
+    AlertDialog(
+      onDismissRequest = { recordToDelete = null },
+      title = { Text("ဆေးမှတ်တမ်း ဖျက်မည်", fontWeight = FontWeight.Bold, fontSize = 14.sp) },
+      text = {
+        Text("လူနာ ${consult.patientName} ၏ ဆေးမှတ်တမ်း (${consult.timestamp}) အား အပြီးအပိုင် ဖျက်ပစ်ရန် သေချာပါသလား?")
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            viewModel.deleteConsultation(consult.id)
+            recordToDelete = null
+            android.widget.Toast.makeText(context, "ဆေးမှတ်တမ်း အောင်မြင်စွာ ဖျက်ပြီးပါပြီ", android.widget.Toast.LENGTH_SHORT).show()
+          },
+          colors = ButtonDefaults.buttonColors(containerColor = StatusCritical)
+        ) {
+          Text("ဖျက်မည် (Delete)", color = PureWhite, fontWeight = FontWeight.Bold)
+        }
+      },
+      dismissButton = {
+        OutlinedButton(onClick = { recordToDelete = null }) {
+          Text("မဖျက်တော့ပါ (Cancel)")
+        }
+      }
+    )
+  }
+
   editingPatient?.let { p ->
     EditPatientDialog(
       patient = p,
@@ -824,6 +854,7 @@ private fun PatientDetailedEmrPane(
   onOpenAttachments: (ConsultationRecord) -> Unit,
   onRequestFollowUpQueue: () -> Unit,
   onEditRecord: (ConsultationRecord) -> Unit,
+  onDeleteRecord: (ConsultationRecord) -> Unit = {},
   onEditPatient: (Patient) -> Unit = {}
 ) {
   Column(
@@ -1142,7 +1173,8 @@ private fun PatientDetailedEmrPane(
           onPrintA4 = { onPrintA4(consult) },
           onPrintThermal = { inv -> onPrintThermal(inv) },
           onOpenAttachments = { onOpenAttachments(consult) },
-          onEditRecord = { onEditRecord(consult) }
+          onEditRecord = { onEditRecord(consult) },
+          onDeleteRecord = { onDeleteRecord(consult) }
         )
       }
     }
@@ -1160,7 +1192,8 @@ private fun ConsultationVisitTimelineCard(
   onPrintA4: () -> Unit,
   onPrintThermal: (Invoice) -> Unit,
   onOpenAttachments: () -> Unit,
-  onEditRecord: () -> Unit
+  onEditRecord: () -> Unit,
+  onDeleteRecord: () -> Unit = {}
 ) {
   var isExpanded by remember { mutableStateOf(visitNumber == 1) }
 
@@ -1255,6 +1288,13 @@ private fun ConsultationVisitTimelineCard(
             Spacer(modifier = Modifier.width(4.dp))
             Text("Edit Record", fontSize = 10.sp, color = SkyBlueDark, fontWeight = FontWeight.Bold)
           }
+
+          IconButton(
+            onClick = onDeleteRecord,
+            modifier = Modifier.size(28.dp)
+          ) {
+            Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = StatusCritical, modifier = Modifier.size(16.dp))
+          }
         }
       } else {
         Row(
@@ -1315,6 +1355,13 @@ private fun ConsultationVisitTimelineCard(
               Icon(Icons.Default.Edit, contentDescription = null, tint = SkyBlueDark, modifier = Modifier.size(12.dp))
               Spacer(modifier = Modifier.width(3.dp))
               Text("Edit", fontSize = 9.5.sp, color = SkyBlueDark, fontWeight = FontWeight.Bold)
+            }
+
+            IconButton(
+              onClick = onDeleteRecord,
+              modifier = Modifier.size(26.dp)
+            ) {
+              Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = StatusCritical, modifier = Modifier.size(15.dp))
             }
 
             IconButton(

@@ -438,6 +438,7 @@ object ClinicDataPersistence {
     return JSONObject().apply {
       put("id", c.id)
       put("patientId", c.patientId)
+      put("patientHn", c.patientHn)
       put("patientName", c.patientName)
       put("doctorName", c.doctorName)
       put("doctorDegree", c.doctorDegree)
@@ -461,6 +462,7 @@ object ClinicDataPersistence {
           put("medicineId", rx.medicineId)
           put("medicineName", rx.medicineName)
           put("name", rx.name)
+          put("genericName", rx.genericName)
           put("dosage", rx.dosage)
           put("frequency", rx.frequency)
           put("duration", rx.duration)
@@ -547,6 +549,7 @@ object ClinicDataPersistence {
             medicineId = ro.optString("medicineId"),
             medicineName = effectiveMn,
             name = effectiveN,
+            genericName = ro.optString("genericName", ""),
             dosage = ro.optString("dosage"),
             frequency = ro.optString("frequency"),
             duration = ro.optString("duration"),
