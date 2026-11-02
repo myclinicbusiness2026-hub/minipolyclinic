@@ -1885,7 +1885,10 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
   fun deleteInvoiceAndReturnStock(invoiceId: String): Pair<Boolean, List<String>> {
     val inv = _invoices.value.find { it.id == invoiceId }
-    val restored = if (inv?.isInventoryDeducted == true) inv.items.map { it.name } else emptyList()
+    val restored = mutableListOf<String>()
+    if (inv?.isInventoryDeducted == true) {
+      restored.addAll(inv.items.map { it.name })
+    }
     if (inv != null) {
       val linkedCards = _treatmentCards.value.filter { card ->
         card.consultationInvoiceId == invoiceId || (card.patientId == inv.patientId && card.sessions.any { it.invoiceId == invoiceId })
