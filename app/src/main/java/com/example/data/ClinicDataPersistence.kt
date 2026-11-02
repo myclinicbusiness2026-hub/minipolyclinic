@@ -1027,6 +1027,16 @@ object ClinicDataPersistence {
             )
           }
         }
+        val dedMap = mutableMapOf<String, Int>()
+        val dObj = o.optJSONObject("deductedDrugQuantities")
+        if (dObj != null) {
+          val itKeys = dObj.keys()
+          while (itKeys.hasNext()) {
+            val k = itKeys.next()
+            dedMap[k] = dObj.optInt(k, 0)
+          }
+        }
+
         list.add(
           Invoice(
             id = o.optString("id"),
@@ -1048,18 +1058,7 @@ object ClinicDataPersistence {
             timestamp = o.optString("timestamp"),
             isInventoryDeducted = o.optBoolean("isInventoryDeducted", false),
             isPrescriptionsDeducted = o.optBoolean("isPrescriptionsDeducted", false),
-            deductedDrugQuantities = run {
-              val dedMap = mutableMapOf<String, Int>()
-              val dObj = o.optJSONObject("deductedDrugQuantities")
-              if (dObj != null) {
-                val itKeys = dObj.keys()
-                while (itKeys.hasNext()) {
-                  val k = itKeys.next()
-                  dedMap[k] = dObj.optInt(k, 0)
-                }
-              }
-              dedMap
-            },
+            deductedDrugQuantities = dedMap,
             discountPercent = o.optDouble("discountPercent", 0.0),
             doctorFeeDiscount = o.optDouble("doctorFeeDiscount", 0.0),
             pharmacyDiscount = o.optDouble("pharmacyDiscount", 0.0),

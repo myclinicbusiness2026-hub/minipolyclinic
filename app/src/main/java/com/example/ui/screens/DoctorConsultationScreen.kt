@@ -295,22 +295,15 @@ fun DoctorConsultationScreen(
 
   // Auto-save clinical notes draft whenever doctor enters notes, strokes or orders
   LaunchedEffect(
+    activePatient?.id,
     subjective,
     objective,
     assessment,
     plan,
     canvasNotesState,
-    selectedDiagnoses.size,
     prescribedDrugs.size,
-    selectedProcedures.size,
-    selectedProcedures.sumOf { it.consumableItems.size },
     orderedTreatmentCards.size,
-    selectedInvestigations.size,
-    drawingPagesState.size,
-    followUpAppointmentText,
-    patientInstructionsState,
-    medicalLeaveState,
-    referralState
+    selectedProcedures.size
   ) {
     if (activePatient != null && (activePatient.status == QueueStatus.WAITING || activePatient.status == QueueStatus.IN_CONSULTATION)) {
       val resolvedPages = if (drawingPagesState.isNotEmpty()) {
@@ -379,15 +372,21 @@ fun DoctorConsultationScreen(
       } ?: ""
 
       val currentNotes = if (objective.isNotBlank()) objective else canvasNotesState
-      val parsedTemp = tempText.toDoubleOrNull() ?: activePatient.vitals.temperatureFahrenheit
-      val calculatedTempCelsius = if (parsedTemp > 50.0) (parsedTemp - 32.0) * 5.0 / 9.0 else parsedTemp
+      val pVitC = activePatient.vitals
+      val bpVitC = bpText
+      val pulseVitC = pulseText.toIntOrNull() ?: pVitC.pulseRate
+      val parsedTempC = tempText.toDoubleOrNull() ?: pVitC.temperatureFahrenheit
+      val calculatedTempCelsiusC = if (parsedTempC > 50.0) (parsedTempC - 32.0) * 5.0 / 9.0 else parsedTempC
+      val spo2VitC = spo2Text.toIntOrNull() ?: pVitC.oxygenSaturation
+      val weightVitC = weightText.toDoubleOrNull() ?: pVitC.weightKg
+      val rbsVitC = rbsText.toDoubleOrNull() ?: pVitC.rbs
       val currentVitals = VitalSigns(
-        bloodPressure = bpText,
-        pulseRate = pulseText.toIntOrNull() ?: activePatient.vitals.pulseRate,
-        temperatureCelsius = calculatedTempCelsius,
-        oxygenSaturation = spo2Text.toIntOrNull() ?: activePatient.vitals.oxygenSaturation,
-        weightKg = weightText.toDoubleOrNull() ?: activePatient.vitals.weightKg,
-        rbs = rbsText.toDoubleOrNull() ?: activePatient.vitals.rbs
+        bloodPressure = bpVitC,
+        pulseRate = pulseVitC,
+        temperatureCelsius = calculatedTempCelsiusC,
+        oxygenSaturation = spo2VitC,
+        weightKg = weightVitC,
+        rbs = rbsVitC
       )
 
       // Collect all treatment orders (explicit + injectable Rx)
@@ -755,16 +754,21 @@ fun DoctorConsultationScreen(
           } ?: ""
 
           val currentNotes = if (objective.isNotBlank()) objective else canvasNotesState
+          val pV = activePatient.vitals
+          val bpV = bpText
+          val pulseV = pulseText.toIntOrNull() ?: pV.pulseRate
+          val rawTempV = tempText.toDoubleOrNull() ?: pV.temperatureFahrenheit
+          val tempCelV = if (rawTempV > 50.0) (rawTempV - 32.0) * 5.0 / 9.0 else rawTempV
+          val spo2V = spo2Text.toIntOrNull() ?: pV.oxygenSaturation
+          val weightV = weightText.toDoubleOrNull() ?: pV.weightKg
+          val rbsV = rbsText.toDoubleOrNull() ?: pV.rbs
           val currentVitals = VitalSigns(
-            bloodPressure = bpText,
-            pulseRate = pulseText.toIntOrNull() ?: activePatient.vitals.pulseRate,
-            temperatureCelsius = run {
-              val t = tempText.toDoubleOrNull() ?: activePatient.vitals.temperatureFahrenheit
-              if (t > 50.0) (t - 32.0) * 5.0 / 9.0 else t
-            },
-            oxygenSaturation = spo2Text.toIntOrNull() ?: activePatient.vitals.oxygenSaturation,
-            weightKg = weightText.toDoubleOrNull() ?: activePatient.vitals.weightKg,
-            rbs = rbsText.toDoubleOrNull() ?: activePatient.vitals.rbs
+            bloodPressure = bpV,
+            pulseRate = pulseV,
+            temperatureCelsius = tempCelV,
+            oxygenSaturation = spo2V,
+            weightKg = weightV,
+            rbs = rbsV
           )
 
           val docFullName = if (effectiveDoctor.second.isNotBlank() && !effectiveDoctor.first.contains(effectiveDoctor.second, ignoreCase = true)) {
@@ -810,16 +814,21 @@ fun DoctorConsultationScreen(
       if (activePatient != null) {
         val patient = activePatient
         val onSaveVitalsAction = {
+          val pVit = patient.vitals
+          val bpVit = bpText
+          val pulseVit = pulseText.toIntOrNull() ?: pVit.pulseRate
+          val rawTempVit = tempText.toDoubleOrNull() ?: pVit.temperatureFahrenheit
+          val tempCelVit = if (rawTempVit > 50.0) (rawTempVit - 32.0) * 5.0 / 9.0 else rawTempVit
+          val spo2Vit = spo2Text.toIntOrNull() ?: pVit.oxygenSaturation
+          val weightVit = weightText.toDoubleOrNull() ?: pVit.weightKg
+          val rbsVit = rbsText.toDoubleOrNull() ?: pVit.rbs
           val newVitals = VitalSigns(
-            bloodPressure = bpText,
-            pulseRate = pulseText.toIntOrNull() ?: patient.vitals.pulseRate,
-            temperatureCelsius = run {
-              val t = tempText.toDoubleOrNull() ?: patient.vitals.temperatureFahrenheit
-              if (t > 50.0) (t - 32.0) * 5.0 / 9.0 else t
-            },
-            oxygenSaturation = spo2Text.toIntOrNull() ?: patient.vitals.oxygenSaturation,
-            weightKg = weightText.toDoubleOrNull() ?: patient.vitals.weightKg,
-            rbs = rbsText.toDoubleOrNull() ?: patient.vitals.rbs
+            bloodPressure = bpVit,
+            pulseRate = pulseVit,
+            temperatureCelsius = tempCelVit,
+            oxygenSaturation = spo2Vit,
+            weightKg = weightVit,
+            rbs = rbsVit
           )
           viewModel.updatePatientVitals(patient.id, newVitals)
           isEditingVitals = false
