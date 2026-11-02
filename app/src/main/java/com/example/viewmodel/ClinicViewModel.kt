@@ -1088,7 +1088,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val draft = ConsultationRecord(
       id = existing?.id ?: "DRAFT-$patientId",
       patientId = patientId,
-      patientHn = patient.hn,
+      patientHn = _patients.value.find { it.id == patientId }?.hn ?: "",
       patientName = patientName.ifBlank { existing?.patientName ?: (_patients.value.find { it.id == patientId }?.name ?: "") },
       doctorName = doctorNameOverride.ifBlank { existing?.doctorName ?: (_currentUser.value?.fullName ?: clinicSettings.value.doctorName) },
       doctorDegree = doctorDegreeOverride.ifBlank { existing?.doctorDegree ?: clinicSettings.value.doctorDegree },
