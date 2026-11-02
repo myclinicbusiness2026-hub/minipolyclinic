@@ -152,6 +152,16 @@ fun DoctorConsultationScreen(
     }
   }
 
+  // Stable Scroll States to prevent jumping
+  val leftScrollState = rememberScrollState()
+  val rightScrollState = rememberScrollState()
+  val mobileScrollState = rememberScrollState()
+
+  // Single memoized draft consultation retrieval (declared before SOAP states)
+  val activeDraft: ConsultationRecord? = remember(activePatient?.id) {
+    activePatient?.id?.let { viewModel.getDraftConsultation(it) }
+  }
+
   // Clinical Notes & SOAP State
   var subjective by remember(activePatient?.id) {
     val initialComplaint = if (activeDraft != null && activeDraft.subjective.isNotBlank()) {
@@ -171,16 +181,6 @@ fun DoctorConsultationScreen(
   }
   var plan by remember(activePatient?.id) {
     mutableStateOf(activeDraft?.plan ?: "")
-  }
-
-  // Stable Scroll States to prevent jumping
-  val leftScrollState = rememberScrollState()
-  val rightScrollState = rememberScrollState()
-  val mobileScrollState = rememberScrollState()
-
-  // Single memoized draft consultation retrieval
-  val activeDraft = remember(activePatient?.id) {
-    activePatient?.id?.let { viewModel.getDraftConsultation(it) }
   }
 
   // Editable Vitals State for Active Consultation
