@@ -6,5 +6,5 @@
   "releaseNotesMm": "• ယခင် ဆေးမှတ်တမ်းဟောင်းများ (Past Medical Records) ပြန်မပေါ်သည့် ပြဿနာ ဖြေရှင်းခြင်း - လူနာ၏ မူရင်း HN Code ဖြင့် ချိတ်ဆက်ပြီး ယခင်ပြသခဲ့ဖူးသော ဆေးမှတ်တမ်းအားလုံးကို တိကျစွာ ပြန်လည်ဖော်ပြပေးခြင်း\n• ဆေးမှတ်တမ်း ပြင်ဆင်မှု Form အား SOAP Workflow အတိုင်း အဆင့်ဆင့် ပြန်လည်စီစဉ်ခြင်း (H&E -> Dx & Rx -> Advice & Fee)\n• မလိုလားအပ်သော ဆေးမှတ်တမ်းဟောင်းများကို အပြီးအပိုင် ဖျက်ပစ်နိုင်သည့် ခလုတ် (Delete Record) ထည့်သွင်းပေးခြင်း\n• Procedure Consumables (ခွဲစိတ်/ချုပ်ရိုး/ပတ်တီးသုံးပစ္စည်းများ) ကို ဘောင်ချာတွင် အသေးစိတ် ဖော်ပြပြီး ငွေရှင်းပါက စတိုးမှ တိကျစွာ အလိုအလျောက် နှုတ်ယူပေးခြင်း\n• ဆေးညွှန်းများတွင် Generic Name + Trade Name (Brand Name) အတူတကွ တွဲဖက်ဖော်ပြပေးခြင်း (ဥပမာ Diclo-M (Diclofenac) 50mg)\n• သောက်ဆေးများ စတော့နှုတ်ရာတွင် အရေအတွက် အမှန်အတိုင်း အပြည့်အဝ နှုတ်ယူစေခြင်း\n• ထိုးဆေးအညွှန်းတွင် ဆေးပမာဏ (Dosage) နှင့် Generic Name ပါဝင်စေခြင်း (ဥပမာ IM Bio TT (Tetanus Toxoid) 1 amp stat)",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-02",
-  "apkSizeBytes": 21554026
+  "apkSizeBytes": 21570410
 }
