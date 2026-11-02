@@ -1919,7 +1919,6 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
               modified = true
             }
           }
-        }
         } else if (card.medicationName.isNotBlank()) {
           val med = medMap[card.medicationId]
             ?: medMap.values.find {
