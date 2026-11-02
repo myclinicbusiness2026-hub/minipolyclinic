@@ -528,7 +528,7 @@ object ClinicDataPersistence {
             consumables.add(
               TreatmentConsumable(
                 id = co.optString("id", UUID.randomUUID().toString()),
-                medicineId = co.optString("medicineId").ifBlank { null },
+                medicineId = co.optString("medicineId"),
                 name = co.optString("name"),
                 quantity = co.optInt("quantity", 1),
                 unitPrice = co.optDouble("unitPrice", 0.0)
@@ -787,7 +787,6 @@ object ClinicDataPersistence {
                 name = co.optString("name"),
                 quantity = co.optInt("quantity", 1),
                 unitPrice = co.optDouble("unitPrice", 0.0),
-                totalPrice = co.optDouble("totalPrice", 0.0),
                 unitType = co.optString("unitType", "pcs"),
                 medicineId = co.optString("medicineId").ifBlank { null }
               )

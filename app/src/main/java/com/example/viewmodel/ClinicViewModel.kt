@@ -2008,6 +2008,16 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val medMap = _medicines.value.associateBy { it.id }.toMutableMap()
     var medModified = false
 
+    val itemsToReturn = if (voidEntireInvoice) {
+      inv.items.filter { !it.isProcedure }
+    } else {
+      inv.items.filter { !it.isProcedure && returnedItemNames.contains(it.name) }
+    }
+    val linkedCards = _treatmentCards.value.filter { card ->
+      card.consultationInvoiceId == invoiceId || (card.patientId == inv.patientId && card.sessions.any { it.invoiceId == invoiceId })
+    }
+    val cardsToRemove = mutableListOf<TreatmentCard>()
+
     fun restockDrug(medId: String?, medName: String, qty: Int) {
       if (!inv.isInventoryDeducted || qty <= 0) return
       val med = (if (!medId.isNullOrBlank()) medMap[medId] else null)
@@ -2030,10 +2040,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       for ((medId, qty) in inv.deductedDrugQuantities) {
         restockDrug(medId, "", qty)
       }
-      val linkedCards = _treatmentCards.value.filter { card ->
-        card.consultationInvoiceId == invoiceId || (card.patientId == inv.patientId && card.sessions.any { it.invoiceId == invoiceId })
-      }
       if (linkedCards.isNotEmpty()) {
+        cardsToRemove.addAll(linkedCards)
         val ctxLocal = getApplication<Application>()
         linkedCards.forEach { c -> ClinicDataPersistence.addDeletedTreatmentCardId(ctxLocal, c.id) }
         val remainingCards = _treatmentCards.value.filterNot { card -> linkedCards.any { it.id == card.id } }
@@ -2042,11 +2050,6 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       }
     } else {
       // 1. Return Prescription & Store OTC items
-      val itemsToReturn = if (voidEntireInvoice) {
-        inv.items.filter { !it.isProcedure }
-      } else {
-        inv.items.filter { !it.isProcedure && returnedItemNames.contains(it.name) }
-      }
       val restockedMeds = mutableSetOf<String>()
       for (item in itemsToReturn) {
         val cleanName = item.name.split(" x ").firstOrNull()?.split("(")?.firstOrNull()?.trim() ?: item.name
@@ -2058,10 +2061,6 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       }
 
       // 2. Return Treatment Card Items (Cocktails, Single Injections, and Consumables)
-      val linkedCards = _treatmentCards.value.filter { card ->
-        card.consultationInvoiceId == invoiceId || (card.patientId == inv.patientId && card.sessions.any { it.invoiceId == invoiceId })
-      }
-      val cardsToRemove = mutableListOf<TreatmentCard>()
       for (card in linkedCards) {
         val isCardReturned = voidEntireInvoice || returnedItemNames.any { retName ->
           retName.equals(card.orderSummaryText, ignoreCase = true) ||
