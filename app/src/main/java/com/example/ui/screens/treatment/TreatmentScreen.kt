@@ -730,14 +730,14 @@ fun TreatmentScreen(
       card = card,
       onDismiss = { cardToDiscontinue = null },
       onConfirm = { reason, returnStock ->
-        val result = viewModel.voidTreatmentCardAndReturnStock(
+        val (success, restoredList) = viewModel.voidTreatmentCardAndReturnStock(
           cardId = card.id,
           returnStock = returnStock,
           reason = reason
         )
-        if (result.first) {
-          val msg = if (result.second.isNotEmpty()) {
-            "ကုသမှု ပယ်ဖျက်ပြီး စတော့ခ်ထဲ ပြန်သွင်းပြီးပါပြီ: ${result.second.joinToString(", ")}"
+        if (success) {
+          val msg = if (restoredList.isNotEmpty()) {
+            "ကုသမှု ပယ်ဖျက်ပြီး စတော့ခ်ထဲ ပြန်သွင်းပြီးပါပြီ: ${restoredList.joinToString(", ")}"
           } else {
             "ကုသမှုကတ်အား အောင်မြင်စွာ ပယ်ဖျက်ပြီးပါပြီ"
           }
