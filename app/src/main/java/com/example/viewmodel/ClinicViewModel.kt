@@ -173,7 +173,18 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     _expenses.value = ClinicDataPersistence.loadExpenses(ctx) ?: ClinicInitialDataSeeder.getSeedExpenses()
     _vaccines.value = ClinicDataPersistence.loadVaccines(ctx) ?: ClinicInitialDataSeeder.getSeedVaccines()
     _suppliers.value = ClinicDataPersistence.loadSuppliers(ctx) ?: ClinicInitialDataSeeder.getSeedSuppliers()
-    _treatmentCards.value = ClinicDataPersistence.loadTreatmentCards(ctx) ?: emptyList()
+    val rawCards = ClinicDataPersistence.loadTreatmentCards(ctx) ?: emptyList()
+    val deletedCardIds = ClinicDataPersistence.loadDeletedTreatmentCardIds(ctx)
+    val validPatientIds = loadedPatients.map { it.id }.toSet()
+    val cleanedCards = rawCards.filter {
+      !deletedCardIds.contains(it.id) &&
+      !deletedPatients.contains(it.patientId) &&
+      validPatientIds.contains(it.patientId)
+    }
+    _treatmentCards.value = cleanedCards
+    if (cleanedCards.size != rawCards.size) {
+      ClinicDataPersistence.saveTreatmentCards(ctx, cleanedCards)
+    }
     draftConsultations.value = ClinicDataPersistence.loadDraftConsultations(ctx)
     clinicSettings.value = ClinicDataPersistence.loadClinicSettings(ctx)
   }
@@ -1909,6 +1920,24 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             }
           }
         }
+        } else if (card.medicationName.isNotBlank()) {
+          val med = medMap[card.medicationId]
+            ?: medMap.values.find {
+              it.name.equals(card.medicationName, ignoreCase = true) ||
+              card.medicationName.contains(it.name, ignoreCase = true)
+            }
+          val qty = billedDoses
+          if (med != null && qty > 0) {
+            val primaryBatch = med.batches.firstOrNull()
+            val updatedBatches = if (primaryBatch != null) {
+              med.batches.mapIndexed { idx, b -> if (idx == 0) b.copy(quantity = b.quantity + qty, lastUpdated = now) else b }
+            } else {
+              listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", qty, 0.0, lastUpdated = now))
+            }
+            medMap[med.id] = med.copy(batches = updatedBatches)
+            modified = true
+          }
+        }
         card.sessions.filter { it.invoiceId == invoiceId }.forEach { s ->
           for (c in s.consumables) {
             val med = medMap[c.medicineId] ?: medMap.values.find { it.name.equals(c.name, ignoreCase = true) }
@@ -1930,6 +1959,40 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         val updatedList = _medicines.value.map { medMap[it.id] ?: it }
         _medicines.value = updatedList
         ClinicDataPersistence.saveMedicines(getApplication(), updatedList)
+      }
+
+      // Return clinical procedure consumables if any
+      val consRec = _consultations.value.find { it.id == inv.consultationId }
+      if (consRec != null && consRec.selectedProcedures.isNotEmpty()) {
+        var procModified = false
+        val procMedMap = _medicines.value.associateBy { it.id }.toMutableMap()
+        for (proc in consRec.selectedProcedures) {
+          val consToReturn = if (proc.consumableItems.isNotEmpty()) {
+            proc.consumableItems
+          } else {
+            proc.consumables.map { com.example.model.ProcedureConsumable(name = it, quantity = 1) }
+          }
+          for (c in consToReturn) {
+            val med = procMedMap[c.medicineId]
+              ?: procMedMap.values.find { it.name.equals(c.name, ignoreCase = true) || c.name.contains(it.name, ignoreCase = true) }
+            val qty = if (c.quantity > 0) c.quantity else 1
+            if (med != null && qty > 0) {
+              val primaryBatch = med.batches.firstOrNull()
+              val updatedBatches = if (primaryBatch != null) {
+                med.batches.mapIndexed { idx, b -> if (idx == 0) b.copy(quantity = b.quantity + qty, lastUpdated = now) else b }
+              } else {
+                listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", qty, 0.0, lastUpdated = now))
+              }
+              procMedMap[med.id] = med.copy(batches = updatedBatches)
+              procModified = true
+            }
+          }
+        }
+        if (procModified) {
+          val updatedList = _medicines.value.map { procMedMap[it.id] ?: it }
+          _medicines.value = updatedList
+          ClinicDataPersistence.saveMedicines(getApplication(), updatedList)
+        }
       }
 
       // Cascade remove linked treatment cards
@@ -1961,47 +2024,111 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val ctx = getApplication<Application>()
     val inv = _invoices.value.find { it.id == invoiceId } ?: return Pair(false, emptyList())
     val restored = mutableListOf<String>()
+    val now = System.currentTimeMillis()
+    val medMap = _medicines.value.associateBy { it.id }.toMutableMap()
+    var medModified = false
 
+    fun restockDrug(medId: String?, medName: String, qty: Int) {
+      if (qty <= 0) return
+      val med = (if (!medId.isNullOrBlank()) medMap[medId] else null)
+        ?: medMap.values.find { it.name.equals(medName, ignoreCase = true) || medName.contains(it.name, ignoreCase = true) }
+      if (med != null) {
+        val primaryBatch = med.batches.firstOrNull()
+        val updatedBatches = if (primaryBatch != null) {
+          med.batches.mapIndexed { idx, b -> if (idx == 0) b.copy(quantity = b.quantity + qty, lastUpdated = now) else b }
+        } else {
+          listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", qty, 0.0, lastUpdated = now))
+        }
+        medMap[med.id] = med.copy(batches = updatedBatches)
+        medModified = true
+        restored.add("${med.name} (+$qty)")
+      }
+    }
+
+    // 1. Return Prescription & Store OTC items
     val itemsToReturn = if (voidEntireInvoice) {
       inv.items.filter { !it.isProcedure }
     } else {
       inv.items.filter { !it.isProcedure && returnedItemNames.contains(it.name) }
     }
+    for (item in itemsToReturn) {
+      val cleanName = item.name.split(" x ").firstOrNull()?.split("(")?.firstOrNull()?.trim() ?: item.name
+      restockDrug(null, cleanName, item.quantity)
+    }
 
-    if (itemsToReturn.isNotEmpty()) {
-      val medMap = _medicines.value.associateBy { it.id }.toMutableMap()
-      var modified = false
-      for (item in itemsToReturn) {
-        val cleanName = item.name.split(" x ").firstOrNull()?.split("(")?.firstOrNull()?.trim() ?: item.name
-        val med = medMap.values.find {
-          it.name.equals(cleanName, ignoreCase = true) ||
-          item.name.contains(it.name, ignoreCase = true)
-        }
-        if (med != null && item.quantity > 0) {
-          val now = System.currentTimeMillis()
-          val primaryBatch = med.batches.firstOrNull()
-          val updatedBatches = if (primaryBatch != null) {
-            med.batches.mapIndexed { idx, b -> if (idx == 0) b.copy(quantity = b.quantity + item.quantity, lastUpdated = now) else b }
-          } else {
-            listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", item.quantity, 0.0, lastUpdated = now))
-          }
-          medMap[med.id] = med.copy(batches = updatedBatches)
-          modified = true
-          restored.add(item.name)
-        }
+    // 2. Return Treatment Card Items (Cocktails, Single Injections, and Consumables)
+    val linkedCards = _treatmentCards.value.filter { card ->
+      card.consultationInvoiceId == invoiceId || (card.patientId == inv.patientId && card.sessions.any { it.invoiceId == invoiceId })
+    }
+    val cardsToRemove = mutableListOf<TreatmentCard>()
+    for (card in linkedCards) {
+      val isCardReturned = voidEntireInvoice || returnedItemNames.any { retName ->
+        retName.equals(card.orderSummaryText, ignoreCase = true) ||
+        retName.contains(card.orderSummaryText, ignoreCase = true) ||
+        (card.medicationName.isNotBlank() && retName.contains(card.medicationName, ignoreCase = true))
       }
-      if (modified) {
-        val updatedList = _medicines.value.map { medMap[it.id] ?: it }
-        _medicines.value = updatedList
-        ClinicDataPersistence.saveMedicines(ctx, updatedList)
+      if (isCardReturned) {
+        if (!card.isPatientSupplied) {
+          val billedDoses = if (card.isPrepaidFullCourse || !card.isPayPerVisit) card.totalSessions.coerceAtLeast(1) else 1
+          if (card.isCocktail && card.cocktailItems.isNotEmpty()) {
+            for (cItem in card.cocktailItems) {
+              val qty = (if (cItem.quantity > 0) cItem.quantity else 1) * billedDoses
+              restockDrug(cItem.medicineId, cItem.name, qty)
+            }
+          } else if (card.medicationName.isNotBlank()) {
+            restockDrug(card.medicationId, card.medicationName, billedDoses)
+          }
+          card.sessions.filter { it.invoiceId == invoiceId || voidEntireInvoice }.forEach { s ->
+            for (c in s.consumables) {
+              restockDrug(c.medicineId, c.name, c.quantity)
+            }
+          }
+        }
+        cardsToRemove.add(card)
+      }
+    }
+    if (cardsToRemove.isNotEmpty()) {
+      val ctxLocal = getApplication<Application>()
+      cardsToRemove.forEach { c ->
+        ClinicDataPersistence.addDeletedTreatmentCardId(ctxLocal, c.id)
+      }
+      val remainingCards = _treatmentCards.value.filterNot { card -> cardsToRemove.any { it.id == card.id } }
+      _treatmentCards.value = remainingCards
+      ClinicDataPersistence.saveTreatmentCards(ctxLocal, remainingCards)
+    }
+
+    // 3. Return Clinical Procedure Consumables
+    val cons = _consultations.value.find { it.id == inv.consultationId }
+    if (cons != null && cons.selectedProcedures.isNotEmpty()) {
+      for (proc in cons.selectedProcedures) {
+        val isProcReturned = voidEntireInvoice || returnedItemNames.any { retName ->
+          retName.contains(proc.name, ignoreCase = true) || proc.name.contains(retName, ignoreCase = true)
+        }
+        if (isProcReturned) {
+          val consToReturn = if (proc.consumableItems.isNotEmpty()) {
+            proc.consumableItems
+          } else {
+            proc.consumables.map { com.example.model.ProcedureConsumable(name = it, quantity = 1) }
+          }
+          for (c in consToReturn) {
+            val qty = if (c.quantity > 0) c.quantity else 1
+            restockDrug(c.medicineId, c.name, qty)
+          }
+        }
       }
     }
 
+    if (medModified) {
+      val updatedList = _medicines.value.map { medMap[it.id] ?: it }
+      _medicines.value = updatedList
+      ClinicDataPersistence.saveMedicines(ctx, updatedList)
+    }
+
     // Annotate returned medications on consultation EMR record
-    if (inv.consultationId.isNotBlank() && itemsToReturn.isNotEmpty()) {
-      val returnedCleanNames = itemsToReturn.map {
+    if (inv.consultationId.isNotBlank() && (itemsToReturn.isNotEmpty() || cardsToRemove.isNotEmpty())) {
+      val returnedCleanNames = (itemsToReturn.map {
         it.name.split(" x ").firstOrNull()?.split("(")?.firstOrNull()?.trim()?.lowercase() ?: it.name.lowercase()
-      }.toSet()
+      } + cardsToRemove.map { it.medicationName.lowercase().trim() }).toSet()
 
       val updatedCons = _consultations.value.map { c ->
         if (c.id == inv.consultationId) {
@@ -2024,7 +2151,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       _invoices.value = updatedInvoices
       ClinicDataPersistence.saveInvoices(ctx, updatedInvoices)
     } else {
-      // Adjust invoice: remove returned medicines, recalculate subtotal and total, keeping Doctor Consultation Fee!
+      // Adjust invoice: remove returned items, recalculate subtotal and total, keeping Doctor Consultation Fee!
       val remainingItems = inv.items.filterNot { returnedItemNames.contains(it.name) }
       val newItemsTotal = remainingItems.sumOf { it.totalPrice }
       val newSubTotal = newItemsTotal + inv.consultationFee + inv.serviceFee
@@ -3121,7 +3248,17 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
     val loadedTreatmentCards = ClinicDataPersistence.loadTreatmentCards(ctx)
     if (loadedTreatmentCards != null) {
-      _treatmentCards.value = loadedTreatmentCards
+      val deletedCardIds = ClinicDataPersistence.loadDeletedTreatmentCardIds(ctx)
+      val validPatientIds = _patients.value.map { it.id }.toSet()
+      val cleanedTreatmentCards = loadedTreatmentCards.filter {
+        !deletedCardIds.contains(it.id) &&
+        !deletedPatients.contains(it.patientId) &&
+        validPatientIds.contains(it.patientId)
+      }
+      _treatmentCards.value = cleanedTreatmentCards
+      if (cleanedTreatmentCards.size != loadedTreatmentCards.size) {
+        ClinicDataPersistence.saveTreatmentCards(ctx, cleanedTreatmentCards)
+      }
     }
     clinicSettings.value = ClinicDataPersistence.loadClinicSettings(ctx)
   }

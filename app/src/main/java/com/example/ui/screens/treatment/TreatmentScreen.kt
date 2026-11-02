@@ -85,8 +85,13 @@ fun TreatmentScreen(
     }
   }
 
-  val activeCardsCount = treatmentCards.count { !it.isDiscontinued && !it.isFullyCompleted }
-  val completedCardsCount = treatmentCards.count { it.isFullyCompleted }
+  val patientIdSet = remember(patients) { patients.map { it.id }.toSet() }
+  val validTreatmentCards = remember(treatmentCards, patientIdSet) {
+    treatmentCards.filter { patientIdSet.contains(it.patientId) }
+  }
+
+  val activeCardsCount = validTreatmentCards.count { !it.isDiscontinued && !it.isFullyCompleted }
+  val completedCardsCount = validTreatmentCards.count { it.isFullyCompleted }
 
   val screenWidthDp = LocalConfiguration.current.screenWidthDp
   val isMobilePortrait = screenWidthDp < 600
@@ -317,7 +322,7 @@ fun TreatmentScreen(
       FilterChip(
         selected = selectedTab == 2,
         onClick = { selectedTab = 2 },
-        label = { Text("ကတ်မှတ်တမ်း အားလုံး (${treatmentCards.size})", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+        label = { Text("ကတ်မှတ်တမ်း အားလုံး (${validTreatmentCards.size})", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
         leadingIcon = { Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(14.dp)) },
         colors = FilterChipDefaults.filterChipColors(
           selectedContainerColor = MedicalGreen,
@@ -519,9 +524,9 @@ fun TreatmentScreen(
 
       1, 2 -> {
         // TAB 1 & 2: TREATMENT CARDS LIST
-        val displayCards = remember(treatmentCards, selectedTab, searchQuery, patients) {
+        val displayCards = remember(validTreatmentCards, selectedTab, searchQuery, patients) {
           val patientIdSet = patients.map { it.id }.toSet()
-          treatmentCards.filter { card ->
+          validTreatmentCards.filter { card ->
             if (!patientIdSet.contains(card.patientId)) return@filter false
             val matchesTab = when (selectedTab) {
               1 -> !card.isDiscontinued && !card.isFullyCompleted

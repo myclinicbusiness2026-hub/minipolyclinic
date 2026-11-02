@@ -2075,17 +2075,15 @@ private fun BillingDeleteConfirmDialog(
   onDismiss: () -> Unit,
   onConfirmReturn: (Invoice, Set<String>, Boolean) -> Unit
 ) {
-  val pharmacyItems = remember(activeInvoice.items) {
-    activeInvoice.items.filter {
-      !it.isProcedure && (it.category.equals("Pharmacy", ignoreCase = true) || it.category.equals("Medicine", ignoreCase = true))
-    }
+  val returnableItems = remember(activeInvoice.items) {
+    activeInvoice.items
   }
 
-  // Selected items to return (default: empty, user picks which medicines to return)
+  // Selected items to return (default: empty, user picks which medicines/injections/procedures to return)
   val selectedToReturn = remember { mutableStateListOf<String>() }
 
-  val returnedMedCost = pharmacyItems.filter { selectedToReturn.contains(it.name) }.sumOf { it.totalPrice }
-  val adjustedGrandTotal = (activeInvoice.totalAmount - returnedMedCost).coerceAtLeast(activeInvoice.consultationFee)
+  val returnedCost = returnableItems.filter { selectedToReturn.contains(it.name) }.sumOf { it.totalPrice }
+  val adjustedGrandTotal = (activeInvoice.totalAmount - returnedCost).coerceAtLeast(activeInvoice.consultationFee)
 
   AlertDialog(
     onDismissRequest = onDismiss,
@@ -2099,7 +2097,7 @@ private fun BillingDeleteConfirmDialog(
     },
     title = {
       Text(
-        "ဆေးဝါး ရွေးချယ်ပြန်အပ်ခြင်းနှင့် ဘေလ်ပြင်ဆင်ခြင်း",
+        "ပစ္စည်း/ဆေးဝါး ရွေးချယ်ပြန်အပ်ခြင်းနှင့် ဘေလ်ပြင်ဆင်ခြင်း",
         fontWeight = FontWeight.Bold,
         fontSize = 14.sp,
         color = DarkGrayText
@@ -2113,7 +2111,7 @@ private fun BillingDeleteConfirmDialog(
         verticalArrangement = Arrangement.spacedBy(8.dp)
       ) {
         Text(
-          "လူနာ #${activeInvoice.invoiceNo} (${activeInvoice.patientName}) အတွက် ငွေမလောက်၍ မယူဖြစ်သော ဆေးဝါးများကို ရွေးချယ်ပေးပါရန်။ (ဆရာဝန် ကြည့်ရှုပြီးဖြစ်၍ ဆရာဝန်ပြသခ မပျက်မပြယ် ကျန်ရှိပါမည်)",
+          "လူနာ #${activeInvoice.invoiceNo} (${activeInvoice.patientName}) အတွက် ငွေမလောက်၍ မယူဖြစ်သော ဆေးဝါး/ကုသမှုများကို ရွေးချယ်ပေးပါရန်။ (ဆရာဝန် ကြည့်ရှုပြီးဖြစ်၍ ဆရာဝန်ပြသခ မပျက်မပြယ် ကျန်ရှိပါမည်)",
           fontSize = 11.5.sp,
           color = DarkGrayText
         )
@@ -2139,7 +2137,7 @@ private fun BillingDeleteConfirmDialog(
           }
         }
 
-        if (pharmacyItems.isNotEmpty()) {
+        if (returnableItems.isNotEmpty()) {
           Surface(
             shape = RoundedCornerShape(6.dp),
             color = Color(0xFFFFFBEB),
@@ -2153,24 +2151,24 @@ private fun BillingDeleteConfirmDialog(
                 verticalAlignment = Alignment.CenterVertically
               ) {
                 Text(
-                  "ပြန်အပ်မည့် ဆေးဝါးများအား အမှန်ခြစ်ပါ (${selectedToReturn.size}/${pharmacyItems.size}):",
+                  "ပြန်အပ်မည့် ပစ္စည်း/ဆေးများအား အမှန်ခြစ်ပါ (${selectedToReturn.size}/${returnableItems.size}):",
                   fontWeight = FontWeight.Bold,
                   fontSize = 11.sp,
                   color = Color(0xFF92400E)
                 )
                 TextButton(
                   onClick = {
-                    if (selectedToReturn.size == pharmacyItems.size) {
+                    if (selectedToReturn.size == returnableItems.size) {
                       selectedToReturn.clear()
                     } else {
                       selectedToReturn.clear()
-                      selectedToReturn.addAll(pharmacyItems.map { it.name })
+                      selectedToReturn.addAll(returnableItems.map { it.name })
                     }
                   },
                   contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                   Text(
-                    if (selectedToReturn.size == pharmacyItems.size) "အားလုံးဖြုတ်" else "ဆေးအားလုံးရွေး",
+                    if (selectedToReturn.size == returnableItems.size) "အားလုံးဖြုတ်" else "အားလုံးရွေး",
                     fontSize = 10.sp,
                     color = Color(0xFFB45309),
                     fontWeight = FontWeight.Bold
@@ -2180,7 +2178,7 @@ private fun BillingDeleteConfirmDialog(
 
               Spacer(modifier = Modifier.height(4.dp))
 
-              pharmacyItems.forEach { item ->
+              returnableItems.forEach { item ->
                 val isChecked = selectedToReturn.contains(item.name)
                 Row(
                   modifier = Modifier
@@ -2230,10 +2228,10 @@ private fun BillingDeleteConfirmDialog(
               Text("မူလ စုစုပေါင်း ကျသင့်ငွေ:", fontSize = 11.sp, color = SlateMedium)
               Text("${currencyFmt.format(activeInvoice.totalAmount.toInt())} Ks", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
             }
-            if (returnedMedCost > 0) {
+            if (returnedCost > 0) {
               Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("ပြန်အပ်မည့် ဆေးဖိုး (စတော့ထဲ ပြန်ဝင်မည်):", fontSize = 11.sp, color = Color(0xFFDC2626))
-                Text("-${currencyFmt.format(returnedMedCost.toInt())} Ks", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC2626))
+                Text("ပြန်အပ်မည့် ပစ္စည်း/ဆေးဖိုး (စတော့ထဲ ပြန်ဝင်မည်):", fontSize = 11.sp, color = Color(0xFFDC2626))
+                Text("-${currencyFmt.format(returnedCost.toInt())} Ks", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC2626))
               }
               HorizontalDivider(color = Color(0xFFCBD5E1), thickness = 0.8.dp)
               Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -2256,7 +2254,7 @@ private fun BillingDeleteConfirmDialog(
           ) {
             Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp))
             Spacer(modifier = Modifier.width(4.dp))
-            Text("ရွေးထားသောဆေး ပြန်အပ်ပြီး ဘေလ်ပြင်မည်", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = PureWhite)
+            Text("ရွေးထားသည်များ ပြန်အပ်ပြီး ဘေလ်ပြင်မည်", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = PureWhite)
           }
         }
 
