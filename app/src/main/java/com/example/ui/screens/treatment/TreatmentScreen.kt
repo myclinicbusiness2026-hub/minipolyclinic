@@ -63,9 +63,10 @@ fun TreatmentScreen(
   val currencyFmt = NumberFormat.getNumberInstance(Locale.US)
 
   // Find all due sessions for today across active cards
-  val todayDueSessions = remember(treatmentCards, todayIso) {
+  val todayDueSessions = remember(treatmentCards, todayIso, patients) {
+    val patientIdSet = patients.map { it.id }.toSet()
     val list = mutableListOf<Pair<TreatmentCard, TreatmentSession>>()
-    treatmentCards.filter { !it.isDiscontinued && !it.isFullyCompleted }.forEach { card ->
+    treatmentCards.filter { !it.isDiscontinued && !it.isFullyCompleted && patientIdSet.contains(it.patientId) }.forEach { card ->
       card.sessions.filter { s ->
         s.status == TreatmentStatus.PENDING && (s.scheduledDate <= todayIso || s.scheduledTime.contains("Immediate", ignoreCase = true))
       }.forEach { session ->
@@ -518,8 +519,10 @@ fun TreatmentScreen(
 
       1, 2 -> {
         // TAB 1 & 2: TREATMENT CARDS LIST
-        val displayCards = remember(treatmentCards, selectedTab, searchQuery) {
+        val displayCards = remember(treatmentCards, selectedTab, searchQuery, patients) {
+          val patientIdSet = patients.map { it.id }.toSet()
           treatmentCards.filter { card ->
+            if (!patientIdSet.contains(card.patientId)) return@filter false
             val matchesTab = when (selectedTab) {
               1 -> !card.isDiscontinued && !card.isFullyCompleted
               else -> true
@@ -604,13 +607,11 @@ fun TreatmentScreen(
                       ) {
                         Icon(Icons.Default.Print, contentDescription = "Print Slip", tint = SlateMedium, modifier = Modifier.size(16.dp))
                       }
-                      if (!card.isDiscontinued && !card.isFullyCompleted) {
-                        IconButton(
-                          onClick = { cardToDiscontinue = card },
-                          modifier = Modifier.size(28.dp)
-                        ) {
-                          Icon(Icons.Default.Cancel, contentDescription = "Discontinue", tint = StatusCritical, modifier = Modifier.size(16.dp))
-                        }
+                      IconButton(
+                        onClick = { cardToDiscontinue = card },
+                        modifier = Modifier.size(28.dp)
+                      ) {
+                        Icon(Icons.Default.DeleteOutline, contentDescription = "Void / Delete", tint = StatusCritical, modifier = Modifier.size(17.dp))
                       }
                     }
                   }
@@ -728,13 +729,20 @@ fun TreatmentScreen(
     DiscontinueCardModal(
       card = card,
       onDismiss = { cardToDiscontinue = null },
-      onConfirm = { reason ->
-        viewModel.discontinueTreatmentCard(
+      onConfirm = { reason, returnStock ->
+        val result = viewModel.voidTreatmentCardAndReturnStock(
           cardId = card.id,
-          reason = reason,
-          staffName = currentUser?.fullName ?: "Staff"
+          returnStock = returnStock,
+          reason = reason
         )
-        Toast.makeText(context, "ကုသမှုကတ် ရပ်ဆိုင်းလိုက်ပါပြီ", Toast.LENGTH_SHORT).show()
+        if (result.first) {
+          val msg = if (result.second.isNotEmpty()) {
+            "ကုသမှု ပယ်ဖျက်ပြီး စတော့ခ်ထဲ ပြန်သွင်းပြီးပါပြီ: ${result.second.joinToString(", ")}"
+          } else {
+            "ကုသမှုကတ်အား အောင်မြင်စွာ ပယ်ဖျက်ပြီးပါပြီ"
+          }
+          Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+        }
         cardToDiscontinue = null
       }
     )
@@ -1201,29 +1209,66 @@ fun AdministerSessionModal(
 fun DiscontinueCardModal(
   card: TreatmentCard,
   onDismiss: () -> Unit,
-  onConfirm: (reason: String) -> Unit
+  onConfirm: (reason: String, returnStock: Boolean) -> Unit
 ) {
-  var selectedReason by remember { mutableStateOf("ဆရာဝန်မှ ဆေးပြောင်းလဲကုသခြင်း (Treatment changed by Doctor)") }
+  var selectedReason by remember { mutableStateOf("လူနာမှ မထိုးဖြစ်တော့သဖြင့် ပယ်ဖျက်ခြင်း (Patient cancelled / Did not take)") }
   var customReason by remember { mutableStateOf("") }
+  var returnStockToStore by remember { mutableStateOf(true) }
 
   val reasons = listOf(
+    "လူနာမှ မထိုးဖြစ်တော့သဖြင့် ပယ်ဖျက်ခြင်း (Patient cancelled / Did not take)",
     "ဆရာဝန်မှ ဆေးပြောင်းလဲကုသခြင်း (Treatment changed by Doctor)",
     "ဆေးမတည့်သည့် လက္ခဏာပြသဖြင့် ရပ်ဆိုင်းခြင်း (Allergic / Adverse Reaction)",
     "လူနာ ရက်ချိန်း ဆက်မလာတော့ခြင်း (Patient defaulted / Did not show up)",
-    "ရောဂါသက်သာသွားသဖြင့် စောစီးစွာ ရပ်ဆိုင်းခြင်း (Condition improved early)",
     "ဆေးညွှန်း အမှားပါသဖြင့် ပယ်ဖျက်ခြင်း (Order entered by mistake)"
   )
 
   AlertDialog(
     onDismissRequest = onDismiss,
     icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = StatusCritical, modifier = Modifier.size(28.dp)) },
-    title = { Text("ကုသမှု ရပ်ဆိုင်းမည် (Void / Discontinue)", fontSize = 14.sp, fontWeight = FontWeight.Bold) },
+    title = { Text("ကုသမှု ပယ်ဖျက်မည် (Void / Delete Card)", fontSize = 14.sp, fontWeight = FontWeight.Bold) },
     text = {
       Column {
-        Text("လူနာ: ${card.patientName} (${card.medicationName})", fontSize = 11.5.sp, color = SlateDark)
+        Text("လူနာ: ${card.patientName} (${card.orderSummaryText})", fontSize = 11.5.sp, color = SlateDark)
         Text("ပြီးစီးခဲ့သော အကြိမ်ရေ: ${card.completedSessionsCount} of ${card.totalSessions}", fontSize = 10.5.sp, color = SlateMuted)
-        Spacer(modifier = Modifier.height(8.dp))
-        Text("ရပ်ဆိုင်းရသည့် အကြောင်းရင်း ရွေးချယ်ပါ:", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(10.dp))
+
+        if (!card.isPatientSupplied) {
+          Surface(
+            shape = RoundedCornerShape(6.dp),
+            color = SoftGreenContainer,
+            border = BorderStroke(1.dp, MedicalGreen.copy(alpha = 0.5f)),
+            modifier = Modifier.fillMaxWidth().clickable { returnStockToStore = !returnStockToStore }
+          ) {
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+            ) {
+              Checkbox(
+                checked = returnStockToStore,
+                onCheckedChange = { returnStockToStore = it },
+                colors = CheckboxDefaults.colors(checkedColor = MedicalGreen)
+              )
+              Spacer(modifier = Modifier.width(6.dp))
+              Column {
+                Text(
+                  "ဆေးဝါးနှင့် အသုံးအဆောင်များ စတော့ခ်ထဲ ပြန်သွင်းမည်",
+                  fontSize = 10.5.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = MedicalGreenDark
+                )
+                Text(
+                  "Return medicines & consumables to pharmacy inventory",
+                  fontSize = 8.5.sp,
+                  color = SlateMedium
+                )
+              }
+            }
+          }
+          Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        Text("ပယ်ဖျက်ရသည့် အကြောင်းရင်း ရွေးချယ်ပါ:", fontSize = 11.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(4.dp))
         reasons.forEach { r ->
           Row(
@@ -1242,10 +1287,10 @@ fun DiscontinueCardModal(
     },
     confirmButton = {
       Button(
-        onClick = { onConfirm(if (customReason.isNotBlank()) customReason else selectedReason) },
+        onClick = { onConfirm(if (customReason.isNotBlank()) customReason else selectedReason, returnStockToStore) },
         colors = ButtonDefaults.buttonColors(containerColor = StatusCritical)
       ) {
-        Text("ရပ်ဆိုင်းမည် (Discontinue)", fontSize = 11.sp)
+        Text(if (returnStockToStore) "ပယ်ဖျက်ပြီး စတော့ခ်ပြန်သွင်းမည်" else "ကတ်ဖျက်မည် (Delete)", fontSize = 11.sp)
       }
     },
     dismissButton = {

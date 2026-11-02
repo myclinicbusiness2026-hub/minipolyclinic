@@ -23,6 +23,7 @@ object ClinicDataPersistence {
   private const val KEY_DELETED_INVOICE_IDS = "deleted_invoice_ids"
   private const val KEY_DELETED_MEDICINE_IDS = "deleted_medicine_ids"
   private const val KEY_DELETED_USER_IDS = "deleted_user_ids"
+  private const val KEY_DELETED_TREATMENT_CARD_IDS = "deleted_treatment_card_ids"
   private const val KEY_TREATMENT_CARDS = "treatment_cards"
   private const val KEY_CLINIC_SETTINGS = "clinic_settings"
   private const val KEY_DRAFT_CONSULTATIONS = "draft_consultations"
@@ -193,6 +194,42 @@ object ClinicDataPersistence {
     val current = loadDeletedUserIds(context)
     if (current.remove(id)) {
       saveDeletedUserIds(context, current)
+    }
+  }
+
+  fun saveDeletedTreatmentCardIds(context: Context, ids: Set<String>) {
+    val arr = JSONArray()
+    ids.forEach { arr.put(it) }
+    getPrefs(context).edit().putString(KEY_DELETED_TREATMENT_CARD_IDS, arr.toString()).apply()
+  }
+
+  fun loadDeletedTreatmentCardIds(context: Context): MutableSet<String> {
+    val str = getPrefs(context).getString(KEY_DELETED_TREATMENT_CARD_IDS, null) ?: return mutableSetOf()
+    return try {
+      val arr = JSONArray(str)
+      val set = mutableSetOf<String>()
+      for (i in 0 until arr.length()) {
+        val id = arr.getString(i)
+        if (id.isNotBlank()) set.add(id)
+      }
+      set
+    } catch (_: Exception) {
+      mutableSetOf()
+    }
+  }
+
+  fun addDeletedTreatmentCardId(context: Context, id: String) {
+    if (id.isBlank()) return
+    val current = loadDeletedTreatmentCardIds(context)
+    current.add(id)
+    saveDeletedTreatmentCardIds(context, current)
+  }
+
+  fun removeDeletedTreatmentCardId(context: Context, id: String) {
+    if (id.isBlank()) return
+    val current = loadDeletedTreatmentCardIds(context)
+    if (current.remove(id)) {
+      saveDeletedTreatmentCardIds(context, current)
     }
   }
 
@@ -1038,7 +1075,8 @@ object ClinicDataPersistence {
           )
         )
       }
-      list
+      val deletedCardIds = loadDeletedTreatmentCardIds(context)
+      list.filterNot { deletedCardIds.contains(it.id) }
     } catch (_: Exception) {
       null
     }
