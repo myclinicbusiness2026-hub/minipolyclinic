@@ -413,9 +413,9 @@ fun ConsultationBillingActionCard(
           shape = RoundedCornerShape(6.dp),
           contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
         ) {
-          Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(14.dp))
+          Icon(Icons.Default.ReceiptLong, contentDescription = null, modifier = Modifier.size(14.dp))
           Spacer(modifier = Modifier.width(4.dp))
-          Text("Send to Pharmacy", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+          Text("Send to Invoice", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
         }
       }
     }

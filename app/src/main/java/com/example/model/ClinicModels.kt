@@ -404,92 +404,135 @@ enum class UserRole(val displayName: String, val myanmarName: String = displayNa
   val description: String get() = "$displayName ($myanmarName)"
 }
 
+enum class TabAccessLevel(val code: String, val label: String, val myanmarLabel: String) {
+  SEALED("SEALED", "Seal (Hidden)", "မမြင်ရ (Seal)"),
+  VIEW_ONLY("VIEW_ONLY", "View Only", "ကြည့်ရှုခွင့်သာ"),
+  ALLOW_EDIT("ALLOW_EDIT", "Allow to Edit", "ပြင်ဆင်ခွင့်");
+
+  val isSealed: Boolean get() = this == SEALED
+  val canView: Boolean get() = this == VIEW_ONLY || this == ALLOW_EDIT
+  val canEdit: Boolean get() = this == ALLOW_EDIT
+
+  companion object {
+    fun fromCode(code: String?, default: TabAccessLevel = ALLOW_EDIT): TabAccessLevel {
+      if (code == null) return default
+      return entries.find { it.name.equals(code, ignoreCase = true) || it.code.equals(code, ignoreCase = true) } ?: default
+    }
+  }
+}
+
 data class UserRolePermissions(
-  val canAccessDoctorEmr: Boolean = false,
-  val canAccessPharmacy: Boolean = false,
-  val canAccessBilling: Boolean = false,
-  val canAccessPatientQueue: Boolean = false,
-  val canAccessProcedures: Boolean = false,
-  val canAccessVaccineTracker: Boolean = false,
-  val canAccessInventoryMaster: Boolean = false,
-  val canAccessFinancialLedger: Boolean = false,
-  val canManageUsers: Boolean = false,
-  val canExportData: Boolean = false
+  val queueAccess: TabAccessLevel = TabAccessLevel.ALLOW_EDIT,
+  val doctorEmrAccess: TabAccessLevel = TabAccessLevel.ALLOW_EDIT,
+  val pharmacyAccess: TabAccessLevel = TabAccessLevel.ALLOW_EDIT,
+  val billingAccess: TabAccessLevel = TabAccessLevel.ALLOW_EDIT,
+  val treatmentAccess: TabAccessLevel = TabAccessLevel.ALLOW_EDIT,
+  val proceduresAccess: TabAccessLevel = TabAccessLevel.ALLOW_EDIT,
+  val inventoryAccess: TabAccessLevel = TabAccessLevel.ALLOW_EDIT,
+  val financialLedgerAccess: TabAccessLevel = TabAccessLevel.ALLOW_EDIT,
+  val medicalRecordsAccess: TabAccessLevel = TabAccessLevel.ALLOW_EDIT,
+  val userManagementAccess: TabAccessLevel = TabAccessLevel.SEALED
 ) {
+  // Navigation / View access checks (backward compatibility)
+  val canAccessDoctorEmr: Boolean get() = doctorEmrAccess.canView
+  val canAccessPharmacy: Boolean get() = pharmacyAccess.canView
+  val canAccessBilling: Boolean get() = billingAccess.canView
+  val canAccessPatientQueue: Boolean get() = queueAccess.canView
+  val canAccessProcedures: Boolean get() = proceduresAccess.canView
+  val canAccessVaccineTracker: Boolean get() = proceduresAccess.canView
+  val canAccessInventoryMaster: Boolean get() = inventoryAccess.canView
+  val canAccessFinancialLedger: Boolean get() = financialLedgerAccess.canView
+  val canAccessTreatment: Boolean get() = treatmentAccess.canView
+  val canAccessMedicalRecords: Boolean get() = medicalRecordsAccess.canView
+  val canManageUsers: Boolean get() = userManagementAccess.canView
+  val canExportData: Boolean get() = financialLedgerAccess.canView
+
+  // Granular Edit permissions
+  val canEditDoctorEmr: Boolean get() = doctorEmrAccess.canEdit
+  val canEditPharmacy: Boolean get() = pharmacyAccess.canEdit
+  val canEditBilling: Boolean get() = billingAccess.canEdit
+  val canEditPatientQueue: Boolean get() = queueAccess.canEdit
+  val canEditTreatment: Boolean get() = treatmentAccess.canEdit
+  val canEditProcedures: Boolean get() = proceduresAccess.canEdit
+  val canEditInventoryMaster: Boolean get() = inventoryAccess.canEdit
+  val canEditFinancialLedger: Boolean get() = financialLedgerAccess.canEdit
+  val canEditMedicalRecords: Boolean get() = medicalRecordsAccess.canEdit
+  val canEditUserManagement: Boolean get() = userManagementAccess.canEdit
+
   companion object {
     fun defaultFor(role: UserRole): UserRolePermissions {
       return when (role) {
         UserRole.ADMIN -> UserRolePermissions(
-          canAccessDoctorEmr = true,
-          canAccessPharmacy = true,
-          canAccessBilling = true,
-          canAccessPatientQueue = true,
-          canAccessProcedures = true,
-          canAccessVaccineTracker = true,
-          canAccessInventoryMaster = true,
-          canAccessFinancialLedger = true,
-          canManageUsers = true,
-          canExportData = true
+          queueAccess = TabAccessLevel.ALLOW_EDIT,
+          doctorEmrAccess = TabAccessLevel.ALLOW_EDIT,
+          pharmacyAccess = TabAccessLevel.ALLOW_EDIT,
+          billingAccess = TabAccessLevel.ALLOW_EDIT,
+          treatmentAccess = TabAccessLevel.ALLOW_EDIT,
+          proceduresAccess = TabAccessLevel.ALLOW_EDIT,
+          inventoryAccess = TabAccessLevel.ALLOW_EDIT,
+          financialLedgerAccess = TabAccessLevel.ALLOW_EDIT,
+          medicalRecordsAccess = TabAccessLevel.ALLOW_EDIT,
+          userManagementAccess = TabAccessLevel.ALLOW_EDIT
         )
         UserRole.DOCTOR -> UserRolePermissions(
-          canAccessDoctorEmr = true,
-          canAccessPharmacy = true,
-          canAccessBilling = true,
-          canAccessPatientQueue = true,
-          canAccessProcedures = true,
-          canAccessVaccineTracker = true,
-          canAccessInventoryMaster = true,
-          canAccessFinancialLedger = true,
-          canManageUsers = false,
-          canExportData = true
+          queueAccess = TabAccessLevel.ALLOW_EDIT,
+          doctorEmrAccess = TabAccessLevel.ALLOW_EDIT,
+          pharmacyAccess = TabAccessLevel.VIEW_ONLY,
+          billingAccess = TabAccessLevel.VIEW_ONLY,
+          treatmentAccess = TabAccessLevel.ALLOW_EDIT,
+          proceduresAccess = TabAccessLevel.ALLOW_EDIT,
+          inventoryAccess = TabAccessLevel.VIEW_ONLY,
+          financialLedgerAccess = TabAccessLevel.VIEW_ONLY,
+          medicalRecordsAccess = TabAccessLevel.ALLOW_EDIT,
+          userManagementAccess = TabAccessLevel.SEALED
         )
         UserRole.PHARMACIST -> UserRolePermissions(
-          canAccessDoctorEmr = false,
-          canAccessPharmacy = true,
-          canAccessBilling = true,
-          canAccessPatientQueue = true,
-          canAccessProcedures = false,
-          canAccessVaccineTracker = false,
-          canAccessInventoryMaster = true,
-          canAccessFinancialLedger = false,
-          canManageUsers = false,
-          canExportData = false
+          queueAccess = TabAccessLevel.VIEW_ONLY,
+          doctorEmrAccess = TabAccessLevel.SEALED,
+          pharmacyAccess = TabAccessLevel.ALLOW_EDIT,
+          billingAccess = TabAccessLevel.ALLOW_EDIT,
+          treatmentAccess = TabAccessLevel.SEALED,
+          proceduresAccess = TabAccessLevel.SEALED,
+          inventoryAccess = TabAccessLevel.ALLOW_EDIT,
+          financialLedgerAccess = TabAccessLevel.SEALED,
+          medicalRecordsAccess = TabAccessLevel.SEALED,
+          userManagementAccess = TabAccessLevel.SEALED
         )
         UserRole.CASHIER -> UserRolePermissions(
-          canAccessDoctorEmr = false,
-          canAccessPharmacy = false,
-          canAccessBilling = true,
-          canAccessPatientQueue = true,
-          canAccessProcedures = false,
-          canAccessVaccineTracker = false,
-          canAccessInventoryMaster = false,
-          canAccessFinancialLedger = true,
-          canManageUsers = false,
-          canExportData = false
+          queueAccess = TabAccessLevel.VIEW_ONLY,
+          doctorEmrAccess = TabAccessLevel.SEALED,
+          pharmacyAccess = TabAccessLevel.VIEW_ONLY,
+          billingAccess = TabAccessLevel.ALLOW_EDIT,
+          treatmentAccess = TabAccessLevel.SEALED,
+          proceduresAccess = TabAccessLevel.SEALED,
+          inventoryAccess = TabAccessLevel.SEALED,
+          financialLedgerAccess = TabAccessLevel.ALLOW_EDIT,
+          medicalRecordsAccess = TabAccessLevel.SEALED,
+          userManagementAccess = TabAccessLevel.SEALED
         )
         UserRole.NURSE -> UserRolePermissions(
-          canAccessDoctorEmr = false,
-          canAccessPharmacy = false,
-          canAccessBilling = false,
-          canAccessPatientQueue = true,
-          canAccessProcedures = true,
-          canAccessVaccineTracker = true,
-          canAccessInventoryMaster = false,
-          canAccessFinancialLedger = false,
-          canManageUsers = false,
-          canExportData = false
+          queueAccess = TabAccessLevel.ALLOW_EDIT,
+          doctorEmrAccess = TabAccessLevel.VIEW_ONLY,
+          pharmacyAccess = TabAccessLevel.SEALED,
+          billingAccess = TabAccessLevel.SEALED,
+          treatmentAccess = TabAccessLevel.ALLOW_EDIT,
+          proceduresAccess = TabAccessLevel.ALLOW_EDIT,
+          inventoryAccess = TabAccessLevel.VIEW_ONLY,
+          financialLedgerAccess = TabAccessLevel.SEALED,
+          medicalRecordsAccess = TabAccessLevel.VIEW_ONLY,
+          userManagementAccess = TabAccessLevel.SEALED
         )
         UserRole.RECEPTIONIST -> UserRolePermissions(
-          canAccessDoctorEmr = false,
-          canAccessPharmacy = false,
-          canAccessBilling = false,
-          canAccessPatientQueue = true,
-          canAccessProcedures = false,
-          canAccessVaccineTracker = false,
-          canAccessInventoryMaster = false,
-          canAccessFinancialLedger = false,
-          canManageUsers = false,
-          canExportData = false
+          queueAccess = TabAccessLevel.ALLOW_EDIT,
+          doctorEmrAccess = TabAccessLevel.SEALED,
+          pharmacyAccess = TabAccessLevel.SEALED,
+          billingAccess = TabAccessLevel.SEALED,
+          treatmentAccess = TabAccessLevel.SEALED,
+          proceduresAccess = TabAccessLevel.SEALED,
+          inventoryAccess = TabAccessLevel.SEALED,
+          financialLedgerAccess = TabAccessLevel.SEALED,
+          medicalRecordsAccess = TabAccessLevel.VIEW_ONLY,
+          userManagementAccess = TabAccessLevel.SEALED
         )
       }
     }

@@ -72,15 +72,15 @@ val navDrawerItems = listOf(
   NavDrawerItem("Dashboard", "ပင်မ ဒက်ရှ်ဘုတ်", Icons.Default.Dashboard, 0, "CLINICAL OPD WORKFLOW", { true }),
   NavDrawerItem("Patient Queue", "လူနာမှတ်ပုံတင် & စာရင်း", Icons.Default.People, 1, "CLINICAL OPD WORKFLOW", { it.canAccessPatientQueue }),
   NavDrawerItem("Doctor Consultation", "ဆရာဝန် ဆေးမှတ်တမ်း & Rx", Icons.Default.MedicalServices, 2, "CLINICAL OPD WORKFLOW", { it.canAccessDoctorEmr }),
-  NavDrawerItem("Treatment & Injections", "ဆေးထိုး/အကြောပုလင်း ကုသမှု", Icons.Default.Healing, 9, "CLINICAL OPD WORKFLOW", { it.canAccessProcedures || it.canAccessDoctorEmr }),
-  NavDrawerItem("Pharmacy Dispense", "ဆေးထုတ်ပေးခြင်း (FEFO)", Icons.Default.Medication, 3, "CLINICAL OPD WORKFLOW", { true }),
+  NavDrawerItem("Treatment & Injections", "ဆေးထိုး/အကြောပုလင်း ကုသမှု", Icons.Default.Healing, 9, "CLINICAL OPD WORKFLOW", { it.canAccessTreatment }),
+  NavDrawerItem("Pharmacy Dispense", "ဆေးထုတ်ပေးခြင်း (FEFO)", Icons.Default.Medication, 3, "CLINICAL OPD WORKFLOW", { it.canAccessPharmacy }),
   NavDrawerItem("Cashier & Invoices", "ငွေကောက်ခံ & ပြေစာထုတ်ပေးခြင်း", Icons.Default.PointOfSale, 4, "CLINICAL OPD WORKFLOW", { it.canAccessBilling }),
 
   // 2. Records, Procedures & Inventory Management
-  NavDrawerItem("Medical Records", "လူနာ ဆေးမှတ်တမ်းများ (Archive)", Icons.Default.FolderShared, 8, "RECORDS & OPERATIONS", { it.canAccessDoctorEmr || it.canAccessPatientQueue }),
+  NavDrawerItem("Medical Records", "လူနာ ဆေးမှတ်တမ်းများ (Archive)", Icons.Default.FolderShared, 8, "RECORDS & OPERATIONS", { it.canAccessMedicalRecords }),
   NavDrawerItem("Clinical Procedures", "ဒဏ်ရာဆေးကြော & ကုသမှုများ", Icons.Default.Vaccines, 5, "RECORDS & OPERATIONS", { it.canAccessProcedures }),
   NavDrawerItem("Income & Expenses", "ဝင်ငွေ ထွက်ငွေ ဇယား (Ledger)", Icons.Default.AccountBalanceWallet, 7, "RECORDS & OPERATIONS", { it.canAccessFinancialLedger }),
-  NavDrawerItem("Inventory Master", "စတော့အချုပ် & တန်ဖိုးသတ်မှတ်ချက်", Icons.Default.Inventory2, 6, "RECORDS & OPERATIONS", { true })
+  NavDrawerItem("Inventory Master", "စတော့အချုပ် & တန်ဖိုးသတ်မှတ်ချက်", Icons.Default.Inventory2, 6, "RECORDS & OPERATIONS", { it.canAccessInventoryMaster })
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -718,7 +718,7 @@ fun MiniPolyclinicMainApp(
           2 -> DoctorConsultationScreen(
             viewModel = clinicViewModel,
             onConsultationCompleted = {
-              clinicViewModel.setTab(3) // Route directly to pharmacy
+              clinicViewModel.setTab(4) // Route directly to Cashier & Invoices
             }
           )
           3 -> PharmacyInventoryScreen(

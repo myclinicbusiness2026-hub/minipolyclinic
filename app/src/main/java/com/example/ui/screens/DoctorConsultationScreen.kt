@@ -1400,7 +1400,7 @@ fun DoctorConsultationScreen(
       },
       text = {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-          Text("ဆေးကုသမှုမှတ်တမ်း သိမ်းဆည်းပြီး ငွေရှင်း/ဆေးပေးဌာနသို့ လွှဲပြောင်းရန် အတည်ပြုပါ:", fontSize = 11.sp, color = SlateDark)
+          Text("ဆေးကုသမှုမှတ်တမ်း သိမ်းဆည်းပြီး ဘောင်ချာထုတ်ရန် ငွေရှင်းကောင်တာသို့ ပို့ဆောင်ရန် အတည်ပြုပါ:", fontSize = 11.sp, color = SlateDark)
           Surface(
             shape = RoundedCornerShape(6.dp),
             color = Color(0xFFF1F5F9),

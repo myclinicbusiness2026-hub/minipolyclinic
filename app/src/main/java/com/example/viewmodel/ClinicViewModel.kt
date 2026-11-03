@@ -2274,17 +2274,16 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       discountPercent = discountPercent,
       discount = discountAmount,
       totalAmount = finalTotal,
-      paidAmount = finalTotal,
+      paidAmount = 0.0,
       changeAmount = 0.0,
       paymentMethod = paymentMethod,
-      paymentStatus = "Paid",
+      paymentStatus = "Unpaid",
       cashierName = cashierName.ifBlank { _currentUser.value?.fullName ?: "Counter Cashier" },
       timestamp = BurmeseDateUtils.getNowFormatted()
     )
     val updated = _invoices.value + inv
     _invoices.value = updated
     ClinicDataPersistence.saveInvoices(ctx, updated)
-    deductInventoryForInvoice(inv)
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
     }

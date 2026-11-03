@@ -1088,6 +1088,19 @@ object ClinicDataPersistence {
         put("phone", u.phone)
         put("email", u.email)
         put("department", u.department)
+        val permObj = JSONObject().apply {
+          put("queueAccess", u.customPermissions.queueAccess.name)
+          put("doctorEmrAccess", u.customPermissions.doctorEmrAccess.name)
+          put("pharmacyAccess", u.customPermissions.pharmacyAccess.name)
+          put("billingAccess", u.customPermissions.billingAccess.name)
+          put("treatmentAccess", u.customPermissions.treatmentAccess.name)
+          put("proceduresAccess", u.customPermissions.proceduresAccess.name)
+          put("inventoryAccess", u.customPermissions.inventoryAccess.name)
+          put("financialLedgerAccess", u.customPermissions.financialLedgerAccess.name)
+          put("medicalRecordsAccess", u.customPermissions.medicalRecordsAccess.name)
+          put("userManagementAccess", u.customPermissions.userManagementAccess.name)
+        }
+        put("customPermissions", permObj)
       }
       arr.put(obj)
     }
@@ -1108,6 +1121,24 @@ object ClinicDataPersistence {
           UserRole.DOCTOR
         }
         val passHash = o.optString("passwordHash", o.optString("pinCode", "123456"))
+        val defaultPerms = UserRolePermissions.defaultFor(role)
+        val permObj = o.optJSONObject("customPermissions")
+        val customPerms = if (permObj != null) {
+          UserRolePermissions(
+            queueAccess = TabAccessLevel.fromCode(permObj.optString("queueAccess"), defaultPerms.queueAccess),
+            doctorEmrAccess = TabAccessLevel.fromCode(permObj.optString("doctorEmrAccess"), defaultPerms.doctorEmrAccess),
+            pharmacyAccess = TabAccessLevel.fromCode(permObj.optString("pharmacyAccess"), defaultPerms.pharmacyAccess),
+            billingAccess = TabAccessLevel.fromCode(permObj.optString("billingAccess"), defaultPerms.billingAccess),
+            treatmentAccess = TabAccessLevel.fromCode(permObj.optString("treatmentAccess"), defaultPerms.treatmentAccess),
+            proceduresAccess = TabAccessLevel.fromCode(permObj.optString("proceduresAccess"), defaultPerms.proceduresAccess),
+            inventoryAccess = TabAccessLevel.fromCode(permObj.optString("inventoryAccess"), defaultPerms.inventoryAccess),
+            financialLedgerAccess = TabAccessLevel.fromCode(permObj.optString("financialLedgerAccess"), defaultPerms.financialLedgerAccess),
+            medicalRecordsAccess = TabAccessLevel.fromCode(permObj.optString("medicalRecordsAccess"), defaultPerms.medicalRecordsAccess),
+            userManagementAccess = TabAccessLevel.fromCode(permObj.optString("userManagementAccess"), defaultPerms.userManagementAccess)
+          )
+        } else {
+          defaultPerms
+        }
         list.add(
           UserAccount(
             id = o.optString("id"),
@@ -1121,7 +1152,8 @@ object ClinicDataPersistence {
             isActive = o.optBoolean("isActive", true),
             phone = o.optString("phone", ""),
             email = o.optString("email", ""),
-            department = o.optString("department", "")
+            department = o.optString("department", ""),
+            customPermissions = customPerms
           )
         )
       }

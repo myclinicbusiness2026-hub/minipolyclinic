@@ -17,6 +17,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -25,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.model.TabAccessLevel
 import com.example.model.UserAccount
 import com.example.model.UserRole
 import com.example.model.UserRolePermissions
@@ -69,16 +73,17 @@ fun AdminUserManagementDialog(
   var inputDepartment by remember { mutableStateOf("General OPD") }
   var isPasswordVisible by remember { mutableStateOf(false) }
 
-  // Custom Permissions Form State
-  var permDoctorEmr by remember { mutableStateOf(true) }
-  var permPharmacy by remember { mutableStateOf(true) }
-  var permBilling by remember { mutableStateOf(true) }
-  var permQueue by remember { mutableStateOf(true) }
-  var permProcedures by remember { mutableStateOf(true) }
-  var permVaccines by remember { mutableStateOf(true) }
-  var permInventoryMaster by remember { mutableStateOf(true) }
-  var permManageUsers by remember { mutableStateOf(false) }
-  var permExportData by remember { mutableStateOf(true) }
+  // Custom Permissions Form State (3-Level Access: SEALED, VIEW_ONLY, ALLOW_EDIT)
+  var permQueue by remember { mutableStateOf(TabAccessLevel.ALLOW_EDIT) }
+  var permDoctorEmr by remember { mutableStateOf(TabAccessLevel.ALLOW_EDIT) }
+  var permTreatment by remember { mutableStateOf(TabAccessLevel.ALLOW_EDIT) }
+  var permPharmacy by remember { mutableStateOf(TabAccessLevel.ALLOW_EDIT) }
+  var permBilling by remember { mutableStateOf(TabAccessLevel.ALLOW_EDIT) }
+  var permProcedures by remember { mutableStateOf(TabAccessLevel.ALLOW_EDIT) }
+  var permInventory by remember { mutableStateOf(TabAccessLevel.ALLOW_EDIT) }
+  var permLedger by remember { mutableStateOf(TabAccessLevel.ALLOW_EDIT) }
+  var permRecords by remember { mutableStateOf(TabAccessLevel.ALLOW_EDIT) }
+  var permUsers by remember { mutableStateOf(TabAccessLevel.SEALED) }
 
   fun populateFormForNew() {
     editingUser = null
@@ -91,15 +96,16 @@ fun AdminUserManagementDialog(
     inputEmail = ""
     inputDepartment = "General OPD"
     val defaultPerm = UserRolePermissions.defaultFor(UserRole.DOCTOR)
-    permDoctorEmr = defaultPerm.canAccessDoctorEmr
-    permPharmacy = defaultPerm.canAccessPharmacy
-    permBilling = defaultPerm.canAccessBilling
-    permQueue = defaultPerm.canAccessPatientQueue
-    permProcedures = defaultPerm.canAccessProcedures
-    permVaccines = defaultPerm.canAccessVaccineTracker
-    permInventoryMaster = defaultPerm.canAccessInventoryMaster
-    permManageUsers = defaultPerm.canManageUsers
-    permExportData = defaultPerm.canExportData
+    permQueue = defaultPerm.queueAccess
+    permDoctorEmr = defaultPerm.doctorEmrAccess
+    permTreatment = defaultPerm.treatmentAccess
+    permPharmacy = defaultPerm.pharmacyAccess
+    permBilling = defaultPerm.billingAccess
+    permProcedures = defaultPerm.proceduresAccess
+    permInventory = defaultPerm.inventoryAccess
+    permLedger = defaultPerm.financialLedgerAccess
+    permRecords = defaultPerm.medicalRecordsAccess
+    permUsers = defaultPerm.userManagementAccess
   }
 
   fun populateFormForEdit(user: UserAccount) {
@@ -113,15 +119,16 @@ fun AdminUserManagementDialog(
     inputEmail = user.email
     inputDepartment = user.department
     val currentPerm = user.effectivePermissions
-    permDoctorEmr = currentPerm.canAccessDoctorEmr
-    permPharmacy = currentPerm.canAccessPharmacy
-    permBilling = currentPerm.canAccessBilling
-    permQueue = currentPerm.canAccessPatientQueue
-    permProcedures = currentPerm.canAccessProcedures
-    permVaccines = currentPerm.canAccessVaccineTracker
-    permInventoryMaster = currentPerm.canAccessInventoryMaster
-    permManageUsers = currentPerm.canManageUsers
-    permExportData = currentPerm.canExportData
+    permQueue = currentPerm.queueAccess
+    permDoctorEmr = currentPerm.doctorEmrAccess
+    permTreatment = currentPerm.treatmentAccess
+    permPharmacy = currentPerm.pharmacyAccess
+    permBilling = currentPerm.billingAccess
+    permProcedures = currentPerm.proceduresAccess
+    permInventory = currentPerm.inventoryAccess
+    permLedger = currentPerm.financialLedgerAccess
+    permRecords = currentPerm.medicalRecordsAccess
+    permUsers = currentPerm.userManagementAccess
   }
 
   fun getRoleColor(role: UserRole): Color = when (role) {
@@ -793,15 +800,16 @@ fun AdminUserManagementDialog(
                           inputRole = role
                           // Auto update permissions to default for role
                           val d = UserRolePermissions.defaultFor(role)
-                          permDoctorEmr = d.canAccessDoctorEmr
-                          permPharmacy = d.canAccessPharmacy
-                          permBilling = d.canAccessBilling
-                          permQueue = d.canAccessPatientQueue
-                          permProcedures = d.canAccessProcedures
-                          permVaccines = d.canAccessVaccineTracker
-                          permInventoryMaster = d.canAccessInventoryMaster
-                          permManageUsers = d.canManageUsers
-                          permExportData = d.canExportData
+                          permQueue = d.queueAccess
+                          permDoctorEmr = d.doctorEmrAccess
+                          permTreatment = d.treatmentAccess
+                          permPharmacy = d.pharmacyAccess
+                          permBilling = d.billingAccess
+                          permProcedures = d.proceduresAccess
+                          permInventory = d.inventoryAccess
+                          permLedger = d.financialLedgerAccess
+                          permRecords = d.medicalRecordsAccess
+                          permUsers = d.userManagementAccess
 
                           // Auto select department
                           inputDepartment = when (role) {
@@ -870,11 +878,11 @@ fun AdminUserManagementDialog(
                 )
               }
 
-              // Custom Permissions (RBAC Matrix Checkboxes)
+              // Custom Permissions (3-Level Granular Control per Tab: Seal, View Only, Allow to Edit)
               item {
                 Card(
                   modifier = Modifier.fillMaxWidth(),
-                  shape = RoundedCornerShape(4.dp),
+                  shape = RoundedCornerShape(6.dp),
                   colors = CardDefaults.cardColors(containerColor = BackgroundSurface),
                   border = BorderStroke(0.8.dp, BorderGrey)
                 ) {
@@ -884,19 +892,23 @@ fun AdminUserManagementDialog(
                       horizontalArrangement = Arrangement.SpaceBetween,
                       verticalAlignment = Alignment.CenterVertically
                     ) {
-                      Text("ခွင့်ပြုချက်များ သတ်မှတ်ရန် (Custom RBAC Permissions):", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+                      Column {
+                        Text("Tab အလိုက် လုပ်ပိုင်ခွင့်များ သတ်မှတ်ရန် (Tab Permissions):", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+                        Text("Seal (မမြင်ရ) | View Only (ကြည့်ရုံ) | Allow to Edit (ပြင်ဆင်ခွင့်)", fontSize = 8.sp, color = SlateMuted)
+                      }
                       TextButton(
                         onClick = {
                           val d = UserRolePermissions.defaultFor(inputRole)
-                          permDoctorEmr = d.canAccessDoctorEmr
-                          permPharmacy = d.canAccessPharmacy
-                          permBilling = d.canAccessBilling
-                          permQueue = d.canAccessPatientQueue
-                          permProcedures = d.canAccessProcedures
-                          permVaccines = d.canAccessVaccineTracker
-                          permInventoryMaster = d.canAccessInventoryMaster
-                          permManageUsers = d.canManageUsers
-                          permExportData = d.canExportData
+                          permQueue = d.queueAccess
+                          permDoctorEmr = d.doctorEmrAccess
+                          permTreatment = d.treatmentAccess
+                          permPharmacy = d.pharmacyAccess
+                          permBilling = d.billingAccess
+                          permProcedures = d.proceduresAccess
+                          permInventory = d.inventoryAccess
+                          permLedger = d.financialLedgerAccess
+                          permRecords = d.medicalRecordsAccess
+                          permUsers = d.userManagementAccess
                         },
                         contentPadding = PaddingValues(0.dp)
                       ) {
@@ -904,22 +916,20 @@ fun AdminUserManagementDialog(
                       }
                     }
 
-                    // Checkboxes Grid
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                      Column(modifier = Modifier.weight(1f)) {
-                        PermissionCheckboxItem("Doctor EMR / Notes", permDoctorEmr) { permDoctorEmr = it }
-                        PermissionCheckboxItem("Pharmacy Dispensing", permPharmacy) { permPharmacy = it }
-                        PermissionCheckboxItem("Inventory Master (အချုပ်)", permInventoryMaster) { permInventoryMaster = it }
-                        PermissionCheckboxItem("Cashier & Invoices", permBilling) { permBilling = it }
-                        PermissionCheckboxItem("Queue & Vitals Triage", permQueue) { permQueue = it }
-                      }
-                      Column(modifier = Modifier.weight(1f)) {
-                        PermissionCheckboxItem("Clinical Procedures", permProcedures) { permProcedures = it }
-                        PermissionCheckboxItem("Vaccine Records", permVaccines) { permVaccines = it }
-                        PermissionCheckboxItem("Manage User Accounts", permManageUsers) { permManageUsers = it }
-                        PermissionCheckboxItem("Backup / Export Data", permExportData) { permExportData = it }
-                      }
-                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    HorizontalDivider(color = BorderGrey, thickness = 0.5.dp)
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    TabAccessSelectorRow("1. Patient Queue / Registration", "လူနာစာရင်း & မှတ်ပုံတင်", Icons.Default.People, permQueue) { permQueue = it }
+                    TabAccessSelectorRow("2. Doctor Consultation & EMR", "ဆရာဝန်စမ်းသပ်ခန်း & ဆေးမှတ်တမ်း", Icons.Default.MedicalServices, permDoctorEmr) { permDoctorEmr = it }
+                    TabAccessSelectorRow("3. Treatment & Injections", "ဆေးထိုး/အကြောပုလင်း ကုသဆောင်", Icons.Default.Healing, permTreatment) { permTreatment = it }
+                    TabAccessSelectorRow("4. Pharmacy Dispense", "ဆေးဆိုင် & ဆေးထုတ်ပေးခြင်း", Icons.Default.Medication, permPharmacy) { permPharmacy = it }
+                    TabAccessSelectorRow("5. Cashier & Invoices", "ငွေရှင်းကောင်တာ & ဘောင်ချာ", Icons.Default.PointOfSale, permBilling) { permBilling = it }
+                    TabAccessSelectorRow("6. Clinical Procedures", "ဒဏ်ရာဆေးကြော & ကုသမှုများ", Icons.Default.Vaccines, permProcedures) { permProcedures = it }
+                    TabAccessSelectorRow("7. Inventory Master", "စတော့အချုပ် & တန်ဖိုးသတ်မှတ်ချက်", Icons.Default.Inventory2, permInventory) { permInventory = it }
+                    TabAccessSelectorRow("8. Clinic Ledger / Finance", "ဝင်ငွေ ထွက်ငွေ ဇယား (ငွေစာရင်း)", Icons.Default.AccountBalanceWallet, permLedger) { permLedger = it }
+                    TabAccessSelectorRow("9. Medical Records Archive", "လူနာ ဆေးမှတ်တမ်းဟောင်းများ", Icons.Default.FolderShared, permRecords) { permRecords = it }
+                    TabAccessSelectorRow("10. User Management", "ဝန်ထမ်းအကောင့်များ စီမံခန့်ခွဲခြင်း", Icons.Default.ManageAccounts, permUsers) { permUsers = it }
                   }
                 }
               }
@@ -954,15 +964,16 @@ fun AdminUserManagementDialog(
                       }
 
                       val permissions = UserRolePermissions(
-                        canAccessDoctorEmr = permDoctorEmr,
-                        canAccessPharmacy = permPharmacy,
-                        canAccessBilling = permBilling,
-                        canAccessPatientQueue = permQueue,
-                        canAccessProcedures = permProcedures,
-                        canAccessVaccineTracker = permVaccines,
-                        canAccessInventoryMaster = permInventoryMaster,
-                        canManageUsers = permManageUsers,
-                        canExportData = permExportData
+                        queueAccess = permQueue,
+                        doctorEmrAccess = permDoctorEmr,
+                        treatmentAccess = permTreatment,
+                        pharmacyAccess = permPharmacy,
+                        billingAccess = permBilling,
+                        proceduresAccess = permProcedures,
+                        inventoryAccess = permInventory,
+                        financialLedgerAccess = permLedger,
+                        medicalRecordsAccess = permRecords,
+                        userManagementAccess = permUsers
                       )
 
                       if (editingUser != null) {
@@ -1114,18 +1125,21 @@ fun AdminUserManagementDialog(
 
                     // Permission Chips
                     Row(
-                      modifier = Modifier.fillMaxWidth(),
+                      modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
                       horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                      PermBadge("EMR", perms.canAccessDoctorEmr)
-                      PermBadge("Pharmacy", perms.canAccessPharmacy)
-                      PermBadge("Inventory", perms.canAccessInventoryMaster)
-                      PermBadge("Billing", perms.canAccessBilling)
-                      PermBadge("Queue", perms.canAccessPatientQueue)
-                      PermBadge("Procedures", perms.canAccessProcedures)
-                      PermBadge("Vaccines", perms.canAccessVaccineTracker)
-                      PermBadge("Users", perms.canManageUsers)
-                      PermBadge("Export", perms.canExportData)
+                      PermBadge("Queue", perms.queueAccess)
+                      PermBadge("EMR", perms.doctorEmrAccess)
+                      PermBadge("Treatment", perms.treatmentAccess)
+                      PermBadge("Pharmacy", perms.pharmacyAccess)
+                      PermBadge("Billing", perms.billingAccess)
+                      PermBadge("Procedures", perms.proceduresAccess)
+                      PermBadge("Inventory", perms.inventoryAccess)
+                      PermBadge("Ledger", perms.financialLedgerAccess)
+                      PermBadge("Records", perms.medicalRecordsAccess)
+                      PermBadge("Users", perms.userManagementAccess)
                     }
                   }
                 }
@@ -1322,53 +1336,115 @@ fun AdminUserManagementDialog(
 }
 
 @Composable
-private fun PermissionCheckboxItem(
+private fun TabAccessSelectorRow(
   title: String,
-  checked: Boolean,
-  onCheckedChange: (Boolean) -> Unit
+  myanmarTitle: String,
+  icon: ImageVector,
+  currentLevel: TabAccessLevel,
+  onLevelSelected: (TabAccessLevel) -> Unit
 ) {
   Row(
     modifier = Modifier
       .fillMaxWidth()
-      .padding(vertical = 1.dp)
-      .clickable { onCheckedChange(!checked) },
-    verticalAlignment = Alignment.CenterVertically
+      .padding(vertical = 3.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.SpaceBetween
   ) {
-    Checkbox(
-      checked = checked,
-      onCheckedChange = onCheckedChange,
-      modifier = Modifier.size(24.dp),
-      colors = CheckboxDefaults.colors(checkedColor = MedicalGreen)
-    )
-    Spacer(modifier = Modifier.width(4.dp))
-    Text(title, fontSize = 8.5.sp, color = DarkGrayText)
+    Row(
+      modifier = Modifier.weight(1f),
+      verticalAlignment = Alignment.CenterVertically
+    ) {
+      Icon(icon, contentDescription = null, modifier = Modifier.size(15.dp), tint = MedicalGreenDark)
+      Spacer(modifier = Modifier.width(6.dp))
+      Column {
+        Text(title, fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, color = DarkGrayText, maxLines = 1)
+        Text(myanmarTitle, fontSize = 8.sp, color = SlateMuted, maxLines = 1)
+      }
+    }
+
+    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+      TabAccessOptionChip(
+        label = "Seal / မမြင်ရ",
+        selected = currentLevel == TabAccessLevel.SEALED,
+        selectedBg = StatusCriticalContainer,
+        selectedColor = StatusCritical,
+        onClick = { onLevelSelected(TabAccessLevel.SEALED) }
+      )
+      TabAccessOptionChip(
+        label = "View Only / ကြည့်ရုံ",
+        selected = currentLevel == TabAccessLevel.VIEW_ONLY,
+        selectedBg = Color(0xFFFEF3C7),
+        selectedColor = Color(0xFFB45309),
+        onClick = { onLevelSelected(TabAccessLevel.VIEW_ONLY) }
+      )
+      TabAccessOptionChip(
+        label = "Allow to Edit / ပြင်ဆင်",
+        selected = currentLevel == TabAccessLevel.ALLOW_EDIT,
+        selectedBg = StatusSuccessContainer,
+        selectedColor = StatusSuccess,
+        onClick = { onLevelSelected(TabAccessLevel.ALLOW_EDIT) }
+      )
+    }
   }
 }
 
 @Composable
-private fun PermBadge(label: String, isAllowed: Boolean) {
+private fun TabAccessOptionChip(
+  label: String,
+  selected: Boolean,
+  selectedBg: Color,
+  selectedColor: Color,
+  onClick: () -> Unit
+) {
+  Surface(
+    shape = RoundedCornerShape(3.dp),
+    color = if (selected) selectedBg else Color(0xFFF3F4F6),
+    border = BorderStroke(0.8.dp, if (selected) selectedColor else Color(0xFFD1D5DB)),
+    modifier = Modifier
+      .clip(RoundedCornerShape(3.dp))
+      .clickable(onClick = onClick)
+  ) {
+    Text(
+      text = label,
+      fontSize = 8.sp,
+      fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+      color = if (selected) selectedColor else Color(0xFF4B5563),
+      modifier = Modifier.padding(horizontal = 5.dp, vertical = 3.dp)
+    )
+  }
+}
+
+@Composable
+private fun PermBadge(label: String, access: TabAccessLevel) {
+  val (bg, border, tint, icon) = when (access) {
+    TabAccessLevel.SEALED -> AccessBadgeStyle(StatusCriticalContainer, StatusCritical, StatusCritical, Icons.Default.Lock)
+    TabAccessLevel.VIEW_ONLY -> AccessBadgeStyle(Color(0xFFFEF3C7), Color(0xFFD97706), Color(0xFFB45309), Icons.Default.Visibility)
+    TabAccessLevel.ALLOW_EDIT -> AccessBadgeStyle(StatusSuccessContainer, StatusSuccess, StatusSuccess, Icons.Default.Edit)
+  }
   Surface(
     shape = RoundedCornerShape(2.dp),
-    color = if (isAllowed) StatusSuccessContainer else BackgroundSurface,
-    border = BorderStroke(0.6.dp, if (isAllowed) StatusSuccess else BorderGrey)
+    color = bg,
+    border = BorderStroke(0.6.dp, border)
   ) {
     Row(
       modifier = Modifier.padding(horizontal = 3.dp, vertical = 1.dp),
       verticalAlignment = Alignment.CenterVertically
     ) {
       Icon(
-        if (isAllowed) Icons.Default.Check else Icons.Default.Close,
+        icon,
         contentDescription = null,
-        tint = if (isAllowed) StatusSuccess else SlateLight,
+        tint = tint,
         modifier = Modifier.size(8.dp)
       )
       Spacer(modifier = Modifier.width(2.dp))
       Text(
-        label,
-        fontSize = 7.5.sp,
-        fontWeight = if (isAllowed) FontWeight.Bold else FontWeight.Normal,
-        color = if (isAllowed) StatusSuccess else SlateMuted
+        "$label: ${access.name.take(4)}",
+        fontSize = 7.sp,
+        fontWeight = if (access == TabAccessLevel.ALLOW_EDIT) FontWeight.Bold else FontWeight.Normal,
+        color = tint
       )
     }
   }
 }
+
+private data class AccessBadgeStyle(val bg: Color, val border: Color, val tint: Color, val icon: ImageVector)

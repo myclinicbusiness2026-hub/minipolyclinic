@@ -609,8 +609,8 @@ private fun CheckoutSummaryBlock(
       .fillMaxWidth()
       .height(44.dp)
   ) {
-    Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+    Icon(Icons.Default.ReceiptLong, contentDescription = null, modifier = Modifier.size(18.dp))
     Spacer(modifier = Modifier.width(6.dp))
-    Text("ငွေချေပြီး ပြေစာထုတ်မည် (${currencyFmt.format(netPayable)} Ks)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+    Text("ဘောင်ချာဖွင့်မည် (${currencyFmt.format(netPayable)} Ks)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
   }
 }
