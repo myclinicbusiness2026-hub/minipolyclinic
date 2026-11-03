@@ -6,5 +6,5 @@
   "releaseNotesMm": "• Consultation ပြီးဆုံးချိန်တွင် ဘောင်ချာထုတ်ရန် Cashier & Invoices သို့ တိုက်ရိုက် ပို့ဆောင်ပေးခြင်း\n• ဝန်ထမ်းအကောင့်များအတွက် Tab အလိုက် ၃ ဆင့် ခွင့်ပြုချက် (Seal / View Only / Allow to Edit) စနစ်သစ် - Admin စိတ်တိုင်းကျ မမြင်ရ (Seal)၊ ကြည့်ရှုခွင့်သာ (View Only) သို့မဟုတ် ပြင်ဆင်ခွင့် (Allow to Edit) ကို Tab ၁၀ ခုလုံးအတွက် စိတ်တိုင်းကျ ရွေးချယ်ခွင့်ရရှိခြင်း\n• Walk-in Customer ပြင်ပလူနာ ဆေးအရောင်းတွင် ပုံမှန်အတိုင်း UNPAID Checkbox ပါဝင်လာခြင်း - ငွေရှင်းကောင်တာတွင် ငွေပေးချေမှုစစ်ဆေးပြီး Paid Checkbox နှိပ်၍ ငွေရှင်းပြီး စတော့ခ်တိကျစွာ နှုတ်ယူနိုင်ခြင်း",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-03",
-  "apkSizeBytes": 21586798
+  "apkSizeBytes": 21586794
 }
