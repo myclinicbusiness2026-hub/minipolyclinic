@@ -137,6 +137,30 @@ fun MiniPolyclinicMainApp(
 
   val userPermissions = currentUser?.effectivePermissions ?: UserRolePermissions.defaultFor(UserRole.DOCTOR)
 
+  val canAccessTab: (Int, UserRolePermissions) -> Boolean = { tab, p ->
+    when (tab) {
+      0 -> true
+      1 -> p.canAccessPatientQueue
+      2 -> p.canAccessDoctorEmr
+      3 -> p.canAccessPharmacy
+      4 -> p.canAccessBilling
+      5 -> p.canAccessProcedures
+      6 -> p.canAccessInventoryMaster
+      7 -> p.canAccessFinancialLedger
+      8 -> p.canAccessMedicalRecords
+      9 -> p.canAccessTreatment
+      else -> true
+    }
+  }
+
+  val safeNavigateToTab: (Int) -> Unit = { targetTab ->
+    if (canAccessTab(targetTab, userPermissions)) {
+      clinicViewModel.setTab(targetTab)
+    } else {
+      Toast.makeText(context, "ဤကဏ္ဍသို့ ဝင်ရောက်ခွင့် ကန့်သတ်ထားပါသည် (Access Denied / Sealed)", Toast.LENGTH_SHORT).show()
+    }
+  }
+
   ModalNavigationDrawer(
     drawerState = drawerState,
     drawerContent = {
@@ -352,7 +376,7 @@ fun MiniPolyclinicMainApp(
                   },
                   selected = isSelected,
                   onClick = {
-                    clinicViewModel.setTab(item.index)
+                    safeNavigateToTab(item.index)
                     coroutineScope.launch { drawerState.close() }
                   },
                   shape = RoundedCornerShape(8.dp),
@@ -705,46 +729,114 @@ fun MiniPolyclinicMainApp(
         when (activeTab) {
           0 -> DashboardScreen(
             viewModel = clinicViewModel,
-            onNavigateToTab = { clinicViewModel.setTab(it) },
+            onNavigateToTab = safeNavigateToTab,
             onOpenUserAccounts = { showUserManagementDialog = true }
           )
-          1 -> PatientQueueScreen(
-            viewModel = clinicViewModel,
-            onNavigateToConsultation = { patientId ->
-              clinicViewModel.selectPatient(patientId)
-              clinicViewModel.setTab(2)
+          1 -> {
+            if (userPermissions.canAccessPatientQueue) {
+              PatientQueueScreen(
+                viewModel = clinicViewModel,
+                isReadOnly = !userPermissions.canEditPatientQueue,
+                onNavigateToConsultation = { patientId ->
+                  if (userPermissions.canAccessDoctorEmr) {
+                    clinicViewModel.selectPatient(patientId)
+                    safeNavigateToTab(2)
+                  } else {
+                    Toast.makeText(context, "ဆရာဝန် ဆေးမှတ်တမ်းသို့ ဝင်ရောက်ခွင့် ကန့်သတ်ထားပါသည်", Toast.LENGTH_SHORT).show()
+                  }
+                }
+              )
+            } else {
+              RestrictedAccessView()
             }
-          )
-          2 -> DoctorConsultationScreen(
-            viewModel = clinicViewModel,
-            onConsultationCompleted = {
-              clinicViewModel.setTab(4) // Route directly to Cashier & Invoices
+          }
+          2 -> {
+            if (userPermissions.canAccessDoctorEmr) {
+              DoctorConsultationScreen(
+                viewModel = clinicViewModel,
+                isReadOnly = !userPermissions.canEditDoctorEmr,
+                onConsultationCompleted = {
+                  safeNavigateToTab(4)
+                }
+              )
+            } else {
+              RestrictedAccessView()
             }
-          )
-          3 -> PharmacyInventoryScreen(
-            viewModel = clinicViewModel
-          )
-          4 -> CashierBillingScreen(
-            viewModel = clinicViewModel
-          )
-          5 -> ProceduresScreen(
-            viewModel = clinicViewModel
-          )
-          6 -> InventoryMasterScreen(
-            viewModel = clinicViewModel,
-            onNavigateToTab = { clinicViewModel.setTab(it) },
-            onOpenUserAccounts = { showUserManagementDialog = true }
-          )
-          7 -> ClinicLedgerScreen(
-            viewModel = clinicViewModel
-          )
-          8 -> MedicalRecordsScreen(
-            viewModel = clinicViewModel,
-            onNavigateToQueue = { clinicViewModel.setTab(1) }
-          )
-          9 -> TreatmentScreen(
-            viewModel = clinicViewModel
-          )
+          }
+          3 -> {
+            if (userPermissions.canAccessPharmacy) {
+              PharmacyInventoryScreen(
+                viewModel = clinicViewModel,
+                isReadOnly = !userPermissions.canEditPharmacy
+              )
+            } else {
+              RestrictedAccessView()
+            }
+          }
+          4 -> {
+            if (userPermissions.canAccessBilling) {
+              CashierBillingScreen(
+                viewModel = clinicViewModel,
+                isReadOnly = !userPermissions.canEditBilling
+              )
+            } else {
+              RestrictedAccessView()
+            }
+          }
+          5 -> {
+            if (userPermissions.canAccessProcedures) {
+              ProceduresScreen(
+                viewModel = clinicViewModel,
+                isReadOnly = !userPermissions.canEditProcedures
+              )
+            } else {
+              RestrictedAccessView()
+            }
+          }
+          6 -> {
+            if (userPermissions.canAccessInventoryMaster) {
+              InventoryMasterScreen(
+                viewModel = clinicViewModel,
+                isReadOnly = !userPermissions.canEditInventoryMaster,
+                onNavigateToTab = safeNavigateToTab,
+                onOpenUserAccounts = { showUserManagementDialog = true }
+              )
+            } else {
+              RestrictedAccessView()
+            }
+          }
+          7 -> {
+            if (userPermissions.canAccessFinancialLedger) {
+              ClinicLedgerScreen(
+                viewModel = clinicViewModel,
+                isReadOnly = !userPermissions.canEditFinancialLedger
+              )
+            } else {
+              RestrictedAccessView()
+            }
+          }
+          8 -> {
+            if (userPermissions.canAccessMedicalRecords) {
+              MedicalRecordsScreen(
+                viewModel = clinicViewModel,
+                isReadOnly = !userPermissions.canEditMedicalRecords,
+                onNavigateToQueue = { safeNavigateToTab(1) }
+              )
+            } else {
+              RestrictedAccessView()
+            }
+          }
+          9 -> {
+            if (userPermissions.canAccessTreatment) {
+              TreatmentScreen(
+                viewModel = clinicViewModel,
+                onNavigateToInvoice = { safeNavigateToTab(4) },
+                isReadOnly = !userPermissions.canEditTreatment
+              )
+            } else {
+              RestrictedAccessView()
+            }
+          }
         }
       }
     }
@@ -995,5 +1087,44 @@ private fun DrawerSettingsRow(
       }
     }
     Icon(Icons.Default.ChevronRight, contentDescription = null, tint = SlateLight, modifier = Modifier.size(14.dp))
+  }
+}
+
+@Composable
+private fun RestrictedAccessView() {
+  Box(
+    modifier = Modifier
+      .fillMaxSize()
+      .padding(24.dp),
+    contentAlignment = Alignment.Center
+  ) {
+    Surface(
+      shape = RoundedCornerShape(12.dp),
+      color = PureWhite,
+      border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+      modifier = Modifier.fillMaxWidth(0.9f).padding(16.dp)
+    ) {
+      Column(
+        modifier = Modifier.padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+      ) {
+        Icon(Icons.Default.Lock, contentDescription = null, tint = StatusCritical, modifier = Modifier.size(54.dp))
+        Spacer(modifier = Modifier.height(14.dp))
+        Text(
+          "ဤကဏ္ဍသို့ ဝင်ရောက်ခွင့် ကန့်သတ်ထားပါသည် (Access Denied / Sealed)",
+          fontWeight = FontWeight.Bold,
+          color = DarkGrayText,
+          fontSize = 13.5.sp,
+          textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+          "အသုံးပြုသူအကောင့်၏ လုပ်ပိုင်ခွင့်အဆင့် (User Role Permissions) ကို Admin ထံ မေးမြန်းပါ",
+          color = SlateMuted,
+          fontSize = 11.sp,
+          textAlign = TextAlign.Center
+        )
+      }
+    }
   }
 }

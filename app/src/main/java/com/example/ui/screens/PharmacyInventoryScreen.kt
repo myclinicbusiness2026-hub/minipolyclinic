@@ -50,7 +50,8 @@ enum class InventoryFilter(val label: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PharmacyInventoryScreen(
-  viewModel: ClinicViewModel
+  viewModel: ClinicViewModel,
+  isReadOnly: Boolean = false
 ) {
   val medicines by viewModel.medicines.collectAsState()
   val medicineCategories by viewModel.medicineCategories.collectAsState()
@@ -190,7 +191,7 @@ fun PharmacyInventoryScreen(
             }
           }
 
-          if (currentTab == PharmacyViewTab.INVENTORY) {
+          if (currentTab == PharmacyViewTab.INVENTORY && !isReadOnly) {
             Spacer(modifier = Modifier.width(2.dp))
             Button(
               onClick = { currentTab = PharmacyViewTab.STOCK_IN },
@@ -486,8 +487,8 @@ fun PharmacyInventoryScreen(
                 currencyFmt = currencyFmt,
                 suppliers = suppliers,
                 getDaysUntilExpiry = ::getDaysUntilExpiry,
-                onEditMedicine = { medicineToEdit = med },
-                onDeleteMedicine = { medicineToDelete = med }
+                onEditMedicine = { if (!isReadOnly) medicineToEdit = med },
+                onDeleteMedicine = { if (!isReadOnly) medicineToDelete = med }
               )
             }
           }

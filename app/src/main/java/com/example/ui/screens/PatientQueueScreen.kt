@@ -49,7 +49,8 @@ import java.util.Locale
 @Composable
 fun PatientQueueScreen(
   viewModel: ClinicViewModel,
-  onNavigateToConsultation: (String) -> Unit
+  onNavigateToConsultation: (String) -> Unit,
+  isReadOnly: Boolean = false
 ) {
   val patients by viewModel.patients.collectAsState()
   val vaccineRecords by viewModel.vaccineRecords.collectAsState()
@@ -126,6 +127,28 @@ fun PatientQueueScreen(
             .padding(horizontal = 10.dp, vertical = 8.dp),
           verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+          if (isReadOnly) {
+            Surface(
+              shape = RoundedCornerShape(6.dp),
+              color = Color(0xFFFEF3C7),
+              border = BorderStroke(1.dp, Color(0xFFD97706)),
+              modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
+            ) {
+              Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Icon(Icons.Default.Visibility, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(15.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                  "VIEW ONLY (ကြည့်ရှုခွင့်သာ) - လူနာစာရင်း အသစ်သွင်းခွင့်/ပြင်ဆင်ခွင့် မရှိပါ",
+                  fontSize = 10.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = Color(0xFF92400E)
+                )
+              }
+            }
+          }
           // Row 1: Title and Follow-up Alerts
           Row(
             modifier = Modifier.fillMaxWidth(),
@@ -208,6 +231,7 @@ fun PatientQueueScreen(
           }
 
           // Row 2: Action Buttons (Prominent + New Patient & + Follow-up)
+          if (!isReadOnly) {
           Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -241,6 +265,7 @@ fun PatientQueueScreen(
               Spacer(modifier = Modifier.width(5.dp))
               Text("Follow-up", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
             }
+          }
           }
         }
       }
@@ -425,10 +450,15 @@ fun PatientQueueScreen(
           items(filteredPatients, key = { it.id }) { patient ->
             PatientQueueItemCard(
               patient = patient,
+              isReadOnly = isReadOnly,
               onSelectForConsultation = {
-                viewModel.selectPatient(patient.id)
-                viewModel.updatePatientStatus(patient.id, QueueStatus.IN_CONSULTATION)
-                onNavigateToConsultation(patient.id)
+                if (isReadOnly) {
+                  Toast.makeText(context, "VIEW ONLY: ကြည့်ရှုခွင့်သာ ရှိပါသည်", Toast.LENGTH_SHORT).show()
+                } else {
+                  viewModel.selectPatient(patient.id)
+                  viewModel.updatePatientStatus(patient.id, QueueStatus.IN_CONSULTATION)
+                  onNavigateToConsultation(patient.id)
+                }
               },
               onViewMedicalRecord = { p ->
                 viewModel.selectPatient(p.id)
@@ -697,6 +727,7 @@ fun PatientQueueScreen(
 @Composable
 fun PatientQueueItemCard(
   patient: Patient,
+  isReadOnly: Boolean = false,
   onSelectForConsultation: () -> Unit,
   onViewMedicalRecord: (Patient) -> Unit = {},
   onRegisterFollowUp: (Patient) -> Unit = {},
@@ -846,14 +877,16 @@ fun PatientQueueItemCard(
               expanded = showMenu,
               onDismissRequest = { showMenu = false }
             ) {
-              DropdownMenuItem(
-                text = { Text("ပြင်ဆင်မည် (Edit)", fontSize = 11.sp) },
-                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(16.dp)) },
-                onClick = {
-                  showMenu = false
-                  onEditPatient(patient)
-                }
-              )
+              if (!isReadOnly) {
+                DropdownMenuItem(
+                  text = { Text("ပြင်ဆင်မည် (Edit)", fontSize = 11.sp) },
+                  leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(16.dp)) },
+                  onClick = {
+                    showMenu = false
+                    onEditPatient(patient)
+                  }
+                )
+              }
               DropdownMenuItem(
                 text = { Text("Trends / ဂရပ် (Vitals)", fontSize = 11.sp) },
                 leadingIcon = { Icon(Icons.Default.ShowChart, contentDescription = null, tint = OceanGreenPrimary, modifier = Modifier.size(16.dp)) },
@@ -896,14 +929,16 @@ fun PatientQueueItemCard(
                 )
               }
               HorizontalDivider()
-              DropdownMenuItem(
-                text = { Text("ဖျက်မည် (Delete)", fontSize = 11.sp, color = Color(0xFFDC2626)) },
-                leadingIcon = { Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = Color(0xFFDC2626), modifier = Modifier.size(16.dp)) },
-                onClick = {
-                  showMenu = false
-                  onDeletePatient(patient)
-                }
-              )
+              if (!isReadOnly) {
+                DropdownMenuItem(
+                  text = { Text("ဖျက်မည် (Delete)", fontSize = 11.sp, color = Color(0xFFDC2626)) },
+                  leadingIcon = { Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = Color(0xFFDC2626), modifier = Modifier.size(16.dp)) },
+                  onClick = {
+                    showMenu = false
+                    onDeletePatient(patient)
+                  }
+                )
+              }
             }
           }
         }

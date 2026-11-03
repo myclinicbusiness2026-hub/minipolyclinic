@@ -33,7 +33,8 @@ import java.util.Locale
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProceduresScreen(
-  viewModel: ClinicViewModel
+  viewModel: ClinicViewModel,
+  isReadOnly: Boolean = false
 ) {
   val procedures by viewModel.procedures.collectAsState()
   val procedureCategories by viewModel.procedureCategories.collectAsState()
@@ -60,6 +61,28 @@ fun ProceduresScreen(
       .background(BackgroundSurface)
       .padding(horizontal = 10.dp, vertical = 6.dp)
   ) {
+    if (isReadOnly) {
+      Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = Color(0xFFFEF3C7),
+        border = BorderStroke(1.dp, Color(0xFFD97706)),
+        modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
+      ) {
+        Row(
+          modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Icon(Icons.Default.Visibility, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(15.dp))
+          Spacer(modifier = Modifier.width(6.dp))
+          Text(
+            "VIEW ONLY (ကြည့်ရှုခွင့်သာ) - ဒဏ်ရာဆေးကြောနှင့် ကုသမှုစာရင်း ကြည့်ရှုခွင့်သာရှိပြီး အသစ်ထည့်/ပြင်ဆင်ခွင့် မရှိပါ",
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF92400E)
+          )
+        }
+      }
+    }
     // Compact Clean Header Strip: Title, Counter & Action (Zero wasted space)
     Surface(
       modifier = Modifier.fillMaxWidth(),

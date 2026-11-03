@@ -43,7 +43,9 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TreatmentScreen(
-  viewModel: ClinicViewModel
+  viewModel: ClinicViewModel,
+  onNavigateToInvoice: (String) -> Unit = {},
+  isReadOnly: Boolean = false
 ) {
   val context = LocalContext.current
   val treatmentCards by viewModel.treatmentCards.collectAsState()

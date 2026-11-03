@@ -57,7 +57,8 @@ enum class MasterStockFilter(val label: String) {
 fun InventoryMasterScreen(
   viewModel: ClinicViewModel,
   onNavigateToTab: (Int) -> Unit = {},
-  onOpenUserAccounts: () -> Unit = {}
+  onOpenUserAccounts: () -> Unit = {},
+  isReadOnly: Boolean = false
 ) {
   val context = LocalContext.current
   val medicines by viewModel.medicines.collectAsState()

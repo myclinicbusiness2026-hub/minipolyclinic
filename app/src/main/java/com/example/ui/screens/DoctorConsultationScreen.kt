@@ -118,7 +118,8 @@ private fun calculateFollowUpDueDate(followUpText: String): String? {
 @Composable
 fun DoctorConsultationScreen(
   viewModel: ClinicViewModel,
-  onConsultationCompleted: () -> Unit
+  onConsultationCompleted: () -> Unit,
+  isReadOnly: Boolean = false
 ) {
   val context = LocalContext.current
   val patients by viewModel.patients.collectAsState()
@@ -493,6 +494,28 @@ fun DoctorConsultationScreen(
         .background(BackgroundSurface)
         .padding(10.dp)
     ) {
+      if (isReadOnly) {
+        Surface(
+          shape = RoundedCornerShape(6.dp),
+          color = Color(0xFFFEF3C7),
+          border = BorderStroke(1.dp, Color(0xFFD97706)),
+          modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
+        ) {
+          Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Icon(Icons.Default.Visibility, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(15.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+              "VIEW ONLY (ကြည့်ရှုခွင့်သာ) - ဆေးမှတ်တမ်း ရေးသွင်း/သိမ်းဆည်းခွင့် မရှိပါ",
+              fontSize = 10.sp,
+              fontWeight = FontWeight.Bold,
+              color = Color(0xFF92400E)
+            )
+          }
+        }
+      }
       // Top Bar: Clean, Full-Width Patient Selector with Dropdown Picker & Quick Nav
       Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -814,7 +837,11 @@ fun DoctorConsultationScreen(
       }
 
       val handleSendToPharmacy = {
-        showConfirmSaveDialog = true
+        if (isReadOnly) {
+          Toast.makeText(context, "VIEW ONLY: ဆေးမှတ်တမ်း ရေးသွင်းခွင့် ကန့်သတ်ထားပါသည်", Toast.LENGTH_SHORT).show()
+        } else {
+          showConfirmSaveDialog = true
+        }
       }
 
       if (activePatient != null) {
@@ -1048,24 +1075,52 @@ fun DoctorConsultationScreen(
               textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
             Spacer(modifier = Modifier.height(14.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-              Button(
-                onClick = { viewModel.setTab(1) },
-                colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
-                shape = RoundedCornerShape(6.dp)
-              ) {
-                Icon(Icons.Default.People, contentDescription = null, modifier = Modifier.size(14.dp))
-                Spacer(modifier = Modifier.width(5.dp))
-                Text("လူနာစာရင်းသို့ သွားရန် (Queue)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            if (isTabletLayout) {
+              Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Button(
+                  onClick = { viewModel.setTab(1) },
+                  colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+                  shape = RoundedCornerShape(6.dp)
+                ) {
+                  Icon(Icons.Default.People, contentDescription = null, modifier = Modifier.size(14.dp))
+                  Spacer(modifier = Modifier.width(5.dp))
+                  Text("လူနာစာရင်းသို့ သွားရန် (Queue)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+                OutlinedButton(
+                  onClick = { viewModel.setTab(8) },
+                  shape = RoundedCornerShape(6.dp),
+                  border = BorderStroke(1.dp, SkyBluePrimary)
+                ) {
+                  Icon(Icons.Default.FolderShared, contentDescription = null, tint = SkyBlueDark, modifier = Modifier.size(14.dp))
+                  Spacer(modifier = Modifier.width(5.dp))
+                  Text("ဆေးမှတ်တမ်းဟောင်းများ (EMR Archive)", fontSize = 11.sp, color = SkyBlueDark, fontWeight = FontWeight.Bold)
+                }
               }
-              OutlinedButton(
-                onClick = { viewModel.setTab(8) },
-                shape = RoundedCornerShape(6.dp),
-                border = BorderStroke(1.dp, SkyBluePrimary)
+            } else {
+              Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
               ) {
-                Icon(Icons.Default.FolderShared, contentDescription = null, tint = SkyBlueDark, modifier = Modifier.size(14.dp))
-                Spacer(modifier = Modifier.width(5.dp))
-                Text("ဆေးမှတ်တမ်းဟောင်းများ (EMR Archive)", fontSize = 11.sp, color = SkyBlueDark, fontWeight = FontWeight.Bold)
+                Button(
+                  onClick = { viewModel.setTab(1) },
+                  colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+                  shape = RoundedCornerShape(6.dp),
+                  modifier = Modifier.fillMaxWidth().height(40.dp)
+                ) {
+                  Icon(Icons.Default.People, contentDescription = null, modifier = Modifier.size(15.dp))
+                  Spacer(modifier = Modifier.width(6.dp))
+                  Text("လူနာစာရင်းသို့ သွားရန် (Queue)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+                OutlinedButton(
+                  onClick = { viewModel.setTab(8) },
+                  shape = RoundedCornerShape(6.dp),
+                  border = BorderStroke(1.dp, SkyBluePrimary),
+                  modifier = Modifier.fillMaxWidth().height(40.dp)
+                ) {
+                  Icon(Icons.Default.FolderShared, contentDescription = null, tint = SkyBlueDark, modifier = Modifier.size(15.dp))
+                  Spacer(modifier = Modifier.width(6.dp))
+                  Text("ဆေးမှတ်တမ်းဟောင်းများ (EMR Archive)", fontSize = 12.sp, color = SkyBlueDark, fontWeight = FontWeight.Bold)
+                }
               }
             }
 

@@ -84,12 +84,16 @@ sealed class LedgerEntry(
 @Composable
 fun ClinicLedgerScreen(
   viewModel: ClinicViewModel,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
+  isReadOnly: Boolean = false
 ) {
   val context = LocalContext.current
   val invoices by viewModel.invoices.collectAsState()
   val expenses by viewModel.expenses.collectAsState()
   val currentUser by viewModel.currentUser.collectAsState()
+  val patients by viewModel.patients.collectAsState()
+  val consultations by viewModel.consultations.collectAsState()
+  val clinicSettings by viewModel.clinicSettings.collectAsState()
 
   val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
   val monthFormat = remember { SimpleDateFormat("yyyy-MM", Locale.getDefault()) }
@@ -181,6 +185,28 @@ fun ClinicLedgerScreen(
       .fillMaxSize()
       .background(BackgroundSurface)
   ) {
+    if (isReadOnly) {
+      Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = Color(0xFFFEF3C7),
+        border = BorderStroke(1.dp, Color(0xFFD97706)),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
+      ) {
+        Row(
+          modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Icon(Icons.Default.Visibility, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(15.dp))
+          Spacer(modifier = Modifier.width(6.dp))
+          Text(
+            "VIEW ONLY (ကြည့်ရှုခွင့်သာ) - ဝင်ငွေထွက်ငွေ စာရင်းဇယား ကြည့်ရှုခွင့်သာရှိပြီး အသုံးစရိတ်အသစ် ထည့်သွင်းခွင့် မရှိပါ",
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF92400E)
+          )
+        }
+      }
+    }
     // 1. Compact Header Bar: Date Filter Tabs & Quick Action Buttons
     Surface(
       color = PureWhite,
@@ -220,18 +246,65 @@ fun ClinicLedgerScreen(
             }
           }
 
-          // Action Buttons: Add Expense & Export CSV
-          Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+          // Action Buttons: Add Expense, A4 Print & Export CSV
+          Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (!isReadOnly) {
+              Button(
+                onClick = { showAddExpenseDialog = true },
+                colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+                shape = RoundedCornerShape(6.dp),
+                modifier = Modifier.height(34.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+              ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                Spacer(modifier = Modifier.width(3.dp))
+                Text("ထွက်ငွေထည့်မည်", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+              }
+            }
+
             Button(
-              onClick = { showAddExpenseDialog = true },
-              colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+              onClick = {
+                val pInvoices = when (filterMode) {
+                  LedgerDateFilterMode.DAILY -> invoices.filter { it.dateString == selectedDateStr }
+                  LedgerDateFilterMode.MONTHLY -> invoices.filter { it.dateString.startsWith(selectedMonthStr) }
+                  LedgerDateFilterMode.CUSTOM_RANGE -> invoices.filter { it.dateString in customStartDateStr..customEndDateStr }
+                }
+                val pExpenses = when (filterMode) {
+                  LedgerDateFilterMode.DAILY -> expenses.filter { it.date == selectedDateStr }
+                  LedgerDateFilterMode.MONTHLY -> expenses.filter { it.date.startsWith(selectedMonthStr) }
+                  LedgerDateFilterMode.CUSTOM_RANGE -> expenses.filter { it.date in customStartDateStr..customEndDateStr }
+                }
+                val title = when (filterMode) {
+                  LedgerDateFilterMode.DAILY -> "နေ့စဉ် စာရင်းချုပ် အစီရင်ခံစာ (Daily Close Report)"
+                  LedgerDateFilterMode.MONTHLY -> "လစဉ် စာရင်းချုပ် အစီရင်ခံစာ (Monthly Close Report)"
+                  LedgerDateFilterMode.CUSTOM_RANGE -> "ကာလအပိုင်းအခြား စာရင်းချုပ် (Custom Date Range Report)"
+                }
+                val period = when (filterMode) {
+                  LedgerDateFilterMode.DAILY -> selectedDateStr
+                  LedgerDateFilterMode.MONTHLY -> selectedMonthStr
+                  LedgerDateFilterMode.CUSTOM_RANGE -> "$customStartDateStr မှ $customEndDateStr"
+                }
+
+                com.example.service.printing.triggerLedgerCloseA4Print(
+                  context = context,
+                  reportTitle = title,
+                  periodLabel = period,
+                  invoices = pInvoices,
+                  patients = patients,
+                  consultations = consultations,
+                  expenses = pExpenses,
+                  clinicSettings = clinicSettings,
+                  preparedByName = currentUser?.fullName ?: "Staff"
+                )
+              },
+              colors = ButtonDefaults.buttonColors(containerColor = OceanGreenPrimary),
               shape = RoundedCornerShape(6.dp),
               modifier = Modifier.height(34.dp),
-              contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+              contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
             ) {
-              Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(15.dp))
-              Spacer(modifier = Modifier.width(4.dp))
-              Text("ထွက်ငွေထည့်မည်", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+              Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(14.dp))
+              Spacer(modifier = Modifier.width(3.dp))
+              Text("A4 Print", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
             }
 
             OutlinedButton(
@@ -243,11 +316,11 @@ fun ClinicLedgerScreen(
               shape = RoundedCornerShape(6.dp),
               border = BorderStroke(1.dp, MedicalGreen),
               modifier = Modifier.height(34.dp),
-              contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+              contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
             ) {
-              Icon(Icons.Default.Download, contentDescription = null, tint = MedicalGreenDark, modifier = Modifier.size(15.dp))
-              Spacer(modifier = Modifier.width(3.dp))
-              Text("CSV", fontSize = 10.5.sp, color = MedicalGreenDark, fontWeight = FontWeight.Bold)
+              Icon(Icons.Default.Download, contentDescription = null, tint = MedicalGreenDark, modifier = Modifier.size(14.dp))
+              Spacer(modifier = Modifier.width(2.dp))
+              Text("CSV", fontSize = 10.sp, color = MedicalGreenDark, fontWeight = FontWeight.Bold)
             }
           }
         }

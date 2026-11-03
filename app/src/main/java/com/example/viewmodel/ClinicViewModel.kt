@@ -1457,6 +1457,10 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
     _consultations.value = updated
     ClinicDataPersistence.saveConsultations(getApplication(), updated)
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+      syncWithSupabaseCloud()
+    }
   }
 
   fun deleteAttachmentFromConsultation(consultationId: String, attachmentId: String) {
@@ -1467,6 +1471,10 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
     _consultations.value = updated
     ClinicDataPersistence.saveConsultations(getApplication(), updated)
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+      syncWithSupabaseCloud()
+    }
   }
 
   val customAttendingDoctorDegree = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
@@ -2255,7 +2263,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     items: List<InvoiceItem>,
     paymentMethod: PaymentMethod = PaymentMethod.CASH,
     discountPercent: Double = 0.0,
-    cashierName: String = ""
+    cashierName: String = "",
+    isPaid: Boolean = true
   ): Invoice {
     val ctx = getApplication<Application>()
     val subTotal = items.sumOf { it.totalPrice }
@@ -2274,18 +2283,36 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       discountPercent = discountPercent,
       discount = discountAmount,
       totalAmount = finalTotal,
-      paidAmount = 0.0,
+      paidAmount = if (isPaid) finalTotal else 0.0,
       changeAmount = 0.0,
       paymentMethod = paymentMethod,
-      paymentStatus = "Unpaid",
+      paymentStatus = if (isPaid) "Paid" else "Unpaid",
       cashierName = cashierName.ifBlank { _currentUser.value?.fullName ?: "Counter Cashier" },
-      timestamp = BurmeseDateUtils.getNowFormatted()
+      timestamp = BurmeseDateUtils.getNowFormatted(),
+      isPaid = isPaid,
+      isInventoryDeducted = isPaid
     )
+
+    if (isPaid) {
+      val currentMeds = _medicines.value.toMutableList()
+      items.filter { !it.isProcedure }.forEach { item ->
+        val idx = currentMeds.indexOfFirst { it.name.equals(item.name, ignoreCase = true) }
+        if (idx != -1) {
+          val m = currentMeds[idx]
+          val newStock = (m.stock - item.quantity).coerceAtLeast(0)
+          currentMeds[idx] = m.copy(stock = newStock)
+        }
+      }
+      _medicines.value = currentMeds
+      ClinicDataPersistence.saveMedicines(ctx, currentMeds)
+    }
+
     val updated = _invoices.value + inv
     _invoices.value = updated
     ClinicDataPersistence.saveInvoices(ctx, updated)
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
+      syncWithSupabaseCloud()
     }
     return inv
   }
@@ -2950,7 +2977,13 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         val currentConsMap = _consultations.value.associateBy { it.id }.toMutableMap()
         parsedCons.forEach { c ->
           if (!delConsSet.contains(c.id) && !delPatSet.contains(c.patientId)) {
-            currentConsMap[c.id] = c
+            val existing = currentConsMap[c.id]
+            val resolvedCons = if (existing != null && c.attachments.isEmpty() && existing.attachments.isNotEmpty()) {
+              c.copy(attachments = existing.attachments)
+            } else if (existing != null && existing.attachments.size > c.attachments.size) {
+              c.copy(attachments = (existing.attachments + c.attachments).distinctBy { it.id })
+            } else c
+            currentConsMap[c.id] = resolvedCons
           }
         }
         val mergedCons = currentConsMap.values.filter { !delConsSet.contains(it.id) && !delPatSet.contains(it.patientId) }

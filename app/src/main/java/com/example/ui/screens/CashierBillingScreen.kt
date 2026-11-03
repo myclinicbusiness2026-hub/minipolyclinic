@@ -49,7 +49,8 @@ import java.util.Locale
  */
 @Composable
 fun CashierBillingScreen(
-  viewModel: ClinicViewModel
+  viewModel: ClinicViewModel,
+  isReadOnly: Boolean = false
 ) {
   val invoices by viewModel.invoices.collectAsState()
   val patients by viewModel.patients.collectAsState()
@@ -143,6 +144,28 @@ fun CashierBillingScreen(
         .fillMaxSize()
         .padding(horizontal = 10.dp, vertical = 8.dp)
     ) {
+      if (isReadOnly) {
+        Surface(
+          shape = RoundedCornerShape(6.dp),
+          color = Color(0xFFFEF3C7),
+          border = BorderStroke(1.dp, Color(0xFFD97706)),
+          modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
+        ) {
+          Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Icon(Icons.Default.Visibility, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(15.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+              "VIEW ONLY (ကြည့်ရှုခွင့်သာ) - ဘေလ်ရှင်းခြင်း/ငွေလက်ခံခြင်း/ဆေးသီးသန့်အရောင်း ပြုလုပ်ခွင့် မရှိပါ",
+              fontSize = 10.sp,
+              fontWeight = FontWeight.Bold,
+              color = Color(0xFF92400E)
+            )
+          }
+        }
+      }
       // 1. Responsive Header Bar
       if (isWideScreen) {
         Row(
@@ -184,16 +207,18 @@ fun CashierBillingScreen(
           }
 
           Row(verticalAlignment = Alignment.CenterVertically) {
-            Button(
-              onClick = { showWalkInSaleDialog = true },
-              colors = ButtonDefaults.buttonColors(containerColor = OceanGreenPrimary),
-              shape = RoundedCornerShape(6.dp),
-              contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-              modifier = Modifier.height(28.dp)
-            ) {
-              Icon(Icons.Default.AddShoppingCart, contentDescription = null, modifier = Modifier.size(13.dp))
-              Spacer(modifier = Modifier.width(4.dp))
-              Text("ဆေးသီးသန့်အရောင်း (Walk-in OTC)", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+            if (!isReadOnly) {
+              Button(
+                onClick = { showWalkInSaleDialog = true },
+                colors = ButtonDefaults.buttonColors(containerColor = OceanGreenPrimary),
+                shape = RoundedCornerShape(6.dp),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                modifier = Modifier.height(28.dp)
+              ) {
+                Icon(Icons.Default.AddShoppingCart, contentDescription = null, modifier = Modifier.size(13.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("ဆေးသီးသန့်အရောင်း (Walk-in OTC)", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+              }
             }
             Spacer(modifier = Modifier.width(6.dp))
             Surface(
@@ -295,18 +320,20 @@ fun CashierBillingScreen(
 
           Spacer(modifier = Modifier.height(4.dp))
 
-          Button(
-            onClick = { showWalkInSaleDialog = true },
-            colors = ButtonDefaults.buttonColors(containerColor = OceanGreenPrimary),
-            shape = RoundedCornerShape(6.dp),
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-            modifier = Modifier
-              .fillMaxWidth()
-              .height(30.dp)
-          ) {
-            Icon(Icons.Default.AddShoppingCart, contentDescription = null, modifier = Modifier.size(14.dp))
-            Spacer(modifier = Modifier.width(6.dp))
-            Text("ဆေးသီးသန့်အရောင်း (Direct Walk-in OTC POS)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+          if (!isReadOnly) {
+            Button(
+              onClick = { showWalkInSaleDialog = true },
+              colors = ButtonDefaults.buttonColors(containerColor = OceanGreenPrimary),
+              shape = RoundedCornerShape(6.dp),
+              contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+              modifier = Modifier
+                .fillMaxWidth()
+                .height(30.dp)
+            ) {
+              Icon(Icons.Default.AddShoppingCart, contentDescription = null, modifier = Modifier.size(14.dp))
+              Spacer(modifier = Modifier.width(6.dp))
+              Text("ဆေးသီးသန့်အရောင်း (Direct Walk-in OTC POS)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
           }
         }
       }
@@ -315,12 +342,13 @@ fun CashierBillingScreen(
         WalkInSaleDialog(
           medicines = medicines,
           onDismiss = { showWalkInSaleDialog = false },
-          onCompleteSale = { custName, items, pm, disc ->
+          onCompleteSale = { custName, items, pm, disc, isPaid ->
             val inv = viewModel.createWalkInSaleInvoice(
               customerName = custName,
               items = items,
               paymentMethod = pm,
-              discountPercent = disc
+              discountPercent = disc,
+              isPaid = isPaid
             )
             selectedInvoiceId = inv.id
           }
@@ -425,7 +453,8 @@ fun CashierBillingScreen(
               },
               onToggleInvoicePaid = { invId, isPaid ->
                 viewModel.toggleInvoicePaidStatus(invId, isPaid)
-              }
+              },
+              isReadOnly = isReadOnly
             )
           }
         }
@@ -581,7 +610,8 @@ fun CashierBillingScreen(
               },
               onToggleInvoicePaid = { invId, isPaid ->
                 viewModel.toggleInvoicePaidStatus(invId, isPaid)
-              }
+              },
+              isReadOnly = isReadOnly
             )
           }
         }
@@ -901,7 +931,8 @@ private fun BillingCheckoutPane(
   onApplyAllFoc: (Invoice) -> Unit = {},
   onResetDiscounts: (Invoice) -> Unit = {},
   onConfirmPaymentWithGranular: ((Invoice, PaymentMethod, Double, Double, Double, Double) -> Unit)? = null,
-  onToggleInvoicePaid: ((String, Boolean) -> Unit)? = null
+  onToggleInvoicePaid: ((String, Boolean) -> Unit)? = null,
+  isReadOnly: Boolean = false
 ) {
   var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -1001,7 +1032,8 @@ private fun BillingCheckoutPane(
       activeInvoice = activeInvoice,
       activePatient = activePatient,
       onBackToQueue = onBackToQueue,
-      onToggleInvoicePaid = onToggleInvoicePaid
+      onToggleInvoicePaid = onToggleInvoicePaid,
+      isReadOnly = isReadOnly
     )
 
     Spacer(modifier = Modifier.height(5.dp))
@@ -1086,7 +1118,8 @@ private fun BillingCheckoutPane(
       onConfirmPayment = onConfirmPayment,
       onConfirmPaymentWithGranular = onConfirmPaymentWithGranular,
       onRequestDelete = { showDeleteDialog = true },
-      canDelete = onDeleteInvoiceAndReturnStock != null
+      canDelete = onDeleteInvoiceAndReturnStock != null && !isReadOnly,
+      isReadOnly = isReadOnly
     )
 
     // 7. Delete / Selective Return Modal
@@ -1109,7 +1142,8 @@ private fun BillingPatientHeaderCard(
   activeInvoice: Invoice,
   activePatient: com.example.model.Patient?,
   onBackToQueue: (() -> Unit)?,
-  onToggleInvoicePaid: ((String, Boolean) -> Unit)? = null
+  onToggleInvoicePaid: ((String, Boolean) -> Unit)? = null,
+  isReadOnly: Boolean = false
 ) {
   Surface(
     modifier = Modifier.fillMaxWidth(),
@@ -1150,7 +1184,7 @@ private fun BillingPatientHeaderCard(
             color = MedicalGreen
           ) {
             Text(
-              activePatient?.hn ?: "HN-2026-0081",
+              activePatient?.hn ?: "Walk-in OTC",
               fontSize = 9.sp,
               fontWeight = FontWeight.Bold,
               color = PureWhite,
@@ -1164,7 +1198,7 @@ private fun BillingPatientHeaderCard(
           shape = RoundedCornerShape(4.dp),
           color = if (activeInvoice.isPaid) StatusSuccessContainer else StatusWarningContainer,
           border = BorderStroke(1.dp, if (activeInvoice.isPaid) StatusSuccess.copy(alpha = 0.5f) else StatusWarning.copy(alpha = 0.5f)),
-          modifier = if (!activeInvoice.isPaid) Modifier.clickable {
+          modifier = if (!activeInvoice.isPaid && !isReadOnly) Modifier.clickable {
             onToggleInvoicePaid?.invoke(activeInvoice.id, true)
           } else Modifier
         ) {
@@ -1184,8 +1218,9 @@ private fun BillingPatientHeaderCard(
             } else {
               Checkbox(
                 checked = false,
+                enabled = !isReadOnly,
                 onCheckedChange = { isChecked ->
-                  if (isChecked) onToggleInvoicePaid?.invoke(activeInvoice.id, true)
+                  if (isChecked && !isReadOnly) onToggleInvoicePaid?.invoke(activeInvoice.id, true)
                 },
                 modifier = Modifier.size(16.dp),
                 colors = CheckboxDefaults.colors(
@@ -1923,7 +1958,8 @@ private fun BillingActionButtonsRow(
   onConfirmPayment: (Invoice, PaymentMethod, Double) -> Unit,
   onConfirmPaymentWithGranular: ((Invoice, PaymentMethod, Double, Double, Double, Double) -> Unit)?,
   onRequestDelete: () -> Unit,
-  canDelete: Boolean
+  canDelete: Boolean,
+  isReadOnly: Boolean = false
 ) {
   Row(
     modifier = Modifier
@@ -1987,7 +2023,7 @@ private fun BillingActionButtonsRow(
     }
 
     // Thermal Receipt Button
-    if (!activeInvoice.isPaid) {
+    if (!activeInvoice.isPaid && !isReadOnly) {
       Button(
         onClick = {
           if (onConfirmPaymentWithGranular != null) {

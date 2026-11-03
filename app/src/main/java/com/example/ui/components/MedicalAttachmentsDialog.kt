@@ -56,7 +56,8 @@ fun MedicalAttachmentsDialog(
   attachments: List<MedicalAttachment>,
   onDismiss: () -> Unit,
   onAddAttachment: (MedicalAttachment) -> Unit,
-  onDeleteAttachment: (String) -> Unit
+  onDeleteAttachment: (String) -> Unit,
+  isReadOnly: Boolean = false
 ) {
   var showAddModal by remember { mutableStateOf(false) }
   var selectedPreviewAttachment by remember { mutableStateOf<MedicalAttachment?>(null) }
@@ -159,16 +160,18 @@ fun MedicalAttachmentsDialog(
             )
           }
 
-          Button(
-            onClick = { showAddModal = true },
-            shape = RoundedCornerShape(6.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = OceanGreenPrimary),
-            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 3.dp),
-            modifier = Modifier.height(30.dp)
-          ) {
-            Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(14.dp))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("Attach Image / PDF", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+          if (!isReadOnly) {
+            Button(
+              onClick = { showAddModal = true },
+              shape = RoundedCornerShape(6.dp),
+              colors = ButtonDefaults.buttonColors(containerColor = OceanGreenPrimary),
+              contentPadding = PaddingValues(horizontal = 10.dp, vertical = 3.dp),
+              modifier = Modifier.height(30.dp)
+            ) {
+              Icon(Icons.Default.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(14.dp))
+              Spacer(modifier = Modifier.width(4.dp))
+              Text("Attach Image / PDF", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+            }
           }
         }
 
@@ -271,11 +274,13 @@ fun MedicalAttachmentsDialog(
                       )
                     }
 
-                    IconButton(
-                      onClick = { onDeleteAttachment(att.id) },
-                      modifier = Modifier.size(26.dp)
-                    ) {
-                      Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = StatusCritical, modifier = Modifier.size(15.dp))
+                    if (!isReadOnly) {
+                      IconButton(
+                        onClick = { onDeleteAttachment(att.id) },
+                        modifier = Modifier.size(26.dp)
+                      ) {
+                        Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = StatusCritical, modifier = Modifier.size(15.dp))
+                      }
                     }
                   }
 

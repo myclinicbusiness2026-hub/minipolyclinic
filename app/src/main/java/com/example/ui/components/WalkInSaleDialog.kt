@@ -37,12 +37,13 @@ import java.util.Locale
 fun WalkInSaleDialog(
   medicines: List<Medicine>,
   onDismiss: () -> Unit,
-  onCompleteSale: (customerName: String, items: List<InvoiceItem>, paymentMethod: PaymentMethod, discountPercent: Double) -> Unit
+  onCompleteSale: (customerName: String, items: List<InvoiceItem>, paymentMethod: PaymentMethod, discountPercent: Double, isPaidImmediately: Boolean) -> Unit
 ) {
   var customerName by remember { mutableStateOf("Walk-in Customer / ပြင်ပဆေးဝယ်လူနာ") }
   var searchQuery by remember { mutableStateOf("") }
   var selectedPaymentMethod by remember { mutableStateOf(PaymentMethod.CASH) }
   var discountPercentText by remember { mutableStateOf("0") }
+  var isPaidImmediately by remember { mutableStateOf(true) }
   var mobileActiveTab by remember { mutableStateOf(0) } // 0: Catalog, 1: Cart & Checkout
 
   // Cart State: map of medicineId to Pair(Medicine, Quantity)
@@ -270,11 +271,13 @@ fun WalkInSaleDialog(
                   currencyFmt = currencyFmt,
                   selectedPaymentMethod = selectedPaymentMethod,
                   onPaymentMethodSelect = { selectedPaymentMethod = it },
+                  isPaidImmediately = isPaidImmediately,
+                  onIsPaidChange = { isPaidImmediately = it },
                   onComplete = {
                     val items = cartItems.values.map { (m, q) ->
                       InvoiceItem(name = m.name, quantity = q, unitPrice = m.sellingPrice, totalPrice = m.sellingPrice * q, isProcedure = false)
                     }
-                    onCompleteSale(customerName, items, selectedPaymentMethod, discountPercent)
+                    onCompleteSale(customerName, items, selectedPaymentMethod, discountPercent, isPaidImmediately)
                     onDismiss()
                   },
                   isCartEmpty = cartItems.isEmpty()
@@ -479,11 +482,13 @@ fun WalkInSaleDialog(
                   currencyFmt = currencyFmt,
                   selectedPaymentMethod = selectedPaymentMethod,
                   onPaymentMethodSelect = { selectedPaymentMethod = it },
+                  isPaidImmediately = isPaidImmediately,
+                  onIsPaidChange = { isPaidImmediately = it },
                   onComplete = {
                     val items = cartItems.values.map { (m, q) ->
                       InvoiceItem(name = m.name, quantity = q, unitPrice = m.sellingPrice, totalPrice = m.sellingPrice * q, isProcedure = false)
                     }
-                    onCompleteSale(customerName, items, selectedPaymentMethod, discountPercent)
+                    onCompleteSale(customerName, items, selectedPaymentMethod, discountPercent, isPaidImmediately)
                     onDismiss()
                   },
                   isCartEmpty = cartItems.isEmpty()
@@ -540,6 +545,8 @@ private fun CheckoutSummaryBlock(
   currencyFmt: NumberFormat,
   selectedPaymentMethod: PaymentMethod,
   onPaymentMethodSelect: (PaymentMethod) -> Unit,
+  isPaidImmediately: Boolean,
+  onIsPaidChange: (Boolean) -> Unit,
   onComplete: () -> Unit,
   isCartEmpty: Boolean
 ) {
@@ -599,18 +606,51 @@ private fun CheckoutSummaryBlock(
     }
   }
 
+  // Paid Checkbox
+  Surface(
+    shape = RoundedCornerShape(6.dp),
+    color = if (isPaidImmediately) StatusSuccessContainer else StatusWarningContainer,
+    border = BorderStroke(1.dp, if (isPaidImmediately) StatusSuccess.copy(alpha = 0.5f) else StatusWarning.copy(alpha = 0.5f)),
+    modifier = Modifier.fillMaxWidth().clickable { onIsPaidChange(!isPaidImmediately) }
+  ) {
+    Row(
+      modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+      verticalAlignment = Alignment.CenterVertically
+    ) {
+      Checkbox(
+        checked = isPaidImmediately,
+        onCheckedChange = { onIsPaidChange(it) },
+        colors = CheckboxDefaults.colors(checkedColor = MedicalGreen),
+        modifier = Modifier.size(20.dp)
+      )
+      Spacer(modifier = Modifier.width(6.dp))
+      Text(
+        if (isPaidImmediately) "ငွေချေပြီးသား (PAID - ဆေးဝါးစတော့ ချက်ချင်းနှုတ်မည်)" else "ငွေမရှင်းရသေး (UNPAID - ဘေလ်ဖွင့်ထားမည်)",
+        fontSize = 10.5.sp,
+        fontWeight = FontWeight.Bold,
+        color = if (isPaidImmediately) StatusSuccess else StatusWarning
+      )
+    }
+  }
+
+  Spacer(modifier = Modifier.height(4.dp))
+
   // Complete Checkout Button
   Button(
     onClick = onComplete,
     enabled = !isCartEmpty,
-    colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+    colors = ButtonDefaults.buttonColors(containerColor = if (isPaidImmediately) MedicalGreen else OceanGreenPrimary),
     shape = RoundedCornerShape(8.dp),
     modifier = Modifier
       .fillMaxWidth()
       .height(44.dp)
   ) {
-    Icon(Icons.Default.ReceiptLong, contentDescription = null, modifier = Modifier.size(18.dp))
+    Icon(if (isPaidImmediately) Icons.Default.CheckCircle else Icons.Default.ReceiptLong, contentDescription = null, modifier = Modifier.size(18.dp))
     Spacer(modifier = Modifier.width(6.dp))
-    Text("ဘောင်ချာဖွင့်မည် (${currencyFmt.format(netPayable)} Ks)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+    Text(
+      if (isPaidImmediately) "ငွေရှင်း & ဘောင်ချာဖွင့်မည် (${currencyFmt.format(netPayable)} Ks)" else "ဘောင်ချာဖွင့်မည် (${currencyFmt.format(netPayable)} Ks)",
+      fontSize = 12.sp,
+      fontWeight = FontWeight.Bold
+    )
   }
 }

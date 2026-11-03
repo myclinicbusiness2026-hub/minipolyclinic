@@ -55,7 +55,8 @@ import androidx.compose.ui.layout.ContentScale
 @Composable
 fun MedicalRecordsScreen(
   viewModel: ClinicViewModel,
-  onNavigateToQueue: () -> Unit = {}
+  onNavigateToQueue: () -> Unit = {},
+  isReadOnly: Boolean = false
 ) {
   val patients by viewModel.patients.collectAsState()
   val consultations by viewModel.consultations.collectAsState()
@@ -244,6 +245,30 @@ fun MedicalRecordsScreen(
         }
       }
 
+      if (isReadOnly) {
+        Spacer(modifier = Modifier.height(4.dp))
+        Surface(
+          shape = RoundedCornerShape(6.dp),
+          color = Color(0xFFFEF3C7),
+          border = BorderStroke(1.dp, Color(0xFFD97706)),
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Icon(Icons.Default.Visibility, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(15.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+              "VIEW ONLY (ကြည့်ရှုခွင့်သာ) - ဆေးမှတ်တမ်းဟောင်းများကို ကြည့်ရှုခွင့်သာရှိပြီး အသစ်ထည့်/ပြင်ဆင်/ဖျက်ပိုင်ခွင့် မရှိပါ",
+              fontSize = 10.sp,
+              fontWeight = FontWeight.Bold,
+              color = Color(0xFF92400E)
+            )
+          }
+        }
+      }
+
       Spacer(modifier = Modifier.height(6.dp))
 
       // 2. Search & Filter Bar
@@ -390,6 +415,7 @@ fun MedicalRecordsScreen(
                 patient = activePatient,
                 consultations = patientConsultations,
                 invoices = patientInvoices,
+                isReadOnly = isReadOnly,
                 onPrintA4 = { consult -> viewModel.showA4DocPreview(consult) },
                 onPrintThermal = { inv -> viewModel.showThermalPreview(inv) },
                 onOpenTrends = { trendsPatient = activePatient },
@@ -445,6 +471,7 @@ fun MedicalRecordsScreen(
                 patient = activePatient,
                 consultations = patientConsultations,
                 invoices = patientInvoices,
+                isReadOnly = isReadOnly,
                 onPrintA4 = { consult -> viewModel.showA4DocPreview(consult) },
                 onPrintThermal = { inv -> viewModel.showThermalPreview(inv) },
                 onOpenTrends = { trendsPatient = activePatient },
@@ -645,8 +672,15 @@ fun MedicalRecordsScreen(
       patient = patient,
       attachments = liveConsult.attachments,
       onDismiss = { attachmentsConsultation = null },
-      onAddAttachment = { att -> viewModel.addAttachmentToConsultation(consult.id, att) },
-      onDeleteAttachment = { attId -> viewModel.deleteAttachmentFromConsultation(consult.id, attId) }
+      onAddAttachment = { att -> 
+        viewModel.addAttachmentToConsultation(consult.id, att)
+        attachmentsConsultation = liveConsult.copy(attachments = liveConsult.attachments + att)
+      },
+      onDeleteAttachment = { attId -> 
+        viewModel.deleteAttachmentFromConsultation(consult.id, attId)
+        attachmentsConsultation = liveConsult.copy(attachments = liveConsult.attachments.filter { it.id != attId })
+      },
+      isReadOnly = isReadOnly
     )
   }
 
@@ -848,6 +882,7 @@ private fun PatientDetailedEmrPane(
   patient: Patient,
   consultations: List<ConsultationRecord>,
   invoices: List<Invoice>,
+  isReadOnly: Boolean = false,
   onPrintA4: (ConsultationRecord) -> Unit,
   onPrintThermal: (Invoice) -> Unit,
   onOpenTrends: () -> Unit,
@@ -1171,6 +1206,7 @@ private fun PatientDetailedEmrPane(
           visitNumber = visitNum,
           consultation = consult,
           invoice = correspondingInvoice,
+          isReadOnly = isReadOnly,
           onPrintA4 = { onPrintA4(consult) },
           onPrintThermal = { inv -> onPrintThermal(inv) },
           onOpenAttachments = { onOpenAttachments(consult) },
@@ -1190,6 +1226,7 @@ private fun ConsultationVisitTimelineCard(
   visitNumber: Int,
   consultation: ConsultationRecord,
   invoice: Invoice?,
+  isReadOnly: Boolean = false,
   onPrintA4: () -> Unit,
   onPrintThermal: (Invoice) -> Unit,
   onOpenAttachments: () -> Unit,
@@ -1347,22 +1384,24 @@ private fun ConsultationVisitTimelineCard(
               Text("A4 Print", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
             }
 
-            OutlinedButton(
-              onClick = onEditRecord,
-              shape = RoundedCornerShape(4.dp),
-              contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-              modifier = Modifier.height(26.dp)
-            ) {
-              Icon(Icons.Default.Edit, contentDescription = null, tint = SkyBlueDark, modifier = Modifier.size(12.dp))
-              Spacer(modifier = Modifier.width(3.dp))
-              Text("Edit", fontSize = 9.5.sp, color = SkyBlueDark, fontWeight = FontWeight.Bold)
-            }
+            if (!isReadOnly) {
+              OutlinedButton(
+                onClick = onEditRecord,
+                shape = RoundedCornerShape(4.dp),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                modifier = Modifier.height(26.dp)
+              ) {
+                Icon(Icons.Default.Edit, contentDescription = null, tint = SkyBlueDark, modifier = Modifier.size(12.dp))
+                Spacer(modifier = Modifier.width(3.dp))
+                Text("Edit", fontSize = 9.5.sp, color = SkyBlueDark, fontWeight = FontWeight.Bold)
+              }
 
-            IconButton(
-              onClick = onDeleteRecord,
-              modifier = Modifier.size(26.dp)
-            ) {
-              Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = StatusCritical, modifier = Modifier.size(15.dp))
+              IconButton(
+                onClick = onDeleteRecord,
+                modifier = Modifier.size(26.dp)
+              ) {
+                Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = StatusCritical, modifier = Modifier.size(15.dp))
+              }
             }
 
             IconButton(
@@ -1771,7 +1810,11 @@ private fun ConsultationVisitTimelineCard(
             Icon(Icons.Default.AttachFile, contentDescription = null, modifier = Modifier.size(11.dp), tint = SkyBluePrimary)
             Spacer(modifier = Modifier.width(2.dp))
             Text(
-              if (consultation.attachments.isNotEmpty()) "${consultation.attachments.size} Files (ဓါတ်မှန်ကြည့်မည်/ထည့်မည်)" else "+ ဓါတ်မှန်/ဖိုင်ထည့်မည်",
+              if (isReadOnly) {
+                if (consultation.attachments.isNotEmpty()) "${consultation.attachments.size} Files (ဓါတ်မှန်/ဖိုင်ကြည့်မည်)" else "ဓါတ်မှန်/ဖိုင် မရှိပါ"
+              } else {
+                if (consultation.attachments.isNotEmpty()) "${consultation.attachments.size} Files (ဓါတ်မှန်ကြည့်မည်/ထည့်မည်)" else "+ ဓါတ်မှန်/ဖိုင်ထည့်မည်"
+              },
               fontSize = 9.sp,
               color = SkyBluePrimary
             )
