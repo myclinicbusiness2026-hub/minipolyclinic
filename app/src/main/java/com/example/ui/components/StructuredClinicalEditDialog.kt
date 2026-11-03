@@ -4,8 +4,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -28,13 +26,17 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.model.ConsultationRecord
 import com.example.model.PrescribedDrug
+import com.example.model.ProcedureItem
 import com.example.ui.theme.*
+import java.util.UUID
 
 /**
  * StructuredClinicalEditDialog
  *
- * Rich, structured consultation record editor matching the doctor's consultation workflow.
- * Allows editing diagnoses, prescriptions, clinical history, exam findings, and advice.
+ * Comprehensive, structured consultation record editor matching the doctor's consultation workflow:
+ * Tab 0: History, Physical Examination & Provisional Diagnosis
+ * Tab 1: Day-Care Injections & Prescriptions
+ * Tab 2: Minor Procedures, Instructions, Follow-up & Consultation Fee
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -43,15 +45,12 @@ fun StructuredClinicalEditDialog(
   onDismiss: () -> Unit,
   onSave: (ConsultationRecord) -> Unit
 ) {
-  var selectedTab by remember { mutableStateOf(0) } // 0 = Diagnoses & Rx, 1 = History & Exam, 2 = Advice & Fee
+  var selectedTab by remember { mutableStateOf(0) }
 
+  // Tab 0 states
   var subjectiveText by remember { mutableStateOf(record.subjective) }
   var objectiveText by remember { mutableStateOf(record.objective.ifBlank { record.canvasNotes }) }
   var assessmentText by remember { mutableStateOf(record.assessment) }
-  var planText by remember { mutableStateOf(record.plan) }
-  var patientInstructionsText by remember { mutableStateOf(record.patientInstructions) }
-  var followUpText by remember { mutableStateOf(record.followUpAppointment) }
-  var feeText by remember { mutableStateOf(record.consultationFee.toInt().toString()) }
 
   val editableDiagnoses = remember {
     val initial = if (record.diagnosisList.isNotEmpty()) {
@@ -65,11 +64,16 @@ fun StructuredClinicalEditDialog(
   }
   var newDiagnosisInput by remember { mutableStateOf("") }
 
+  // Tab 1 states: Injections & Prescriptions
+  val editableTreatmentOrders = remember {
+    mutableStateListOf<String>().apply { addAll(record.treatmentOrderDetails) }
+  }
+  var showAddInjectionSheet by remember { mutableStateOf(false) }
+  var newInjectionOrderInput by remember { mutableStateOf("") }
+
   val editablePrescriptions = remember {
     mutableStateListOf<PrescribedDrug>().apply { addAll(record.prescriptions) }
   }
-
-  // Quick Drug Add form state
   var showAddDrugSheet by remember { mutableStateOf(false) }
   var drugNameInput by remember { mutableStateOf("") }
   var drugDosageInput by remember { mutableStateOf("") }
@@ -78,6 +82,20 @@ fun StructuredClinicalEditDialog(
   var drugQtyInput by remember { mutableStateOf("10") }
   var drugIsExternal by remember { mutableStateOf(false) }
   var drugRemarksInput by remember { mutableStateOf("") }
+
+  // Tab 2 states: Procedures, Advice, Follow-up, Fee
+  val editableProcedures = remember {
+    mutableStateListOf<ProcedureItem>().apply { addAll(record.selectedProcedures) }
+  }
+  var showAddProcedureSheet by remember { mutableStateOf(false) }
+  var procedureNameInput by remember { mutableStateOf("") }
+  var procedureFeeInput by remember { mutableStateOf("5000") }
+  var procedureNotesInput by remember { mutableStateOf("") }
+
+  var patientInstructionsText by remember { mutableStateOf(record.patientInstructions) }
+  var followUpText by remember { mutableStateOf(record.followUpAppointment) }
+  var planText by remember { mutableStateOf(record.plan) }
+  var feeText by remember { mutableStateOf(record.consultationFee.toInt().toString()) }
 
   Dialog(
     onDismissRequest = onDismiss,
@@ -124,7 +142,7 @@ fun StructuredClinicalEditDialog(
                   color = DarkGrayText
                 )
                 Text(
-                  "လူနာ: ${record.patientName} • ရက်စွဲ: ${record.timestamp}",
+                  "လူနာ: ${record.patientName} (${record.patientHn}) • ရက်စွဲ: ${record.timestamp}",
                   fontSize = 10.sp,
                   color = SlateMedium
                 )
@@ -146,17 +164,17 @@ fun StructuredClinicalEditDialog(
           Tab(
             selected = selectedTab == 0,
             onClick = { selectedTab = 0 },
-            text = { Text("၁။ ရာဇဝင် & စမ်းသပ်ချက် (H & E)", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+            text = { Text("၁။ ရာဇဝင်၊ စမ်းသပ်ချက် & ရောဂါအမည်", fontSize = 10.5.sp, fontWeight = FontWeight.Bold) }
           )
           Tab(
             selected = selectedTab == 1,
             onClick = { selectedTab = 1 },
-            text = { Text("၂။ ရောဂါအမည် & ဆေးစာရင်း (Rx)", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+            text = { Text("၂။ ထိုးဆေး & သောက်ဆေးစာရင်း", fontSize = 10.5.sp, fontWeight = FontWeight.Bold) }
           )
           Tab(
             selected = selectedTab == 2,
             onClick = { selectedTab = 2 },
-            text = { Text("၃။ ညွှန်ကြားချက် & ဆရာဝန်ခ", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+            text = { Text("၃။ ခွဲစိတ်ကုသမှု & ညွှန်ကြားချက်", fontSize = 10.5.sp, fontWeight = FontWeight.Bold) }
           )
         }
 
@@ -168,14 +186,40 @@ fun StructuredClinicalEditDialog(
             .padding(14.dp)
         ) {
           when (selectedTab) {
-            1 -> {
-              // TAB 1: Diagnoses & Prescriptions
+            // TAB 0: History, Physical Examination & Provisional Diagnosis
+            0 -> {
               Column(
                 modifier = Modifier
                   .fillMaxSize()
                   .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
               ) {
+                Text("ရောဂါရာဇဝင် & အဓိကခံစားရသော လက္ခဏာများ (Subjective / Chief Complaints):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+                OutlinedTextField(
+                  value = subjectiveText,
+                  onValueChange = { subjectiveText = it },
+                  placeholder = { Text("Chief complaints, HPI, Past medical history, Clinical remarks...", fontSize = 11.sp) },
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 100.dp, max = 180.dp),
+                  singleLine = false,
+                  keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("စမ်းသပ်တွေ့ရှိချက်များ (Objective Examination & Physical Findings):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+                OutlinedTextField(
+                  value = objectiveText,
+                  onValueChange = { objectiveText = it },
+                  placeholder = { Text("General condition, Systemic examination, Physical findings...", fontSize = 11.sp) },
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 100.dp, max = 180.dp),
+                  singleLine = false,
+                  keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
                 // Diagnosis Section
                 Card(
                   shape = RoundedCornerShape(8.dp),
@@ -184,7 +228,7 @@ fun StructuredClinicalEditDialog(
                   modifier = Modifier.fillMaxWidth()
                 ) {
                   Column(modifier = Modifier.padding(10.dp)) {
-                    Text("ရောဂါအမည် သတ်မှတ်ချက်များ (Clinical Diagnoses):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+                    Text("ရောဂါအမည် သတ်မှတ်ချက်များ (Provisional Diagnoses - ${editableDiagnoses.size} ခု):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
                     Spacer(modifier = Modifier.height(6.dp))
 
                     if (editableDiagnoses.isNotEmpty()) {
@@ -228,7 +272,7 @@ fun StructuredClinicalEditDialog(
                       OutlinedTextField(
                         value = newDiagnosisInput,
                         onValueChange = { newDiagnosisInput = it },
-                        placeholder = { Text("ရောဂါအမည် အသစ်ရိုက်ထည့်ပါ (e.g. Hypertension, GERD)...", fontSize = 10.5.sp) },
+                        placeholder = { Text("ရောဂါအမည် အသစ်ရိုက်ထည့်ပါ (e.g. Hypertension, GERD, Viral Fever)...", fontSize = 10.5.sp) },
                         modifier = Modifier.weight(1f),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
@@ -251,8 +295,134 @@ fun StructuredClinicalEditDialog(
                     }
                   }
                 }
+              }
+            }
 
-                // Prescriptions Section
+            // TAB 1: Day-Care Injections & Prescriptions
+            1 -> {
+              Column(
+                modifier = Modifier
+                  .fillMaxSize()
+                  .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+              ) {
+                // Section 1: Injections & Day-Care Treatment Orders
+                Card(
+                  shape = RoundedCornerShape(8.dp),
+                  colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F3FF)),
+                  border = BorderStroke(0.8.dp, Color(0xFFDDD6FE)),
+                  modifier = Modifier.fillMaxWidth()
+                ) {
+                  Column(modifier = Modifier.padding(10.dp)) {
+                    Row(
+                      modifier = Modifier.fillMaxWidth(),
+                      horizontalArrangement = Arrangement.SpaceBetween,
+                      verticalAlignment = Alignment.CenterVertically
+                    ) {
+                      Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Vaccines, contentDescription = null, tint = Color(0xFF7C3AED), modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                          "ဆေးထိုး & နေ့ခင်းကုသမှုအမိန့်များ (Treatment Orders - ${editableTreatmentOrders.size} ခု):",
+                          fontSize = 11.5.sp,
+                          fontWeight = FontWeight.Bold,
+                          color = Color(0xFF6D28D9)
+                        )
+                      }
+                      Button(
+                        onClick = { showAddInjectionSheet = !showAddInjectionSheet },
+                        colors = ButtonDefaults.buttonColors(containerColor = if (showAddInjectionSheet) SlateMedium else Color(0xFF7C3AED)),
+                        shape = RoundedCornerShape(4.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                        modifier = Modifier.height(28.dp)
+                      ) {
+                        Icon(if (showAddInjectionSheet) Icons.Default.Close else Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(if (showAddInjectionSheet) "ပိတ်မည်" else "+ ဆေးထိုးအမိန့်ထည့်မည်", fontSize = 10.sp)
+                      }
+                    }
+
+                    if (showAddInjectionSheet) {
+                      Spacer(modifier = Modifier.height(8.dp))
+                      Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = PureWhite,
+                        border = BorderStroke(0.8.dp, Color(0xFFDDD6FE)),
+                        modifier = Modifier.fillMaxWidth()
+                      ) {
+                        Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                          Text("ဆေးထိုးကုသမှုအမိန့်အသစ်:", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+                          OutlinedTextField(
+                            value = newInjectionOrderInput,
+                            onValueChange = { newInjectionOrderInput = it },
+                            placeholder = { Text("e.g. Inj. Ceftriaxone 1g IV stat, Inj. Tramadol 50mg IM...", fontSize = 10.5.sp) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                          )
+                          Button(
+                            onClick = {
+                              val clean = newInjectionOrderInput.trim()
+                              if (clean.isNotBlank()) {
+                                editableTreatmentOrders.add(clean)
+                                newInjectionOrderInput = ""
+                                showAddInjectionSheet = false
+                              }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
+                            shape = RoundedCornerShape(4.dp),
+                            modifier = Modifier.fillMaxWidth()
+                          ) {
+                            Text("ဆေးထိုးအမိန့်စာရင်းထဲသို့ ထည့်မည်", fontSize = 11.sp)
+                          }
+                        }
+                      }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (editableTreatmentOrders.isEmpty()) {
+                      Text("ဆေးထိုး/ကုသမှုအမိန့် မရှိသေးပါ", fontSize = 10.5.sp, color = SlateMuted)
+                    } else {
+                      editableTreatmentOrders.forEachIndexed { idx, orderText ->
+                        Surface(
+                          color = PureWhite,
+                          shape = RoundedCornerShape(4.dp),
+                          border = BorderStroke(0.6.dp, Color(0xFFE2E8F0)),
+                          modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp)
+                        ) {
+                          Row(
+                            modifier = Modifier
+                              .fillMaxWidth()
+                              .padding(8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                          ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                              Icon(Icons.Default.Medication, contentDescription = null, tint = Color(0xFF7C3AED), modifier = Modifier.size(15.dp))
+                              Spacer(modifier = Modifier.width(6.dp))
+                              Text(
+                                "${idx + 1}. $orderText",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = DarkGrayText
+                              )
+                            }
+                            IconButton(
+                              onClick = { editableTreatmentOrders.removeAt(idx) },
+                              modifier = Modifier.size(22.dp)
+                            ) {
+                              Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = StatusCritical, modifier = Modifier.size(15.dp))
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+
+                // Section 2: Prescriptions
                 Card(
                   shape = RoundedCornerShape(8.dp),
                   colors = CardDefaults.cardColors(containerColor = PureWhite),
@@ -265,7 +435,11 @@ fun StructuredClinicalEditDialog(
                       horizontalArrangement = Arrangement.SpaceBetween,
                       verticalAlignment = Alignment.CenterVertically
                     ) {
-                      Text("ဆေးစာရင်း (Prescribed Medicines - ${editablePrescriptions.size} မျိုး):", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+                      Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.LocalPharmacy, contentDescription = null, tint = SkyBluePrimary, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("ဆေးစာရင်း (Prescribed Medicines - ${editablePrescriptions.size} မျိုး):", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+                      }
                       Button(
                         onClick = { showAddDrugSheet = !showAddDrugSheet },
                         colors = ButtonDefaults.buttonColors(containerColor = if (showAddDrugSheet) SlateMedium else SkyBluePrimary),
@@ -436,49 +610,164 @@ fun StructuredClinicalEditDialog(
               }
             }
 
-            0 -> {
-              // TAB 0: Clinical History & Examination
-              Column(
-                modifier = Modifier
-                  .fillMaxSize()
-                  .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-              ) {
-                Text("ရောဂါရာဇဝင် & မှတ်ချက်များ (Subjective Notes):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
-                OutlinedTextField(
-                  value = subjectiveText,
-                  onValueChange = { subjectiveText = it },
-                  placeholder = { Text("Chief complaints, HPI, Past history, Clinical remarks...", fontSize = 11.sp) },
-                  modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 120.dp, max = 220.dp),
-                  singleLine = false,
-                  keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("စမ်းသပ်တွေ့ရှိချက်များ (Objective Examination):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
-                OutlinedTextField(
-                  value = objectiveText,
-                  onValueChange = { objectiveText = it },
-                  placeholder = { Text("General condition, Systemic examination, Physical findings...", fontSize = 11.sp) },
-                  modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 120.dp, max = 220.dp),
-                  singleLine = false,
-                  keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
-                )
-              }
-            }
-
+            // TAB 2: Procedures, Advice, Follow-up & Consultation Fee
             2 -> {
-              // TAB 2: Advice, Follow-up & Consultation Fee
               Column(
                 modifier = Modifier
                   .fillMaxSize()
                   .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
               ) {
+                // Section 1: Minor Procedures
+                Card(
+                  shape = RoundedCornerShape(8.dp),
+                  colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDF4)),
+                  border = BorderStroke(0.8.dp, Color(0xFFA7F3D0)),
+                  modifier = Modifier.fillMaxWidth()
+                ) {
+                  Column(modifier = Modifier.padding(10.dp)) {
+                    Row(
+                      modifier = Modifier.fillMaxWidth(),
+                      horizontalArrangement = Arrangement.SpaceBetween,
+                      verticalAlignment = Alignment.CenterVertically
+                    ) {
+                      Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.MedicalServices, contentDescription = null, tint = MedicalGreenDark, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                          "ခွဲစိတ်ကုသမှုများ (Minor Procedures - ${editableProcedures.size} ခု):",
+                          fontSize = 11.5.sp,
+                          fontWeight = FontWeight.Bold,
+                          color = MedicalGreenDark
+                        )
+                      }
+                      Button(
+                        onClick = { showAddProcedureSheet = !showAddProcedureSheet },
+                        colors = ButtonDefaults.buttonColors(containerColor = if (showAddProcedureSheet) SlateMedium else MedicalGreenDark),
+                        shape = RoundedCornerShape(4.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                        modifier = Modifier.height(28.dp)
+                      ) {
+                        Icon(if (showAddProcedureSheet) Icons.Default.Close else Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(if (showAddProcedureSheet) "ပိတ်မည်" else "+ Procedure ထည့်မည်", fontSize = 10.sp)
+                      }
+                    }
+
+                    if (showAddProcedureSheet) {
+                      Spacer(modifier = Modifier.height(8.dp))
+                      Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = PureWhite,
+                        border = BorderStroke(0.8.dp, Color(0xFFA7F3D0)),
+                        modifier = Modifier.fillMaxWidth()
+                      ) {
+                        Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                          Text("ခွဲစိတ်ကုသမှုအသစ် ထည့်သွင်းခြင်း:", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+                          OutlinedTextField(
+                            value = procedureNameInput,
+                            onValueChange = { procedureNameInput = it },
+                            label = { Text("Procedure Name (e.g. Wound Dressing, Suturing, Abscess I&D)", fontSize = 10.sp) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                          )
+                          Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                            OutlinedTextField(
+                              value = procedureFeeInput,
+                              onValueChange = { procedureFeeInput = it },
+                              label = { Text("ဝန်ဆောင်ခ / Fee (Ks)", fontSize = 10.sp) },
+                              singleLine = true,
+                              modifier = Modifier.weight(1f),
+                              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            )
+                            OutlinedTextField(
+                              value = procedureNotesInput,
+                              onValueChange = { procedureNotesInput = it },
+                              label = { Text("မှတ်ချက် (Optional)", fontSize = 10.sp) },
+                              singleLine = true,
+                              modifier = Modifier.weight(1f)
+                            )
+                          }
+                          Button(
+                            onClick = {
+                              val cleanName = procedureNameInput.trim()
+                              if (cleanName.isNotBlank()) {
+                                val fee = procedureFeeInput.toDoubleOrNull() ?: 0.0
+                                editableProcedures.add(
+                                  ProcedureItem(
+                                    id = UUID.randomUUID().toString(),
+                                    name = cleanName,
+                                    price = fee,
+                                    standardFee = fee,
+                                    notes = procedureNotesInput.trim()
+                                  )
+                                )
+                                procedureNameInput = ""
+                                procedureFeeInput = "5000"
+                                procedureNotesInput = ""
+                                showAddProcedureSheet = false
+                              }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MedicalGreenDark),
+                            shape = RoundedCornerShape(4.dp),
+                            modifier = Modifier.fillMaxWidth()
+                          ) {
+                            Text("Procedure စာရင်းထဲသို့ ထည့်မည်", fontSize = 11.sp)
+                          }
+                        }
+                      }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (editableProcedures.isEmpty()) {
+                      Text("ခွဲစိတ်ကုသမှုမှတ်တမ်း မရှိသေးပါ", fontSize = 10.5.sp, color = SlateMuted)
+                    } else {
+                      editableProcedures.forEachIndexed { idx, proc ->
+                        Surface(
+                          color = PureWhite,
+                          shape = RoundedCornerShape(4.dp),
+                          border = BorderStroke(0.6.dp, Color(0xFFE2E8F0)),
+                          modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp)
+                        ) {
+                          Row(
+                            modifier = Modifier
+                              .fillMaxWidth()
+                              .padding(8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                          ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                              Text(
+                                "${idx + 1}. ${proc.name} (${proc.standardFee.toInt()} Ks)",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = DarkGrayText
+                              )
+                              if (proc.notes.isNotBlank()) {
+                                Text("မှတ်ချက်: ${proc.notes}", fontSize = 9.5.sp, color = SlateMedium)
+                              }
+                              if (proc.consumableItems.isNotEmpty()) {
+                                val consSummary = proc.consumableItems.joinToString(", ") { "${it.name} x${it.quantity}" }
+                                Text("Consumables: $consSummary", fontSize = 9.sp, color = MedicalGreenDark)
+                              }
+                            }
+                            IconButton(
+                              onClick = { editableProcedures.removeAt(idx) },
+                              modifier = Modifier.size(22.dp)
+                            ) {
+                              Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = StatusCritical, modifier = Modifier.size(15.dp))
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+
+                // Section 2: Patient Advice & Instructions
                 Text("ဆရာဝန်၏ ညွှန်ကြားချက် / Patient Advice & Instructions:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
                 OutlinedTextField(
                   value = patientInstructionsText,
@@ -486,11 +775,12 @@ fun StructuredClinicalEditDialog(
                   placeholder = { Text("အစားအသောက်၊ နေထိုင်မှုပုံစံနှင့် သတိပြုရန် ညွှန်ကြားချက်များ...", fontSize = 11.sp) },
                   modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 90.dp, max = 160.dp),
+                    .heightIn(min = 90.dp, max = 150.dp),
                   singleLine = false,
                   keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
                 )
 
+                // Section 3: Follow-up Appointment & Plan
                 Text("နောက်တစ်ကြိမ် ပြသရန်ရက်ချိန်း (Follow-up Appointment):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
                 OutlinedTextField(
                   value = followUpText,
@@ -510,6 +800,7 @@ fun StructuredClinicalEditDialog(
                   maxLines = 3
                 )
 
+                // Section 4: Consultation Fee
                 Text("ဆရာဝန်ပြသခ / Consultation Fee (Ks):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
                 OutlinedTextField(
                   value = feeText,
@@ -558,7 +849,9 @@ fun StructuredClinicalEditDialog(
                   objective = objectiveText,
                   assessment = resolvedAssessment,
                   diagnosisList = resolvedDiagList,
+                  treatmentOrderDetails = editableTreatmentOrders.toList(),
                   prescriptions = editablePrescriptions.toList(),
+                  selectedProcedures = editableProcedures.toList(),
                   plan = planText,
                   patientInstructions = patientInstructionsText,
                   followUpAppointment = followUpText,
