@@ -6,5 +6,5 @@
   "releaseNotesMm": "• EMR Archive ဓါတ်မှန်/ဖိုင်ထည့်ခြင်း ပုံမှန်အတိုင်း အပြည့်အဝ အလုပ်လုပ်ခြင်း (Cloud & Wi-Fi Sync ဖြင့် အမြဲတမ်း သိမ်းဆည်းပေးခြင်း)\n• Mobile Screen Consistency: မိုဘိုင်းဖုန်း စခရင်ငယ်များတွင် စာလုံးများ ဒေါင်လိုက်မကျိုးစေရန် Consultation Queue ခလုတ်များနှင့် Card များ အားလုံး ချိန်ညှိပြင်ဆင်ခြင်း\n• စစ်မှန်သော Role Permission ထိန်းချုပ်မှု (Seal / View Only / Allow to Edit): Sealed ပြုလုပ်ထားသော ကဏ္ဍများကို ဝင်ရောက်ခွင့် အပြီးပိတ်ပင်ခြင်း၊ View Only ပေးထားသော အကောင့်များအတွက် အသစ်ထည့်/ပြင်/ဖျက် ခလုတ်များ ပိတ်သိမ်းခြင်း\n• နေ့ချုပ်/လချုပ် A4 စာရင်းချုပ် Print & PDF Export စနစ်သစ်: ရွေးချယ်ထားသော နေ့စွဲ သို့မဟုတ် လအလိုက် လူနာနာမည်၊ ရောဂါရာဇဝင်၊ အသုံးစာရင်း၊ ဆေးဖိုး၊ ဝင်ငွေ၊ ထွက်ငွေ၊ Cash in Hand လက်ကျန်ရှင်းတမ်း A4 Hardcopy Print ထုတ်နိုင်ခြင်း\n• Walk-in OTC Customer ဆေးအရောင်းတွင် Paid Checkbox ပါဝင်လာပြီး ငွေချေပြီးသား/မချေရသေး စိတ်တိုင်းကျ ရွေးချယ်နိုင်ခြင်း",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-03",
-  "apkSizeBytes": 21586794
+  "apkSizeBytes": 21635946
 }
