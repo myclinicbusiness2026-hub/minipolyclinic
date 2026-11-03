@@ -1,3 +1,4 @@
+import androidx.compose.animation.animateContentSize
 package com.example.ui.components
 
 import androidx.compose.foundation.BorderStroke
@@ -181,7 +182,7 @@ fun ClinicalDiagnosisSection(
   }
 
   Card(
-    modifier = modifier.fillMaxWidth(),
+    modifier = modifier.fillMaxWidth().animateContentSize(),
     shape = RoundedCornerShape(10.dp),
     colors = CardDefaults.cardColors(containerColor = PureWhite),
     border = CardDefaults.outlinedCardBorder()
@@ -440,7 +441,7 @@ fun ClinicalDiagnosisSection(
                   },
                   label = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                      Text(item.name, fontSize = 10.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+                      Text(item.name, fontSize = 10.sp, fontWeight = FontWeight.Medium)
                       if (item.code.isNotBlank()) {
                         Text(" [${item.code}]", fontSize = 8.5.sp, color = if (isSelected) SkyBlueDark else SlateMuted)
                       }

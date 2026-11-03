@@ -450,7 +450,7 @@ fun ClinicalHistorySection(
             Text(
               symName,
               fontSize = 10.sp,
-              fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+              fontWeight = FontWeight.Medium
             )
           },
           colors = FilterChipDefaults.filterChipColors(

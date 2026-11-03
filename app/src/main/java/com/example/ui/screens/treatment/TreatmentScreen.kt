@@ -390,12 +390,20 @@ fun TreatmentScreen(
             }
           }
         } else {
+          val groupedDueSessions = remember(filteredTodayDueSessions) {
+            filteredTodayDueSessions.groupBy { it.first.patientId }
+          }
           LazyColumn(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(8.dp)
           ) {
-            items(filteredTodayDueSessions, key = { it.second.id }) { (card, session) ->
-              val patient = patients.find { it.id == card.patientId }
+            items(groupedDueSessions.keys.toList(), key = { it }) { patientId ->
+              val sessionPairs = groupedDueSessions[patientId] ?: emptyList()
+              val firstCard = sessionPairs.firstOrNull()?.first
+              val patient = patients.find { it.id == patientId }
+              val patientName = firstCard?.patientName ?: patient?.name ?: "Patient"
+              val patientHn = firstCard?.patientHn ?: patient?.hn ?: ""
+
               Surface(
                 shape = RoundedCornerShape(8.dp),
                 color = PureWhite,
@@ -408,111 +416,99 @@ fun TreatmentScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                   ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                      Box(
-                        modifier = Modifier
-                          .size(34.dp)
-                          .clip(RoundedCornerShape(6.dp))
-                          .background(Color(0xFFEDE7F6)),
-                        contentAlignment = Alignment.Center
-                      ) {
-                        Text(
-                          "#${session.sessionNumber}",
-                          fontWeight = FontWeight.Bold,
-                          color = Color(0xFF5E35B1),
-                          fontSize = 13.sp
-                        )
-                      }
-                      Spacer(modifier = Modifier.width(8.dp))
-                      Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                          Text(card.patientName, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = SlateDark)
-                          if (patient != null && patient.phone.isNotBlank()) {
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Row(
-                              verticalAlignment = Alignment.CenterVertically,
-                              modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .clickable {
-                                  try {
-                                    val clean = patient.phone.replace(Regex("[^0-9+]"), "")
-                                    context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$clean")))
-                                  } catch (e: Exception) {
-                                    Toast.makeText(context, "Cannot dial: ${e.message}", Toast.LENGTH_SHORT).show()
-                                  }
+                    Column {
+                      Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(patientName, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+                        if (patient != null && patient.phone.isNotBlank()) {
+                          Spacer(modifier = Modifier.width(6.dp))
+                          Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                              .clip(RoundedCornerShape(4.dp))
+                              .clickable {
+                                try {
+                                  val clean = patient.phone.replace(Regex("[^0-9+]"), "")
+                                  context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$clean")))
+                                } catch (e: Exception) {
+                                  Toast.makeText(context, "Cannot dial: " + e.message, Toast.LENGTH_SHORT).show()
                                 }
-                            ) {
-                              Icon(Icons.Default.Phone, contentDescription = null, tint = MedicalGreenDark, modifier = Modifier.size(11.dp))
-                              Spacer(modifier = Modifier.width(2.dp))
-                              Text(patient.phone, fontSize = 10.5.sp, color = MedicalGreenDark, textDecoration = TextDecoration.Underline)
-                            }
+                              }
+                          ) {
+                            Icon(Icons.Default.Phone, contentDescription = null, tint = MedicalGreenDark, modifier = Modifier.size(11.dp))
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Text(patient.phone, fontSize = 10.5.sp, color = MedicalGreenDark, textDecoration = TextDecoration.Underline)
                           }
                         }
-                        Text(
-                          "${card.patientHn} • Dose ${session.sessionNumber} of ${card.totalSessions} • Time: ${session.scheduledTime}",
-                          fontSize = 10.5.sp,
-                          color = SlateMuted
-                        )
                       }
+                      Text(
+                        patientHn + " • ယနေ့ထိုးရန် (" + sessionPairs.size + ") မျိုး",
+                        fontSize = 10.5.sp,
+                        color = SlateMuted
+                      )
                     }
+                    Surface(
+                      shape = RoundedCornerShape(4.dp),
+                      color = Color(0xFFEDE7F6)
+                    ) {
+                      Text(
+                        sessionPairs.size.toString() + " Injections Due",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF5E35B1),
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                      )
+                    }
+                  }
 
-                    // Administer Button (Landscape / Tablet)
-                    if (!isMobilePortrait) {
+                  sessionPairs.forEachIndexed { sIdx, (card, session) ->
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = Color(0xFFF1F5F9))
+                    Row(
+                      modifier = Modifier.fillMaxWidth(),
+                      horizontalArrangement = Arrangement.SpaceBetween,
+                      verticalAlignment = Alignment.CenterVertically
+                    ) {
+                      Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Box(
+                          modifier = Modifier
+                            .size(28.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFFEDE7F6)),
+                          contentAlignment = Alignment.Center
+                        ) {
+                          Text(
+                            "#" + session.sessionNumber,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF5E35B1),
+                            fontSize = 11.sp
+                          )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                          Text(
+                            card.medicationName + " (" + card.dosage + ") • " + card.route.label,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1B5E20)
+                          )
+                          Text(
+                            "Dose " + session.sessionNumber + "/" + card.totalSessions + " • Time: " + session.scheduledTime + if (card.instructions.isNotBlank()) " • " + card.instructions else "",
+                            fontSize = 9.5.sp,
+                            color = SlateMedium
+                          )
+                        }
+                      }
+                      Spacer(modifier = Modifier.width(8.dp))
                       Button(
                         onClick = { sessionToAdminister = Pair(card, session) },
                         colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
-                        shape = RoundedCornerShape(6.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                        modifier = Modifier.height(30.dp)
+                        shape = RoundedCornerShape(4.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                        modifier = Modifier.height(28.dp)
                       ) {
-                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(13.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("ဆေးထိုးပြီး (Administer)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(12.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text("ဆေးထိုးပြီး", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                       }
-                    }
-                  }
-
-                  HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = Color(0xFFE2E8F0))
-
-                  Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                  ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                      Text(
-                        "${card.medicationName} (${card.dosage}) • ${card.route.label}",
-                        fontSize = 11.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1B5E20)
-                      )
-                      if (card.instructions.isNotBlank()) {
-                        Text("Instructions: ${card.instructions}", fontSize = 10.sp, color = SlateMedium)
-                      }
-                    }
-                    Text(
-                      "ခန့်မှန်း: ${currencyFmt.format(card.medicationFee + card.sessionFee)} Ks",
-                      fontSize = 11.sp,
-                      fontWeight = FontWeight.Bold,
-                      color = SlateDark
-                    )
-                  }
-
-                  // Administer Button (Mobile Portrait - Full Width touch target)
-                  if (isMobilePortrait) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(
-                      onClick = { sessionToAdminister = Pair(card, session) },
-                      colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
-                      shape = RoundedCornerShape(6.dp),
-                      contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                      modifier = Modifier
-                        .fillMaxWidth()
-                        .height(36.dp)
-                    ) {
-                      Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(15.dp))
-                      Spacer(modifier = Modifier.width(6.dp))
-                      Text("ဆေးထိုးမည် (Administer)", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
                     }
                   }
                 }
@@ -550,11 +546,20 @@ fun TreatmentScreen(
             Text("ကုသမှုကတ်မှတ်တမ်း မရှိပါ", fontSize = 12.sp, color = SlateLight)
           }
         } else {
+          val groupedDisplayCards = remember(displayCards) {
+            displayCards.groupBy { it.patientId }
+          }
           LazyColumn(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(8.dp)
           ) {
-            items(displayCards, key = { it.id }) { card ->
+            items(groupedDisplayCards.keys.toList(), key = { it }) { patientId ->
+              val patientCards = groupedDisplayCards[patientId] ?: emptyList()
+              val firstCard = patientCards.firstOrNull()
+              val patient = patients.find { it.id == patientId }
+              val patientName = firstCard?.patientName ?: patient?.name ?: "Patient"
+              val patientHn = firstCard?.patientHn ?: patient?.hn ?: ""
+
               Surface(
                 shape = RoundedCornerShape(8.dp),
                 color = PureWhite,
@@ -562,132 +567,130 @@ fun TreatmentScreen(
                 modifier = Modifier.fillMaxWidth()
               ) {
                 Column(modifier = Modifier.padding(10.dp)) {
-                  // Top Line: Patient Name & Card Status
                   Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                   ) {
                     Column {
-                      Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(card.patientName, fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Surface(
-                          shape = RoundedCornerShape(4.dp),
-                          color = when (card.cardStatus) {
-                            TreatmentStatus.COMPLETED -> Color(0xFFE8F5E9)
-                            TreatmentStatus.DISCONTINUED -> Color(0xFFFFEBEE)
-                            else -> Color(0xFFEDE7F6)
-                          }
-                        ) {
-                          Text(
-                            when (card.cardStatus) {
-                              TreatmentStatus.COMPLETED -> "ပြီးစီး (Completed)"
-                              TreatmentStatus.DISCONTINUED -> "ရပ်ဆိုင်း (Discontinued)"
-                              else -> "ကုသဆဲ (${card.completedSessionsCount}/${card.totalSessions})"
-                            },
-                            fontSize = 9.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = when (card.cardStatus) {
-                              TreatmentStatus.COMPLETED -> StatusSuccess
-                              TreatmentStatus.DISCONTINUED -> StatusCritical
-                              else -> Color(0xFF5E35B1)
-                            },
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                          )
-                        }
-                      }
+                      Text(patientName, fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
                       Text(
-                        "${card.patientHn} • စတင်ရက်: ${card.prescribedDate} • ဒေါက်တာ: ${card.doctorName}",
+                        patientHn + " • ဆေးကတ် (" + patientCards.size + ") ကတ် • ဒေါက်တာ: " + (firstCard?.doctorName ?: ""),
                         fontSize = 10.5.sp,
                         color = SlateMuted
                       )
                     }
-
-                    // Card Action Icons
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                      IconButton(
-                        onClick = { cardToPrint = card },
-                        modifier = Modifier.size(28.dp)
-                      ) {
-                        Icon(Icons.Default.Print, contentDescription = "Print Slip", tint = SlateMedium, modifier = Modifier.size(16.dp))
-                      }
-                      IconButton(
-                        onClick = { cardToDiscontinue = card },
-                        modifier = Modifier.size(28.dp)
-                      ) {
-                        Icon(Icons.Default.DeleteOutline, contentDescription = "Void / Delete", tint = StatusCritical, modifier = Modifier.size(17.dp))
-                      }
-                    }
-                  }
-
-                  Spacer(modifier = Modifier.height(6.dp))
-
-                  // Medication info & Route
-                  Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = SoftGreenContainer,
-                    modifier = Modifier.fillMaxWidth()
-                  ) {
-                    Row(
-                      modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                      horizontalArrangement = Arrangement.SpaceBetween,
-                      verticalAlignment = Alignment.CenterVertically
+                    Surface(
+                      shape = RoundedCornerShape(4.dp),
+                      color = SoftGreenContainer
                     ) {
-                      Column {
-                        Text(
-                          "Rx: ${card.medicationName} (${card.dosage})",
-                          fontSize = 12.sp,
-                          fontWeight = FontWeight.Bold,
-                          color = MedicalGreenDark
-                        )
-                        Text(
-                          "Route: ${card.route.label} • ကြိမ်နှုန်း: ${card.frequency} (${card.totalDays} ရက်) • ဆေးထိုးခ: ${currencyFmt.format(card.sessionFee)} Ks/dose",
-                          fontSize = 10.sp,
-                          color = SlateMedium
-                        )
-                      }
+                      Text(
+                        patientCards.size.toString() + " Cards",
+                        fontSize = 9.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MedicalGreenDark,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                      )
                     }
                   }
 
-                  Spacer(modifier = Modifier.height(8.dp))
-
-                  // Visual Progress Grid / Session Badges (Scrollable to prevent squishing)
-                  Row(
-                    modifier = Modifier
-                      .fillMaxWidth()
-                      .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                  ) {
-                    card.sessions.forEach { s ->
-                      val isDone = s.status == TreatmentStatus.COMPLETED
-                      Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = if (isDone) MedicalGreen else if (card.isDiscontinued) Color(0xFFE2E8F0) else Color(0xFFF3E5F5),
-                        modifier = Modifier
-                          .widthIn(min = 36.dp)
-                          .height(26.dp),
-                        border = BorderStroke(1.dp, if (isDone) MedicalGreenDark else SlateLight)
+                  patientCards.forEachIndexed { cIdx, card ->
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = Color(0xFFF1F5F9))
+                    Column {
+                      Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                       ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 4.dp)) {
-                          Text(
-                            "D${s.sessionNumber}",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isDone) PureWhite else if (card.isDiscontinued) SlateMedium else Color(0xFF5E35B1)
-                          )
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                          Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = when (card.cardStatus) {
+                              TreatmentStatus.COMPLETED -> Color(0xFFE8F5E9)
+                              TreatmentStatus.DISCONTINUED -> Color(0xFFFFEBEE)
+                              else -> Color(0xFFEDE7F6)
+                            }
+                          ) {
+                            Text(
+                              when (card.cardStatus) {
+                                TreatmentStatus.COMPLETED -> "ပြီးစီး"
+                                TreatmentStatus.DISCONTINUED -> "ရပ်ဆိုင်း"
+                                else -> "ကုသဆဲ (" + card.completedSessionsCount + "/" + card.totalSessions + ")"
+                              },
+                              fontSize = 9.sp,
+                              fontWeight = FontWeight.Bold,
+                              color = when (card.cardStatus) {
+                                TreatmentStatus.COMPLETED -> StatusSuccess
+                                TreatmentStatus.DISCONTINUED -> StatusCritical
+                                else -> Color(0xFF5E35B1)
+                              },
+                              modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                            )
+                          }
+                          Spacer(modifier = Modifier.width(6.dp))
+                          Column {
+                            Text(
+                              "Rx: " + card.medicationName + " (" + card.dosage + ")",
+                              fontSize = 11.5.sp,
+                              fontWeight = FontWeight.Bold,
+                              color = MedicalGreenDark
+                            )
+                            Text(
+                              "Route: " + card.route.label + " • " + card.frequency + " (" + card.totalDays + " ရက်)",
+                              fontSize = 9.5.sp,
+                              color = SlateMedium
+                            )
+                          }
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                          IconButton(onClick = { cardToPrint = card }, modifier = Modifier.size(26.dp)) {
+                            Icon(Icons.Default.Print, contentDescription = "Print Slip", tint = SlateMedium, modifier = Modifier.size(15.dp))
+                          }
+                          IconButton(onClick = { cardToDiscontinue = card }, modifier = Modifier.size(26.dp)) {
+                            Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = StatusCritical, modifier = Modifier.size(15.dp))
+                          }
                         }
                       }
-                    }
-                  }
 
-                  if (card.isDiscontinued && card.discontinueReason.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                      "ရပ်ဆိုင်းရသည့် အကြောင်းရင်း: ${card.discontinueReason} (${card.discontinuedBy})",
-                      fontSize = 10.sp,
-                      color = StatusCritical
-                    )
+                      Spacer(modifier = Modifier.height(4.dp))
+                      Row(
+                        modifier = Modifier
+                          .fillMaxWidth()
+                          .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                      ) {
+                        card.sessions.forEach { s ->
+                          val isDone = s.status == TreatmentStatus.COMPLETED
+                          Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = if (isDone) MedicalGreen else if (card.isDiscontinued) Color(0xFFE2E8F0) else Color(0xFFF3E5F5),
+                            modifier = Modifier
+                              .widthIn(min = 32.dp)
+                              .height(24.dp),
+                            border = BorderStroke(1.dp, if (isDone) MedicalGreenDark else SlateLight)
+                          ) {
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 4.dp)) {
+                              Text(
+                                "D" + s.sessionNumber,
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDone) PureWhite else if (card.isDiscontinued) SlateMedium else Color(0xFF5E35B1)
+                              )
+                            }
+                          }
+                        }
+                      }
+
+                      if (card.isDiscontinued && card.discontinueReason.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                          "ရပ်ဆိုင်းရသည့် အကြောင်းရင်း: " + card.discontinueReason + " (" + card.discontinuedBy + ")",
+                          fontSize = 9.5.sp,
+                          color = StatusCritical
+                        )
+                      }
+                    }
                   }
                 }
               }

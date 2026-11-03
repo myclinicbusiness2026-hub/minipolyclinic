@@ -1,5 +1,7 @@
 package com.example.ui.screens.consultation
 
+import androidx.compose.animation.animateContentSize
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -317,11 +319,11 @@ fun SuggestedInvestigationsCard(
     shape = RoundedCornerShape(8.dp),
     color = PureWhite,
     border = BorderStroke(1.dp, BorderGray),
-    modifier = Modifier.fillMaxWidth()
+    modifier = Modifier.fillMaxWidth().animateContentSize()
   ) {
     Column(modifier = Modifier.padding(10.dp)) {
       Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().animateContentSize(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
       ) {
@@ -363,7 +365,7 @@ fun SuggestedInvestigationsCard(
                 selectedInvestigations.add(testName)
               }
             },
-            label = { Text(testName, fontSize = 10.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+            label = { Text(testName, fontSize = 10.sp, fontWeight = FontWeight.Medium) },
             colors = FilterChipDefaults.filterChipColors(
               selectedContainerColor = Color(0xFF0284C7),
               selectedLabelColor = PureWhite
@@ -377,7 +379,7 @@ fun SuggestedInvestigationsCard(
 
       // Custom Input Row
       Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().animateContentSize(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
       ) {

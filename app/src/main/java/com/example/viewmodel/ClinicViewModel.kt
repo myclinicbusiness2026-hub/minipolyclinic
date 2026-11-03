@@ -1392,7 +1392,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     // Route patient status
-    val nextStatus = if (prescriptions.isNotEmpty()) QueueStatus.AT_PHARMACY else QueueStatus.AT_BILLING
+    val nextStatus = QueueStatus.AT_BILLING
     updatePatientStatus(patientId, nextStatus)
   }
 
@@ -1508,73 +1508,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     return Triple(set.doctorName, set.doctorDegree, set.doctorSama)
   }
 
-  // --- Pharmacy Dispensing (FEFO Stock Deduction) ---
+  // --- Pharmacy Dispensing (Routes patient to billing, inventory deducted strictly on Cashier Paid) ---
   fun dispenseMedications(patientId: String, items: List<PrescribedDrug>) {
-    val medMap = _medicines.value.associateBy { it.id }.toMutableMap()
-    val now = System.currentTimeMillis()
-    val newlyDeducted = mutableMapOf<String, Int>()
-    for (item in items) {
-      if (item.isExternal || item.name.contains("[လူနာပါဆေး]") || item.medicineName.contains("[လူနာပါဆေး]")) {
-        continue
-      }
-      val matchingCard = _treatmentCards.value.find { card ->
-        card.patientId == patientId &&
-        ((card.medicationId.isNotBlank() && card.medicationId == item.medicineId) ||
-         (item.effectiveName.isNotBlank() && card.medicationName.isNotBlank() &&
-          (card.medicationName.equals(item.effectiveName, ignoreCase = true) ||
-           card.medicationName.contains(item.effectiveName, ignoreCase = true))))
-      }
-      if (matchingCard?.isPatientSupplied == true) {
-        continue
-      }
-      val med = medMap[item.medicineId] ?: medMap.values.find { it.name.equals(item.medicineName, ignoreCase = true) }
-      if (med != null) {
-        val isInjection = item.effectiveName.contains("Inj", ignoreCase = true) ||
-                          item.dosage.contains("Inj", ignoreCase = true) ||
-                          item.instructions.contains("IM", ignoreCase = true) ||
-                          item.instructions.contains("IV", ignoreCase = true)
-        val actualDeductQuantity = if (isInjection && matchingCard != null && matchingCard.isPayPerVisit && !matchingCard.isPrepaidFullCourse) {
-          1 // Pay-per-visit: only deduct 1 dose/vial on day 1
-        } else {
-          item.quantity
-        }
-        var remainingToDeduct = actualDeductQuantity
-        val updatedBatches = med.allBatches.map { batch ->
-          if (remainingToDeduct > 0 && batch.quantity > 0) {
-            val deduct = minOf(batch.quantity, remainingToDeduct)
-            remainingToDeduct -= deduct
-            batch.copy(quantity = batch.quantity - deduct, lastUpdated = now)
-          } else {
-            batch
-          }
-        }
-        medMap[med.id] = med.copy(batches = updatedBatches)
-        val deducted = actualDeductQuantity - remainingToDeduct
-        if (deducted > 0) {
-          newlyDeducted[med.id] = (newlyDeducted[med.id] ?: 0) + deducted
-        }
-      }
-    }
-    _medicines.value = medMap.values.toList()
-    ClinicDataPersistence.saveMedicines(getApplication(), _medicines.value)
     updatePatientStatus(patientId, QueueStatus.AT_BILLING)
-
-    // Mark matching invoice as prescriptions deducted so cashier will not double deduct oral drugs,
-    // but can still deduct treatment injections and procedure consumables!
-    val ctx = getApplication<Application>()
-    val matchingInv = _invoices.value.find { it.patientId == patientId && it.paymentStatus != "Paid" }
-    if (matchingInv != null) {
-      val updatedMap = matchingInv.deductedDrugQuantities.toMutableMap()
-      newlyDeducted.forEach { (mId, q) -> updatedMap[mId] = (updatedMap[mId] ?: 0) + q }
-      val updatedInvs = _invoices.value.map {
-        if (it.id == matchingInv.id) it.copy(
-          isPrescriptionsDeducted = true,
-          deductedDrugQuantities = updatedMap
-        ) else it
-      }
-      _invoices.value = updatedInvs
-      ClinicDataPersistence.saveInvoices(ctx, updatedInvs)
-    }
   }
 
   fun dispensePrescription(patientId: String, prescriptionList: List<PrescribedDrug>) =
@@ -1648,7 +1584,12 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val prescribedNames = mutableSetOf<String>()
 
     // 1. Deduct consultation prescriptions (if present, not external, and not already dispensed at pharmacy)
-    if (!inv.isPrescriptionsDeducted && consultation != null && consultation.prescriptions.isNotEmpty()) {
+    if (consultation != null && consultation.prescriptions.isNotEmpty()) {
+        for (item in consultation.prescriptions) {
+          prescribedNames.add(item.effectiveName.lowercase().trim())
+          prescribedNames.add(item.name.lowercase().trim())
+          prescribedNames.add(item.medicineName.lowercase().trim())
+        }
       for (item in consultation.prescriptions.filter { !it.isExternal }) {
         prescribedNames.add(item.effectiveName.lowercase().trim())
         val med = medMap[item.medicineId]
@@ -2423,25 +2364,12 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
     var invoice: Invoice? = null
     if (isAlreadyBilled) {
-      // Deduct stock for consumables, cocktails and clinic medicine without creating duplicate invoice
-      val tempItems = mutableListOf<InvoiceItem>()
-      if (!card.isPatientSupplied && card.isCocktail && card.cocktailItems.isNotEmpty()) {
-        card.cocktailItems.forEach { item ->
-          tempItems.add(InvoiceItem(name = item.name, quantity = item.quantity, unitPrice = item.unitPrice, totalPrice = item.totalPrice, isProcedure = false))
-        }
-      } else if (!card.isPatientSupplied && !isPrepaid && isClinicMed && card.medicationName.isNotBlank()) {
-        tempItems.add(InvoiceItem(name = card.medicationName, quantity = 1, unitPrice = medPrice, totalPrice = medPrice, isProcedure = false))
-      }
-      consumables.forEach { c ->
-        tempItems.add(InvoiceItem(name = c.name, quantity = c.quantity, unitPrice = c.unitPrice, totalPrice = c.totalPrice, isProcedure = false))
-      }
-      if (tempItems.isNotEmpty()) {
-        val dummyInv = Invoice(items = tempItems)
-        deductInventoryForInvoice(dummyInv)
-      }
+      // Already billed under consultation invoice or prepaid course.
+      // Stock will be deducted (or was deducted) by cashier marking the consultation invoice Paid.
+      // No dummy invoice or duplicate deduction here.
     } else {
-      val invId = "INV-TC-${UUID.randomUUID().toString().take(8)}"
-      val invNo = "INV-${1000 + _invoices.value.size + 1}"
+      val invId = "INV-TC-" + UUID.randomUUID().toString().take(8)
+      val invNo = "INV-" + (1000 + _invoices.value.size + 1)
       val newInv = Invoice(
         id = invId,
         invoiceNumber = invNo,
@@ -2460,15 +2388,6 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       _invoices.value = updatedInvoices
       ClinicDataPersistence.saveInvoices(ctx, updatedInvoices)
       deductInventoryForInvoice(newInv)
-      if (!card.isPatientSupplied && card.isCocktail && card.cocktailItems.isNotEmpty()) {
-        val cocktailInvItems = card.cocktailItems.map { item ->
-          InvoiceItem(name = item.name, quantity = item.quantity, unitPrice = item.unitPrice, totalPrice = 0.0, isProcedure = false)
-        }
-        deductInventoryForInvoice(Invoice(items = cocktailInvItems))
-      } else if (!card.isPatientSupplied && isClinicMed && card.medicationName.isNotBlank()) {
-        val singleMedItem = listOf(InvoiceItem(name = card.medicationName, quantity = 1, unitPrice = medPrice, totalPrice = 0.0, isProcedure = false))
-        deductInventoryForInvoice(Invoice(items = singleMedItem))
-      }
       invoice = newInv
     }
 
