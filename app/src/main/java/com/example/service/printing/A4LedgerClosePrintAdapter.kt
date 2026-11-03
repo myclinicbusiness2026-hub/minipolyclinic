@@ -172,11 +172,11 @@ class A4LedgerClosePrintAdapter(
     if (pageNum == 1) {
       val clinicNameMm = clinicSettings?.clinicNameMm ?: "ရွှေခေတ်"
       val clinicSubtitle = clinicSettings?.clinicSubtitleMm ?: "အထွေထွေရောဂါကုဆေးခန်း"
-      val doctorName = clinicSettings?.primaryDoctorName ?: "Dr. Nyan Kaung Sett"
-      val doctorDegree = clinicSettings?.primaryDoctorDegree ?: "M.B.,B.S (MDY)"
-      val doctorSama = clinicSettings?.primaryDoctorSama ?: "ဆမ - ၄၇၄၁၄"
+      val doctorName = clinicSettings?.doctorName ?: "Dr. Nyan Kaung Sett"
+      val doctorDegree = clinicSettings?.doctorDegree ?: "M.B.,B.S (MDY)"
+      val doctorSama = clinicSettings?.doctorSama ?: "ဆမ - ၄၇၄၁၄"
       val address = clinicSettings?.clinicAddress ?: "အမှတ်(၁၂)၊ လမ်းမတော်လမ်း၊ မန္တလေးမြို့"
-      val phone = clinicSettings?.primaryPhone ?: "09-401523447"
+      val phone = clinicSettings?.clinicPhone ?: "09-401523447"
 
       // Clinic Brand
       paint.color = Color.rgb(15, 118, 110) // Medical Green Dark
@@ -330,8 +330,9 @@ class A4LedgerClosePrintAdapter(
         // 4. Diagnosis / Clinical items
         val consult = consultations.find { it.patientId == inv.patientId && it.timestamp.take(10) == inv.dateString }
         val diag = when {
-          !consult?.diagnosis.isNullOrBlank() -> consult?.diagnosis!!
-          !consult?.chiefComplaint.isNullOrBlank() -> consult?.chiefComplaint!!
+          !consult?.diagnosisList.isNullOrEmpty() -> consult?.diagnosisList!!.joinToString(", ")
+          !consult?.assessment.isNullOrBlank() -> consult?.assessment!!
+          !consult?.subjective.isNullOrBlank() -> consult?.subjective!!
           inv.items.isNotEmpty() -> inv.items.joinToString(", ") { it.name }.take(32)
           else -> "General OPD Consultation"
         }
@@ -345,9 +346,10 @@ class A4LedgerClosePrintAdapter(
         // 6. Payment Method
         val payMethod = when (inv.paymentMethod) {
           PaymentMethod.CASH -> "Cash"
-          PaymentMethod.KPAY -> "KPay"
+          PaymentMethod.KBZPAY -> "KPay"
           PaymentMethod.WAVEPAY -> "Wave"
-          PaymentMethod.BANK_TRANSFER -> "Bank"
+          PaymentMethod.OTHER -> "Other"
+          else -> inv.paymentMethod.label
         }
         canvas.drawText(payMethod, rX, curY + 13f, paint); rX += colW_Method
 
@@ -430,8 +432,8 @@ class A4LedgerClosePrintAdapter(
       // Aggregates
       val paidInvoices = invoices.filter { it.isPaid }
       val totalGrossConsultation = paidInvoices.sumOf { it.consultationFee }
-      val totalGrossPharmacy = paidInvoices.sumOf { it.medicineTotal }
-      val totalGrossProcedure = paidInvoices.sumOf { it.procedureTotal }
+      val totalGrossPharmacy = paidInvoices.sumOf { inv -> inv.items.filter { !it.isProcedure }.sumOf { it.totalPrice } }
+      val totalGrossProcedure = paidInvoices.sumOf { inv -> inv.items.filter { it.isProcedure }.sumOf { it.totalPrice } }
       val totalDiscounts = paidInvoices.sumOf { it.discountAmount }
       val totalIncome = paidInvoices.sumOf { it.grandTotal }
       val totalExpensesAmt = expenses.sumOf { it.amount }

@@ -2294,17 +2294,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     )
 
     if (isPaid) {
-      val currentMeds = _medicines.value.toMutableList()
-      items.filter { !it.isProcedure }.forEach { item ->
-        val idx = currentMeds.indexOfFirst { it.name.equals(item.name, ignoreCase = true) }
-        if (idx != -1) {
-          val m = currentMeds[idx]
-          val newStock = (m.stock - item.quantity).coerceAtLeast(0)
-          currentMeds[idx] = m.copy(stock = newStock)
-        }
-      }
-      _medicines.value = currentMeds
-      ClinicDataPersistence.saveMedicines(ctx, currentMeds)
+      deductInventoryForInvoice(inv)
     }
 
     val updated = _invoices.value + inv
