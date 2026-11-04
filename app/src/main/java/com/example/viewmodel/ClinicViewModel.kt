@@ -228,7 +228,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     setObj.put("doctorName", set.doctorName)
     setObj.put("doctorDegree", set.doctorDegree)
     setObj.put("doctorSama", set.doctorSama)
-    setObj.put("phone", set.phone)
+    setObj.put("phone", set.clinicPhone)
     setObj.put("addressMm", set.addressMm)
     setObj.put("supabaseUrl", set.supabaseUrl)
     setObj.put("supabaseAnonKey", set.supabaseAnonKey)
@@ -295,13 +295,13 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           doctorName = s.optString("doctorName", currentSet.doctorName),
           doctorDegree = s.optString("doctorDegree", currentSet.doctorDegree),
           doctorSama = s.optString("doctorSama", currentSet.doctorSama),
-          phone = s.optString("phone", currentSet.phone),
+          clinicPhone = s.optString("phone", currentSet.clinicPhone),
           addressMm = s.optString("addressMm", currentSet.addressMm),
           supabaseUrl = s.optString("supabaseUrl", currentSet.supabaseUrl),
           supabaseAnonKey = s.optString("supabaseAnonKey", currentSet.supabaseAnonKey)
         )
         withContext(Dispatchers.Main) {
-          _clinicSettings.value = updatedSet
+          clinicSettings.value = updatedSet
           ClinicDataPersistence.saveClinicSettings(ctx, updatedSet)
         }
       }

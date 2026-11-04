@@ -19,7 +19,7 @@ object ClinicInitialDataSeeder {
       role = UserRole.ADMIN,
       passwordHash = "123456",
       pinCode = "123456",
-      permissions = UserRolePermissions.defaultFor(UserRole.ADMIN)
+      customPermissions = UserRolePermissions.defaultFor(UserRole.ADMIN)
     )
   )
 
