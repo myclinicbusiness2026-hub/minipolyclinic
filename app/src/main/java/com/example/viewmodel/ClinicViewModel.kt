@@ -3351,9 +3351,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           wifiHubHostIp = curSettings.wifiHubHostIp.ifBlank { mergedSettings.wifiHubHostIp }
         )
         ClinicDataPersistence.saveClinicSettings(ctx, finalSettings)
-        withContext(Dispatchers.Main) {
-          clinicSettings.value = finalSettings
-        }
+        clinicSettings.value = finalSettings
       }
 
       // Broadcast restored state to Wi-Fi peers

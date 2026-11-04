@@ -908,7 +908,7 @@ fun PosThermalTreatmentSlipDialog(
 
         if (printStatusMessage != null) {
           Surface(
-            color = if (isErrorStatus) SoftRedContainer else SoftGreenContainer,
+            color = if (isErrorStatus) StatusCriticalContainer else SoftGreenContainer,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
             shape = RoundedCornerShape(4.dp)
           ) {
