@@ -6,5 +6,5 @@
   "releaseNotesMm": "• Clinic Branding & Setup အား စက်အားလုံးသို့ Sync စနစ်: ဆေးခန်းအမည်၊ လိပ်စာ၊ ဖုန်း၊ ဆရာဝန်အချက်အလက်၊ ကြည့်ခ/ကုသခနှုန်းထားများနှင့် Logo များကို Local Wi-Fi Sync ရော Supabase Cloud Sync ဖြင့်ပါ အခြားစက်များသို့ အလိုအလျောက် ရောက်ရှိစေခြင်း\n• Treatment Card အား Thermal Printer ဖြင့် ထုတ်ယူနိုင်ခြင်း: နေ့ပိုင်းဆေးသွင်းကုသမှုကတ်ပြားများကို Bluetooth Thermal POS ပရင်တာများဖြင့် တိုက်ရိုက်ထုတ်ယူနိုင်ပြီး 80mm/58mm စက္ကူအရွယ်အစား ရွေးချယ်နိုင်ခြင်း\n• 80mm Thermal Slip ဘေးဘောင်ညီညာမှု: စာရွက်အနံပြည့် ရနိုင်သလောက်ကျယ်ကျယ်နှင့် ဘယ်/ညာ ဘေးဘောင် ၂ ဖက် အချိုးညီစေရန် ချိန်ညှိပေးထားခြင်း\n• အောက်ခြေစာရွက်ဖြဲနေရာ အကွာအဝေးတိုးမြှင့်ခြင်း: စာရွက်ဖြဲသည့်အခါ သို့မဟုတ် Auto-cut လုပ်သည့်အခါ အောက်ဆုံးစာသားများ ညှပ်/ပြတ်မသွားစေရန် အောက်ခြေနေရာ အလုံအလောက် ခြားပေးထားခြင်း",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-04",
-  "apkSizeBytes": 21810098
+  "apkSizeBytes": 21842866
 }
