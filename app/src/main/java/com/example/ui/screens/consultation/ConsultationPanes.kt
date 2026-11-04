@@ -71,15 +71,16 @@ fun ConsultationClinicalRecordPane(
   objective: String,
   canvasNotesState: String,
   onOpenFullscreenCanvas: () -> Unit,
-  onEditRecord: ((ConsultationRecord) -> Unit)? = null
+  onEditRecord: ((ConsultationRecord) -> Unit)? = null,
+  isReadOnly: Boolean = false
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     // 1. Patient Banner Card with Allergies Alert
     PatientBannerCard(
       patient = patient,
-      onSaveVitals = onSaveVitals,
-      isEditingVitals = isEditingVitals,
-      onToggleEditVitals = onToggleEditVitals,
+      onSaveVitals = { if (!isReadOnly) onSaveVitals() },
+      isEditingVitals = isEditingVitals && !isReadOnly,
+      onToggleEditVitals = { if (!isReadOnly) onToggleEditVitals() },
       bpText = bpText,
       onBpChange = onBpChange,
       pulseText = pulseText,
@@ -242,22 +243,25 @@ fun ConsultationPrescriptionAndBillingPane(
   onOpenInstructions: () -> Unit,
   onPreviewA4Doc: () -> Unit,
   onSendToPharmacy: () -> Unit,
-  currencyFmt: NumberFormat
+  currencyFmt: NumberFormat,
+  isReadOnly: Boolean = false
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     // 1. Day-Care Injections & Treatment Order Card (Clinical Treatment & Injections)
     TreatmentOrderCard(
       treatmentOrders = orderedTreatmentCards,
-      onOpenAddOrder = onOpenAddTreatmentOrder,
-      onRemoveOrder = { index -> orderedTreatmentCards.removeAt(index) },
+      onOpenAddOrder = { if (!isReadOnly) onOpenAddTreatmentOrder() },
+      onRemoveOrder = { index -> if (!isReadOnly) orderedTreatmentCards.removeAt(index) },
       onTogglePaymentMode = { index ->
-        val c = orderedTreatmentCards[index]
-        val newPayPerVisit = !c.isPayPerVisit
-        orderedTreatmentCards[index] = c.copy(
-          isPayPerVisit = newPayPerVisit,
-          isPrepaidFullCourse = !newPayPerVisit,
-          sessions = c.sessions.map { s -> if (!newPayPerVisit) s.copy(isPrepaid = true) else s.copy(isPrepaid = false) }
-        )
+        if (!isReadOnly) {
+          val c = orderedTreatmentCards[index]
+          val newPayPerVisit = !c.isPayPerVisit
+          orderedTreatmentCards[index] = c.copy(
+            isPayPerVisit = newPayPerVisit,
+            isPrepaidFullCourse = !newPayPerVisit,
+            sessions = c.sessions.map { s -> if (!newPayPerVisit) s.copy(isPrepaid = true) else s.copy(isPrepaid = false) }
+          )
+        }
       },
       currencyFmt = currencyFmt
     )
@@ -265,8 +269,8 @@ fun ConsultationPrescriptionAndBillingPane(
     // 2. Prescription Builder & FEFO Search (Oral Take-Home Prescriptions)
     PrescriptionBuilderCard(
       prescribedDrugs = prescribedDrugs,
-      onOpenAddDrug = onOpenAddDrug,
-      onRemoveDrug = { index -> prescribedDrugs.removeAt(index) },
+      onOpenAddDrug = { if (!isReadOnly) onOpenAddDrug() },
+      onRemoveDrug = { index -> if (!isReadOnly) prescribedDrugs.removeAt(index) },
       currencyFmt = currencyFmt
     )
 
@@ -275,7 +279,7 @@ fun ConsultationPrescriptionAndBillingPane(
       procedures = procedures,
       selectedProcedures = selectedProcedures,
       medicines = medicines,
-      onOpenCustomProcedure = onOpenCustomProcedure,
+      onOpenCustomProcedure = { if (!isReadOnly) onOpenCustomProcedure() },
       currencyFmt = currencyFmt
     )
 
@@ -295,7 +299,8 @@ fun ConsultationPrescriptionAndBillingPane(
       onPatientInstructionsChange = onPatientInstructionsChange,
       onOpenInstructions = onOpenInstructions,
       onPreviewA4Pdf = onPreviewA4Doc,
-      onSendToPharmacy = onSendToPharmacy
+      onSendToPharmacy = onSendToPharmacy,
+      isReadOnly = isReadOnly
     )
   }
 }

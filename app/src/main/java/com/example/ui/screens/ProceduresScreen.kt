@@ -138,16 +138,18 @@ fun ProceduresScreen(
           }
         }
 
-        Button(
-          onClick = { showAddDialog = true },
-          colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
-          shape = RoundedCornerShape(4.dp),
-          contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-          modifier = Modifier.height(30.dp)
-        ) {
-          Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
-          Spacer(modifier = Modifier.width(3.dp))
-          Text("Add", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        if (!isReadOnly) {
+          Button(
+            onClick = { showAddDialog = true },
+            colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+            shape = RoundedCornerShape(4.dp),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+            modifier = Modifier.height(30.dp)
+          ) {
+            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
+            Spacer(modifier = Modifier.width(3.dp))
+            Text("Add", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+          }
         }
       }
     }
@@ -206,14 +208,16 @@ fun ProceduresScreen(
         )
       }
 
-      SuggestionChip(
-        onClick = { showAddCategoryDialog = true },
-        label = { Text("+ Category", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFFC2410C)) },
-        icon = { Icon(Icons.Default.Add, contentDescription = null, tint = Color(0xFFC2410C), modifier = Modifier.size(13.dp)) },
-        shape = RoundedCornerShape(5.dp),
-        colors = SuggestionChipDefaults.suggestionChipColors(containerColor = Color(0xFFFFF7ED)),
-        border = BorderStroke(1.dp, Color(0xFFFDBA74))
-      )
+      if (!isReadOnly) {
+        SuggestionChip(
+          onClick = { showAddCategoryDialog = true },
+          label = { Text("+ Category", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFFC2410C)) },
+          icon = { Icon(Icons.Default.Add, contentDescription = null, tint = Color(0xFFC2410C), modifier = Modifier.size(13.dp)) },
+          shape = RoundedCornerShape(5.dp),
+          colors = SuggestionChipDefaults.suggestionChipColors(containerColor = Color(0xFFFFF7ED)),
+          border = BorderStroke(1.dp, Color(0xFFFDBA74))
+        )
+      }
     }
 
     Spacer(modifier = Modifier.height(6.dp))
@@ -300,29 +304,31 @@ fun ProceduresScreen(
                   fontSize = 13.sp,
                   color = OceanGreenPrimary
                 )
-                Spacer(modifier = Modifier.width(6.dp))
-                IconButton(
-                  onClick = { procedureToEdit = proc },
-                  modifier = Modifier.size(24.dp)
-                ) {
-                  Icon(
-                    Icons.Default.Edit,
-                    contentDescription = "Edit Procedure",
-                    tint = SkyBlueDark,
-                    modifier = Modifier.size(16.dp)
-                  )
-                }
-                Spacer(modifier = Modifier.width(2.dp))
-                IconButton(
-                  onClick = { procedureToDelete = proc },
-                  modifier = Modifier.size(24.dp)
-                ) {
-                  Icon(
-                    Icons.Default.DeleteOutline,
-                    contentDescription = "Delete Procedure",
-                    tint = Color(0xFFDC2626),
-                    modifier = Modifier.size(16.dp)
-                  )
+                if (!isReadOnly) {
+                  Spacer(modifier = Modifier.width(6.dp))
+                  IconButton(
+                    onClick = { procedureToEdit = proc },
+                    modifier = Modifier.size(24.dp)
+                  ) {
+                    Icon(
+                      Icons.Default.Edit,
+                      contentDescription = "Edit Procedure",
+                      tint = SkyBlueDark,
+                      modifier = Modifier.size(16.dp)
+                    )
+                  }
+                  Spacer(modifier = Modifier.width(2.dp))
+                  IconButton(
+                    onClick = { procedureToDelete = proc },
+                    modifier = Modifier.size(24.dp)
+                  ) {
+                    Icon(
+                      Icons.Default.DeleteOutline,
+                      contentDescription = "Delete Procedure",
+                      tint = Color(0xFFDC2626),
+                      modifier = Modifier.size(16.dp)
+                    )
+                  }
                 }
               }
             }

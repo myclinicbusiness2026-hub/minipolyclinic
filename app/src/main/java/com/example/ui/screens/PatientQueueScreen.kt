@@ -1064,7 +1064,7 @@ fun PatientQueueItemCard(
               Text("ဆေးမှတ်တမ်း", fontSize = 10.sp, color = DarkGrayText, fontWeight = FontWeight.SemiBold)
             }
 
-            if (patient.status == QueueStatus.AT_BILLING) {
+            if (patient.status == QueueStatus.AT_BILLING && !isReadOnly) {
               OutlinedButton(
                 onClick = { onTransferToDoctor?.invoke(patient) },
                 shape = RoundedCornerShape(6.dp),
@@ -1076,7 +1076,7 @@ fun PatientQueueItemCard(
                 Text("ဆရာဝန်ထံလွှဲ", fontSize = 10.sp, color = OceanGreenPrimary, fontWeight = FontWeight.SemiBold)
               }
             }
-            if (patient.status == QueueStatus.COMPLETED) {
+            if (patient.status == QueueStatus.COMPLETED && !isReadOnly) {
               Button(
                 onClick = { onRegisterFollowUp(patient) },
                 shape = RoundedCornerShape(6.dp),

@@ -72,6 +72,7 @@ fun AdminUserManagementDialog(
   var inputEmail by remember { mutableStateOf("") }
   var inputDepartment by remember { mutableStateOf("General OPD") }
   var isPasswordVisible by remember { mutableStateOf(false) }
+  var showExportPairingDialog by remember { mutableStateOf(false) }
 
   // Custom Permissions Form State (3-Level Access: SEALED, VIEW_ONLY, ALLOW_EDIT)
   var permQueue by remember { mutableStateOf(TabAccessLevel.ALLOW_EDIT) }
@@ -328,6 +329,21 @@ fun AdminUserManagementDialog(
             // TAB 0: USER LIST & MANAGEMENT
             // ==========================================
             Column(modifier = Modifier.fillMaxSize()) {
+              OutlinedButton(
+                onClick = { showExportPairingDialog = true },
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MedicalGreen),
+                shape = RoundedCornerShape(6.dp),
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .height(34.dp)
+              ) {
+                Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(15.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("🔗 အခြားစက်သို့ အကောင့်များကူးယူရန် (Pairing QR & Token)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+              }
+
+              Spacer(modifier = Modifier.height(8.dp))
+
               // Search and Filter Bar
               Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1332,6 +1348,13 @@ fun AdminUserManagementDialog(
         }
       }
     }
+  }
+
+  if (showExportPairingDialog) {
+    ExportDevicePairingDialog(
+      viewModel = viewModel,
+      onDismiss = { showExportPairingDialog = false }
+    )
   }
 }
 

@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.UserRole
 import com.example.service.sync.LocalWifiSyncService
+import com.example.ui.components.ImportDevicePairingDialog
 import com.example.ui.components.ShweKhitLogo
 import com.example.ui.theme.*
 import com.example.viewmodel.ClinicViewModel
@@ -49,7 +50,7 @@ fun LoginScreen(
   val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
 
   val allUsers by viewModel.users.collectAsState()
-  val initialUsername = remember(allUsers) { allUsers.firstOrNull { it.isActive }?.username ?: "nks" }
+  val initialUsername = remember(allUsers) { allUsers.firstOrNull { it.isActive }?.username ?: "admin" }
   var username by remember(initialUsername) { mutableStateOf(initialUsername) }
   var password by remember { mutableStateOf("") }
   var passwordVisible by remember { mutableStateOf(false) }
@@ -57,6 +58,13 @@ fun LoginScreen(
   var syncMessage by remember { mutableStateOf<String?>(null) }
   var isSubmitting by remember { mutableStateOf(false) }
   var isScanningSubnet by remember { mutableStateOf(false) }
+  var isSyncingAccounts by remember { mutableStateOf(false) }
+  var showImportPairingDialog by remember { mutableStateOf(false) }
+
+  // Auto-fetch latest accounts on launch in background
+  LaunchedEffect(Unit) {
+    viewModel.syncAccountsFromAllSources()
+  }
 
   fun executeLogin() {
     val cleanUsername = username.trim()
@@ -221,6 +229,62 @@ fun LoginScreen(
         )
 
         Spacer(modifier = Modifier.height(8.dp))
+
+        // Accounts Header & Quick Sync Actions
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Text(
+            "အကောင့်များ (Staff):",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = SlateDark
+          )
+
+          Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            // Sync Accounts Button
+            OutlinedButton(
+              onClick = {
+                coroutineScope.launch {
+                  isSyncingAccounts = true
+                  syncMessage = "အကောင့်များ စင့်ခ်လုပ်နေပါသည်..."
+                  val (ok, msg) = viewModel.syncAccountsFromAllSources()
+                  isSyncingAccounts = false
+                  syncMessage = msg
+                }
+              },
+              contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+              modifier = Modifier.height(26.dp),
+              shape = RoundedCornerShape(4.dp),
+              enabled = !isSyncingAccounts
+            ) {
+              if (isSyncingAccounts) {
+                CircularProgressIndicator(modifier = Modifier.size(10.dp), strokeWidth = 1.5.dp, color = MedicalGreen)
+              } else {
+                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(11.dp), tint = MedicalGreen)
+              }
+              Spacer(modifier = Modifier.width(3.dp))
+              Text("Sync", fontSize = 8.5.sp, color = MedicalGreen, fontWeight = FontWeight.Bold)
+            }
+
+            // QR Pair Button
+            OutlinedButton(
+              onClick = { showImportPairingDialog = true },
+              contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+              modifier = Modifier.height(26.dp),
+              shape = RoundedCornerShape(4.dp),
+              colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF0284C7))
+            ) {
+              Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(11.dp))
+              Spacer(modifier = Modifier.width(3.dp))
+              Text("QR ချိတ်မည်", fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
+            }
+          }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
 
         // Dynamic Quick Role Selection Chips from active registered accounts
         if (allUsers.isNotEmpty()) {
@@ -426,6 +490,17 @@ fun LoginScreen(
           }
         }
       }
+    }
+
+    if (showImportPairingDialog) {
+      ImportDevicePairingDialog(
+        viewModel = viewModel,
+        onDismiss = { showImportPairingDialog = false },
+        onImportSuccess = { msg ->
+          syncMessage = msg
+          errorMessage = null
+        }
+      )
     }
   }
 }

@@ -104,6 +104,28 @@ fun TreatmentScreen(
       .background(BgLightGray)
       .padding(8.dp)
   ) {
+    if (isReadOnly) {
+      Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = Color(0xFFFEF3C7),
+        border = BorderStroke(1.dp, Color(0xFFD97706)),
+        modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
+      ) {
+        Row(
+          modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Icon(Icons.Default.Visibility, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(15.dp))
+          Spacer(modifier = Modifier.width(6.dp))
+          Text(
+            "VIEW ONLY (ကြည့်ရှုခွင့်သာ) - ဆေးထိုး/ကုသမှုစာရင်း ကြည့်ရှုခွင့်သာရှိပြီး ဆေးထိုးခြင်းနှင့် ကတ်အသစ်ဖွင့်ခွင့် မရှိပါ",
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF92400E)
+          )
+        }
+      }
+    }
     // 1. Top Header & Metrics Bar
     Surface(
       shape = RoundedCornerShape(10.dp),
@@ -149,18 +171,20 @@ fun TreatmentScreen(
               }
             }
           }
-          Button(
-            onClick = { showCreateCardDialog = true },
-            colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
-            shape = RoundedCornerShape(6.dp),
-            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-            modifier = Modifier
-              .fillMaxWidth()
-              .height(34.dp)
-          ) {
-            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("ကုသမှုကတ်အသစ် (New Card)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+          if (!isReadOnly) {
+            Button(
+              onClick = { showCreateCardDialog = true },
+              colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+              shape = RoundedCornerShape(6.dp),
+              contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+              modifier = Modifier
+                .fillMaxWidth()
+                .height(34.dp)
+            ) {
+              Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+              Spacer(modifier = Modifier.width(4.dp))
+              Text("ကုသမှုကတ်အသစ် (New Card)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
           }
         }
       } else {
@@ -197,17 +221,19 @@ fun TreatmentScreen(
             }
           }
 
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            Button(
-              onClick = { showCreateCardDialog = true },
-              colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
-              shape = RoundedCornerShape(6.dp),
-              contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-              modifier = Modifier.height(32.dp)
-            ) {
-              Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
-              Spacer(modifier = Modifier.width(4.dp))
-              Text("ကုသမှုကတ်အသစ် (New Card)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+          if (!isReadOnly) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Button(
+                onClick = { showCreateCardDialog = true },
+                colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+                shape = RoundedCornerShape(6.dp),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                modifier = Modifier.height(32.dp)
+              ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("ကုသမှုကတ်အသစ် (New Card)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+              }
             }
           }
         }
@@ -499,17 +525,19 @@ fun TreatmentScreen(
                           )
                         }
                       }
-                      Spacer(modifier = Modifier.width(8.dp))
-                      Button(
-                        onClick = { sessionToAdminister = Pair(card, session) },
-                        colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
-                        shape = RoundedCornerShape(4.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                        modifier = Modifier.height(28.dp)
-                      ) {
-                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(12.dp))
-                        Spacer(modifier = Modifier.width(3.dp))
-                        Text("ဆေးထိုးပြီး", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                      if (!isReadOnly) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                          onClick = { sessionToAdminister = Pair(card, session) },
+                          colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+                          shape = RoundedCornerShape(4.dp),
+                          contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                          modifier = Modifier.height(28.dp)
+                        ) {
+                          Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(12.dp))
+                          Spacer(modifier = Modifier.width(3.dp))
+                          Text("ဆေးထိုးပြီး", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
                       }
                     }
                   }
@@ -649,8 +677,10 @@ fun TreatmentScreen(
                           IconButton(onClick = { cardToPrint = card }, modifier = Modifier.size(26.dp)) {
                             Icon(Icons.Default.Print, contentDescription = "Print Slip", tint = SlateMedium, modifier = Modifier.size(15.dp))
                           }
-                          IconButton(onClick = { cardToDiscontinue = card }, modifier = Modifier.size(26.dp)) {
-                            Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = StatusCritical, modifier = Modifier.size(15.dp))
+                          if (!isReadOnly) {
+                            IconButton(onClick = { cardToDiscontinue = card }, modifier = Modifier.size(26.dp)) {
+                              Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = StatusCritical, modifier = Modifier.size(15.dp))
+                            }
                           }
                         }
                       }

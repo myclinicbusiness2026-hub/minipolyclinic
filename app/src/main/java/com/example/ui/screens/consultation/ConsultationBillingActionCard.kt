@@ -47,7 +47,8 @@ fun ConsultationBillingActionCard(
   onOpenInstructions: () -> Unit,
   onPreviewA4Pdf: () -> Unit,
   onSendToPharmacy: () -> Unit,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
+  isReadOnly: Boolean = false
 ) {
   Card(
     modifier = modifier.fillMaxWidth(),
@@ -64,7 +65,8 @@ fun ConsultationBillingActionCard(
         Text("Doctor Consultation Fee:", fontSize = 12.sp, color = SlateDark, fontWeight = FontWeight.Bold)
         OutlinedTextField(
           value = consultationFeeText,
-          onValueChange = onConsultationFeeChange,
+          onValueChange = { if (!isReadOnly) onConsultationFeeChange(it) },
+          readOnly = isReadOnly,
           modifier = Modifier.width(120.dp),
           singleLine = true,
           shape = RoundedCornerShape(6.dp),
@@ -84,7 +86,8 @@ fun ConsultationBillingActionCard(
         Text("Clinic Service Fee (ဝန်ဆောင်ခ):", fontSize = 11.5.sp, color = SlateDark, fontWeight = FontWeight.Medium)
         OutlinedTextField(
           value = serviceFeeText,
-          onValueChange = onServiceFeeChange,
+          onValueChange = { if (!isReadOnly) onServiceFeeChange(it) },
+          readOnly = isReadOnly,
           modifier = Modifier.width(120.dp),
           singleLine = true,
           shape = RoundedCornerShape(6.dp),
@@ -405,17 +408,22 @@ fun ConsultationBillingActionCard(
         }
 
         Button(
-          onClick = onSendToPharmacy,
+          onClick = { if (!isReadOnly) onSendToPharmacy() },
+          enabled = !isReadOnly,
           modifier = Modifier
             .weight(1.3f)
             .height(38.dp),
-          colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary),
+          colors = ButtonDefaults.buttonColors(
+            containerColor = if (isReadOnly) SlateLight else SkyBluePrimary,
+            disabledContainerColor = Color(0xFFE2E8F0),
+            disabledContentColor = SlateMuted
+          ),
           shape = RoundedCornerShape(6.dp),
           contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
         ) {
           Icon(Icons.Default.ReceiptLong, contentDescription = null, modifier = Modifier.size(14.dp))
           Spacer(modifier = Modifier.width(4.dp))
-          Text("Send to Invoice", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+          Text(if (isReadOnly) "View Only" else "Send to Invoice", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
         }
       }
     }

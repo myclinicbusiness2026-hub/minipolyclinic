@@ -923,7 +923,8 @@ fun DoctorConsultationScreen(
                 objective = objective,
                 canvasNotesState = canvasNotesState,
                 onOpenFullscreenCanvas = { showScribbleExpanded = true },
-                onEditRecord = { record -> editingConsultation = record }
+                onEditRecord = { record -> if (!isReadOnly) editingConsultation = record },
+                isReadOnly = isReadOnly
               )
             }
 
@@ -958,7 +959,8 @@ fun DoctorConsultationScreen(
                 onOpenInstructions = { showInstructionsModal = true },
                 onPreviewA4Doc = handlePreviewA4Doc,
                 onSendToPharmacy = handleSendToPharmacy,
-                currencyFmt = currencyFmt
+                currencyFmt = currencyFmt,
+                isReadOnly = isReadOnly
               )
             }
           }
@@ -1012,7 +1014,8 @@ fun DoctorConsultationScreen(
               objective = objective,
               canvasNotesState = canvasNotesState,
               onOpenFullscreenCanvas = { showScribbleExpanded = true },
-              onEditRecord = { record -> editingConsultation = record }
+              onEditRecord = { record -> if (!isReadOnly) editingConsultation = record },
+              isReadOnly = isReadOnly
             )
 
             ConsultationPrescriptionAndBillingPane(
@@ -1039,7 +1042,8 @@ fun DoctorConsultationScreen(
               onOpenInstructions = { showInstructionsModal = true },
               onPreviewA4Doc = handlePreviewA4Doc,
               onSendToPharmacy = handleSendToPharmacy,
-              currencyFmt = currencyFmt
+              currencyFmt = currencyFmt,
+              isReadOnly = isReadOnly
             )
           }
         }
@@ -1403,19 +1407,24 @@ fun DoctorConsultationScreen(
       patient = activePatient,
       attachments = attachmentsState.toList(),
       onDismiss = { showAttachmentsModal = false },
+      isReadOnly = isReadOnly,
       onAddAttachment = { att -> 
-        attachmentsState.add(att)
-        viewModel.saveDraftClinicalNotes(
-          patientId = activePatient.id,
-          attachments = attachmentsState.toList()
-        )
+        if (!isReadOnly) {
+          attachmentsState.add(att)
+          viewModel.saveDraftClinicalNotes(
+            patientId = activePatient.id,
+            attachments = attachmentsState.toList()
+          )
+        }
       },
       onDeleteAttachment = { id -> 
-        attachmentsState.removeAll { it.id == id }
-        viewModel.saveDraftClinicalNotes(
-          patientId = activePatient.id,
-          attachments = attachmentsState.toList()
-        )
+        if (!isReadOnly) {
+          attachmentsState.removeAll { it.id == id }
+          viewModel.saveDraftClinicalNotes(
+            patientId = activePatient.id,
+            attachments = attachmentsState.toList()
+          )
+        }
       }
     )
   }

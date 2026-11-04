@@ -17,8 +17,8 @@ android {
         applicationId = "com.aistudio.shwekhitclinic.vxqmp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 21
-        versionName = "1.4.7"
+        versionCode = 22
+        versionName = "1.4.8"
     }
 
     signingConfigs {
@@ -81,5 +81,6 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("com.github.Dantsu:ESCPOS-ThermalPrinter-Android:3.3.0")
+    implementation("com.google.zxing:core:3.5.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.1")
 }

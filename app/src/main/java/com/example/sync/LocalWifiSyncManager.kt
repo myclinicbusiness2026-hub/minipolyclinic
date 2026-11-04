@@ -254,7 +254,7 @@ class LocalWifiSyncManager(
     }
   }
 
-  private fun httpGet(urlStr: String): String? {
+  internal fun httpGet(urlStr: String): String? {
     return try {
       val conn = (URL(urlStr).openConnection() as HttpURLConnection).apply {
         connectTimeout = 4000
