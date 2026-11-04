@@ -6,5 +6,5 @@
   "releaseNotesMm": "• Option A မိုဘိုင်းမျက်နှာပြင် ၃ ကော်လံ ဝင်ငွေဇယား: ဆရာကြည့်ခ+ဝန်ဆောင်ခ၊ ဆေးအသုံးရငွေနှင့် စုစုပေါင်းရငွေတို့ကို ဖုန်းမျက်နှာပြင်တွင် စာလုံးမညပ်စေဘဲ ၃ ကော်လံ သန့်ရှင်းစွာ ပြသပေးခြင်း\n• Treatment Card Discontinue Sync Conflict ဖြေရှင်းခြင်း: စက်တစ်ခုတွင် Discontinue လုပ်ထားသော Card သည် အခြားစက်များမှ Sync ပြန်ဝင်လာသော်လည်း Active ပြန်မဖြစ်တော့ဘဲ Discontinue အတိုင်း အမြဲတမ်း အတည်ဖြစ်စေခြင်း\n• စိတ်ကြိုက်ထိုးမည့်နည်းလမ်း (+ Custom Route) ထည့်သွင်းခြင်း: IM, IV, SC အပြင် မိမိစိတ်ကြိုက်နည်းလမ်း (ဥပမာ - ID, Joint Inj, Eye Drop စသည်) ကို ရိုက်ထည့်နိုင်ပြီး ပရင့်စလစ်တွင်ပါ အတိအကျ ပေါ်စေခြင်း\n• Preset Drug နှင့် ညွှန်ကြားချက်များ ဖျက်စရာမလိုတော့ခြင်း: Treatment Card အသစ်ဖွင့်တိုင်း ပေါ်နေသော Ceftriaxone နှင့် စာဟောင်းများကို လုံးဝဖြုတ်ပေးထားသဖြင့် တိုက်ရိုက် စာရိုက်ထည့်နိုင်ခြင်း\n• Clinic Branding ဆရာကြည့်ခနှင့် တိုက်ရိုက်ချိတ်ဆက်ခြင်း: Setting တွင် သတ်မှတ်ထားသော ဆရာကြည့်ခကို Doctor Consultation တွင် အလိုအလျောက် တိုက်ရိုက် ရောက်ရှိစေခြင်း",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-04",
-  "apkSizeBytes": 21842866
+  "apkSizeBytes": 21859250
 }
