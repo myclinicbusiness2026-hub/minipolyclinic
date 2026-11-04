@@ -64,6 +64,7 @@ fun InventoryMasterScreen(
   val medicines by viewModel.medicines.collectAsState()
   val suppliers by viewModel.suppliers.collectAsState()
   val currentUser by viewModel.currentUser.collectAsState()
+  val invoices by viewModel.invoices.collectAsState()
 
   // RBAC Permission check
   val user = currentUser
@@ -182,6 +183,23 @@ fun InventoryMasterScreen(
   } else 0.0
 
   val totalSkus = medicines.size
+  val paidInvoices = remember(invoices) { invoices.filter { it.isPaid } }
+  val totalDocServiceRevenue = remember(paidInvoices) {
+    paidInvoices.sumOf { inv ->
+      val docFee = (inv.consultationFee - inv.doctorFeeDiscount).coerceAtLeast(0.0)
+      val svcDocFee = inv.serviceFee
+      val procedureFee = inv.items.filter { it.isProcedure }.sumOf { it.totalPrice }
+      docFee + svcDocFee + procedureFee
+    }
+  }
+  val totalPharmacyRevenue = remember(paidInvoices) {
+    paidInvoices.sumOf { inv ->
+      inv.items.filter { !it.isProcedure }.sumOf { it.totalPrice }
+    }
+  }
+  val totalClinicRevenue = remember(paidInvoices) {
+    paidInvoices.sumOf { it.totalAmount }
+  }
   val totalUnitsCount = remember(medicines) { medicines.sumOf { it.totalStock } }
 
   // Stock Risk Counters
@@ -569,6 +587,43 @@ fun InventoryMasterScreen(
                 indicatorColor = StatusInfo,
                 modifier = Modifier.weight(1f)
               )
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Revenue Breakdown Strip
+            Surface(
+              shape = RoundedCornerShape(8.dp),
+              color = PureWhite,
+              border = BorderStroke(1.dp, MedicalGreen.copy(alpha = 0.4f)),
+              modifier = Modifier.fillMaxWidth()
+            ) {
+              Row(
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .padding(horizontal = 10.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                  Icon(Icons.Default.MedicalServices, contentDescription = null, tint = MedicalGreenDark, modifier = Modifier.size(13.dp))
+                  Spacer(modifier = Modifier.width(4.dp))
+                  Text("ဆရာကြည့်ခ+ဝန်ဆောင်ခ: ", fontSize = 10.sp, color = DarkGrayText)
+                  Text("${currencyFmt.format(totalDocServiceRevenue.toInt())} Ks", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                  Icon(Icons.Default.Medication, contentDescription = null, tint = Color(0xFF1565C0), modifier = Modifier.size(13.dp))
+                  Spacer(modifier = Modifier.width(4.dp))
+                  Text("ဆေးအသုံးရငွေ: ", fontSize = 10.sp, color = DarkGrayText)
+                  Text("${currencyFmt.format(totalPharmacyRevenue.toInt())} Ks", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                  Icon(Icons.Default.MonetizationOn, contentDescription = null, tint = OceanGreenPrimary, modifier = Modifier.size(13.dp))
+                  Spacer(modifier = Modifier.width(4.dp))
+                  Text("စုစုပေါင်း ရငွေ: ", fontSize = 10.sp, color = DarkGrayText)
+                  Text("${currencyFmt.format(totalClinicRevenue.toInt())} Ks", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = OceanGreenPrimary)
+                }
+              }
             }
           }
         }

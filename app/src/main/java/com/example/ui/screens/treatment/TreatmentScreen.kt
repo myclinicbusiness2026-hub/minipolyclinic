@@ -363,34 +363,31 @@ fun TreatmentScreen(
     Spacer(modifier = Modifier.height(6.dp))
 
     // Search Bar for Treatment Cards & Patients
-    Surface(
-      shape = RoundedCornerShape(8.dp),
-      color = PureWhite,
-      border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-      modifier = Modifier.fillMaxWidth()
-    ) {
-      OutlinedTextField(
-        value = searchQuery,
-        onValueChange = { searchQuery = it },
-        placeholder = { Text("လူနာအမည်၊ HN သို့မဟုတ် ဆေးအမည်ဖြင့် ရှာဖွေပါ...", fontSize = 11.sp, color = SlateMuted) },
-        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(16.dp)) },
-        trailingIcon = {
-          if (searchQuery.isNotBlank()) {
-            IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(24.dp)) {
-              Icon(Icons.Default.Clear, contentDescription = "Clear", modifier = Modifier.size(14.dp))
-            }
+    OutlinedTextField(
+      value = searchQuery,
+      onValueChange = { searchQuery = it },
+      placeholder = { Text("လူနာအမည်၊ HN သို့မဟုတ် ဆေးအမည်ဖြင့် ရှာဖွေပါ...", fontSize = 11.sp, color = SlateMuted) },
+      leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(17.dp)) },
+      trailingIcon = {
+        if (searchQuery.isNotBlank()) {
+          IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(24.dp)) {
+            Icon(Icons.Default.Clear, contentDescription = "Clear", tint = SlateMuted, modifier = Modifier.size(14.dp))
           }
-        },
-        singleLine = true,
-        modifier = Modifier
-          .fillMaxWidth()
-          .height(44.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-          focusedBorderColor = Color.Transparent,
-          unfocusedBorderColor = Color.Transparent
-        )
-      )
-    }
+        }
+      },
+      shape = RoundedCornerShape(8.dp),
+      singleLine = true,
+      modifier = Modifier
+        .fillMaxWidth()
+        .heightIn(min = 48.dp),
+      colors = OutlinedTextFieldDefaults.colors(
+        focusedContainerColor = PureWhite,
+        unfocusedContainerColor = PureWhite,
+        focusedBorderColor = MedicalGreen,
+        unfocusedBorderColor = Color(0xFFE2E8F0)
+      ),
+      textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp, color = SlateDark)
+    )
 
     Spacer(modifier = Modifier.height(6.dp))
 
@@ -743,7 +740,7 @@ fun TreatmentScreen(
       medicines = medicines,
       defaultNurseName = currentUser?.fullName ?: "Nurse Station",
       onDismiss = { sessionToAdminister = null },
-      onConfirm = { isClinicMed, medPrice, sessionFee, consumables, notes ->
+      onConfirm = { isClinicMed, medPrice, sessionFee, consumables, isConsumablesFoc, notes ->
         val generatedInv = viewModel.administerTreatmentSession(
           cardId = card.id,
           sessionId = session.id,
@@ -752,12 +749,17 @@ fun TreatmentScreen(
           medPrice = medPrice,
           sessionFee = sessionFee,
           consumables = consumables,
+          isConsumablesFoc = isConsumablesFoc,
           notes = notes
         )
-        if (generatedInv == null) {
+        if (isConsumablesFoc && consumables.isNotEmpty()) {
+          Toast.makeText(context, "Dose ${session.sessionNumber} ဆေးထိုးပြီးစီးပါပြီ (အပိုပစ္စည်းများကို ဆေးခန်းအသုံး/FOC အဖြစ် Stock နှင့် အသုံးစရိတ်တွင် စာရင်းသွင်းပြီး)", Toast.LENGTH_LONG).show()
+        } else if (generatedInv == null) {
           Toast.makeText(context, "Dose ${session.sessionNumber} ဆေးထိုးပြီးစီးပါပြီ (Consultation ဘောင်ချာတွင် ပေါင်းထည့်ပြီးဖြစ်၍ ဘောင်ချာအသစ် မထုတ်တော့ပါ)", Toast.LENGTH_LONG).show()
+        } else if (generatedInv.id.startsWith("INV-TC-SUPP-")) {
+          Toast.makeText(context, "Dose ${session.sessionNumber} ဆေးထိုးပြီးစီးပါပြီ (အပိုသုံးပစ္စည်း ထပ်ဆောင်းဘောင်ချာ #${generatedInv.invoiceNumber} ထုတ်ပေးပြီး)", Toast.LENGTH_LONG).show()
         } else {
-          Toast.makeText(context, "Dose ${session.sessionNumber} ဆေးထိုးပြီးစီးပါပြီ (ဘောင်ချာ #${generatedInv.invoiceNo} ထုတ်ပေးပြီး)", Toast.LENGTH_SHORT).show()
+          Toast.makeText(context, "Dose ${session.sessionNumber} ဆေးထိုးပြီးစီးပါပြီ (ဘောင်ချာ #${generatedInv.invoiceNumber} ထုတ်ပေးပြီး)", Toast.LENGTH_SHORT).show()
         }
         sessionToAdminister = null
       }
@@ -828,7 +830,7 @@ fun AdministerSessionModal(
   medicines: List<Medicine>,
   defaultNurseName: String,
   onDismiss: () -> Unit,
-  onConfirm: (isClinicMed: Boolean, medPrice: Double, sessionFee: Double, consumables: List<TreatmentConsumable>, notes: String) -> Unit
+  onConfirm: (isClinicMed: Boolean, medPrice: Double, sessionFee: Double, consumables: List<TreatmentConsumable>, isConsumablesFoc: Boolean, notes: String) -> Unit
 ) {
   val isPrepaid = session.isPrepaid || card.isPrepaidFullCourse
   var isClinicMed by remember { mutableStateOf(!isPrepaid && session.isClinicMed && session.medicationFee > 0) }
@@ -836,6 +838,7 @@ fun AdministerSessionModal(
   var sessionFeeText by remember { mutableStateOf((if (isPrepaid) 0.0 else card.sessionFee).toInt().toString()) }
   var notes by remember { mutableStateOf(session.notes) }
   val selectedConsumables = remember { mutableStateListOf<TreatmentConsumable>() }
+  var isConsumablesFoc by remember { mutableStateOf(false) }
   var storeSearchQuery by remember { mutableStateOf("") }
 
   val currencyFmt = NumberFormat.getNumberInstance(Locale.US)
@@ -860,7 +863,7 @@ fun AdministerSessionModal(
 
   val medPrice = if (isClinicMed) (medPriceText.toDoubleOrNull() ?: 0.0) else 0.0
   val sessionFee = sessionFeeText.toDoubleOrNull() ?: 3000.0
-  val consumablesTotal = selectedConsumables.sumOf { it.totalPrice }
+  val consumablesTotal = if (isConsumablesFoc) 0.0 else selectedConsumables.sumOf { it.totalPrice }
   val visitTotal = medPrice + sessionFee + consumablesTotal
 
   Dialog(
@@ -980,6 +983,40 @@ fun AdministerSessionModal(
           // 3. Extra Consumables (Cannula, Scalp Vein, Syringe, etc.)
           Text("၃။ အပိုသုံးပစ္စည်းများ (Extra Consumables from Pharmacy Store):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SlateDark)
           Text("Store/Pharmacy စာရင်းမှ အသုံးပစ္စည်းများ ရှာဖွေထည့်သွင်းနိုင်ပါသည်", fontSize = 9.5.sp, color = SlateMuted)
+
+          Spacer(modifier = Modifier.height(6.dp))
+
+          // Option C (Bill to patient) vs Option B (FOC / Clinic Expense)
+          Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+              selected = !isConsumablesFoc,
+              onClick = { isConsumablesFoc = false },
+              label = { Text("လူနာထံမှ ကောက်မည် (Bill to Patient)", fontSize = 10.sp) },
+              colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MedicalGreen, selectedLabelColor = PureWhite)
+            )
+            FilterChip(
+              selected = isConsumablesFoc,
+              onClick = { isConsumablesFoc = true },
+              label = { Text("ဆေးခန်းအသုံး / FOC (0 Ks)", fontSize = 10.sp) },
+              colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFC2410C), selectedLabelColor = PureWhite)
+            )
+          }
+
+          if (isConsumablesFoc && selectedConsumables.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Surface(
+              shape = RoundedCornerShape(4.dp),
+              color = Color(0xFFFFEDD5),
+              modifier = Modifier.fillMaxWidth()
+            ) {
+              Text(
+                "✨ ဤအသုံးပစ္စည်းများကို လူနာထံမှ မကောက်ခံဘဲ (0 Ks)၊ ဆေးခန်း Stock မှ နှုတ်ယူကာ ကုန်ကျစရိတ် (Clinic Expense) အဖြစ် ဝယ်ရင်းဈေးဖြင့် စာရင်းသွင်းပါမည်",
+                fontSize = 9.5.sp,
+                color = Color(0xFF9A3412),
+                modifier = Modifier.padding(6.dp)
+              )
+            }
+          }
 
           Spacer(modifier = Modifier.height(6.dp))
 
@@ -1225,7 +1262,7 @@ fun AdministerSessionModal(
         // Confirm Button
         Button(
           onClick = {
-            onConfirm(isClinicMed, medPrice, sessionFee, selectedConsumables.toList(), notes)
+            onConfirm(isClinicMed, medPrice, sessionFee, selectedConsumables.toList(), isConsumablesFoc, notes)
           },
           colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
           shape = RoundedCornerShape(8.dp),

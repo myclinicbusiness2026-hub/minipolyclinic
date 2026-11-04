@@ -69,7 +69,7 @@ fun PatientQueueScreen(
   }
 
   // Date Filter State
-  var selectedDateFilter by remember { mutableStateOf("ALL") } // "ALL", "TODAY", "YESTERDAY", "PAST_7_DAYS", "CUSTOM"
+  var selectedDateFilter by remember { mutableStateOf("TODAY") } // "ALL", "TODAY", "YESTERDAY", "PAST_7_DAYS", "CUSTOM"
   var customDateFilter by remember { mutableStateOf<String?>(null) }
   var showCustomDatePicker by remember { mutableStateOf(false) }
   var patientToDelete by remember { mutableStateOf<Patient?>(null) }

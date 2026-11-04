@@ -65,7 +65,7 @@ fun MedicalRecordsScreen(
 
   var searchQuery by remember { mutableStateOf("") }
   var selectedPatientId by remember { mutableStateOf<String?>(null) }
-  var selectedDateFilter by remember { mutableStateOf("ALL") } // ALL, TODAY, YESTERDAY, PAST_7_DAYS, THIS_MONTH, CUSTOM
+  var selectedDateFilter by remember { mutableStateOf("TODAY") } // ALL, TODAY, YESTERDAY, PAST_7_DAYS, THIS_MONTH, CUSTOM
   var customDateFilter by remember { mutableStateOf<String?>(null) }
   var showCustomDatePicker by remember { mutableStateOf(false) }
   var selectedStatusFilter by remember { mutableStateOf("ALL") } // ALL, COMPLETED, FOLLOW_UP_DUE, IN_QUEUE

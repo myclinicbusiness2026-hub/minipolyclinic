@@ -165,6 +165,25 @@ fun ClinicLedgerScreen(
   val cashIncome = dateFilteredEntries.filter { it.isIncome && it.paymentMethod == PaymentMethod.CASH }.sumOf { it.amount }
   val digitalIncome = totalIncome - cashIncome
 
+  val currencyFmt = remember { java.text.NumberFormat.getNumberInstance(Locale.US) }
+
+  val paidInvoicesInPeriod = remember(dateFilteredEntries) {
+    dateFilteredEntries.filterIsInstance<LedgerEntry.IncomeEntry>().map { it.invoice }
+  }
+  val doctorAndServiceIncome = remember(paidInvoicesInPeriod) {
+    paidInvoicesInPeriod.sumOf { inv ->
+      val docFee = (inv.consultationFee - inv.doctorFeeDiscount).coerceAtLeast(0.0)
+      val svcDocFee = inv.serviceFee
+      val procedureFee = inv.items.filter { it.isProcedure }.sumOf { it.totalPrice }
+      docFee + svcDocFee + procedureFee
+    }
+  }
+  val pharmacyIncome = remember(paidInvoicesInPeriod) {
+    paidInvoicesInPeriod.sumOf { inv ->
+      inv.items.filter { !it.isProcedure }.sumOf { it.totalPrice }
+    }
+  }
+
   // Daily Aggregated breakdown for Monthly view
   val dailyBreakdown = remember(dateFilteredEntries, filterMode) {
     if (filterMode == LedgerDateFilterMode.MONTHLY) {
@@ -604,6 +623,45 @@ fun ClinicLedgerScreen(
     }
 
     Spacer(modifier = Modifier.height(6.dp))
+
+    Spacer(modifier = Modifier.height(4.dp))
+
+    // Doctor & Service vs Pharmacy Revenue Breakdown Strip
+    Surface(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 12.dp, vertical = 0.dp),
+      shape = RoundedCornerShape(6.dp),
+      color = PureWhite,
+      border = BorderStroke(0.8.dp, MedicalGreen.copy(alpha = 0.5f))
+    ) {
+      Row(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 10.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          Icon(Icons.Default.MedicalServices, contentDescription = null, tint = MedicalGreenDark, modifier = Modifier.size(13.dp))
+          Spacer(modifier = Modifier.width(4.dp))
+          Text("ဆရာကြည့်ခ+ဝန်ဆောင်ခ: ", fontSize = 10.sp, color = DarkGrayText)
+          Text("${currencyFmt.format(doctorAndServiceIncome.toInt())} Ks", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          Icon(Icons.Default.Medication, contentDescription = null, tint = Color(0xFF1565C0), modifier = Modifier.size(13.dp))
+          Spacer(modifier = Modifier.width(4.dp))
+          Text("ဆေးအသုံးရငွေ: ", fontSize = 10.sp, color = DarkGrayText)
+          Text("${currencyFmt.format(pharmacyIncome.toInt())} Ks", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          Icon(Icons.Default.MonetizationOn, contentDescription = null, tint = OceanGreenPrimary, modifier = Modifier.size(13.dp))
+          Spacer(modifier = Modifier.width(4.dp))
+          Text("စုစုပေါင်း: ", fontSize = 10.sp, color = DarkGrayText)
+          Text("${currencyFmt.format(totalIncome.toInt())} Ks", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = OceanGreenPrimary)
+        }
+      }
+    }
 
     // 3. Filter Chips (All | Income | Expense)
     Row(

@@ -2472,11 +2472,54 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     medPrice: Double,
     sessionFee: Double,
     consumables: List<TreatmentConsumable>,
+    isConsumablesFoc: Boolean = false,
     notes: String
   ): Invoice? {
     val ctx = getApplication<Application>()
     val card = _treatmentCards.value.find { it.id == cardId } ?: return null
     val session = card.sessions.find { it.id == sessionId } ?: return null
+
+    // Handle Option B: Consumables are FOC / Clinic Internal Usage (deduct stock + log clinic expense)
+    if (isConsumablesFoc && consumables.isNotEmpty()) {
+      val medMap = _medicines.value.associateBy { it.id }.toMutableMap()
+      val now = System.currentTimeMillis()
+      var medModified = false
+      var totalConsumableCost = 0.0
+
+      consumables.forEach { c ->
+        val med = findMatchingMedicine(c.medicineId, c.name, medMap)
+        if (med != null && c.quantity > 0) {
+          var remaining = c.quantity
+          val unitCost = med.batches.firstOrNull { it.quantity > 0 }?.costPricePerUnit
+            ?: med.batches.firstOrNull()?.costPricePerUnit
+            ?: (med.sellingPrice * 0.7)
+          val updatedBatches = med.allBatches.map { b ->
+            if (remaining > 0 && b.quantity > 0) {
+              val deduct = minOf(b.quantity, remaining)
+              remaining -= deduct
+              b.copy(quantity = b.quantity - deduct, lastUpdated = now)
+            } else b
+          }
+          medMap[med.id] = med.copy(batches = updatedBatches)
+          medModified = true
+          totalConsumableCost += unitCost * c.quantity
+        }
+      }
+      if (medModified) {
+        val updatedList = _medicines.value.map { medMap[it.id] ?: it }
+        _medicines.value = updatedList
+        ClinicDataPersistence.saveMedicines(ctx, updatedList)
+      }
+      if (totalConsumableCost > 0) {
+        val consSummary = consumables.joinToString(", ") { "${it.name} x${it.quantity}" }
+        addExpense(
+          title = "ဆေးခန်းအသုံး: $consSummary (${card.patientName})",
+          category = "ဆေးဝါးနှင့် ကုသမှုအသုံးစရိတ်",
+          amount = totalConsumableCost,
+          notes = "Day Care Treatment Room ဆေးခန်းအသုံး / FOC"
+        )
+      }
+    }
 
     // 1. Build line items for this visit (bundled med + injection administration fee)
     val invoiceItems = mutableListOf<InvoiceItem>()
@@ -2505,19 +2548,22 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         )
       )
     }
-    consumables.forEach { c ->
-      if (c.totalPrice > 0) {
-        invoiceItems.add(
-          InvoiceItem(
-            name = c.name,
-            quantity = c.quantity,
-            unitPrice = c.unitPrice,
-            totalPrice = c.totalPrice,
-            isProcedure = false
-          )
+
+    // If not FOC, add consumables as billable items
+    val consumableItemsForBill = if (!isConsumablesFoc) {
+      consumables.filter { it.totalPrice > 0 }.map { c ->
+        InvoiceItem(
+          name = c.name,
+          quantity = c.quantity,
+          unitPrice = c.unitPrice,
+          totalPrice = c.totalPrice,
+          isProcedure = false
         )
       }
+    } else {
+      emptyList()
     }
+    invoiceItems.addAll(consumableItemsForBill)
 
     val totalCost = invoiceItems.sumOf { it.totalPrice }
 
@@ -2526,9 +2572,43 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
     var invoice: Invoice? = null
     if (isAlreadyBilled) {
-      // Already billed under consultation invoice or prepaid course.
-      // Stock will be deducted (or was deducted) by cashier marking the consultation invoice Paid.
-      // No dummy invoice or duplicate deduction here.
+      // Option C: Check if existing consultation invoice is unpaid to merge extra consumables
+      val existingInv = _invoices.value.find { it.id == card.consultationInvoiceId || it.id == session.invoiceId }
+      if (existingInv != null && !existingInv.isPaid && consumableItemsForBill.isNotEmpty()) {
+        // Merge extra consumables directly into unpaid consultation invoice!
+        val updatedItems = existingInv.items + consumableItemsForBill
+        val addedAmount = consumableItemsForBill.sumOf { it.totalPrice }
+        val updatedInv = existingInv.copy(
+          items = updatedItems,
+          totalAmount = existingInv.totalAmount + addedAmount
+        )
+        val updatedInvs = _invoices.value.map { if (it.id == updatedInv.id) updatedInv else it }
+        _invoices.value = updatedInvs
+        ClinicDataPersistence.saveInvoices(ctx, updatedInvs)
+        invoice = updatedInv
+      } else if ((existingInv == null || existingInv.isPaid) && consumableItemsForBill.isNotEmpty()) {
+        // If already paid, issue supplementary invoice so Cashier can collect the extra consumables!
+        val suppInvId = "INV-TC-SUPP-" + UUID.randomUUID().toString().take(6)
+        val suppInvNo = "INV-" + (1000 + _invoices.value.size + 1)
+        val suppInv = Invoice(
+          id = suppInvId,
+          invoiceNumber = suppInvNo,
+          patientId = card.patientId.ifBlank { "WALK-IN" },
+          patientName = card.patientName.ifBlank { "Treatment Patient" },
+          items = consumableItemsForBill,
+          consultationFee = 0.0,
+          serviceFee = 0.0,
+          totalAmount = consumableItemsForBill.sumOf { it.totalPrice },
+          paidAmount = 0.0,
+          paymentStatus = "Unpaid",
+          cashierName = nurseName.ifBlank { _currentUser.value?.fullName ?: "Nurse Station" },
+          timestamp = BurmeseDateUtils.getNowFormatted()
+        )
+        val updatedInvoices = _invoices.value + suppInv
+        _invoices.value = updatedInvoices
+        ClinicDataPersistence.saveInvoices(ctx, updatedInvoices)
+        invoice = suppInv
+      }
     } else {
       val invId = "INV-TC-" + UUID.randomUUID().toString().take(8)
       val invNo = "INV-" + (1000 + _invoices.value.size + 1)

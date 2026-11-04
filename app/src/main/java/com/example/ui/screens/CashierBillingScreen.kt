@@ -61,7 +61,7 @@ fun CashierBillingScreen(
   var showWalkInSaleDialog by remember { mutableStateOf(false) }
   var searchQuery by remember { mutableStateOf("") }
   var selectedTabFilter by remember { mutableStateOf(0) } // 0: Pending, 1: Settled, 2: All
-  var selectedDateFilter by remember { mutableStateOf("ALL") } // ALL, TODAY, YESTERDAY, PAST_7_DAYS, THIS_MONTH, CUSTOM
+  var selectedDateFilter by remember { mutableStateOf("TODAY") } // ALL, TODAY, YESTERDAY, PAST_7_DAYS, THIS_MONTH, CUSTOM
   var customDateFilter by remember { mutableStateOf<String?>(null) }
   var showCustomDatePicker by remember { mutableStateOf(false) }
   var mobileActiveTab by remember { mutableStateOf(0) } // 0: Queue, 1: Checkout
@@ -633,7 +633,7 @@ private fun BillingQueuePane(
   onSearchQueryChange: (String) -> Unit,
   selectedTabFilter: Int,
   onTabFilterChange: (Int) -> Unit,
-  selectedDateFilter: String = "ALL",
+  selectedDateFilter: String = "TODAY",
   onDateFilterChange: (String) -> Unit = {},
   customDateFilter: String? = null,
   onOpenDatePicker: () -> Unit = {},
