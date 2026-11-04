@@ -240,17 +240,18 @@ fun AddTreatmentOrderModal(
   var isCocktail by remember { mutableStateOf(false) }
   var isPatientSupplied by remember { mutableStateOf(false) }
 
-  var medicationName by remember { mutableStateOf("Inj. Ceftriaxone 1g") }
+  var medicationName by remember { mutableStateOf("") }
+  var selectedMedId by remember { mutableStateOf("") }
   var cocktailTitle by remember { mutableStateOf("") }
   val cocktailItems = remember { mutableStateListOf<CocktailDrugItem>() }
 
-  var dosage by remember { mutableStateOf("1 g") }
+  var dosage by remember { mutableStateOf("") }
   var selectedRoute by remember { mutableStateOf(TreatmentRoute.IV_PUSH) }
   var frequency by remember { mutableStateOf("12 hrly") }
   var totalDaysText by remember { mutableStateOf("3") }
-  var medFeeText by remember { mutableStateOf("4500") }
+  var medFeeText by remember { mutableStateOf("0") }
   var sessionFeeText by remember(selectedRoute) { mutableStateOf(selectedRoute.getDefaultFee(clinicSettings).toInt().toString()) }
-  var instructions by remember { mutableStateOf("Slow IV push over 3-5 mins.") }
+  var instructions by remember { mutableStateOf("") }
   var searchQuery by remember { mutableStateOf("") }
   var splitVialMode by remember { mutableStateOf(false) }
   var isPayPerVisit by remember { mutableStateOf(true) }
@@ -464,6 +465,7 @@ fun AddTreatmentOrderModal(
                         .clickable {
                           val gen = med.genericName.trim()
                           medicationName = if (gen.isNotBlank() && !med.name.contains(gen, ignoreCase = true)) "${med.name} ($gen)" else med.name
+                          selectedMedId = med.id
                           if (!isPatientSupplied) {
                             medFeeText = med.sellingPrice.toInt().toString()
                           }
@@ -913,6 +915,7 @@ fun AddTreatmentOrderModal(
                 patientName = patient?.name ?: "",
                 patientHn = patient?.hn ?: "",
                 doctorName = doctorName,
+                medicationId = selectedMedId,
                 medicationName = finalMedName,
                 dosage = finalDosage,
                 route = selectedRoute,
