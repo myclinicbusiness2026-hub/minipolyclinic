@@ -71,10 +71,29 @@ class LocalWifiSyncManager(
 
   fun start() {
     _localIp.value = wifiHelper.getLocalIpAddress()
+    val savedIps = com.example.data.ClinicDataPersistence.loadKnownPeerIps(context)
+    if (savedIps.isNotEmpty()) {
+      val restoredPeers = savedIps.filter { it.isNotBlank() && it != _localIp.value }.map { ip ->
+        PeerDevice(
+          id = "SAVED-$ip",
+          name = "Clinic Peer ($ip)",
+          ipAddress = ip,
+          port = WifiNetworkHelper.HTTP_SYNC_PORT,
+          role = "PEER"
+        )
+      }
+      _discoveredPeers.value = restoredPeers
+    }
     httpServer.start()
     wifiHelper.startDiscovery(deviceId, deviceName, userRole)
     startNsd()
     startAutoSyncLoop()
+    if (_discoveredPeers.value.isNotEmpty()) {
+      scope.launch {
+        delay(1200)
+        syncWithAllPeers()
+      }
+    }
   }
 
   fun stop() {
@@ -115,6 +134,8 @@ class LocalWifiSyncManager(
       addLog("Peer Discovered", "Found device '${peer.name}' at ${peer.ipAddress}", "ONLINE")
     }
     _discoveredPeers.value = current
+    val validIps = current.map { it.ipAddress }.filter { it.isNotBlank() && it != _localIp.value }.toSet()
+    com.example.data.ClinicDataPersistence.saveKnownPeerIps(context, validIps)
   }
 
   private fun startNsd() {
@@ -218,7 +239,12 @@ class LocalWifiSyncManager(
     _syncStatus.value = SyncStatus.SYNCING
 
     try {
-      // 1. Pull data from peer
+      // 1. Push our updated local data to peer first
+      val pushUrl = "${peer.baseUrl}/sync/push"
+      val myPayload = getLocalDataPayloadJson()
+      val pushResp = httpPost(pushUrl, myPayload)
+
+      // 2. Pull data from peer
       val pullUrl = "${peer.baseUrl}/sync/pull"
       val remoteJson = httpGet(pullUrl)
 
@@ -229,11 +255,6 @@ class LocalWifiSyncManager(
         mergeSuccess = ok
         mergeMsg = msg
       }
-
-      // 2. Push our updated local data to peer
-      val pushUrl = "${peer.baseUrl}/sync/push"
-      val myPayload = getLocalDataPayloadJson()
-      val pushResp = httpPost(pushUrl, myPayload)
 
       _syncStatus.value = SyncStatus.SUCCESS
       _lastSyncTimestamp.value = BurmeseDateUtils.getNowFormatted()
@@ -506,7 +527,16 @@ class LocalWifiSyncManager(
               batchMap[rb.batchNumber] = winner
             }
           }
-          medMap[existing.id] = existing.copy(batches = batchMap.values.toList())
+          medMap[existing.id] = existing.copy(
+            name = if (rm.name.isNotBlank()) rm.name else existing.name,
+            genericName = if (rm.genericName.isNotBlank()) rm.genericName else existing.genericName,
+            category = if (rm.category.isNotBlank()) rm.category else existing.category,
+            dosageForm = if (rm.dosageForm.isNotBlank()) rm.dosageForm else existing.dosageForm,
+            unitType = if (rm.unitType.isNotBlank()) rm.unitType else existing.unitType,
+            profitMarginPercent = if (rm.profitMarginPercent > 0) rm.profitMarginPercent else existing.profitMarginPercent,
+            minStockThreshold = if (rm.minStockThreshold > 0) rm.minStockThreshold else existing.minStockThreshold,
+            batches = batchMap.values.toList()
+          )
         }
       }
       val mergedMedicines = medMap.values.toList()

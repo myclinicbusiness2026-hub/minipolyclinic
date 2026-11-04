@@ -1804,5 +1804,15 @@ object ClinicDataPersistence {
 
     return root.toString(2)
   }
+
+  fun saveKnownPeerIps(context: Context, ips: Set<String>) {
+    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    prefs.edit().putStringSet("known_peer_ips", ips).apply()
+  }
+
+  fun loadKnownPeerIps(context: Context): Set<String> {
+    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    return prefs.getStringSet("known_peer_ips", emptySet()) ?: emptySet()
+  }
 }
 

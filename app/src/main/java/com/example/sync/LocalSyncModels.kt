@@ -281,6 +281,8 @@ data class SyncDataPayload(
         bo.put("expiryDate", b.expiryDate)
         bo.put("quantity", b.quantity)
         bo.put("costPricePerUnit", b.costPricePerUnit)
+        bo.put("supplierName", b.supplierName ?: "")
+        bo.put("lastUpdated", b.lastUpdated)
         bArr.put(bo)
       }
       mo.put("batches", bArr)

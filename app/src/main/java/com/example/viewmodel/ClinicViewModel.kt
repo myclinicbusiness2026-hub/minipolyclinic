@@ -3157,7 +3157,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                 val batchMap = existing.batches.associateBy { it.batchNumber }.toMutableMap()
                 m.batches.forEach { b ->
                   val exB = batchMap[b.batchNumber]
-                  if (exB == null || b.lastUpdated >= exB.lastUpdated) {
+                  if (exB == null || b.lastUpdated > exB.lastUpdated) {
                     batchMap[b.batchNumber] = b
                   }
                 }
