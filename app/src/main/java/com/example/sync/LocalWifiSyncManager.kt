@@ -620,20 +620,21 @@ class LocalWifiSyncManager(
 
     val baseCard = if (remote.completedSessionsCount > local.completedSessionsCount) remote else local
 
-    val localSessions = local.sessions.associateBy { it.doseNumber }
-    val remoteSessions = remote.sessions.associateBy { it.doseNumber }
-    val allDoseNumbers = (localSessions.keys + remoteSessions.keys).sorted()
+    val localSessions = local.sessions.associateBy { it.sessionNumber }
+    val remoteSessions = remote.sessions.associateBy { it.sessionNumber }
+    val allSessionNumbers = (localSessions.keys + remoteSessions.keys).sorted()
 
-    val mergedSessions = allDoseNumbers.map { doseNo ->
-      val s1 = localSessions[doseNo]
-      val s2 = remoteSessions[doseNo]
+    val mergedSessions = allSessionNumbers.map { sNo ->
+      val s1 = localSessions[sNo]
+      val s2 = remoteSessions[sNo]
       when {
         s1?.status == TreatmentStatus.COMPLETED -> s1
         s2?.status == TreatmentStatus.COMPLETED -> s2
-        isDiscontinued -> (s1 ?: s2)?.copy(status = TreatmentStatus.DISCONTINUED) ?: TreatmentSession(doseNumber = doseNo, status = TreatmentStatus.DISCONTINUED)
+        isDiscontinued -> (s1 ?: s2)?.copy(status = TreatmentStatus.DISCONTINUED)
+          ?: TreatmentSession(sessionNumber = sNo, scheduledDate = "", status = TreatmentStatus.DISCONTINUED)
         s1 != null && s1.status != TreatmentStatus.PENDING -> s1
         s2 != null && s2.status != TreatmentStatus.PENDING -> s2
-        else -> s1 ?: s2 ?: TreatmentSession(doseNumber = doseNo)
+        else -> s1 ?: s2 ?: TreatmentSession(sessionNumber = sNo, scheduledDate = "")
       }
     }
 
