@@ -503,10 +503,19 @@ END $$;
       }
       userMap.values.forEach { mergedUserArr.put(it) }
 
+      // Resolve Clinic Settings merge
+      val localSettingsObj = root.optJSONObject("clinicSettings") ?: root.optJSONObject("settings")
+      val remoteSettingsObj = remoteDoc?.optJSONObject("settings") ?: remoteDoc?.optJSONObject("clinicSettings")
+      val mergedSettingsObj = if (localSettingsObj != null && remoteSettingsObj != null) {
+        val s = com.example.data.ClinicDataPersistence.settingsFromJson(localSettingsObj)
+        val merged = com.example.data.ClinicDataPersistence.settingsFromJson(remoteSettingsObj, fallback = s)
+        com.example.data.ClinicDataPersistence.settingsToJson(merged)
+      } else localSettingsObj ?: remoteSettingsObj
+
       // Build complete merged document for local persistence update
       val localFullMergedDoc = JSONObject().apply {
         put("id", "shwe_khit_primary_db")
-        put("clinic_name", root.optJSONObject("settings")?.optString("clinicNameMm", "ရွှေခေတ်") ?: "ရွှေခေတ်")
+        put("clinic_name", mergedSettingsObj?.optString("clinicNameMm", "ရွှေခေတ်") ?: "ရွှေခေတ်")
         put("last_synced_at", timestamp)
         put("consultations", mergedConsArr)
         put("invoices", mergedInvArr)
@@ -518,7 +527,10 @@ END $$;
         put("suppliers", mergedSupArr)
         put("vaccines", mergedVacArr)
         put("users", mergedUserArr)
-        if (root.has("settings")) put("settings", root.getJSONObject("settings"))
+        if (mergedSettingsObj != null) {
+          put("clinicSettings", mergedSettingsObj)
+          put("settings", mergedSettingsObj)
+        }
         val delPatArr = JSONArray()
         deletedPatientIds.forEach { delPatArr.put(it) }
         put("deletedPatientIds", delPatArr)
@@ -530,7 +542,7 @@ END $$;
       // Build cloud payload matching remote table column capabilities
       val cloudDoc = JSONObject().apply {
         put("id", "shwe_khit_primary_db")
-        put("clinic_name", root.optJSONObject("settings")?.optString("clinicNameMm", "ရွှေခေတ်") ?: "ရွှေခေတ်")
+        put("clinic_name", mergedSettingsObj?.optString("clinicNameMm", "ရွှေခေတ်") ?: "ရွှေခေတ်")
         put("last_synced_at", timestamp)
         put("consultations", mergedConsArr)
         put("invoices", mergedInvArr)
@@ -549,8 +561,8 @@ END $$;
           val colName = if (remoteDoc.has("treatment_cards")) "treatment_cards" else "treatmentCards"
           put(colName, mergedTcArr)
         }
-        if (remoteDoc != null && remoteDoc.has("settings")) {
-          if (root.has("settings")) put("settings", root.getJSONObject("settings"))
+        if (mergedSettingsObj != null) {
+          put("settings", mergedSettingsObj)
         }
         if (remoteDoc != null && remoteDoc.has("deleted_patient_ids")) {
           val delArr = JSONArray()

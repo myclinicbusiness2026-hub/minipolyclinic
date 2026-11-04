@@ -1591,14 +1591,16 @@ object ClinicDataPersistence {
   }
 
   // 11. Clinic Settings & Default Fee Configuration
-  fun saveClinicSettings(context: Context, s: ClinicSettings) {
-    val obj = JSONObject().apply {
+  fun settingsToJson(s: ClinicSettings): JSONObject {
+    return JSONObject().apply {
       put("clinicNameEn", s.clinicNameEn)
       put("clinicNameMm", s.clinicNameMm)
       put("clinicSubtitleMm", s.clinicSubtitleMm)
       put("addressMm", s.addressMm)
+      put("clinicAddress", s.clinicAddress)
       put("phonePrimary", s.phonePrimary)
       put("phoneSecondary", s.phoneSecondary)
+      put("clinicPhone", s.clinicPhone)
       put("clinicHours", s.clinicHours)
       put("clinicRegNo", s.clinicRegNo)
       put("doctorName", s.doctorName)
@@ -1617,6 +1619,7 @@ object ClinicDataPersistence {
       put("clinicLogoUri", s.clinicLogoUri)
       put("clinicLogoBase64", s.clinicLogoBase64)
       put("bluetoothPrinterMac", s.bluetoothPrinterMac)
+      put("preferredThermalPrinterAddress", s.preferredThermalPrinterAddress)
       put("wifiHubHostIp", s.wifiHubHostIp)
       put("wifiSyncPort", s.wifiSyncPort)
       put("supabaseUrl", s.supabaseUrl)
@@ -1624,47 +1627,57 @@ object ClinicDataPersistence {
       put("enableSupabaseSync", s.enableSupabaseSync)
       put("activeStationName", s.activeStationName)
     }
+  }
+
+  fun settingsFromJson(o: JSONObject, fallback: ClinicSettings = ClinicSettings()): ClinicSettings {
+    val addr = o.optString("clinicAddress", o.optString("addressMm", fallback.addressMm))
+    val phone1 = o.optString("phonePrimary", o.optString("clinicPhone", fallback.phonePrimary))
+    val phoneCombined = o.optString("clinicPhone", phone1)
+    return ClinicSettings(
+      clinicNameEn = o.optString("clinicNameEn", fallback.clinicNameEn),
+      clinicNameMm = o.optString("clinicNameMm", fallback.clinicNameMm),
+      clinicSubtitleMm = o.optString("clinicSubtitleMm", fallback.clinicSubtitleMm),
+      addressMm = addr,
+      clinicAddress = addr,
+      phonePrimary = phone1,
+      phoneSecondary = o.optString("phoneSecondary", fallback.phoneSecondary),
+      clinicPhone = phoneCombined,
+      clinicHours = o.optString("clinicHours", fallback.clinicHours),
+      clinicRegNo = o.optString("clinicRegNo", fallback.clinicRegNo),
+      doctorName = o.optString("doctorName", fallback.doctorName),
+      doctorDegree = o.optString("doctorDegree", fallback.doctorDegree),
+      doctorSama = o.optString("doctorSama", fallback.doctorSama),
+      defaultConsultationFee = if (o.has("defaultConsultationFee")) o.optDouble("defaultConsultationFee", fallback.defaultConsultationFee) else fallback.defaultConsultationFee,
+      defaultImInjectionFee = if (o.has("defaultImInjectionFee")) o.optDouble("defaultImInjectionFee", fallback.defaultImInjectionFee) else fallback.defaultImInjectionFee,
+      defaultIvPushFee = if (o.has("defaultIvPushFee")) o.optDouble("defaultIvPushFee", fallback.defaultIvPushFee) else fallback.defaultIvPushFee,
+      defaultIvInfusionFee = if (o.has("defaultIvInfusionFee")) o.optDouble("defaultIvInfusionFee", fallback.defaultIvInfusionFee) else fallback.defaultIvInfusionFee,
+      defaultNebulizerFee = if (o.has("defaultNebulizerFee")) o.optDouble("defaultNebulizerFee", fallback.defaultNebulizerFee) else fallback.defaultNebulizerFee,
+      defaultDepoFee = if (o.has("defaultDepoFee")) o.optDouble("defaultDepoFee", fallback.defaultDepoFee) else fallback.defaultDepoFee,
+      defaultDocumentationFee = if (o.has("defaultDocumentationFee")) o.optDouble("defaultDocumentationFee", fallback.defaultDocumentationFee) else fallback.defaultDocumentationFee,
+      allowQuickLogin = o.optBoolean("allowQuickLogin", fallback.allowQuickLogin),
+      thermalPaperWidthMm = if (o.has("thermalPaperWidthMm")) o.optInt("thermalPaperWidthMm", fallback.thermalPaperWidthMm) else fallback.thermalPaperWidthMm,
+      receiptGreetingMm = o.optString("receiptGreetingMm", fallback.receiptGreetingMm),
+      clinicLogoUri = o.optString("clinicLogoUri", fallback.clinicLogoUri),
+      clinicLogoBase64 = o.optString("clinicLogoBase64", fallback.clinicLogoBase64),
+      bluetoothPrinterMac = o.optString("bluetoothPrinterMac", fallback.bluetoothPrinterMac),
+      preferredThermalPrinterAddress = o.optString("preferredThermalPrinterAddress", fallback.preferredThermalPrinterAddress),
+      wifiHubHostIp = o.optString("wifiHubHostIp", fallback.wifiHubHostIp),
+      wifiSyncPort = if (o.has("wifiSyncPort")) o.optInt("wifiSyncPort", fallback.wifiSyncPort) else fallback.wifiSyncPort,
+      supabaseUrl = o.optString("supabaseUrl", fallback.supabaseUrl),
+      supabaseAnonKey = o.optString("supabaseAnonKey", fallback.supabaseAnonKey),
+      enableSupabaseSync = o.optBoolean("enableSupabaseSync", fallback.enableSupabaseSync),
+      activeStationName = o.optString("activeStationName", fallback.activeStationName)
+    )
+  }
+  fun saveClinicSettings(context: Context, s: ClinicSettings) {
+    val obj = settingsToJson(s)
     getPrefs(context).edit().putString(KEY_CLINIC_SETTINGS, obj.toString()).apply()
   }
 
   fun loadClinicSettings(context: Context): ClinicSettings {
     val str = getPrefs(context).getString(KEY_CLINIC_SETTINGS, null) ?: return ClinicSettings()
     return try {
-      val o = JSONObject(str)
-      ClinicSettings(
-        clinicNameEn = o.optString("clinicNameEn", "Shwe Khit General Clinic"),
-        clinicNameMm = o.optString("clinicNameMm", "“ရွှေခေတ်”"),
-        clinicSubtitleMm = o.optString("clinicSubtitleMm", "အထွေထွေရောဂါကုဆေးခန်း"),
-        addressMm = o.optString("addressMm", "အမှတ်(၁၂)၊ လမ်းမတော်လမ်း၊ မန္တလေးမြို့"),
-        clinicAddress = o.optString("addressMm", "အမှတ်(၁၂)၊ လမ်းမတော်လမ်း၊ မန္တလေးမြို့"),
-        phonePrimary = o.optString("phonePrimary", "09-421001122"),
-        phoneSecondary = o.optString("phoneSecondary", "09-790112233"),
-        clinicPhone = o.optString("phonePrimary", "09-421001122"),
-        clinicHours = o.optString("clinicHours", "8:00 AM – 8:00 PM"),
-        clinicRegNo = o.optString("clinicRegNo", "MOHS-MDY-2024"),
-        doctorName = o.optString("doctorName", "Dr. Nyan Kaung Sett"),
-        doctorDegree = o.optString("doctorDegree", "M.B.,B.S (MDY)"),
-        doctorSama = o.optString("doctorSama", "47414"),
-        defaultConsultationFee = o.optDouble("defaultConsultationFee", 8000.0),
-        defaultImInjectionFee = o.optDouble("defaultImInjectionFee", 2000.0),
-        defaultIvPushFee = o.optDouble("defaultIvPushFee", 3000.0),
-        defaultIvInfusionFee = o.optDouble("defaultIvInfusionFee", 6000.0),
-        defaultNebulizerFee = o.optDouble("defaultNebulizerFee", 3000.0),
-        defaultDepoFee = o.optDouble("defaultDepoFee", 2500.0),
-        defaultDocumentationFee = o.optDouble("defaultDocumentationFee", 1000.0),
-        allowQuickLogin = o.optBoolean("allowQuickLogin", true),
-        thermalPaperWidthMm = o.optInt("thermalPaperWidthMm", 80),
-        receiptGreetingMm = o.optString("receiptGreetingMm", "ကျေးဇူးတင်ပါသည် (Thank you!)"),
-        clinicLogoUri = o.optString("clinicLogoUri", ""),
-        clinicLogoBase64 = o.optString("clinicLogoBase64", ""),
-        bluetoothPrinterMac = o.optString("bluetoothPrinterMac", ""),
-        wifiHubHostIp = o.optString("wifiHubHostIp", ""),
-        wifiSyncPort = o.optInt("wifiSyncPort", 8080),
-        supabaseUrl = o.optString("supabaseUrl", "https://tjpayhhzbrcrkwyahecr.supabase.co"),
-        supabaseAnonKey = o.optString("supabaseAnonKey", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqcGF5aGh6YnJjcmt3eWFoZWNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2NTcxNTMsImV4cCI6MjEwNjIzMzE1M30.U7YlxEPl26SQt0bKjY2vw3nEWtYEOnAdxHt2L6_FEdU"),
-        enableSupabaseSync = o.optBoolean("enableSupabaseSync", true),
-        activeStationName = o.optString("activeStationName", "Doctor Consultation Station")
-      )
+      settingsFromJson(JSONObject(str))
     } catch (_: Exception) {
       ClinicSettings()
     }

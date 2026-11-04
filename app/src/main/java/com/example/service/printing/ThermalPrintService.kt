@@ -15,6 +15,8 @@ import android.text.StaticLayout
 import android.text.TextPaint
 import com.example.model.ClinicSettings
 import com.example.model.Invoice
+import com.example.ui.screens.treatment.TreatmentCard
+import com.example.ui.screens.treatment.TreatmentStatus
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.text.NumberFormat
@@ -144,8 +146,9 @@ object ThermalPrintService {
     // 3. Reset line spacing to default (ESC 2)
     output.write(byteArrayOf(ESC, 0x32))
 
-    // 4. Feed 4 lines and execute paper cut
-    output.write(byteArrayOf(LF, LF, LF, LF))
+    // 4. Feed 10 lines so paper cut is well clear of bottom text
+    output.write(byteArrayOf(ESC, 0x64, 0x06)) // ESC d 6 (Feed 6 lines)
+    output.write(byteArrayOf(LF, LF, LF, LF))  // 4 extra LFs (total 10 lines)
     output.write(byteArrayOf(GS, 0x56, 0x42, 0x00)) // GS V 66 0 (Full Cut)
 
     return output.toByteArray()
@@ -166,7 +169,7 @@ object ThermalPrintService {
     val currencyFmt = NumberFormat.getNumberInstance(Locale.US)
 
     // Pre-calculate estimated height dynamically based on 2-line items
-    val baseEstimatedHeight = if (is80mm) 850 else 760
+    val baseEstimatedHeight = if (is80mm) 920 else 820
     val extraFeeCount = (if (invoice.consultationFee > 0.0) 1 else 0) + (if (invoice.serviceFee > 0.0) 1 else 0)
     val itemEstimatedHeight = (invoice.items.size + extraFeeCount) * (if (is80mm) 48 else 44)
     val totalHeightPx = baseEstimatedHeight + itemEstimatedHeight
@@ -176,7 +179,8 @@ object ThermalPrintService {
     canvas.drawColor(Color.WHITE)
 
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    val leftMargin = if (is80mm) 36f else 22f
+    // Symmetrical, maximum printable width on 80mm/58mm thermal heads
+    val leftMargin = if (is80mm) 14f else 12f
     val rightMargin = widthPx.toFloat() - leftMargin
     val contentWidth = rightMargin - leftMargin
     var curY = 16f
@@ -549,10 +553,10 @@ object ThermalPrintService {
 
     paint.textSize = if (is80mm) 12f else 10f
     canvas.drawText("* POS Thermal Slip • Shwe Khit Clinic *", centerX, curY + paint.textSize * 0.8f, paint)
-    curY += paint.textSize + 24f
+    curY += paint.textSize + 50f // 50px bottom spacing so tearing never cuts text
 
     val finalHeight = curY.toInt().coerceAtLeast(300)
-    return Bitmap.createBitmap(bitmap, 0, 0, widthPx, finalHeight)
+    return Bitmap.createBitmap(bitmap, 0, 0, widthPx, minOf(finalHeight, totalHeightPx))
   }
 
   private fun loadBitmapFromUri(context: Context, uriString: String?): Bitmap? {
@@ -593,4 +597,239 @@ object ThermalPrintService {
       StaticLayout(text, textPaint, safeWidth, alignment, 1.25f, 0f, false)
     }
   }
+
+  /**
+   * Generates standard ESC/POS raster byte array for Day-Care Treatment Card slips.
+   */
+  fun generateEscPosTreatmentCardBytes(
+    context: Context? = null,
+    card: TreatmentCard,
+    is80mm: Boolean = true,
+    settings: ClinicSettings? = null
+  ): ByteArray {
+    val bitmap = generateEscPosTreatmentCardBitmap(
+      context = context,
+      card = card,
+      is80mm = is80mm,
+      settings = settings
+    )
+    return bitmapToEscPosRasterBytes(bitmap)
+  }
+
+  fun generateEscPosTreatmentCardBytes(
+    card: TreatmentCard,
+    is80mm: Boolean = true,
+    settings: ClinicSettings? = null
+  ): ByteArray {
+    return generateEscPosTreatmentCardBytes(
+      context = null,
+      card = card,
+      is80mm = is80mm,
+      settings = settings
+    )
+  }
+
+  /**
+   * Renders the complete, authentic Day-Care Treatment Card into a high-contrast monochrome Bitmap.
+   */
+  fun generateEscPosTreatmentCardBitmap(
+    context: Context? = null,
+    card: TreatmentCard,
+    is80mm: Boolean = true,
+    settings: ClinicSettings? = null
+  ): Bitmap {
+    val widthPx = if (is80mm) 576 else 384
+    val leftMargin = if (is80mm) 14f else 12f
+    val rightMargin = widthPx.toFloat() - leftMargin
+    val centerX = widthPx / 2f
+
+    val sessionCount = card.sessions.size
+    val cocktailCount = card.cocktailItems.size
+    val baseHeight = if (is80mm) 650 else 580
+    val totalEstimatedHeight = baseHeight + (sessionCount * (if (is80mm) 44 else 38)) + (cocktailCount * (if (is80mm) 36 else 30)) + 120
+
+    val bitmap = Bitmap.createBitmap(widthPx, totalEstimatedHeight, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    canvas.drawColor(Color.WHITE)
+
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    var curY = 16f
+
+    // 1. Clinic Logo or Emblem
+    var customLogo: Bitmap? = null
+    val logoUriString = settings?.clinicLogoUri
+    if (context != null && !logoUriString.isNullOrBlank()) {
+      customLogo = loadBitmapFromUri(context, logoUriString)
+    }
+    if (customLogo == null && !logoUriString.isNullOrBlank()) {
+      try {
+        val file = File(logoUriString)
+        if (file.exists()) customLogo = BitmapFactory.decodeFile(file.absolutePath)
+      } catch (_: Exception) {}
+    }
+    if (customLogo != null) {
+      val maxLogoW = if (is80mm) 140f else 100f
+      val maxLogoH = if (is80mm) 70f else 50f
+      val scale = minOf(maxLogoW / customLogo.width, maxLogoH / customLogo.height)
+      val targetW = customLogo.width * scale
+      val targetH = customLogo.height * scale
+      val logoRect = RectF(centerX - targetW / 2f, curY, centerX + targetW / 2f, curY + targetH)
+      canvas.drawBitmap(customLogo, null, logoRect, paint)
+      curY += targetH + 8f
+    } else {
+      paint.color = Color.BLACK
+      paint.style = Paint.Style.STROKE
+      paint.strokeWidth = 2.5f
+      val emblemSize = if (is80mm) 34f else 26f
+      val emblemCenterY = curY + emblemSize / 2f
+      canvas.drawCircle(centerX, emblemCenterY, emblemSize / 2f, paint)
+      paint.style = Paint.Style.FILL
+      val crossBarW = emblemSize * 0.22f
+      val crossBarL = emblemSize * 0.65f
+      canvas.drawRect(centerX - crossBarW / 2f, emblemCenterY - crossBarL / 2f, centerX + crossBarW / 2f, emblemCenterY + crossBarL / 2f, paint)
+      canvas.drawRect(centerX - crossBarL / 2f, emblemCenterY - crossBarW / 2f, centerX + crossBarL / 2f, emblemCenterY + crossBarW / 2f, paint)
+      curY += emblemSize + 10f
+    }
+
+    // 2. Clinic Name
+    val clinicTitleMm = if (!settings?.clinicNameMm.isNullOrBlank()) {
+      if (!settings.clinicSubtitleMm.isNullOrBlank()) "\"${settings.clinicNameMm}\" ${settings.clinicSubtitleMm}"
+      else settings.clinicNameMm
+    } else "\"ရွှေခေတ်\" အထွေထွေရောဂါကုဆေးခန်း"
+
+    paint.textAlign = Paint.Align.CENTER
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    paint.textSize = if (is80mm) 26f else 20f
+    canvas.drawText(clinicTitleMm, centerX, curY + paint.textSize * 0.8f, paint)
+    curY += paint.textSize + 6f
+
+    // Doctor & Phone
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+    paint.textSize = if (is80mm) 14f else 11.5f
+    val docInfo = "${settings?.doctorName ?: card.doctorName} ${settings?.doctorDegree ?: ""}".trim()
+    if (docInfo.isNotBlank()) {
+      canvas.drawText(docInfo, centerX, curY + paint.textSize * 0.8f, paint)
+      curY += paint.textSize + 5f
+    }
+    val phoneInfo = "Tel: ${settings?.clinicPhone ?: "09-421001122"}"
+    canvas.drawText(phoneInfo, centerX, curY + paint.textSize * 0.8f, paint)
+    curY += paint.textSize + 8f
+
+    // Header Title Box
+    paint.style = Paint.Style.STROKE
+    paint.strokeWidth = 1.5f
+    val titleBoxH = if (is80mm) 32f else 26f
+    canvas.drawRoundRect(RectF(leftMargin, curY, rightMargin, curY + titleBoxH), 4f, 4f, paint)
+    paint.style = Paint.Style.FILL
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    paint.textSize = if (is80mm) 16f else 13f
+    canvas.drawText("DAY-CARE TREATMENT CARD", centerX, curY + titleBoxH * 0.68f, paint)
+    curY += titleBoxH + 12f
+
+    // Patient & Rx Details
+    paint.textAlign = Paint.Align.LEFT
+    paint.textSize = if (is80mm) 15f else 12f
+    fun drawRow(label: String, value: String, isBold: Boolean = false) {
+      paint.typeface = Typeface.create(Typeface.DEFAULT, if (isBold) Typeface.BOLD else Typeface.NORMAL)
+      val labelW = if (is80mm) 110f else 85f
+      canvas.drawText(label, leftMargin, curY + paint.textSize * 0.82f, paint)
+      val textPaint = TextPaint(paint)
+      val availW = (rightMargin - (leftMargin + labelW)).toInt().coerceAtLeast(100)
+      val sl = StaticLayout.Builder.obtain(value, 0, value.length, textPaint, availW)
+        .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+        .setLineSpacing(0f, 1f)
+        .setIncludePad(false)
+        .build()
+      canvas.save()
+      canvas.translate(leftMargin + labelW, curY)
+      sl.draw(canvas)
+      canvas.restore()
+      curY += maxOf(paint.textSize, sl.height.toFloat()) + 6f
+    }
+
+    drawRow("Patient:", "${card.patientName} (${card.patientHn})", isBold = true)
+    drawRow("Rx Med:", "${card.medicationName} (${card.dosage})", isBold = true)
+    drawRow("Route:", "${card.route.label} • ${card.frequency}")
+    if (card.instructions.isNotBlank()) {
+      drawRow("Directions:", card.instructions)
+    }
+    drawRow("Prescribed:", card.prescribedDate)
+
+    // Cocktail items
+    if (card.cocktailItems.isNotEmpty()) {
+      curY += 4f
+      paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+      paint.textSize = if (is80mm) 14f else 11.5f
+      canvas.drawText("Cocktail / Admixtures:", leftMargin, curY + paint.textSize * 0.8f, paint)
+      curY += paint.textSize + 6f
+      paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+      paint.textSize = if (is80mm) 13f else 10.5f
+      card.cocktailItems.forEach { item ->
+        val itemStr = "• ${item.name} (${item.dosage}) x ${item.quantity}"
+        canvas.drawText(itemStr, leftMargin + 10f, curY + paint.textSize * 0.8f, paint)
+        curY += paint.textSize + 5f
+      }
+    }
+
+    // Divider
+    curY += 6f
+    paint.strokeWidth = 1.2f
+    canvas.drawLine(leftMargin, curY, rightMargin, curY, paint)
+    curY += 10f
+
+    // Treatment Sessions Header
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    paint.textSize = if (is80mm) 14f else 11.5f
+    paint.textAlign = Paint.Align.LEFT
+    canvas.drawText("DOSE", leftMargin, curY + paint.textSize * 0.8f, paint)
+    val schedColX = if (is80mm) leftMargin + 90f else leftMargin + 70f
+    canvas.drawText("DATE / TIME / STATUS", schedColX, curY + paint.textSize * 0.8f, paint)
+    curY += paint.textSize + 6f
+    paint.strokeWidth = 0.8f
+    canvas.drawLine(leftMargin, curY, rightMargin, curY, paint)
+    curY += 8f
+
+    // Session Rows
+    card.sessions.forEach { s ->
+      paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+      paint.textSize = if (is80mm) 14f else 11.5f
+      paint.textAlign = Paint.Align.LEFT
+      canvas.drawText("Dose ${s.sessionNumber}", leftMargin, curY + paint.textSize * 0.8f, paint)
+
+      paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+      val statusDesc = if (s.status == TreatmentStatus.COMPLETED) {
+        "[✓] ${s.administeredAt ?: "Done"} (${s.administeredBy})"
+      } else {
+        "[  ] ${s.scheduledDate} ${s.scheduledTime}"
+      }
+      canvas.drawText(statusDesc, schedColX, curY + paint.textSize * 0.8f, paint)
+      curY += paint.textSize + 8f
+    }
+
+    // Divider
+    curY += 4f
+    paint.strokeWidth = 1.2f
+    canvas.drawLine(leftMargin, curY, rightMargin, curY, paint)
+    curY += 12f
+
+    // Footer
+    paint.textAlign = Paint.Align.CENTER
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    paint.textSize = if (is80mm) 13.5f else 11f
+    canvas.drawText("* ဆေးထိုး/ဆေးသွင်းရန်လာတိုင်း ဤကတ်ပြား ယူဆောင်လာပါ *", centerX, curY + paint.textSize * 0.8f, paint)
+    curY += paint.textSize + 6f
+
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+    paint.textSize = if (is80mm) 13f else 10.5f
+    canvas.drawText("လူနာများ အမြန်ဆုံး သက်သာပျောက်ကင်းပါစေ", centerX, curY + paint.textSize * 0.8f, paint)
+    curY += paint.textSize + 6f
+
+    paint.textSize = if (is80mm) 11.5f else 9.5f
+    canvas.drawText("* Day Care Slip • Shwe Khit Clinic *", centerX, curY + paint.textSize * 0.8f, paint)
+    curY += paint.textSize + 50f // 50px bottom spacing before cut
+
+    val finalHeight = curY.toInt().coerceAtLeast(300)
+    return Bitmap.createBitmap(bitmap, 0, 0, widthPx, minOf(finalHeight, totalEstimatedHeight))
+  }
+
 }

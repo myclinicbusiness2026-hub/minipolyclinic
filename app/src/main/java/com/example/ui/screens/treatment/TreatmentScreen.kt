@@ -35,6 +35,7 @@ import com.example.model.ClinicSettings
 import com.example.model.Medicine
 import com.example.model.Patient
 import com.example.ui.theme.*
+import com.example.ui.components.PosThermalTreatmentSlipDialog
 import com.example.viewmodel.ClinicViewModel
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -806,9 +807,9 @@ fun TreatmentScreen(
     )
   }
 
-  // 4. Print Treatment Card Slip Modal
+  // 4. Print Treatment Card Slip Modal (Dual Bluetooth POS & Native System Print)
   cardToPrint?.let { card ->
-    TreatmentCardSlipDialog(
+    PosThermalTreatmentSlipDialog(
       card = card,
       clinicSettings = clinicSettings,
       onDismiss = { cardToPrint = null }
@@ -2160,63 +2161,9 @@ fun TreatmentCardSlipDialog(
   clinicSettings: ClinicSettings = ClinicSettings(),
   onDismiss: () -> Unit
 ) {
-  val context = LocalContext.current
-  val currencyFmt = NumberFormat.getNumberInstance(Locale.US)
-
-  AlertDialog(
-    onDismissRequest = onDismiss,
-    title = {
-      Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Default.Receipt, contentDescription = null, tint = MedicalGreen)
-        Spacer(modifier = Modifier.width(6.dp))
-        Text("Treatment Card Slip", fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
-      }
-    },
-    text = {
-      Column(
-        modifier = Modifier
-          .fillMaxWidth()
-          .background(Color(0xFFFAFAFA), shape = RoundedCornerShape(6.dp))
-          .padding(8.dp)
-      ) {
-        Text("SHWE KHIT GENERAL CLINIC", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SlateDark)
-        Text("DAY-CARE TREATMENT CARD", fontSize = 9.sp, color = MedicalGreenDark)
-        Text("-----------------------------------------", fontSize = 9.sp, color = SlateMuted)
-        Text("Patient: ${card.patientName} (${card.patientHn})", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text("Doctor : ${card.doctorName}", fontSize = 9.5.sp, color = SlateMedium)
-        Text("Rx     : ${card.medicationName} (${card.dosage})", fontSize = 9.5.sp, color = SlateDark, fontWeight = FontWeight.Bold)
-        Text("Route  : ${card.route.label} • ${card.frequency}", fontSize = 9.sp, color = SlateMedium)
-        Text("-----------------------------------------", fontSize = 9.sp, color = SlateMuted)
-        card.sessions.forEach { s ->
-          val statusText = if (s.status == TreatmentStatus.COMPLETED) "[✓] ${s.administeredAt ?: "Done"} (${s.administeredBy})" else "[ ] ${s.scheduledDate} ${s.scheduledTime}"
-          Text("Dose ${s.sessionNumber}: $statusText", fontSize = 9.sp, color = if (s.status == TreatmentStatus.COMPLETED) StatusSuccess else SlateDark)
-        }
-        Text("-----------------------------------------", fontSize = 9.sp, color = SlateMuted)
-        Text("* ဆေးထိုးရန်လာတိုင်း ဤကတ်ပြား ယူဆောင်လာပါ *", fontSize = 8.5.sp, color = SlateMuted)
-      }
-    },
-    confirmButton = {
-      Button(
-        onClick = {
-          com.example.service.printing.triggerSystemPrintTreatmentSlip(
-            context = context,
-            card = card,
-            clinicSettings = clinicSettings,
-            is80mm = clinicSettings.thermalPaperWidthMm == 80
-          )
-          onDismiss()
-        },
-        colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen)
-      ) {
-        Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(14.dp))
-        Spacer(modifier = Modifier.width(4.dp))
-        Text("Print Slip", fontSize = 11.sp)
-      }
-    },
-    dismissButton = {
-      OutlinedButton(onClick = onDismiss) {
-        Text("ပိတ်မည်", fontSize = 11.sp)
-      }
-    }
+  PosThermalTreatmentSlipDialog(
+    card = card,
+    clinicSettings = clinicSettings,
+    onDismiss = onDismiss
   )
 }

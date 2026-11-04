@@ -33,6 +33,9 @@ import com.example.model.Patient
 import com.example.service.printing.BluetoothThermalPrinterManager
 import com.example.service.printing.ThermalPrintService
 import com.example.service.printing.triggerSystemPrintThermalSlip
+import com.example.service.printing.triggerSystemPrintTreatmentSlip
+import com.example.ui.screens.treatment.TreatmentCard
+import com.example.ui.screens.treatment.TreatmentStatus
 import com.example.ui.theme.*
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
@@ -671,6 +674,438 @@ fun PosThermalSlipDialog(
  * Generates A4 Medical Record + Prescription PDF Preview.
  * MANDATORY RULE: Used ONLY for Patient Clinical Notes & Prescriptions when requested.
  */
+/**
+ * PosThermalTreatmentSlipDialog
+ * Day-Care Treatment Card Thermal Slip Dialog.
+ * Direct Bluetooth ESC/POS + Android Native System Print Spooler.
+ */
+@Composable
+fun PosThermalTreatmentSlipDialog(
+  card: TreatmentCard,
+  clinicSettings: ClinicSettings = ClinicSettings(),
+  onDismiss: () -> Unit,
+  onPrintSuccess: () -> Unit = {}
+) {
+  val context = LocalContext.current
+  val coroutineScope = rememberCoroutineScope()
+
+  var is80mm by remember { mutableStateOf(clinicSettings.thermalPaperWidthMm == 80) }
+  var showSettingsPanel by remember { mutableStateOf(false) }
+  var printMethod by remember { mutableStateOf(0) } // 0: System Print Spooler, 1: Bluetooth Direct POS
+  var isPrinting by remember { mutableStateOf(false) }
+  var printStatusMessage by remember { mutableStateOf<String?>(null) }
+  var isErrorStatus by remember { mutableStateOf(false) }
+
+  val printerSettingsStore = remember { com.example.service.printing.PrinterSettingsStore(context) }
+  val savedMac = remember { printerSettingsStore.getPrinterMacAddress() ?: "" }
+  val pairedPrinters = remember { BluetoothThermalPrinterManager.getPairedPrinters(context) }
+  var selectedPrinterAddress by remember {
+    mutableStateOf(
+      if (savedMac.isNotBlank()) savedMac
+      else if (clinicSettings.bluetoothPrinterMac.isNotBlank()) clinicSettings.bluetoothPrinterMac
+      else pairedPrinters.firstOrNull()?.address ?: ""
+    )
+  }
+
+  val escPosBytes = remember(card, is80mm, clinicSettings) {
+    ThermalPrintService.generateEscPosTreatmentCardBytes(
+      context = context,
+      card = card,
+      is80mm = is80mm,
+      settings = clinicSettings
+    )
+  }
+
+  val handleSystemPrint: () -> Unit = {
+    triggerSystemPrintTreatmentSlip(
+      context = context,
+      card = card,
+      clinicSettings = clinicSettings,
+      is80mm = is80mm
+    )
+    printStatusMessage = "Android စနစ် Print Settings ဖွင့်လှစ်ပြီးပါပြီ"
+    isErrorStatus = false
+    onPrintSuccess()
+  }
+
+  val handleDirectBluetoothPrint: () -> Unit = {
+    if (selectedPrinterAddress.isBlank()) {
+      if (pairedPrinters.isEmpty()) {
+        printStatusMessage = "ဘလူးတု ပရင်တာ ချိတ်ဆက်ထားခြင်း မရှိသေးပါ။ Android Settings > Bluetooth တွင် POS Printer နှင့် Pair အရင်လုပ်ပေးပါ။"
+        isErrorStatus = true
+      } else {
+        printStatusMessage = "ကျေးဇူးပြု၍ ပရင်တာ ရွေးချယ်ပါ"
+        isErrorStatus = true
+      }
+    } else {
+      isPrinting = true
+      printStatusMessage = "ပရင်တာသို့ ဒေတာ ပေးပို့နေပါသည်..."
+      isErrorStatus = false
+
+      coroutineScope.launch {
+        val result = BluetoothThermalPrinterManager.printBytes(
+          context = context,
+          deviceAddress = selectedPrinterAddress,
+          bytes = escPosBytes
+        )
+        isPrinting = false
+        if (result.isSuccess) {
+          printStatusMessage = "ကုသမှုကတ် ထုတ်ယူပြီးပါပြီ (Print Successful)"
+          isErrorStatus = false
+          Toast.makeText(context, "Treatment Card Printed!", Toast.LENGTH_SHORT).show()
+          onPrintSuccess()
+        } else {
+          val errorMsg = result.exceptionOrNull()?.message ?: "Unknown Bluetooth Error"
+          printStatusMessage = "ပရင်တာ ချိတ်ဆက်မှု မအောင်မြင်ပါ: $errorMsg"
+          isErrorStatus = true
+          Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
+        }
+      }
+    }
+  }
+
+  Dialog(
+    onDismissRequest = onDismiss,
+    properties = DialogProperties(usePlatformDefaultWidth = false)
+  ) {
+    Surface(
+      modifier = Modifier
+        .fillMaxWidth(0.95f)
+        .fillMaxHeight(0.94f)
+        .padding(vertical = 8.dp),
+      shape = RoundedCornerShape(12.dp),
+      color = BgLightGray,
+      tonalElevation = 6.dp
+    ) {
+      Column(
+        modifier = Modifier.fillMaxSize()
+      ) {
+        // Dialog Top Bar
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .background(PureWhite)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Receipt, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+              Text("DAY-CARE TREATMENT CARD SLIP", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = DarkGrayText)
+              Text("Thermal Slip • ${card.patientName} (${card.patientHn})", fontSize = 10.sp, color = SlateMedium)
+            }
+          }
+          IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
+            Icon(Icons.Default.Close, contentDescription = "Close", tint = SlateMedium, modifier = Modifier.size(18.dp))
+          }
+        }
+
+        HorizontalDivider(thickness = 1.dp, color = BorderGray)
+
+        // Configuration Toolbar (58mm / 80mm & Settings Toggle)
+        Surface(color = PureWhite, modifier = Modifier.fillMaxWidth()) {
+          Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FilterChip(
+                  selected = !is80mm,
+                  onClick = { is80mm = false },
+                  label = { Text("58mm Standard", fontSize = 10.sp) },
+                  colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = SoftGreenContainer,
+                    selectedLabelColor = MedicalGreenDark
+                  ),
+                  modifier = Modifier.height(28.dp)
+                )
+                FilterChip(
+                  selected = is80mm,
+                  onClick = { is80mm = true },
+                  label = { Text("80mm Wide", fontSize = 10.sp) },
+                  colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = SoftGreenContainer,
+                    selectedLabelColor = MedicalGreenDark
+                  ),
+                  modifier = Modifier.height(28.dp)
+                )
+              }
+
+              OutlinedButton(
+                onClick = { showSettingsPanel = !showSettingsPanel },
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                modifier = Modifier.height(28.dp),
+                shape = RoundedCornerShape(4.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, if (showSettingsPanel) MedicalGreen else BorderGray)
+              ) {
+                Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(13.dp), tint = if (showSettingsPanel) MedicalGreen else SlateMedium)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(if (showSettingsPanel) "ဆက်တင် ပိတ်ရန်" else "စက္ကူနှင့် နည်းလမ်း", fontSize = 10.sp, color = if (showSettingsPanel) MedicalGreen else SlateMedium)
+              }
+            }
+
+            if (showSettingsPanel) {
+              Spacer(modifier = Modifier.height(6.dp))
+              Surface(
+                color = BackgroundSurface,
+                shape = RoundedCornerShape(6.dp),
+                modifier = Modifier.fillMaxWidth()
+              ) {
+                Column(modifier = Modifier.padding(8.dp)) {
+                  Text("ပရင်တာ ဆက်တင်များနှင့် ထုတ်ယူမည့်နည်းလမ်း:", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+                  Spacer(modifier = Modifier.height(4.dp))
+                  Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                      selected = printMethod == 0,
+                      onClick = { printMethod = 0 },
+                      label = { Text("Android System Spooler (Wi-Fi, PDF)", fontSize = 9.5.sp) },
+                      colors = FilterChipDefaults.filterChipColors(selectedContainerColor = SoftGreenContainer, selectedLabelColor = MedicalGreenDark)
+                    )
+                    FilterChip(
+                      selected = printMethod == 1,
+                      onClick = { printMethod = 1 },
+                      label = { Text("Direct Bluetooth POS Printer", fontSize = 9.5.sp) },
+                      colors = FilterChipDefaults.filterChipColors(selectedContainerColor = SoftGreenContainer, selectedLabelColor = MedicalGreenDark)
+                    )
+                  }
+
+                  if (printMethod == 1 && pairedPrinters.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text("ရွေးချယ်ထားသော ဘလူးတု ပရင်တာ:", fontSize = 9.5.sp, color = SlateMedium)
+                    Row(
+                      modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                      horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                      pairedPrinters.forEach { p ->
+                        val isSelected = selectedPrinterAddress == p.address
+                        Surface(
+                          shape = RoundedCornerShape(4.dp),
+                          color = if (isSelected) SoftGreenContainer else PureWhite,
+                          border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) MedicalGreen else BorderGray),
+                          modifier = Modifier.clickable {
+                            selectedPrinterAddress = p.address
+                            printerSettingsStore.savePrinterDevice(p.address, p.name)
+                          }
+                        ) {
+                          Row(modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Bluetooth, contentDescription = null, tint = if (isSelected) MedicalGreen else SlateMedium, modifier = Modifier.size(11.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(p.name.ifBlank { p.address }, fontSize = 9.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, color = if (isSelected) MedicalGreenDark else DarkGrayText)
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        if (printStatusMessage != null) {
+          Surface(
+            color = if (isErrorStatus) SoftRedContainer else SoftGreenContainer,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+            shape = RoundedCornerShape(4.dp)
+          ) {
+            Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+              Icon(
+                if (isErrorStatus) Icons.Default.Warning else Icons.Default.CheckCircle,
+                contentDescription = null,
+                tint = if (isErrorStatus) StatusCritical else MedicalGreenDark,
+                modifier = Modifier.size(14.dp)
+              )
+              Spacer(modifier = Modifier.width(6.dp))
+              Text(printStatusMessage!!, fontSize = 10.sp, color = if (isErrorStatus) StatusCritical else MedicalGreenDark)
+            }
+          }
+        }
+
+        // Center Viewport: Realistic Thermal Slip Preview
+        Box(
+          modifier = Modifier
+            .weight(1f)
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(vertical = 12.dp),
+          contentAlignment = Alignment.TopCenter
+        ) {
+          Surface(
+            modifier = Modifier
+              .widthIn(max = if (is80mm) 350.dp else 295.dp)
+              .fillMaxWidth(if (is80mm) 0.95f else 0.88f)
+              .shadow(elevation = 6.dp, shape = RoundedCornerShape(3.dp)),
+            shape = RoundedCornerShape(3.dp),
+            color = PureWhite,
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1))
+          ) {
+            Column(
+              modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 16.dp),
+              horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+              ShweKhitLogo(size = 34.dp, customLogoUri = clinicSettings.effectiveLogo.ifBlank { null })
+              Spacer(modifier = Modifier.height(4.dp))
+              Text(
+                clinicSettings.clinicNameMm,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                color = DarkGrayText,
+                textAlign = TextAlign.Center
+              )
+              if (clinicSettings.clinicSubtitleMm.isNotBlank()) {
+                Text(clinicSettings.clinicSubtitleMm, fontSize = 10.5.sp, color = SlateMedium, textAlign = TextAlign.Center)
+              }
+              Text(
+                "${clinicSettings.doctorName} ${clinicSettings.doctorDegree}\nTel: ${clinicSettings.clinicPhone}",
+                fontSize = 9.5.sp,
+                color = SlateMedium,
+                textAlign = TextAlign.Center,
+                lineHeight = 13.sp
+              )
+
+              HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), thickness = 1.dp, color = Color(0xFF94A3B8))
+
+              Surface(
+                color = SoftGreenContainer,
+                shape = RoundedCornerShape(4.dp),
+                modifier = Modifier.fillMaxWidth()
+              ) {
+                Text(
+                  "DAY-CARE TREATMENT CARD",
+                  fontWeight = FontWeight.Bold,
+                  fontSize = 10.5.sp,
+                  color = MedicalGreenDark,
+                  modifier = Modifier.padding(vertical = 4.dp),
+                  textAlign = TextAlign.Center
+                )
+              }
+
+              Spacer(modifier = Modifier.height(6.dp))
+
+              // Card details
+              Column(modifier = Modifier.fillMaxWidth()) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                  Text("Patient: ${card.patientName}", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
+                  Text(card.patientHn, fontSize = 9.5.sp, color = SlateMedium)
+                }
+                Spacer(modifier = Modifier.height(2.dp))
+                Text("Doctor : ${card.doctorName}", fontSize = 9.5.sp, color = SlateMedium)
+                Text("Rx     : ${card.medicationName} (${card.dosage})", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
+                Text("Route  : ${card.route.label} • ${card.frequency}", fontSize = 9.sp, color = SlateMedium)
+                if (card.instructions.isNotBlank()) {
+                  Text("Notes  : ${card.instructions}", fontSize = 9.sp, color = SlateMedium)
+                }
+              }
+
+              if (card.cocktailItems.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                HorizontalDivider(thickness = 0.8.dp, color = Color(0xFFE2E8F0))
+                Spacer(modifier = Modifier.height(3.dp))
+                Text("Admixtures / Cocktails:", fontWeight = FontWeight.Bold, fontSize = 9.sp, color = DarkGrayText, modifier = Modifier.fillMaxWidth())
+                card.cocktailItems.forEach { item ->
+                  Text("• ${item.name} (${item.dosage}) x ${item.quantity}", fontSize = 8.5.sp, color = SlateMedium, modifier = Modifier.fillMaxWidth().padding(start = 4.dp))
+                }
+              }
+
+              HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), thickness = 1.dp, color = Color(0xFF94A3B8))
+
+              // Sessions list
+              Row(modifier = Modifier.fillMaxWidth()) {
+                Text("DOSE", fontWeight = FontWeight.Bold, fontSize = 9.sp, color = DarkGrayText, modifier = Modifier.width(55.dp))
+                Text("DATE / STATUS", fontWeight = FontWeight.Bold, fontSize = 9.sp, color = DarkGrayText)
+              }
+              HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), thickness = 0.6.dp, color = Color(0xFFE2E8F0))
+
+              card.sessions.forEach { s ->
+                val isDone = s.status == TreatmentStatus.COMPLETED
+                Row(
+                  modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Text("Dose ${s.sessionNumber}", fontWeight = FontWeight.Medium, fontSize = 9.sp, color = DarkGrayText, modifier = Modifier.width(55.dp))
+                  val statusText = if (isDone) "[✓] " + (s.administeredAt ?: "Done") + " (" + s.administeredBy + ")" else "[ ] " + s.scheduledDate + " " + s.scheduledTime
+                  Text(statusText, fontSize = 8.5.sp, color = if (isDone) StatusSuccess else DarkGrayText)
+                }
+              }
+
+              HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 1.dp, color = Color(0xFF94A3B8))
+
+              Text(
+                "* ဆေးထိုး/ဆေးသွင်းရန်လာတိုင်း ဤကတ်ပြား ယူဆောင်လာပါ *",
+                fontSize = 8.5.sp,
+                fontWeight = FontWeight.Bold,
+                color = SlateMedium,
+                textAlign = TextAlign.Center
+              )
+              Spacer(modifier = Modifier.height(2.dp))
+              Text("လူနာများ အမြန်ဆုံး သက်သာပျောက်ကင်းပါစေ", fontSize = 8.5.sp, color = SlateMedium, textAlign = TextAlign.Center)
+              Text("* Day Care Slip • Shwe Khit Clinic *", fontSize = 7.5.sp, color = SlateMuted, textAlign = TextAlign.Center)
+            }
+          }
+        }
+
+        // Bottom Action Bar
+        Surface(
+          modifier = Modifier.fillMaxWidth(),
+          color = PureWhite,
+          shadowElevation = 6.dp
+        ) {
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(horizontal = 14.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            OutlinedButton(
+              onClick = onDismiss,
+              modifier = Modifier.height(40.dp),
+              shape = RoundedCornerShape(6.dp)
+            ) {
+              Text("ပိတ်မည်", fontSize = 11.sp, color = SlateMedium)
+            }
+
+            Button(
+              onClick = handleSystemPrint,
+              modifier = Modifier.weight(1.3f).height(40.dp),
+              shape = RoundedCornerShape(6.dp),
+              colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen)
+            ) {
+              Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(16.dp))
+              Spacer(modifier = Modifier.width(6.dp))
+              Text("Print Settings (စနစ်ဖြင့်)", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            }
+
+            Button(
+              onClick = handleDirectBluetoothPrint,
+              enabled = !isPrinting,
+              modifier = Modifier.weight(1.1f).height(40.dp),
+              shape = RoundedCornerShape(6.dp),
+              colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F172A))
+            ) {
+              if (isPrinting) {
+                CircularProgressIndicator(modifier = Modifier.size(14.dp), color = PureWhite, strokeWidth = 2.dp)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Printing...", fontSize = 10.sp)
+              } else {
+                Icon(Icons.Default.Bluetooth, contentDescription = null, modifier = Modifier.size(15.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Bluetooth POS", fontSize = 10.5.sp, maxLines = 1)
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 @Composable
 fun A4ClinicalDocDialog(
   consultation: ConsultationRecord,

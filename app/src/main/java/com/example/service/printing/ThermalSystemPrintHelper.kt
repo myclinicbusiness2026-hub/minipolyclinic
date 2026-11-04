@@ -75,7 +75,7 @@ class ThermalReceiptPrintAdapter(
       val pageWidth = if (is80mm) 226 else 164
       // Dynamic height calculation based on item count
       val extraFeeCount = (if (invoice.consultationFee > 0.0) 1 else 0) + (if (invoice.serviceFee > 0.0) 1 else 0)
-      val estimatedHeight = 360 + ((invoice.items.size + extraFeeCount) * 22) + 120
+      val estimatedHeight = 360 + ((invoice.items.size + extraFeeCount) * 22) + 150
       val pageHeight = estimatedHeight.coerceAtLeast(420)
 
       val pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, 1).create()
@@ -318,7 +318,7 @@ fun triggerSystemPrintThermalSlip(
   patientHn: String,
   cashierName: String,
   clinicSettings: ClinicSettings,
-  is80mm: Boolean = false
+  is80mm: Boolean = true
 ) {
   try {
     val printManager = context.getSystemService(Context.PRINT_SERVICE) as? PrintManager
@@ -389,8 +389,8 @@ class TreatmentCardPrintAdapter(
       pdfDoc = PdfDocument()
 
       val pageWidth = if (is80mm) 226 else 164
-      val estimatedHeight = 280 + (card.sessions.size * 22) + 80
-      val pageHeight = estimatedHeight.coerceAtLeast(360)
+      val estimatedHeight = 300 + (card.sessions.size * 22) + 130
+      val pageHeight = estimatedHeight.coerceAtLeast(390)
 
       val pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, 1).create()
       val page = pdfDoc.startPage(pageInfo)

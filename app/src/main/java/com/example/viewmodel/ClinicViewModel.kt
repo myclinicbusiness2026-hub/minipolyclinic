@@ -3127,6 +3127,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       procedures = _procedures.value,
       suppliers = _suppliers.value,
       vaccines = _vaccines.value,
+      clinicSettings = clinicSettings.value,
       deletedPatientIds = ClinicDataPersistence.loadDeletedPatientIds(ctx).toList(),
       deletedConsultationIds = ClinicDataPersistence.loadDeletedConsultationIds(ctx).toList(),
       deletedMedicineIds = ClinicDataPersistence.loadDeletedMedicineIds(ctx).toList(),
@@ -3335,6 +3336,23 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           val mergedVac = currentVacMap.values.toList()
           _vaccines.value = mergedVac
           ClinicDataPersistence.saveVaccines(ctx, mergedVac)
+        }
+      }
+
+      // 12. Clinic Settings & Branding (Merge & Persist)
+      val remoteSettingsObj = root.optJSONObject("clinicSettings") ?: root.optJSONObject("settings")
+      if (remoteSettingsObj != null) {
+        val curSettings = clinicSettings.value
+        val mergedSettings = ClinicDataPersistence.settingsFromJson(remoteSettingsObj, fallback = curSettings)
+        val finalSettings = mergedSettings.copy(
+          activeStationName = curSettings.activeStationName.ifBlank { mergedSettings.activeStationName },
+          bluetoothPrinterMac = curSettings.bluetoothPrinterMac.ifBlank { mergedSettings.bluetoothPrinterMac },
+          preferredThermalPrinterAddress = curSettings.preferredThermalPrinterAddress.ifBlank { mergedSettings.preferredThermalPrinterAddress },
+          wifiHubHostIp = curSettings.wifiHubHostIp.ifBlank { mergedSettings.wifiHubHostIp }
+        )
+        ClinicDataPersistence.saveClinicSettings(ctx, finalSettings)
+        withContext(Dispatchers.Main) {
+          clinicSettings.value = finalSettings
         }
       }
 

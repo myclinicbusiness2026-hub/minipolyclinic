@@ -499,19 +499,9 @@ data class SyncDataPayload(
     root.put("vaccines", vacArr)
 
     if (clinicSettings != null) {
-      val so = JSONObject().apply {
-        put("clinicNameEn", clinicSettings.clinicNameEn)
-        put("clinicNameMm", clinicSettings.clinicNameMm)
-        put("clinicSubtitleMm", clinicSettings.clinicSubtitleMm)
-        put("clinicAddress", clinicSettings.clinicAddress)
-        put("clinicPhone", clinicSettings.clinicPhone)
-        put("doctorName", clinicSettings.doctorName)
-        put("doctorDegree", clinicSettings.doctorDegree)
-        put("doctorSama", clinicSettings.doctorSama)
-        put("clinicLogoUri", clinicSettings.clinicLogoUri)
-        put("clinicLogoBase64", clinicSettings.clinicLogoBase64)
-      }
+      val so = com.example.data.ClinicDataPersistence.settingsToJson(clinicSettings)
       root.put("clinicSettings", so)
+      root.put("settings", so)
     }
 
     return root.toString()
