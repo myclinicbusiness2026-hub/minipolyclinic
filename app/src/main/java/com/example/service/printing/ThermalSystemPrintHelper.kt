@@ -451,7 +451,7 @@ class TreatmentCardPrintAdapter(
     canvas.drawText("Rx: ${card.medicationName} (${card.dosage})", margin, y, paint)
     y += 11f
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-    canvas.drawText("Route: ${card.route.label} • ${card.frequency}", margin, y, paint)
+    canvas.drawText("Route: ${card.routeDisplay} • ${card.frequency}", margin, y, paint)
     y += 11f
 
     canvas.drawLine(margin, y, width - margin, y, paint)

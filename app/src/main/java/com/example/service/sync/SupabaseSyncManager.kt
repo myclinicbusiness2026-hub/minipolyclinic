@@ -403,7 +403,19 @@ END $$;
         for (i in 0 until localTcArr.length()) {
           val o = localTcArr.getJSONObject(i)
           val tcid = o.optString("id")
-          if (tcid.isNotBlank()) tcMap[tcid] = o
+          if (tcid.isNotBlank()) {
+            val ex = tcMap[tcid]
+            if (ex == null) {
+              tcMap[tcid] = o
+            } else {
+              val localDisc = o.optString("cardStatus") == "DISCONTINUED" || o.optString("discontinuedAt").isNotBlank()
+              val remoteDisc = ex.optString("cardStatus") == "DISCONTINUED" || ex.optString("discontinuedAt").isNotBlank()
+              val winner = if (localDisc && !remoteDisc) o
+              else if (remoteDisc && !localDisc) ex
+              else o
+              tcMap[tcid] = winner
+            }
+          }
         }
       }
       tcMap.values.forEach { mergedTcArr.put(it) }

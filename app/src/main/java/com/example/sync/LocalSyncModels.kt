@@ -349,6 +349,7 @@ data class SyncDataPayload(
         put("medicationName", card.medicationName)
         put("dosage", card.dosage)
         put("route", card.route.name)
+        put("customRoute", card.customRoute)
         put("frequency", card.frequency)
         put("totalDays", card.totalDays)
         put("totalSessions", card.totalSessions)

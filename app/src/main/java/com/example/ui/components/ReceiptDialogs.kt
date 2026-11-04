@@ -997,7 +997,7 @@ fun PosThermalTreatmentSlipDialog(
                 Spacer(modifier = Modifier.height(2.dp))
                 Text("Doctor : ${card.doctorName}", fontSize = 9.5.sp, color = SlateMedium)
                 Text("Rx     : ${card.medicationName} (${card.dosage})", fontWeight = FontWeight.Bold, fontSize = 10.sp, color = DarkGrayText)
-                Text("Route  : ${card.route.label} • ${card.frequency}", fontSize = 9.sp, color = SlateMedium)
+                Text("Route  : ${card.routeDisplay} • ${card.frequency}", fontSize = 9.sp, color = SlateMedium)
                 if (card.instructions.isNotBlank()) {
                   Text("Notes  : ${card.instructions}", fontSize = 9.sp, color = SlateMedium)
                 }

@@ -511,7 +511,7 @@ fun TreatmentScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
                           Text(
-                            card.medicationName + " (" + card.dosage + ") • " + card.route.label,
+                            card.medicationName + " (" + card.dosage + ") • " + card.routeDisplay,
                             fontSize = 11.5.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF1B5E20)
@@ -664,7 +664,7 @@ fun TreatmentScreen(
                               color = MedicalGreenDark
                             )
                             Text(
-                              "Route: " + card.route.label + " • " + card.frequency + " (" + card.totalDays + " ရက်)",
+                              "Route: " + card.routeDisplay + " • " + card.frequency + " (" + card.totalDays + " ရက်)",
                               fontSize = 9.5.sp,
                               color = SlateMedium
                             )
@@ -1418,17 +1418,18 @@ fun CreateTreatmentCardModal(
   var isCocktail by remember { mutableStateOf(false) }
   var isPatientSupplied by remember { mutableStateOf(false) }
 
-  var medicationName by remember { mutableStateOf("Inj. Ceftriaxone 1g") }
+  var medicationName by remember { mutableStateOf("") }
   var cocktailTitle by remember { mutableStateOf("") }
   val cocktailItems = remember { mutableStateListOf<CocktailDrugItem>() }
 
-  var dosage by remember { mutableStateOf("1 g") }
+  var dosage by remember { mutableStateOf("") }
   var selectedRoute by remember { mutableStateOf(TreatmentRoute.IV_PUSH) }
+  var customRouteText by remember { mutableStateOf("") }
   var frequency by remember { mutableStateOf("12 hrly") }
   var totalDaysText by remember { mutableStateOf("3") }
-  var medFeeText by remember { mutableStateOf("4500") }
+  var medFeeText by remember { mutableStateOf("0") }
   var sessionFeeText by remember(selectedRoute) { mutableStateOf(selectedRoute.getDefaultFee(clinicSettings).toInt().toString()) }
-  var instructions by remember { mutableStateOf("Slow IV push over 3-5 mins.") }
+  var instructions by remember { mutableStateOf("") }
   var storeSearchQuery by remember { mutableStateOf("") }
   var splitVialMode by remember { mutableStateOf(false) }
   var isPayPerVisit by remember { mutableStateOf(true) }
@@ -1927,6 +1928,18 @@ fun CreateTreatmentCardModal(
             }
           }
 
+          if (selectedRoute == TreatmentRoute.CUSTOM) {
+            Spacer(modifier = Modifier.height(4.dp))
+            OutlinedTextField(
+              value = customRouteText,
+              onValueChange = { customRouteText = it },
+              label = { Text("စိတ်ကြိုက် နည်းလမ်းအမည် (Custom Route)", fontSize = 11.sp) },
+              placeholder = { Text("e.g. Intradermal (ID), Joint Injection, Eye Drop, Enema...") },
+              singleLine = true,
+              modifier = Modifier.fillMaxWidth()
+            )
+          }
+
           // 4. Frequency & Duration
           Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
@@ -2140,6 +2153,7 @@ fun CreateTreatmentCardModal(
               medicationName = finalMedName,
               dosage = finalDosage,
               route = selectedRoute,
+              customRoute = if (selectedRoute == TreatmentRoute.CUSTOM) customRouteText.trim() else "",
               frequency = frequency.ifBlank { "12 hrly" },
               totalDays = days,
               totalSessions = sessions.size,

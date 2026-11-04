@@ -626,39 +626,74 @@ fun ClinicLedgerScreen(
 
     Spacer(modifier = Modifier.height(4.dp))
 
-    // Doctor & Service vs Pharmacy Revenue Breakdown Strip
+    // Doctor & Service vs Pharmacy Revenue Breakdown Strip (Option A: 3-Column Balanced Layout)
     Surface(
       modifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 12.dp, vertical = 0.dp),
-      shape = RoundedCornerShape(6.dp),
+        .padding(horizontal = 12.dp, vertical = 2.dp),
+      shape = RoundedCornerShape(8.dp),
       color = PureWhite,
       border = BorderStroke(0.8.dp, MedicalGreen.copy(alpha = 0.5f))
     ) {
       Row(
         modifier = Modifier
           .fillMaxWidth()
-          .padding(horizontal = 10.dp, vertical = 6.dp),
+          .padding(horizontal = 6.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
       ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-          Icon(Icons.Default.MedicalServices, contentDescription = null, tint = MedicalGreenDark, modifier = Modifier.size(13.dp))
-          Spacer(modifier = Modifier.width(4.dp))
-          Text("ဆရာကြည့်ခ+ဝန်ဆောင်ခ: ", fontSize = 10.sp, color = DarkGrayText)
-          Text("${currencyFmt.format(doctorAndServiceIncome.toInt())} Ks", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+        // Col 1: Doctor & Service Fee
+        Column(
+          modifier = Modifier.weight(1f),
+          horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.MedicalServices, contentDescription = null, tint = MedicalGreenDark, modifier = Modifier.size(11.dp))
+            Spacer(modifier = Modifier.width(3.dp))
+            Text("ဆရာကြည့်ခ+ဝန်ဆောင်ခ", fontSize = 9.sp, color = DarkGrayText, maxLines = 1)
+          }
+          Spacer(modifier = Modifier.height(2.dp))
+          Text("${currencyFmt.format(doctorAndServiceIncome.toInt())} Ks", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-          Icon(Icons.Default.Medication, contentDescription = null, tint = Color(0xFF1565C0), modifier = Modifier.size(13.dp))
-          Spacer(modifier = Modifier.width(4.dp))
-          Text("ဆေးအသုံးရငွေ: ", fontSize = 10.sp, color = DarkGrayText)
-          Text("${currencyFmt.format(pharmacyIncome.toInt())} Ks", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
+
+        VerticalDivider(
+          modifier = Modifier.height(22.dp),
+          color = BorderGrey,
+          thickness = 0.8.dp
+        )
+
+        // Col 2: Pharmacy Income
+        Column(
+          modifier = Modifier.weight(1f),
+          horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Medication, contentDescription = null, tint = Color(0xFF1565C0), modifier = Modifier.size(11.dp))
+            Spacer(modifier = Modifier.width(3.dp))
+            Text("ဆေးအသုံးရငွေ", fontSize = 9.sp, color = DarkGrayText, maxLines = 1)
+          }
+          Spacer(modifier = Modifier.height(2.dp))
+          Text("${currencyFmt.format(pharmacyIncome.toInt())} Ks", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-          Icon(Icons.Default.MonetizationOn, contentDescription = null, tint = OceanGreenPrimary, modifier = Modifier.size(13.dp))
-          Spacer(modifier = Modifier.width(4.dp))
-          Text("စုစုပေါင်း: ", fontSize = 10.sp, color = DarkGrayText)
-          Text("${currencyFmt.format(totalIncome.toInt())} Ks", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = OceanGreenPrimary)
+
+        VerticalDivider(
+          modifier = Modifier.height(22.dp),
+          color = BorderGrey,
+          thickness = 0.8.dp
+        )
+
+        // Col 3: Total Income
+        Column(
+          modifier = Modifier.weight(1f),
+          horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.MonetizationOn, contentDescription = null, tint = OceanGreenPrimary, modifier = Modifier.size(11.dp))
+            Spacer(modifier = Modifier.width(3.dp))
+            Text("စုစုပေါင်းရငွေ", fontSize = 9.sp, color = DarkGrayText, maxLines = 1)
+          }
+          Spacer(modifier = Modifier.height(2.dp))
+          Text("${currencyFmt.format(totalIncome.toInt())} Ks", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OceanGreenPrimary)
         }
       }
     }

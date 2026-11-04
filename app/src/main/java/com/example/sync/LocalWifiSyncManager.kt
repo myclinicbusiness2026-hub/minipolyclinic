@@ -7,6 +7,9 @@ import android.os.Build
 import android.util.Log
 import com.example.data.ClinicDataPersistence
 import com.example.model.*
+import com.example.ui.screens.treatment.TreatmentCard
+import com.example.ui.screens.treatment.TreatmentSession
+import com.example.ui.screens.treatment.TreatmentStatus
 import com.example.util.BurmeseDateUtils
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -485,8 +488,7 @@ class LocalWifiSyncManager(
           if (ex == null) {
             tcMap[rtc.id] = rtc
           } else {
-            val winner = if (rtc.completedSessionsCount >= ex.completedSessionsCount) rtc else ex
-            tcMap[rtc.id] = winner
+            tcMap[rtc.id] = mergeTreatmentCards(ex, rtc)
           }
         }
       }
@@ -608,6 +610,44 @@ class LocalWifiSyncManager(
       Log.e(TAG, "Merge error: ${e.message}")
       Pair(false, "Merge error: ${e.message}")
     }
+  }
+
+  private fun mergeTreatmentCards(local: TreatmentCard, remote: TreatmentCard): TreatmentCard {
+    val isDiscontinued = local.cardStatus == TreatmentStatus.DISCONTINUED ||
+                         remote.cardStatus == TreatmentStatus.DISCONTINUED ||
+                         local.discontinuedAt.isNotBlank() ||
+                         remote.discontinuedAt.isNotBlank()
+
+    val baseCard = if (remote.completedSessionsCount > local.completedSessionsCount) remote else local
+
+    val localSessions = local.sessions.associateBy { it.doseNumber }
+    val remoteSessions = remote.sessions.associateBy { it.doseNumber }
+    val allDoseNumbers = (localSessions.keys + remoteSessions.keys).sorted()
+
+    val mergedSessions = allDoseNumbers.map { doseNo ->
+      val s1 = localSessions[doseNo]
+      val s2 = remoteSessions[doseNo]
+      when {
+        s1?.status == TreatmentStatus.COMPLETED -> s1
+        s2?.status == TreatmentStatus.COMPLETED -> s2
+        isDiscontinued -> (s1 ?: s2)?.copy(status = TreatmentStatus.DISCONTINUED) ?: TreatmentSession(doseNumber = doseNo, status = TreatmentStatus.DISCONTINUED)
+        s1 != null && s1.status != TreatmentStatus.PENDING -> s1
+        s2 != null && s2.status != TreatmentStatus.PENDING -> s2
+        else -> s1 ?: s2 ?: TreatmentSession(doseNumber = doseNo)
+      }
+    }
+
+    val discontinueReason = local.discontinueReason.ifBlank { remote.discontinueReason }
+    val discontinuedBy = local.discontinuedBy.ifBlank { remote.discontinuedBy }
+    val discontinuedAt = local.discontinuedAt.ifBlank { remote.discontinuedAt }
+
+    return baseCard.copy(
+      cardStatus = if (isDiscontinued) TreatmentStatus.DISCONTINUED else baseCard.cardStatus,
+      discontinueReason = discontinueReason,
+      discontinuedBy = discontinuedBy,
+      discontinuedAt = discontinuedAt,
+      sessions = mergedSessions
+    )
   }
 
   private fun addLog(action: String, details: String, status: String) {

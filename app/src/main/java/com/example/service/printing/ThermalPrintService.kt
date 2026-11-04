@@ -749,7 +749,7 @@ object ThermalPrintService {
 
     drawRow("Patient:", "${card.patientName} (${card.patientHn})", isBold = true)
     drawRow("Rx Med:", "${card.medicationName} (${card.dosage})", isBold = true)
-    drawRow("Route:", "${card.route.label} • ${card.frequency}")
+    drawRow("Route:", "${card.routeDisplay} • ${card.frequency}")
     if (card.instructions.isNotBlank()) {
       drawRow("Directions:", card.instructions)
     }

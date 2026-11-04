@@ -16,7 +16,8 @@ enum class TreatmentRoute(val label: String, val burmeseLabel: String) {
   IV_INFUSION("IV Infusion / Drip", "အကြောပုလင်း သွင်းဆေး"),
   SC("SC (Subcutaneous)", "အရေပြားအောက်ထိုးဆေး"),
   NEBULIZATION("Nebulization", "အငွေ့ရှူကုသခြင်း"),
-  DRESSING("Wound Dressing", "ဒဏ်ရာဆေးထည့်ခြင်း");
+  DRESSING("Wound Dressing", "ဒဏ်ရာဆေးထည့်ခြင်း"),
+  CUSTOM("Custom Route", "အခြား စိတ်ကြိုက်");
 
   fun getDefaultFee(settings: ClinicSettings): Double = when (this) {
     IM -> settings.defaultImInjectionFee
@@ -25,6 +26,7 @@ enum class TreatmentRoute(val label: String, val burmeseLabel: String) {
     NEBULIZATION -> settings.defaultNebulizerFee
     SC -> settings.defaultDepoFee
     DRESSING -> 5000.0
+    CUSTOM -> settings.defaultImInjectionFee
   }
 }
 
@@ -104,6 +106,7 @@ data class TreatmentCard(
   val medicationName: String,
   val dosage: String = "",
   val route: TreatmentRoute = TreatmentRoute.IM,
+  val customRoute: String = "",
   val frequency: String = "12 hrly", // e.g. "12 hrly", "Daily", "Stat"
   val totalDays: Int = 3,
   val totalSessions: Int = 6,
@@ -124,6 +127,8 @@ data class TreatmentCard(
   val discontinuedAt: String = "",
   val notes: String = ""
 ) {
+  val routeDisplay: String get() = if (route == TreatmentRoute.CUSTOM && customRoute.isNotBlank()) customRoute else route.label
+
   val displayName: String get() {
     val baseName = if (medicationName.isNotBlank()) {
       medicationName.trim()
@@ -142,6 +147,7 @@ data class TreatmentCard(
       TreatmentRoute.SC -> "SC"
       TreatmentRoute.NEBULIZATION -> "Nebulization"
       TreatmentRoute.DRESSING -> "Wound Dressing"
+      TreatmentRoute.CUSTOM -> customRoute.ifBlank { "Custom" }
     }
     val cleanMed = if (isCocktail && cocktailItems.isNotEmpty()) {
       if (medicationName.isNotBlank() && !medicationName.contains("Mix", ignoreCase = true) && !medicationName.contains("Drugs", ignoreCase = true)) {

@@ -1504,9 +1504,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       // 2. Administration Service Fee (isProcedure = true -> Doctor/Service Revenue)
       if (sFee > 0) {
         val svcFeeName = if (isFullCourse) {
-          "${card.route.label} Service Fee x $numDoses Doses"
+          "${card.routeDisplay} Service Fee x $numDoses Doses"
         } else {
-          "${card.route.label} Service Fee"
+          "${card.routeDisplay} Service Fee"
         }
         invoiceItems.add(
           InvoiceItem(
@@ -2563,7 +2563,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
     // 2. Administration Service Fee (isProcedure = true -> Service Revenue)
     if (effectiveSessionFee > 0) {
-      val routeShort = card.route.label.split(" ").first()
+      val routeShort = card.routeDisplay.split(" ").first()
       val patientOwnedBadge = if (card.isPatientSupplied) " (Patient's Own Med)" else ""
       val svcFeeName = "$routeShort Administration Fee$patientOwnedBadge (Dose ${session.sessionNumber}/${card.totalSessions})"
       invoiceItems.add(

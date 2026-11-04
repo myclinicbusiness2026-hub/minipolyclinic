@@ -447,6 +447,7 @@ object ClinicDataPersistence {
       put("medicationName", card.medicationName)
       put("dosage", card.dosage)
       put("route", card.route.name)
+      put("customRoute", card.customRoute)
       put("frequency", card.frequency)
       put("totalDays", card.totalDays)
       put("totalSessions", card.totalSessions)
@@ -601,6 +602,7 @@ object ClinicDataPersistence {
       medicationName = o.optString("medicationName"),
       dosage = o.optString("dosage"),
       route = route,
+      customRoute = o.optString("customRoute", ""),
       frequency = o.optString("frequency", "12 hrly"),
       totalDays = o.optInt("totalDays", 3),
       totalSessions = o.optInt("totalSessions", 6),

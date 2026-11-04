@@ -431,6 +431,7 @@ object SyncPayloadParser {
           medicationName = o.optString("medicationName"),
           dosage = o.optString("dosage"),
           route = route,
+          customRoute = o.optString("customRoute", ""),
           frequency = o.optString("frequency"),
           totalDays = o.optInt("totalDays", 1),
           totalSessions = o.optInt("totalSessions", 1),

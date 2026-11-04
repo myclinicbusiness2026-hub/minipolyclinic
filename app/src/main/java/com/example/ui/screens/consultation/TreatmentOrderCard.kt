@@ -146,7 +146,7 @@ fun TreatmentOrderCard(
                     })
                   ) {
                     Text(
-                      card.route.label.split(" ").first(),
+                      card.routeDisplay.split(" ").first(),
                       fontSize = 9.sp,
                       fontWeight = FontWeight.Bold,
                       color = when (card.route) {
@@ -247,6 +247,7 @@ fun AddTreatmentOrderModal(
 
   var dosage by remember { mutableStateOf("") }
   var selectedRoute by remember { mutableStateOf(TreatmentRoute.IV_PUSH) }
+  var customRouteText by remember { mutableStateOf("") }
   var frequency by remember { mutableStateOf("12 hrly") }
   var totalDaysText by remember { mutableStateOf("3") }
   var medFeeText by remember { mutableStateOf("0") }
@@ -689,6 +690,18 @@ fun AddTreatmentOrderModal(
             }
           }
 
+          if (selectedRoute == TreatmentRoute.CUSTOM) {
+            Spacer(modifier = Modifier.height(4.dp))
+            OutlinedTextField(
+              value = customRouteText,
+              onValueChange = { customRouteText = it },
+              label = { Text("စိတ်ကြိုက် နည်းလမ်းအမည် (Custom Route)", fontSize = 11.sp) },
+              placeholder = { Text("e.g. Intradermal (ID), Joint Injection, Eye Drop, Enema...") },
+              singleLine = true,
+              modifier = Modifier.fillMaxWidth()
+            )
+          }
+
           // 4. Frequency & Duration
           Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
@@ -919,6 +932,7 @@ fun AddTreatmentOrderModal(
                 medicationName = finalMedName,
                 dosage = finalDosage,
                 route = selectedRoute,
+                customRoute = if (selectedRoute == TreatmentRoute.CUSTOM) customRouteText.trim() else "",
                 frequency = frequency.ifBlank { "12 hrly" },
                 totalDays = days,
                 totalSessions = sessions.size,
