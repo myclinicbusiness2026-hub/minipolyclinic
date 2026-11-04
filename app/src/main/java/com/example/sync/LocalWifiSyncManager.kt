@@ -364,7 +364,8 @@ class LocalWifiSyncManager(
       deletedConsultationIds = deletedConsultations,
       deletedInvoiceIds = deletedInvoices,
       deletedMedicineIds = deletedMedicines,
-      deletedUserIds = ClinicDataPersistence.loadDeletedUserIds(context).toList()
+      deletedUserIds = ClinicDataPersistence.loadDeletedUserIds(context).toList(),
+      deletedTreatmentCardIds = ClinicDataPersistence.loadDeletedTreatmentCardIds(context).toList()
     )
     return payload.toJsonString(context)
   }
@@ -398,6 +399,15 @@ class LocalWifiSyncManager(
       val localDeletedUserIds = ClinicDataPersistence.loadDeletedUserIds(context)
       val allDeletedUserIds = (localDeletedUserIds + remoteDeletedUserIds).toMutableSet()
       ClinicDataPersistence.saveDeletedUserIds(context, allDeletedUserIds)
+
+      val remoteDeletedTcIds = mutableListOf<String>()
+      val delTcArr = root.optJSONArray("deletedTreatmentCardIds") ?: root.optJSONArray("deleted_treatment_card_ids")
+      if (delTcArr != null) {
+        for (k in 0 until delTcArr.length()) remoteDeletedTcIds.add(delTcArr.optString(k))
+      }
+      val localDeletedTcIds = ClinicDataPersistence.loadDeletedTreatmentCardIds(context)
+      val allDeletedTcIds = (localDeletedTcIds + remoteDeletedTcIds).toMutableSet()
+      ClinicDataPersistence.saveDeletedTreatmentCardIds(context, allDeletedTcIds)
 
       val remotePatients = SyncPayloadParser.parsePatients(root.optJSONArray("patients"))
       val remoteConsultations = SyncPayloadParser.parseConsultations(root.optJSONArray("consultations"), context)
@@ -464,10 +474,13 @@ class LocalWifiSyncManager(
 
       // Merge Treatment Cards
       val currentTreatmentCards = ClinicDataPersistence.loadTreatmentCards(context) ?: emptyList()
-      val tcMap = currentTreatmentCards.associateBy { it.id }.toMutableMap()
+      val tcMap = currentTreatmentCards
+        .filterNot { allDeletedTcIds.contains(it.id) || allDeletedPatientIds.contains(it.patientId) }
+        .associateBy { it.id }
+        .toMutableMap()
       val remoteTreatmentCards = SyncPayloadParser.parseTreatmentCards(root.optJSONArray("treatmentCards") ?: root.optJSONArray("treatment_cards"))
       remoteTreatmentCards.forEach { rtc ->
-        if (!allDeletedPatientIds.contains(rtc.patientId)) {
+        if (!allDeletedPatientIds.contains(rtc.patientId) && !allDeletedTcIds.contains(rtc.id)) {
           val ex = tcMap[rtc.id]
           if (ex == null) {
             tcMap[rtc.id] = rtc

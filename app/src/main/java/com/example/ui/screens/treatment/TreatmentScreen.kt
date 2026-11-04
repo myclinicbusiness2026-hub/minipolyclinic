@@ -767,24 +767,33 @@ fun TreatmentScreen(
     )
   }
 
-  // 2. Discontinue Card Dialog
+  // 2. Discontinue / Void Card Dialog
   cardToDiscontinue?.let { card ->
     DiscontinueCardModal(
       card = card,
       onDismiss = { cardToDiscontinue = null },
       onConfirm = { reason, returnStock ->
-        val (success, restoredList) = viewModel.voidTreatmentCardAndReturnStock(
-          cardId = card.id,
-          returnStock = returnStock,
-          reason = reason
-        )
-        if (success) {
-          val msg = if (restoredList.isNotEmpty()) {
-            "ကုသမှု ပယ်ဖျက်ပြီး စတော့ခ်ထဲ ပြန်သွင်းပြီးပါပြီ: ${restoredList.joinToString(", ")}"
-          } else {
-            "ကုသမှုကတ်အား အောင်မြင်စွာ ပယ်ဖျက်ပြီးပါပြီ"
+        if (card.completedSessionsCount > 0) {
+          viewModel.discontinueTreatmentCard(
+            cardId = card.id,
+            reason = reason,
+            staffName = currentUser?.fullName ?: "Staff"
+          )
+          Toast.makeText(context, "ကုသမှု ရပ်ဆိုင်းပြီး မှတ်တမ်းတွင် ထိန်းသိမ်းထားပါသည်", Toast.LENGTH_LONG).show()
+        } else {
+          val (success, restoredList) = viewModel.voidTreatmentCardAndReturnStock(
+            cardId = card.id,
+            returnStock = returnStock,
+            reason = reason
+          )
+          if (success) {
+            val msg = if (restoredList.isNotEmpty()) {
+              "ကုသမှု ပယ်ဖျက်ပြီး စတော့ခ်ထဲ ပြန်သွင်းပြီးပါပြီ: ${restoredList.joinToString(", ")}"
+            } else {
+              "ကုသမှုကတ်အား အောင်မြင်စွာ ပယ်ဖျက်ပြီးပါပြီ"
+            }
+            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
           }
-          Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
         }
         cardToDiscontinue = null
       }
@@ -1304,7 +1313,14 @@ fun DiscontinueCardModal(
   AlertDialog(
     onDismissRequest = onDismiss,
     icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = StatusCritical, modifier = Modifier.size(28.dp)) },
-    title = { Text("ကုသမှု ပယ်ဖျက်မည် (Void / Delete Card)", fontSize = 14.sp, fontWeight = FontWeight.Bold) },
+    title = {
+      val isDiscontinueMode = card.completedSessionsCount > 0
+      Text(
+        if (isDiscontinueMode) "ကုသမှု ရပ်ဆိုင်းမည် (Discontinue Course)" else "ကုသမှု ပယ်ဖျက်မည် (Void / Delete Card)",
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Bold
+      )
+    },
     text = {
       Column {
         Text("လူနာ: ${card.patientName} (${card.orderSummaryText})", fontSize = 11.5.sp, color = SlateDark)
@@ -1364,11 +1380,17 @@ fun DiscontinueCardModal(
       }
     },
     confirmButton = {
+      val isDiscontinueMode = card.completedSessionsCount > 0
       Button(
         onClick = { onConfirm(if (customReason.isNotBlank()) customReason else selectedReason, returnStockToStore) },
-        colors = ButtonDefaults.buttonColors(containerColor = StatusCritical)
+        colors = ButtonDefaults.buttonColors(containerColor = if (isDiscontinueMode) StatusWarning else StatusCritical)
       ) {
-        Text(if (returnStockToStore) "ပယ်ဖျက်ပြီး စတော့ခ်ပြန်သွင်းမည်" else "ကတ်ဖျက်မည် (Delete)", fontSize = 11.sp)
+        Text(
+          if (isDiscontinueMode) "ကုသမှု ရပ်ဆိုင်းမည် (Discontinue)"
+          else if (returnStockToStore) "ပယ်ဖျက်ပြီး စတော့ခ်ပြန်သွင်းမည်"
+          else "ကတ်ဖျက်မည် (Delete)",
+          fontSize = 11.sp
+        )
       }
     },
     dismissButton = {

@@ -1478,28 +1478,42 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
         treatmentOrders.forEach { card ->
       val sFee = if (card.sessionFee > 0) card.sessionFee else card.route.getDefaultFee(clinicSettings.value)
-      val totalFeePerDose = card.medicationFee + sFee
-      val cleanOrderText = card.orderSummaryText
+      val numDoses = if (card.totalSessions > 1 && (card.isPrepaidFullCourse || !card.isPayPerVisit)) card.totalSessions else 1
+      val isFullCourse = numDoses > 1
 
-      if (card.totalSessions > 1 && (card.isPrepaidFullCourse || !card.isPayPerVisit)) {
-        val totalFullFee = totalFeePerDose * card.totalSessions
-        val itemName = "$cleanOrderText (Full Course ${card.totalSessions} Doses)".trim()
+      // 1. Medication Item (isProcedure = false -> Pharmacy Revenue)
+      if (!card.isPatientSupplied && card.medicationFee > 0) {
+        val doseStr = if (card.dosage.isNotBlank()) " (${card.dosage})" else ""
+        val medItemName = if (card.isCocktail && card.cocktailItems.isNotEmpty()) {
+          val ckNames = card.cocktailItems.joinToString("+") { it.name }
+          if (isFullCourse) "Cocktail ($ckNames) x $numDoses Doses" else "Cocktail ($ckNames)"
+        } else {
+          if (isFullCourse) "${card.medicationName}$doseStr x $numDoses Doses" else "${card.medicationName}$doseStr"
+        }
         invoiceItems.add(
           InvoiceItem(
-            name = itemName,
-            quantity = 1,
-            unitPrice = totalFullFee,
-            totalPrice = totalFullFee,
-            isProcedure = true
+            name = medItemName,
+            quantity = numDoses,
+            unitPrice = card.medicationFee,
+            totalPrice = card.medicationFee * numDoses,
+            isProcedure = false
           )
         )
-      } else {
+      }
+
+      // 2. Administration Service Fee (isProcedure = true -> Doctor/Service Revenue)
+      if (sFee > 0) {
+        val svcFeeName = if (isFullCourse) {
+          "${card.route.label} Service Fee x $numDoses Doses"
+        } else {
+          "${card.route.label} Service Fee"
+        }
         invoiceItems.add(
           InvoiceItem(
-            name = cleanOrderText,
-            quantity = 1,
-            unitPrice = totalFeePerDose,
-            totalPrice = totalFeePerDose,
+            name = svcFeeName,
+            quantity = numDoses,
+            unitPrice = sFee,
+            totalPrice = sFee * numDoses,
             isProcedure = true
           )
         )
@@ -2526,9 +2540,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val isPrepaid = session.isPrepaid || card.isPrepaidFullCourse
     val effectiveMedPrice = if (isPrepaid || card.isPatientSupplied) 0.0 else (if (isClinicMed) medPrice else 0.0)
     val effectiveSessionFee = if (isPrepaid) 0.0 else sessionFee
-    val sessionTotalFee = effectiveMedPrice + effectiveSessionFee
-    if (sessionTotalFee > 0) {
-      val routeShort = card.route.label.split(" ").first()
+    // 1. Medication Item (isProcedure = false -> Pharmacy Revenue)
+    if (effectiveMedPrice > 0) {
       val cleanMedName = card.medicationName
         .replace(Regex("(?i)^inj\\.?\\s*"), "")
         .replace(Regex("(?i)^iv\\s*"), "")
@@ -2536,14 +2549,29 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         .replace(Regex("(?i)^sc\\s*"), "")
         .trim()
       val doseStr = if (card.dosage.isNotBlank() && !cleanMedName.contains(card.dosage, ignoreCase = true)) " ${card.dosage}" else ""
-      val patientOwnedBadge = if (card.isPatientSupplied) " (Patient's Own)" else ""
-      val itemName = "$routeShort $cleanMedName$doseStr$patientOwnedBadge (Dose ${session.sessionNumber}/${card.totalSessions})".trim()
+      val medName = "$cleanMedName$doseStr (Dose ${session.sessionNumber}/${card.totalSessions})"
       invoiceItems.add(
         InvoiceItem(
-          name = itemName,
+          name = medName,
           quantity = 1,
-          unitPrice = sessionTotalFee,
-          totalPrice = sessionTotalFee,
+          unitPrice = effectiveMedPrice,
+          totalPrice = effectiveMedPrice,
+          isProcedure = false
+        )
+      )
+    }
+
+    // 2. Administration Service Fee (isProcedure = true -> Service Revenue)
+    if (effectiveSessionFee > 0) {
+      val routeShort = card.route.label.split(" ").first()
+      val patientOwnedBadge = if (card.isPatientSupplied) " (Patient's Own Med)" else ""
+      val svcFeeName = "$routeShort Administration Fee$patientOwnedBadge (Dose ${session.sessionNumber}/${card.totalSessions})"
+      invoiceItems.add(
+        InvoiceItem(
+          name = svcFeeName,
+          quantity = 1,
+          unitPrice = effectiveSessionFee,
+          totalPrice = effectiveSessionFee,
           isProcedure = true
         )
       )
@@ -2668,11 +2696,20 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val ctx = getApplication<Application>()
     val updated = _treatmentCards.value.map { card ->
       if (card.id == cardId) {
+        val updatedSessions = card.sessions.map { s ->
+          if (s.status == TreatmentStatus.PENDING || s.status == TreatmentStatus.IN_PROGRESS) {
+            s.copy(
+              status = TreatmentStatus.DISCONTINUED,
+              notes = (if (s.notes.isNotBlank()) "${s.notes} • " else "") + "Discontinued: $reason"
+            )
+          } else s
+        }
         card.copy(
           cardStatus = TreatmentStatus.DISCONTINUED,
           discontinueReason = reason,
           discontinuedBy = staffName.ifBlank { _currentUser.value?.fullName ?: "Staff" },
-          discontinuedAt = BurmeseDateUtils.getNowFormatted()
+          discontinuedAt = BurmeseDateUtils.getNowFormatted(),
+          sessions = updatedSessions
         )
       } else card
     }
@@ -2690,6 +2727,11 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   ): Pair<Boolean, List<String>> {
     val ctx = getApplication<Application>()
     val card = _treatmentCards.value.find { it.id == cardId } ?: return Pair(false, emptyList())
+    // Medical audit history protection: If any dose has already been administered, do not delete the card!
+    if (card.completedSessionsCount > 0) {
+      discontinueTreatmentCard(cardId, reason, _currentUser.value?.fullName ?: "Staff")
+      return Pair(true, emptyList())
+    }
     val restoredNames = mutableListOf<String>()
 
     if (returnStock && !card.isPatientSupplied) {
@@ -3131,7 +3173,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       deletedPatientIds = ClinicDataPersistence.loadDeletedPatientIds(ctx).toList(),
       deletedConsultationIds = ClinicDataPersistence.loadDeletedConsultationIds(ctx).toList(),
       deletedMedicineIds = ClinicDataPersistence.loadDeletedMedicineIds(ctx).toList(),
-      deletedUserIds = ClinicDataPersistence.loadDeletedUserIds(ctx).toList()
+      deletedUserIds = ClinicDataPersistence.loadDeletedUserIds(ctx).toList(),
+      deletedTreatmentCardIds = ClinicDataPersistence.loadDeletedTreatmentCardIds(ctx).toList()
     )
     val root = JSONObject(payload.toJsonString(ctx))
     root.put("exportTime", BurmeseDateUtils.getNowFormatted())
@@ -3164,6 +3207,14 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         val currentDelMeds = ClinicDataPersistence.loadDeletedMedicineIds(ctx)
         ClinicDataPersistence.saveDeletedMedicineIds(ctx, (currentDelMeds + delMedSet).toMutableSet())
       }
+      val delTcSet = mutableSetOf<String>()
+      val delTcArr = root.optJSONArray("deletedTreatmentCardIds") ?: root.optJSONArray("deleted_treatment_card_ids")
+      if (delTcArr != null) {
+        for (i in 0 until delTcArr.length()) delTcSet.add(delTcArr.getString(i))
+        val currentDelTc = ClinicDataPersistence.loadDeletedTreatmentCardIds(ctx)
+        ClinicDataPersistence.saveDeletedTreatmentCardIds(ctx, (currentDelTc + delTcSet).toMutableSet())
+      }
+
       val delUserSet = mutableSetOf<String>()
       val delUserArr = root.optJSONArray("deletedUserIds") ?: root.optJSONArray("deleted_user_ids")
       if (delUserArr != null) {

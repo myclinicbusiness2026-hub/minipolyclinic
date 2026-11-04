@@ -247,6 +247,18 @@ END $$;
         }
       }
 
+      val deletedTreatmentCardIds = mutableSetOf<String>()
+      val delTcArrIn = root.optJSONArray("deletedTreatmentCardIds") ?: root.optJSONArray("deleted_treatment_card_ids")
+      if (delTcArrIn != null) {
+        for (k in 0 until delTcArrIn.length()) deletedTreatmentCardIds.add(delTcArrIn.optString(k))
+      }
+      if (remoteDoc != null && (remoteDoc.has("deleted_treatment_card_ids") || remoteDoc.has("deletedTreatmentCardIds"))) {
+        val dArr = remoteDoc.optJSONArray("deleted_treatment_card_ids") ?: remoteDoc.optJSONArray("deletedTreatmentCardIds")
+        if (dArr != null) {
+          for (k in 0 until dArr.length()) deletedTreatmentCardIds.add(dArr.optString(k))
+        }
+      }
+
       val deletedUserIds = mutableSetOf<String>()
       if (root.has("deletedUserIds")) {
         val dArr = root.optJSONArray("deletedUserIds")
@@ -537,6 +549,9 @@ END $$;
         val delMedArr = JSONArray()
         deletedMedicineIds.forEach { delMedArr.put(it) }
         put("deletedMedicineIds", delMedArr)
+        val delTcArrOut = JSONArray()
+        deletedTreatmentCardIds.forEach { delTcArrOut.put(it) }
+        put("deletedTreatmentCardIds", delTcArrOut)
       }
 
       // Build cloud payload matching remote table column capabilities

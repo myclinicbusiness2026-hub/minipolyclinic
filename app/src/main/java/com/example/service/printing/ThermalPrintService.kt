@@ -146,9 +146,9 @@ object ThermalPrintService {
     // 3. Reset line spacing to default (ESC 2)
     output.write(byteArrayOf(ESC, 0x32))
 
-    // 4. Feed 10 lines so paper cut is well clear of bottom text
-    output.write(byteArrayOf(ESC, 0x64, 0x06)) // ESC d 6 (Feed 6 lines)
-    output.write(byteArrayOf(LF, LF, LF, LF))  // 4 extra LFs (total 10 lines)
+    // 4. Feed 5 lines so paper cut is clear of bottom text without excess blank waste
+    output.write(byteArrayOf(ESC, 0x64, 0x04)) // ESC d 4 (Feed 4 lines)
+    output.write(byteArrayOf(LF)) // 1 extra LF (total 5 lines)
     output.write(byteArrayOf(GS, 0x56, 0x42, 0x00)) // GS V 66 0 (Full Cut)
 
     return output.toByteArray()
@@ -179,9 +179,9 @@ object ThermalPrintService {
     canvas.drawColor(Color.WHITE)
 
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    // Symmetrical, maximum printable width on 80mm/58mm thermal heads
-    val leftMargin = if (is80mm) 14f else 12f
-    val rightMargin = widthPx.toFloat() - leftMargin
+    // Symmetrical, optical-center alignment on 80mm/58mm thermal heads
+    val leftMargin = if (is80mm) 48f else 16f
+    val rightMargin = if (is80mm) 562f else (widthPx.toFloat() - leftMargin)
     val contentWidth = rightMargin - leftMargin
     var curY = 16f
     val centerX = widthPx / 2f
@@ -553,7 +553,7 @@ object ThermalPrintService {
 
     paint.textSize = if (is80mm) 12f else 10f
     canvas.drawText("* POS Thermal Slip • Shwe Khit Clinic *", centerX, curY + paint.textSize * 0.8f, paint)
-    curY += paint.textSize + 50f // 50px bottom spacing so tearing never cuts text
+    curY += paint.textSize + 20f // 20px bottom spacing
 
     val finalHeight = curY.toInt().coerceAtLeast(300)
     return Bitmap.createBitmap(bitmap, 0, 0, widthPx, minOf(finalHeight, totalHeightPx))
@@ -639,8 +639,8 @@ object ThermalPrintService {
     settings: ClinicSettings? = null
   ): Bitmap {
     val widthPx = if (is80mm) 576 else 384
-    val leftMargin = if (is80mm) 14f else 12f
-    val rightMargin = widthPx.toFloat() - leftMargin
+    val leftMargin = if (is80mm) 48f else 16f
+    val rightMargin = if (is80mm) 562f else (widthPx.toFloat() - leftMargin)
     val centerX = widthPx / 2f
 
     val sessionCount = card.sessions.size
@@ -826,7 +826,7 @@ object ThermalPrintService {
 
     paint.textSize = if (is80mm) 11.5f else 9.5f
     canvas.drawText("* Day Care Slip • Shwe Khit Clinic *", centerX, curY + paint.textSize * 0.8f, paint)
-    curY += paint.textSize + 50f // 50px bottom spacing before cut
+    curY += paint.textSize + 20f // 20px bottom spacing
 
     val finalHeight = curY.toInt().coerceAtLeast(300)
     return Bitmap.createBitmap(bitmap, 0, 0, widthPx, minOf(finalHeight, totalEstimatedHeight))
