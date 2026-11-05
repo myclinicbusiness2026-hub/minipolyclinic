@@ -1,9 +1,9 @@
 {
-  "versionCode": 33,
-  "versionName": "1.5.9",
+  "versionCode": 34,
+  "versionName": "1.5.10",
   "minSupportedVersion": 1,
-  "releaseNotes": "• Procedures & Clinical Services: Renamed menu and screens to 'Procedures & Clinical Services' (ကုသမှုလုပ်ငန်းနှင့် အထူးဝန်ဆောင်ခများ) to cleanly separate minor surgical procedures/notes/consumables from general clinic service fees.\n• General Services Category: Added dedicated category for services without consumable deductions.\n• Double Stock Deduction Elimination: Fixed critical bug where prescribed drugs administered via Day-Care Treatment Cards were deducted twice upon invoice payment.\n• Decimal Restocking Precision: Fractional quantities (0.5 ampoule) accurately restored on void/return.\n• A4 Prescription Width: Expanded drug name width to 65 chars.",
-  "releaseNotesMm": "• ကုသမှုလုပ်ငန်းနှင့် အထူးဝန်ဆောင်ခများ (Procedures & Clinical Services) အမည်နှင့် လုပ်ငန်းစဉ် ခွဲခြားမှု အသစ်\n• ဆေးပစ္စည်းအသုံးစာရင်း နှုတ်စရာမလိုသော ဝန်ဆောင်ခများအတွက် General Services Category အသစ် ထည့်သွင်းပေးခြင်း\n• ဆေးစာ (Rx) နှင့် Day-Care ဆေးထိုးကတ်ကြား ၂ ခါ Stock အနှုတ်ခံရသည့် ပြဿနာ အပြီးတိုင်ဖြေရှင်းခြင်း\n• ဒဿမစတော့ (0.5 Amp) တိကျစွာ ပြန်လည်ဖြည့်သွင်းနိုင်ခြင်း (Decimal Restock)\n• A4 ဆေးစာရွက်တွင် ဆေးအမည် (Brand + Generic) ပိုမိုကျယ်ပြန့်စွာ ပေါ်လွင်စေခြင်း",
+  "releaseNotes": "• Multi-Device Invoice Sync Packet: Added complete sync packet for isInventoryDeducted, decimal deductedDrugQuantities, and granular discounts across devices via Wi-Fi P2P.\n• Procedure 'Add Item' Button Prominence: Weighted header to guarantee 'Add Item' button never gets clipped on mobile screens, and added dedicated bottom Floating Action Button (FAB).\n• Category Management & Deletion: Added deletion support for custom procedure categories with confirmation dialog and safe fallback of items to 'Others'.\n• Procedures & Clinical Services: Renamed menu and screens to cleanly separate surgical/minor procedures from general service fees.",
+  "releaseNotesMm": "• စက်အများအပြား ချိတ်ဆက်ရာတွင် ဘောက်ချာ စတော့နှုတ်ယူမှုနှင့် ဒဿမနှုတ်ယူစာရင်း အပြည့်အစုံ Wi-Fi Sync Packet ဖြည့်စွက်ခြင်း\n• Procedures & Services တွင် 'Add Item' ခလုတ် ဖုန်းစခရင်တိုင်းတွင် အမြဲပေါ်နေစေရန်နှင့် ညာဘက်အောက်ထောင့်တွင် Floating Action Button (FAB) အသစ် ထည့်သွင်းပေးခြင်း\n• ကုသမှု Category အသစ်များ စိတ်ကြိုက် ဖျက်နိုင်သည့်စနစ် (Delete Category) နှင့် ပစ္စည်းများ မပျောက်ပျက်စေရန် အလိုအလျောက် ရွှေ့ပြောင်းပေးခြင်း\n• ဆေးကုသမှု (Procedures) နှင့် သာမန်ဝန်ဆောင်ခများ မရောထွေးစေရန် စနစ်တကျ ခွဲခြားပေးခြင်း",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-05",
   "apkSizeBytes": 21908402
