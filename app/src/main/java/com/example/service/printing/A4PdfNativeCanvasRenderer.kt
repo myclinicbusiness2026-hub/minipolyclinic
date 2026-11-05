@@ -1553,8 +1553,8 @@ object A4PdfNativeCanvasRenderer {
     val colY = currentY + 12f
     canvas.drawText("#", 28f, colY, paint)
     canvas.drawText("DRUG & FORMULATION", 52f, colY, paint)
-    canvas.drawText("DOSAGE & DIRECTION", 280f, colY, paint)
-    canvas.drawText("DURATION", width - 75f, colY, paint)
+    canvas.drawText("DOSAGE & DIRECTION", 345f, colY, paint)
+    canvas.drawText("DURATION", width - 68f, colY, paint)
     currentY += 18f
 
     // Rows
@@ -1577,16 +1577,16 @@ object A4PdfNativeCanvasRenderer {
       val externalPrefix = if (rx.isExternal) "[External] " else ""
       val baseDrug = if (rx.dosage.isNotBlank() && !medName.contains(rx.dosage)) "$medName (${rx.dosage})" else medName
       val fullDrug = "$externalPrefix$baseDrug"
-      canvas.drawText(fullDrug.take(45), 52f, textRowY, paint)
+      canvas.drawText(fullDrug.take(55), 52f, textRowY, paint)
 
       // Dosage & Direction (Include doctor's notes if external)
       paint.typeface = Typeface.DEFAULT
       val directionText = formatDosageAndDirection(rx)
-      canvas.drawText(directionText.take(38), 280f, textRowY, paint)
+      canvas.drawText(directionText.take(28), 345f, textRowY, paint)
 
       // Duration
       val durationText = rx.duration.ifBlank { "5 Days" }
-      canvas.drawText(durationText, width - 75f, textRowY, paint)
+      canvas.drawText(durationText, width - 68f, textRowY, paint)
 
       currentY += rowH
     }

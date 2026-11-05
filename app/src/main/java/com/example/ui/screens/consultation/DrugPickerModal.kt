@@ -40,7 +40,12 @@ fun DrugPickerModal(
   var searchQuery by remember { mutableStateOf("") }
   var selectedMedicine by remember { mutableStateOf<Medicine?>(medicines.firstOrNull()) }
   var dosage by remember { mutableStateOf(medicines.firstOrNull()?.standardDosage ?: "500 mg") }
+  var dosePerTime by remember { mutableStateOf("1") } // "1/2", "1", "1.5", "2", or custom
   var frequency by remember { mutableStateOf("1-0-1") }
+  var customFrequencyText by remember { mutableStateOf("") }
+  var isCustomFreq by remember { mutableStateOf(false) }
+  var durationNum by remember { mutableIntStateOf(5) }
+  var durationUnit by remember { mutableStateOf("Days") }
   var duration by remember { mutableStateOf("5 Days") }
   var quantityText by remember { mutableStateOf("10") }
   var instructions by remember { mutableStateOf("") }
@@ -48,11 +53,69 @@ fun DrugPickerModal(
   // State for Non-Store External Rx Tab
   var extDrugName by remember { mutableStateOf("") }
   var extDosage by remember { mutableStateOf("1 Tab") }
+  var extDosePerTime by remember { mutableStateOf("1") }
   var extFrequency by remember { mutableStateOf("1-0-1") }
+  var extCustomFrequencyText by remember { mutableStateOf("") }
+  var isExtCustomFreq by remember { mutableStateOf(false) }
+  var extDurationNum by remember { mutableIntStateOf(5) }
+  var extDurationUnit by remember { mutableStateOf("Days") }
   var extDuration by remember { mutableStateOf("5 Days") }
   var extQuantityText by remember { mutableStateOf("10") }
   var extInstructions by remember { mutableStateOf("") }
   var extNotes by remember { mutableStateOf("ပြင်ပဆေးဆိုင်တွင် ဝယ်ယူရန်") }
+
+  // Calculation helper to auto-estimate recommended quantity based on frequency and duration
+  fun calculateAutoQty(freq: String, durNum: Int, unit: String): Int {
+    if (unit == "ပုံမှန်သောက်ရန်" || unit == "Regular") {
+      return (durNum * 30).coerceAtLeast(30)
+    }
+    val days = when (unit) {
+      "Weeks" -> durNum * 7
+      "Months" -> durNum * 30
+      "Stat" -> 1
+      else -> durNum
+    }
+    val dosesPerDay: Double = when {
+      freq.contains("1-1-1-1") || freq.contains("2-2-2-2") -> {
+        val mult = if (freq.startsWith("2")) 2.0 else if (freq.startsWith("½") || freq.startsWith("1/2")) 0.5 else 1.0
+        4.0 * mult
+      }
+      freq.contains("1-1-1") || freq.contains("2-2-2") -> {
+        val mult = if (freq.startsWith("2")) 2.0 else if (freq.startsWith("½") || freq.startsWith("1/2")) 0.5 else 1.0
+        3.0 * mult
+      }
+      freq.contains("1-0-1") || freq.contains("2-0-2") -> {
+        val mult = if (freq.startsWith("2")) 2.0 else if (freq.startsWith("½") || freq.startsWith("1/2")) 0.5 else 1.0
+        2.0 * mult
+      }
+      freq.contains("1-0-0") || freq.contains("0-0-1") || freq.contains("0-1-0") || freq.contains("2-0-0") || freq.contains("0-0-2") -> {
+        val mult = if (freq.startsWith("2")) 2.0 else if (freq.startsWith("½") || freq.startsWith("1/2")) 0.5 else 1.0
+        1.0 * mult
+      }
+      freq.contains("½-0-½") -> 1.0
+      freq.contains("½-0-0") || freq.contains("0-0-½") -> 0.5
+      else -> 2.0
+    }
+    val total = kotlin.math.ceil(dosesPerDay * days).toInt()
+    return total.coerceAtLeast(1)
+  }
+
+  fun applyDoseToFreq(dose: String, basePattern: String): String {
+    val prefix = when (dose) {
+      "1/2", "½" -> "½"
+      "2" -> "2"
+      "1.5", "1½" -> "1½"
+      else -> "1"
+    }
+    return when (basePattern) {
+      "1-0-1" -> "$prefix-0-$prefix"
+      "1-1-1" -> "$prefix-$prefix-$prefix"
+      "1-0-0" -> "$prefix-0-0"
+      "0-0-1" -> "0-0-$prefix"
+      "1-1-1-1" -> "$prefix-$prefix-$prefix-$prefix"
+      else -> basePattern
+    }
+  }
 
   val filteredMedicines = medicines.filter {
     (it.effectiveMedicineType in listOf("Oral", "Topical")) &&
@@ -61,7 +124,7 @@ fun DrugPickerModal(
         it.genericName.contains(searchQuery, ignoreCase = true))
   }
 
-  val freqPresets = listOf(
+  val baseFreqPatterns = listOf(
     "1-0-1",
     "1-1-1",
     "1-0-0",
@@ -69,6 +132,21 @@ fun DrugPickerModal(
     "0-0-1",
     "လိုအပ်ပါက"
   )
+
+  val dosePresets = listOf(
+    Pair("½", "½ Tab (တဝက်)"),
+    Pair("1", "1 Tab (၁ လုံး)"),
+    Pair("2", "2 Tabs (၂ လုံး)")
+  )
+
+  val durationQuickNums = listOf(3, 5, 7, 10, 14, 30)
+  val durationUnits = listOf(
+    Pair("Days", "ရက် (Days)"),
+    Pair("Weeks", "ပတ် (Weeks)"),
+    Pair("Months", "လ (Months)"),
+    Pair("ပုံမှန်သောက်ရန်", "ပုံမှန်သောက်ရန် (Regular)")
+  )
+  val quantityQuickNums = listOf(5, 10, 14, 20, 30, 60)
 
   val instructionPresets = listOf(
     "စားပြီး",
@@ -305,18 +383,89 @@ fun DrugPickerModal(
               Spacer(modifier = Modifier.height(8.dp))
             }
 
+            // Dose per time (½, 1, 2)
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+              Text("တစ်ကြိမ်သောက် (Dose):", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+              Spacer(modifier = Modifier.width(6.dp))
+              dosePresets.forEach { (dVal, dLabel) ->
+                val isSel = dosePerTime == dVal
+                FilterChip(
+                  selected = isSel,
+                  onClick = {
+                    dosePerTime = dVal
+                    isCustomFreq = false
+                    val base = when {
+                      frequency.contains("-0-") && frequency.endsWith("-0") -> "1-0-0"
+                      frequency.startsWith("0-0-") -> "0-0-1"
+                      frequency.split("-").size == 4 -> "1-1-1-1"
+                      frequency.split("-").size == 3 && !frequency.contains("0") -> "1-1-1"
+                      else -> "1-0-1"
+                    }
+                    frequency = applyDoseToFreq(dVal, base)
+                    quantityText = calculateAutoQty(frequency, durationNum, durationUnit).toString()
+                  },
+                  label = { Text(dLabel, fontSize = 9.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
+                  shape = RoundedCornerShape(4.dp),
+                  modifier = Modifier.height(24.dp).padding(end = 4.dp),
+                  colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = if (dVal == "½") Color(0xFFFEF3C7) else SoftGreenContainer,
+                    selectedLabelColor = if (dVal == "½") Color(0xFFB45309) else MedicalGreenDark
+                  )
+                )
+              }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
             Text("Frequency (ကြိမ်ရေ):", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
             Spacer(modifier = Modifier.height(4.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-              freqPresets.forEach { f ->
+              baseFreqPatterns.forEach { basePattern ->
+                val calculatedFreq = if (basePattern == "လိုအပ်ပါက") "လိုအပ်ပါက" else applyDoseToFreq(dosePerTime, basePattern)
+                val isSel = !isCustomFreq && frequency == calculatedFreq
                 FilterChip(
-                  selected = frequency == f,
-                  onClick = { frequency = f },
-                  label = { Text(f, fontSize = 9.5.sp, fontWeight = if (frequency == f) FontWeight.Bold else FontWeight.Normal) },
+                  selected = isSel,
+                  onClick = {
+                    isCustomFreq = false
+                    frequency = calculatedFreq
+                    quantityText = calculateAutoQty(frequency, durationNum, durationUnit).toString()
+                  },
+                  label = { Text(calculatedFreq, fontSize = 9.5.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
                   shape = RoundedCornerShape(4.dp),
                   modifier = Modifier.height(26.dp)
                 )
               }
+
+              // Custom Frequency Chip
+              FilterChip(
+                selected = isCustomFreq,
+                onClick = {
+                  isCustomFreq = !isCustomFreq
+                  if (isCustomFreq && customFrequencyText.isNotBlank()) {
+                    frequency = customFrequencyText
+                  }
+                },
+                label = { Text("+ စိတ်ကြိုက် (Custom)", fontSize = 9.sp, fontWeight = if (isCustomFreq) FontWeight.Bold else FontWeight.Normal) },
+                shape = RoundedCornerShape(4.dp),
+                modifier = Modifier.height(26.dp)
+              )
+            }
+
+            if (isCustomFreq) {
+              Spacer(modifier = Modifier.height(4.dp))
+              OutlinedTextField(
+                value = customFrequencyText,
+                onValueChange = {
+                  customFrequencyText = it
+                  frequency = it
+                },
+                label = { Text("စိတ်ကြိုက် ကြိမ်နှုန်းရိုက်ထည့်ပါ (e.g. 1/2 tab bd, 2 tabs stat)", fontSize = 9.5.sp) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(6.dp),
+                colors = clinicTextFieldColors(),
+                textStyle = LocalTextStyle.current.copy(fontSize = 11.sp, color = DarkGrayText)
+              )
             }
 
             Spacer(modifier = Modifier.height(6.dp))
@@ -335,7 +484,156 @@ fun DrugPickerModal(
               }
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Duration Quick Picker Section (Chips for Numbers & Units)
+            Text("သောက်သုံးမည့်ကာလ (Duration):", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+              // Quick Number Chips
+              durationQuickNums.forEach { n ->
+                val isSel = durationNum == n && durationUnit != "ပုံမှန်သောက်ရန်"
+                Surface(
+                  modifier = Modifier
+                    .padding(end = 4.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .clickable {
+                      durationNum = n
+                      duration = "$n $durationUnit"
+                      quantityText = calculateAutoQty(frequency, n, durationUnit).toString()
+                    },
+                  color = if (isSel) MedicalGreen else BackgroundSurface,
+                  shape = RoundedCornerShape(4.dp),
+                  border = BorderStroke(0.6.dp, if (isSel) MedicalGreenDark else BorderGrey)
+                ) {
+                  Text(
+                    "$n",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isSel) PureWhite else DarkGrayText,
+                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                  )
+                }
+              }
+
+              Spacer(modifier = Modifier.width(4.dp))
+
+              // Increment/Decrement controls
+              Surface(
+                modifier = Modifier
+                  .clip(RoundedCornerShape(4.dp))
+                  .clickable {
+                    if (durationNum > 1) {
+                      durationNum -= 1
+                      duration = "$durationNum $durationUnit"
+                      quantityText = calculateAutoQty(frequency, durationNum, durationUnit).toString()
+                    }
+                  },
+                color = BackgroundSurface,
+                shape = RoundedCornerShape(4.dp),
+                border = BorderStroke(0.6.dp, BorderGrey)
+              ) {
+                Text("-", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+              }
+
+              Spacer(modifier = Modifier.width(3.dp))
+
+              Surface(
+                modifier = Modifier
+                  .clip(RoundedCornerShape(4.dp))
+                  .clickable {
+                    durationNum += 1
+                    duration = "$durationNum $durationUnit"
+                    quantityText = calculateAutoQty(frequency, durationNum, durationUnit).toString()
+                  },
+                color = BackgroundSurface,
+                shape = RoundedCornerShape(4.dp),
+                border = BorderStroke(0.6.dp, BorderGrey)
+              ) {
+                Text("+", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+              }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Duration Units
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+              durationUnits.forEach { (uKey, uLabel) ->
+                val isSel = durationUnit == uKey
+                FilterChip(
+                  selected = isSel,
+                  onClick = {
+                    durationUnit = uKey
+                    duration = if (uKey == "ပုံမှန်သောက်ရန်") "ပုံမှန်သောက်ရန်" else "$durationNum $uKey"
+                    quantityText = calculateAutoQty(frequency, durationNum, uKey).toString()
+                  },
+                  label = { Text(uLabel, fontSize = 9.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
+                  shape = RoundedCornerShape(4.dp),
+                  modifier = Modifier.height(24.dp)
+                )
+              }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Quantity Quick Picker Section (Chips for Qty)
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+              Text("ထုတ်ပေးမည့် အရေအတွက် (Qty):", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+              Spacer(modifier = Modifier.width(6.dp))
+              quantityQuickNums.forEach { q ->
+                val isSel = quantityText == q.toString()
+                Surface(
+                  modifier = Modifier
+                    .padding(end = 4.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .clickable { quantityText = q.toString() },
+                  color = if (isSel) Color(0xFF1565C0) else BackgroundSurface,
+                  shape = RoundedCornerShape(4.dp),
+                  border = BorderStroke(0.6.dp, if (isSel) Color(0xFF0D47A1) else BorderGrey)
+                ) {
+                  Text(
+                    "$q",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isSel) PureWhite else DarkGrayText,
+                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                  )
+                }
+              }
+
+              // Qty +/- buttons
+              Surface(
+                modifier = Modifier
+                  .clip(RoundedCornerShape(4.dp))
+                  .clickable {
+                    val cur = quantityText.toIntOrNull() ?: 10
+                    if (cur > 1) quantityText = (cur - 1).toString()
+                  },
+                color = BackgroundSurface,
+                shape = RoundedCornerShape(4.dp),
+                border = BorderStroke(0.6.dp, BorderGrey)
+              ) {
+                Text("-", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+              }
+
+              Spacer(modifier = Modifier.width(3.dp))
+
+              Surface(
+                modifier = Modifier
+                  .clip(RoundedCornerShape(4.dp))
+                  .clickable {
+                    val cur = quantityText.toIntOrNull() ?: 10
+                    quantityText = (cur + 1).toString()
+                  },
+                color = BackgroundSurface,
+                shape = RoundedCornerShape(4.dp),
+                border = BorderStroke(0.6.dp, BorderGrey)
+              ) {
+                Text("+", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+              }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
               OutlinedTextField(
@@ -351,7 +649,7 @@ fun DrugPickerModal(
               OutlinedTextField(
                 value = duration,
                 onValueChange = { duration = it },
-                label = { Text("Duration", fontSize = 10.sp) },
+                label = { Text("Duration (ရက်)", fontSize = 10.sp) },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(6.dp),
                 singleLine = true,
@@ -361,7 +659,7 @@ fun DrugPickerModal(
               OutlinedTextField(
                 value = quantityText,
                 onValueChange = { quantityText = it },
-                label = { Text("Total Qty", fontSize = 10.sp) },
+                label = { Text("Total Qty (လုံးရေ)", fontSize = 10.sp) },
                 modifier = Modifier.weight(0.9f),
                 shape = RoundedCornerShape(6.dp),
                 singleLine = true,
@@ -491,18 +789,89 @@ fun DrugPickerModal(
 
           Spacer(modifier = Modifier.height(6.dp))
 
+          // Dose per time for External Rx
+          Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("တစ်ကြိမ်သောက် (Dose):", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+            Spacer(modifier = Modifier.width(6.dp))
+            dosePresets.forEach { (dVal, dLabel) ->
+              val isSel = extDosePerTime == dVal
+              FilterChip(
+                selected = isSel,
+                onClick = {
+                  extDosePerTime = dVal
+                  isExtCustomFreq = false
+                  val base = when {
+                    extFrequency.contains("-0-") && extFrequency.endsWith("-0") -> "1-0-0"
+                    extFrequency.startsWith("0-0-") -> "0-0-1"
+                    extFrequency.split("-").size == 4 -> "1-1-1-1"
+                    extFrequency.split("-").size == 3 && !extFrequency.contains("0") -> "1-1-1"
+                    else -> "1-0-1"
+                  }
+                  extFrequency = applyDoseToFreq(dVal, base)
+                  extQuantityText = calculateAutoQty(extFrequency, extDurationNum, extDurationUnit).toString()
+                },
+                label = { Text(dLabel, fontSize = 9.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
+                shape = RoundedCornerShape(4.dp),
+                modifier = Modifier.height(24.dp).padding(end = 4.dp),
+                colors = FilterChipDefaults.filterChipColors(
+                  selectedContainerColor = if (dVal == "½") Color(0xFFFEF3C7) else SoftGreenContainer,
+                  selectedLabelColor = if (dVal == "½") Color(0xFFB45309) else MedicalGreenDark
+                )
+              )
+            }
+          }
+
+          Spacer(modifier = Modifier.height(6.dp))
+
           Text("Frequency (ကြိမ်ရေ):", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
           Spacer(modifier = Modifier.height(4.dp))
           FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            freqPresets.forEach { f ->
+            baseFreqPatterns.forEach { basePattern ->
+              val calculatedFreq = if (basePattern == "လိုအပ်ပါက") "လိုအပ်ပါက" else applyDoseToFreq(extDosePerTime, basePattern)
+              val isSel = !isExtCustomFreq && extFrequency == calculatedFreq
               FilterChip(
-                selected = extFrequency == f,
-                onClick = { extFrequency = f },
-                label = { Text(f, fontSize = 9.5.sp, fontWeight = if (extFrequency == f) FontWeight.Bold else FontWeight.Normal) },
+                selected = isSel,
+                onClick = {
+                  isExtCustomFreq = false
+                  extFrequency = calculatedFreq
+                  extQuantityText = calculateAutoQty(extFrequency, extDurationNum, extDurationUnit).toString()
+                },
+                label = { Text(calculatedFreq, fontSize = 9.5.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
                 shape = RoundedCornerShape(4.dp),
                 modifier = Modifier.height(26.dp)
               )
             }
+
+            // Custom Frequency Chip
+            FilterChip(
+              selected = isExtCustomFreq,
+              onClick = {
+                isExtCustomFreq = !isExtCustomFreq
+                if (isExtCustomFreq && extCustomFrequencyText.isNotBlank()) {
+                  extFrequency = extCustomFrequencyText
+                }
+              },
+              label = { Text("+ စိတ်ကြိုက် (Custom)", fontSize = 9.sp, fontWeight = if (isExtCustomFreq) FontWeight.Bold else FontWeight.Normal) },
+              shape = RoundedCornerShape(4.dp),
+              modifier = Modifier.height(26.dp)
+            )
+          }
+
+          if (isExtCustomFreq) {
+            Spacer(modifier = Modifier.height(4.dp))
+            OutlinedTextField(
+              value = extCustomFrequencyText,
+              onValueChange = {
+                extCustomFrequencyText = it
+                extFrequency = it
+              },
+              label = { Text("စိတ်ကြိုက် ကြိမ်နှုန်းရိုက်ထည့်ပါ (e.g. 1/2 tab bd, 2 tabs stat)", fontSize = 9.5.sp) },
+              singleLine = true,
+              modifier = Modifier.fillMaxWidth(),
+              shape = RoundedCornerShape(6.dp),
+              colors = clinicTextFieldColors(),
+              textStyle = LocalTextStyle.current.copy(fontSize = 11.sp, color = DarkGrayText)
+            )
           }
 
           Spacer(modifier = Modifier.height(6.dp))
@@ -521,7 +890,152 @@ fun DrugPickerModal(
             }
           }
 
-          Spacer(modifier = Modifier.height(6.dp))
+          Spacer(modifier = Modifier.height(8.dp))
+
+          // Duration Quick Picker Section (Chips for Numbers & Units) for External Rx
+          Text("သောက်သုံးမည့်ကာလ (Duration):", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+          Spacer(modifier = Modifier.height(4.dp))
+          Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            durationQuickNums.forEach { n ->
+              val isSel = extDurationNum == n && extDurationUnit != "ပုံမှန်သောက်ရန်"
+              Surface(
+                modifier = Modifier
+                  .padding(end = 4.dp)
+                  .clip(RoundedCornerShape(4.dp))
+                  .clickable {
+                    extDurationNum = n
+                    extDuration = "$n $extDurationUnit"
+                    extQuantityText = calculateAutoQty(extFrequency, n, extDurationUnit).toString()
+                  },
+                color = if (isSel) MedicalGreen else BackgroundSurface,
+                shape = RoundedCornerShape(4.dp),
+                border = BorderStroke(0.6.dp, if (isSel) MedicalGreenDark else BorderGrey)
+              ) {
+                Text(
+                  "$n",
+                  fontSize = 10.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = if (isSel) PureWhite else DarkGrayText,
+                  modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                )
+              }
+            }
+
+            Spacer(modifier = Modifier.width(4.dp))
+
+            Surface(
+              modifier = Modifier
+                .clip(RoundedCornerShape(4.dp))
+                .clickable {
+                  if (extDurationNum > 1) {
+                    extDurationNum -= 1
+                    extDuration = "$extDurationNum $extDurationUnit"
+                    extQuantityText = calculateAutoQty(extFrequency, extDurationNum, extDurationUnit).toString()
+                  }
+                },
+              color = BackgroundSurface,
+              shape = RoundedCornerShape(4.dp),
+              border = BorderStroke(0.6.dp, BorderGrey)
+            ) {
+              Text("-", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+            }
+
+            Spacer(modifier = Modifier.width(3.dp))
+
+            Surface(
+              modifier = Modifier
+                .clip(RoundedCornerShape(4.dp))
+                .clickable {
+                  extDurationNum += 1
+                  extDuration = "$extDurationNum $extDurationUnit"
+                  extQuantityText = calculateAutoQty(extFrequency, extDurationNum, extDurationUnit).toString()
+                },
+              color = BackgroundSurface,
+              shape = RoundedCornerShape(4.dp),
+              border = BorderStroke(0.6.dp, BorderGrey)
+            ) {
+              Text("+", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+            }
+          }
+
+          Spacer(modifier = Modifier.height(4.dp))
+
+          FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            durationUnits.forEach { (uKey, uLabel) ->
+              val isSel = extDurationUnit == uKey
+              FilterChip(
+                selected = isSel,
+                onClick = {
+                  extDurationUnit = uKey
+                  extDuration = if (uKey == "ပုံမှန်သောက်ရန်") "ပုံမှန်သောက်ရန်" else "$extDurationNum $uKey"
+                  extQuantityText = calculateAutoQty(extFrequency, extDurationNum, uKey).toString()
+                },
+                label = { Text(uLabel, fontSize = 9.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
+                shape = RoundedCornerShape(4.dp),
+                modifier = Modifier.height(24.dp)
+              )
+            }
+          }
+
+          Spacer(modifier = Modifier.height(8.dp))
+
+          // Quantity Quick Picker Section (Chips for Qty) for External Rx
+          Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("ထုတ်ပေးမည့် အရေအတွက် (Qty):", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+            Spacer(modifier = Modifier.width(6.dp))
+            quantityQuickNums.forEach { q ->
+              val isSel = extQuantityText == q.toString()
+              Surface(
+                modifier = Modifier
+                  .padding(end = 4.dp)
+                  .clip(RoundedCornerShape(4.dp))
+                  .clickable { extQuantityText = q.toString() },
+                color = if (isSel) Color(0xFF1565C0) else BackgroundSurface,
+                shape = RoundedCornerShape(4.dp),
+                border = BorderStroke(0.6.dp, if (isSel) Color(0xFF0D47A1) else BorderGrey)
+              ) {
+                Text(
+                  "$q",
+                  fontSize = 10.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = if (isSel) PureWhite else DarkGrayText,
+                  modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                )
+              }
+            }
+
+            Surface(
+              modifier = Modifier
+                .clip(RoundedCornerShape(4.dp))
+                .clickable {
+                  val cur = extQuantityText.toIntOrNull() ?: 10
+                  if (cur > 1) extQuantityText = (cur - 1).toString()
+                },
+              color = BackgroundSurface,
+              shape = RoundedCornerShape(4.dp),
+              border = BorderStroke(0.6.dp, BorderGrey)
+            ) {
+              Text("-", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+            }
+
+            Spacer(modifier = Modifier.width(3.dp))
+
+            Surface(
+              modifier = Modifier
+                .clip(RoundedCornerShape(4.dp))
+                .clickable {
+                  val cur = extQuantityText.toIntOrNull() ?: 10
+                  extQuantityText = (cur + 1).toString()
+                },
+              color = BackgroundSurface,
+              shape = RoundedCornerShape(4.dp),
+              border = BorderStroke(0.6.dp, BorderGrey)
+            ) {
+              Text("+", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+            }
+          }
+
+          Spacer(modifier = Modifier.height(8.dp))
 
           Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             OutlinedTextField(
@@ -538,7 +1052,7 @@ fun DrugPickerModal(
             OutlinedTextField(
               value = extDuration,
               onValueChange = { extDuration = it },
-              label = { Text("Duration", fontSize = 10.sp) },
+              label = { Text("Duration (ရက်)", fontSize = 10.sp) },
               placeholder = { Text("e.g. 7 Days, 1 Month", fontSize = 10.sp) },
               modifier = Modifier.weight(1f),
               shape = RoundedCornerShape(6.dp),
@@ -549,7 +1063,15 @@ fun DrugPickerModal(
             OutlinedTextField(
               value = extQuantityText,
               onValueChange = { extQuantityText = it },
-              label = { Text("Total Qty", fontSize = 10.sp) },
+              label = { Text("Total Qty (လုံးရေ)", fontSize = 10.sp) },
+              placeholder = { Text("14", fontSize = 10.sp) },
+              modifier = Modifier.weight(0.9f),
+              shape = RoundedCornerShape(6.dp),
+              singleLine = true,
+              colors = clinicTextFieldColors(),
+              textStyle = LocalTextStyle.current.copy(fontSize = 11.sp, color = DarkGrayText)
+            )
+          }
               placeholder = { Text("14", fontSize = 10.sp) },
               modifier = Modifier.weight(0.9f),
               shape = RoundedCornerShape(6.dp),

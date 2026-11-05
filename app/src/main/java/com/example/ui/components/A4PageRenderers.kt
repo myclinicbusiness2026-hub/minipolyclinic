@@ -540,13 +540,14 @@ fun formatDosageAndDirection(drug: PrescribedDrug): String {
     freqRaw.contains("1-0-0") || freqRaw.contains("od", ignoreCase = true) || freqRaw.contains("Once daily", ignoreCase = true) || freqRaw.contains("Morning", ignoreCase = true) -> "1-0-0"
     freqRaw.contains("0-0-1") || freqRaw.contains("hs", ignoreCase = true) || freqRaw.contains("Bedtime", ignoreCase = true) || freqRaw.contains("Night", ignoreCase = true) -> "0-0-1"
     freqRaw.contains("prn", ignoreCase = true) || freqRaw.contains("As needed", ignoreCase = true) || freqRaw.contains("လိုအပ်") -> "PRN"
-    freqRaw.startsWith("(") && freqRaw.contains("-") -> freqRaw.removeSurrounding("(", ")")
+    freqRaw.contains("-") -> freqRaw.removeSurrounding("(", ")").trim()
+    freqRaw.startsWith("(") -> freqRaw.removeSurrounding("(", ")").trim()
     else -> {
       val stripped = freqRaw.replace(Regex("(?i)\\b(tds|tid|bid|bd|od|qid|qds)\\b"), "")
         .replace(Regex("""\([^\)]*\)"""), { m -> if (m.value.contains("-")) m.value else "" })
         .replace("()", "")
         .trim()
-      if (stripped.isNotBlank()) stripped else "1-0-1"
+      if (stripped.isNotBlank()) stripped else freqRaw.ifBlank { "1-0-1" }
     }
   }
 
@@ -595,10 +596,10 @@ fun A4PrescriptionTable(
           .padding(horizontal = 6.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
       ) {
-        Text("#", modifier = Modifier.weight(0.25f), fontSize = 9.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
-        Text("DRUG & FORMULATION", modifier = Modifier.weight(3.1f), fontSize = 9.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
-        Text("DOSAGE & DIRECTION", modifier = Modifier.weight(1.8f), fontSize = 9.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
-        Text("DURATION", modifier = Modifier.weight(0.75f), fontSize = 9.sp, fontWeight = FontWeight.Bold, color = DarkGrayText, textAlign = TextAlign.End)
+        Text("#", modifier = Modifier.weight(0.22f), fontSize = 9.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+        Text("DRUG & FORMULATION", modifier = Modifier.weight(3.68f), fontSize = 9.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+        Text("DOSAGE & DIRECTION", modifier = Modifier.weight(1.35f), fontSize = 9.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+        Text("DURATION", modifier = Modifier.weight(0.65f), fontSize = 9.sp, fontWeight = FontWeight.Bold, color = DarkGrayText, textAlign = TextAlign.End)
       }
       HorizontalDivider(thickness = 0.8.dp, color = BorderGray)
       consultation.prescriptions.forEachIndexed { idx, drug ->
@@ -617,10 +618,10 @@ fun A4PrescriptionTable(
             .padding(horizontal = 6.dp, vertical = 6.dp),
           verticalAlignment = Alignment.CenterVertically
         ) {
-          Text("${idx + 1}", modifier = Modifier.weight(0.25f), fontSize = 9.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+          Text("${idx + 1}", modifier = Modifier.weight(0.22f), fontSize = 9.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
           Text(
             drugTitle,
-            modifier = Modifier.weight(3.1f),
+            modifier = Modifier.weight(3.68f),
             fontWeight = FontWeight.Bold,
             fontSize = 10.5.sp,
             color = DarkGrayText,
@@ -628,14 +629,14 @@ fun A4PrescriptionTable(
           )
           Text(
             formatDosageAndDirection(drug),
-            modifier = Modifier.weight(1.8f),
+            modifier = Modifier.weight(1.35f),
             fontSize = 10.sp,
             color = DarkGrayText,
             lineHeight = 16.sp
           )
           Text(
             drug.duration,
-            modifier = Modifier.weight(0.75f),
+            modifier = Modifier.weight(0.65f),
             fontSize = 9.5.sp,
             color = DarkGrayText,
             textAlign = TextAlign.End
