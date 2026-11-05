@@ -6,5 +6,5 @@
   "releaseNotesMm": "• ထိုးဆေး တစ်ဝက်စတော့နှင့် လေလွင့်ဆေး စာရင်းနှုတ်စနစ်: Tramadol, Diazepam စသည့် ဆေးများအတွက် ဒဿမစတော့ (0.5, 9.5) တိကျစွာ မှတ်သားနိုင်ပြီး၊ အသုံးမကုန်/ရက်ကြာဆေးများအား 'အသုံး/လေလွင့်' ခလုတ်ဖြင့် စာရင်းနှုတ်ကာ ဆေးခန်းအသုံးစရိတ် (Expense) ထဲ အလိုအလျောက် သွင်းပေးခြင်း\n• အမြတ်ရာခိုင်နှုန်း (ဒဿမ ၂ နေရာ) နှင့် ရောင်းဈေး တိုက်ရိုက်ပြင်ဆင်နိုင်ခြင်း: Stock-In နှင့် Edit Stock တွင် Margin % (ဥပမာ 25.56%) ဒဿမ မပျောက်စေခြင်းနှင့် ရောင်းဈေး (Selling Price) ကို တိုက်ရိုက်ရိုက်ထည့်ရုံဖြင့် Margin % အလိုအလျောက် တွက်ချက်ပေးခြင်း\n• Pharmacy Inventory ရုပ်ထွက် ပိုမိုထင်ရှားစေခြင်း: Generic Name အား Deep Cyan (ပြာစိမ်းရင့်) အရောင်ဖြင့် ထင်ရှားစေပြီး၊ Oral (အပြာ)၊ Injection (နှင်းဆီနီ)၊ Topical (ခရမ်း)၊ Consumables (လိမ္မော်) အမျိုးအစား အရောင်ခွဲခြားမှု အဆင့်မြှင့်တင်ခြင်း",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-05",
-  "apkSizeBytes": 21892018
+  "apkSizeBytes": 21908402
 }
