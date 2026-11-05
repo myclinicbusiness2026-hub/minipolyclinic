@@ -1827,11 +1827,11 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val newlyDeducted = inv.deductedDrugQuantities.toMutableMap()
     val deductedMedIds = newlyDeducted.keys.toMutableSet()
 
-    fun deductMed(med: Medicine, qtyToDeduct: Int) {
-      if (qtyToDeduct <= 0) return
+    fun deductMed(med: Medicine, qtyToDeduct: Double) {
+      if (qtyToDeduct <= 0.0) return
       var remaining = qtyToDeduct
       val updatedBatches = med.allBatches.map { b ->
-        if (remaining > 0 && b.quantity > 0) {
+        if (remaining > 0.0 && b.quantity > 0.0) {
           val deduct = minOf(b.quantity, remaining)
           remaining -= deduct
           b.copy(quantity = b.quantity - deduct, lastUpdated = now)
@@ -1839,12 +1839,15 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       }
       medMap[med.id] = med.copy(batches = updatedBatches)
       val deducted = qtyToDeduct - remaining
-      if (deducted > 0) {
-        newlyDeducted[med.id] = (newlyDeducted[med.id] ?: 0) + deducted
+      if (deducted > 0.0) {
+        val intDeducted = if (deducted % 1.0 == 0.0) deducted.toInt() else 1
+        newlyDeducted[med.id] = (newlyDeducted[med.id] ?: 0) + intDeducted
         deductedMedIds.add(med.id)
         modified = true
       }
     }
+
+    fun deductMed(med: Medicine, qtyToDeduct: Int) = deductMed(med, qtyToDeduct.toDouble())
 
     val consultation = _consultations.value.find { it.id == inv.consultationId }
 
@@ -1871,18 +1874,28 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         1
       }
 
+      // Check if fractional dose (e.g. 1/2 amp, 0.5 amp)
+      val doseFraction = when {
+        card.dosage.contains("1/2") || card.dosage.contains("½") || card.dosage.contains("0.5") -> 0.5
+        else -> 1.0
+      }
+
       if (card.isCocktail && card.cocktailItems.isNotEmpty()) {
         for (cItem in card.cocktailItems) {
           val med = findMatchingMedicine(cItem.medicineId, cItem.name, medMap)
-          val qty = (if (cItem.quantity > 0) cItem.quantity else 1) * billedDoses
-          if (med != null && qty > 0) {
+          val cDoseFraction = when {
+            cItem.dosage.contains("1/2") || cItem.dosage.contains("½") || cItem.dosage.contains("0.5") -> 0.5
+            else -> 1.0
+          }
+          val qty = (if (cItem.quantity > 0) cItem.quantity.toDouble() else 1.0) * billedDoses * cDoseFraction
+          if (med != null && qty > 0.0) {
             deductMed(med, qty)
           }
         }
       } else if (card.medicationName.isNotBlank()) {
         val med = findMatchingMedicine(card.medicationId, card.medicationName, medMap)
         if (med != null && billedDoses > 0) {
-          deductMed(med, billedDoses)
+          deductMed(med, billedDoses * doseFraction)
         }
       }
 
@@ -2956,6 +2969,50 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
     }
+  }
+
+  fun writeOffMedicineWastage(
+    medicineId: String,
+    quantity: Double,
+    reason: String = "ရက်ကြာ/လေလွင့်ဆေးဖျက်"
+  ): Boolean {
+    if (quantity <= 0.0) return false
+    val ctx = getApplication<Application>()
+    val med = _medicines.value.find { it.id == medicineId } ?: return false
+    val now = System.currentTimeMillis()
+    var remaining = quantity
+    var totalCostDeducted = 0.0
+
+    val updatedBatches = med.allBatches.map { b ->
+      if (remaining > 0.0 && b.quantity > 0.0) {
+        val deduct = minOf(b.quantity, remaining)
+        remaining -= deduct
+        totalCostDeducted += deduct * b.costPricePerUnit
+        b.copy(quantity = b.quantity - deduct, lastUpdated = now)
+      } else b
+    }
+
+    val updatedMed = med.copy(batches = updatedBatches)
+    val updatedMeds = _medicines.value.map { if (it.id == medicineId) updatedMed else it }
+    _medicines.value = updatedMeds
+    ClinicDataPersistence.saveMedicines(ctx, updatedMeds)
+
+    val actualDeducted = quantity - remaining
+    val qtyDisplay = if (actualDeducted % 1.0 == 0.0) actualDeducted.toInt().toString() else String.format(Locale.US, "%.1f", actualDeducted)
+    if (actualDeducted > 0.0 && totalCostDeducted > 0.0) {
+      addExpense(
+        title = "ဆေးဝါးလေလွင့်/ဆေးခန်းအသုံး - ${med.name} ($qtyDisplay ${med.unitType})",
+        category = "Clinic Supplies",
+        amount = totalCostDeducted,
+        payee = "ဆေးဝါးလေလွင့်စာရင်း",
+        notes = reason.ifBlank { "ဆေးဝါးအသုံးမကုန်/ရက်ကြာ စွန့်ပစ်စာရင်း" }
+      )
+    }
+
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
+    return true
   }
 
   fun deleteMedicine(medicineId: String) {

@@ -113,7 +113,7 @@ fun StockInScreen(
     marginPercentText = if (calculatedMargin % 1.0 == 0.0) {
       calculatedMargin.toInt().toString()
     } else {
-      String.format(Locale.US, "%.1f", calculatedMargin)
+      String.format(Locale.US, "%.2f", calculatedMargin)
     }
     isUpdatingProgrammatically = false
   }
@@ -327,8 +327,8 @@ fun StockInScreen(
                     selectedCategory = existing.category
                     selectedUnitType = existing.unitType
                     minStockThresholdText = existing.minStockThreshold.toString()
-                    costPriceText = existing.latestCostPrice.toInt().toString()
-                    marginPercentText = existing.profitMarginPercent.toInt().toString()
+                    costPriceText = if (existing.latestCostPrice % 1.0 == 0.0) existing.latestCostPrice.toInt().toString() else existing.latestCostPrice.toString()
+                    marginPercentText = if (existing.profitMarginPercent % 1.0 == 0.0) existing.profitMarginPercent.toInt().toString() else String.format(Locale.US, "%.2f", existing.profitMarginPercent)
                     updateSellingFromMargin(existing.latestCostPrice, existing.profitMarginPercent)
                     selectedSupplierName = existing.primarySupplier.ifBlank { selectedSupplierName }
                     batchNumber = "BAT-${SimpleDateFormat("yyyyMM", Locale.getDefault()).format(Date())}-${existing.batches.size + 1}"

@@ -403,7 +403,7 @@ object ClinicDataPersistence {
               StockBatch(
                 batchNumber = bo.optString("batchNumber"),
                 expiryDate = bo.optString("expiryDate"),
-                quantity = bo.optInt("quantity", 0),
+                quantity = bo.optDouble("quantity", 0.0),
                 costPricePerUnit = bo.optDouble("costPricePerUnit", 0.0),
                 supplierName = if (bo.has("supplierName") && !bo.isNull("supplierName")) bo.optString("supplierName") else null,
                 lastUpdated = bo.optLong("lastUpdated", System.currentTimeMillis())

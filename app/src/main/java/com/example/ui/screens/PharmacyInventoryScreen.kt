@@ -74,6 +74,7 @@ fun PharmacyInventoryScreen(
   var showAddCategoryDialog by remember { mutableStateOf(false) }
   var medicineToDelete by remember { mutableStateOf<Medicine?>(null) }
   var medicineToEdit by remember { mutableStateOf<Medicine?>(null) }
+  var medicineForWastage by remember { mutableStateOf<Medicine?>(null) }
   var showAddSupplierDialog by remember { mutableStateOf(false) }
   var editingSupplier by remember { mutableStateOf<Supplier?>(null) }
   var deletingSupplier by remember { mutableStateOf<Supplier?>(null) }
@@ -488,6 +489,7 @@ fun PharmacyInventoryScreen(
                 suppliers = suppliers,
                 getDaysUntilExpiry = ::getDaysUntilExpiry,
                 onEditMedicine = { if (!isReadOnly) medicineToEdit = med },
+                onWastageClick = { if (!isReadOnly) medicineForWastage = med },
                 onDeleteMedicine = { if (!isReadOnly) medicineToDelete = med }
               )
             }
@@ -675,6 +677,22 @@ fun PharmacyInventoryScreen(
         }
       )
     }
+
+    // Medicine Wastage / Clinic Use Write-Off Dialog
+    medicineForWastage?.let { med ->
+      MedicineWastageDialog(
+        medicine = med,
+        currencyFmt = currencyFmt,
+        onDismiss = { medicineForWastage = null },
+        onConfirm = { qty, reason ->
+          viewModel.writeOffMedicineWastage(med.id, qty, reason)
+          medicineForWastage = null
+        }
+      )
+          medicineToEdit = null
+        }
+      )
+    }
 }
 fun getMedicineCategoryColor(category: String): Color {
   return when {
@@ -697,6 +715,7 @@ fun EnhancedMedicineItemCard(
   suppliers: List<Supplier>,
   getDaysUntilExpiry: (String) -> Long,
   onEditMedicine: (() -> Unit)? = null,
+  onWastageClick: (() -> Unit)? = null,
   onDeleteMedicine: (() -> Unit)? = null
 ) {
   var isExpanded by remember { mutableStateOf(false) }
@@ -769,15 +788,16 @@ fun EnhancedMedicineItemCard(
               verticalAlignment = Alignment.CenterVertically,
               horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-              val typeColor = when (medicine.effectiveMedicineType) {
-                "Injection" -> Color(0xFF0F766E)
-                "Consumables" -> Color(0xFFD97706)
-                "Topical" -> Color(0xFF7C3AED)
-                else -> Color(0xFF0284C7)
+              val (typeColor, typeBg) = when (medicine.effectiveMedicineType) {
+                "Injection" -> Color(0xFFE11D48) to Color(0xFFFFE4E6)
+                "Consumables" -> Color(0xFFD97706) to Color(0xFFFEF3C7)
+                "Topical" -> Color(0xFF7C3AED) to Color(0xFFF3E8FF)
+                else -> Color(0xFF0284C7) to Color(0xFFE0F2FE)
               }
               Surface(
                 shape = RoundedCornerShape(3.dp),
-                color = typeColor.copy(alpha = 0.12f)
+                color = typeBg,
+                border = BorderStroke(0.6.dp, typeColor.copy(alpha = 0.5f))
               ) {
                 Text(
                   medicine.effectiveMedicineType,
@@ -800,12 +820,21 @@ fun EnhancedMedicineItemCard(
                 )
               }
               Text(
-                "${medicine.genericName} • ${medicine.dosageForm}",
+                medicine.genericName.ifBlank { medicine.name },
                 fontSize = 10.sp,
-                color = SlateMuted,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF0E7490),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
               )
+              if (medicine.dosageForm.isNotBlank()) {
+                Text(
+                  "• ${medicine.dosageForm}",
+                  fontSize = 9.sp,
+                  color = SlateMuted,
+                  maxLines = 1
+                )
+              }
             }
           }
 
@@ -833,7 +862,7 @@ fun EnhancedMedicineItemCard(
             color = if (isLowStock) StatusCriticalContainer else SoftGreenContainer
           ) {
             Text(
-              if (isLowStock) "Low: ${medicine.totalStock}" else "${medicine.totalStock} ${medicine.unitType}",
+              if (isLowStock) "Low: ${medicine.totalStockDisplay}" else "${medicine.totalStockDisplay} ${medicine.unitType}",
               color = if (isLowStock) StatusCritical else MedicalGreenDark,
               fontSize = 9.5.sp,
               fontWeight = FontWeight.Bold,
@@ -861,8 +890,9 @@ fun EnhancedMedicineItemCard(
             fontSize = 9.5.sp,
             color = SlateDark
           )
+          val marginStr = if (medicine.profitMarginPercent % 1.0 == 0.0) "+${medicine.profitMarginPercent.toInt()}%" else String.format(Locale.US, "+%.2f%%", medicine.profitMarginPercent)
           Text(
-            "+${medicine.profitMarginPercent.toInt()}%",
+            marginStr,
             fontSize = 9.5.sp,
             fontWeight = FontWeight.Bold,
             color = MedicalGreen
@@ -953,6 +983,22 @@ fun EnhancedMedicineItemCard(
               Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(12.dp))
               Spacer(modifier = Modifier.width(3.dp))
               Text("Edit Stock", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            }
+          }
+
+          if (onWastageClick != null) {
+            Spacer(modifier = Modifier.width(4.dp))
+            OutlinedButton(
+              onClick = onWastageClick,
+              shape = RoundedCornerShape(4.dp),
+              contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+              modifier = Modifier.height(26.dp),
+              colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFD97706)),
+              border = BorderStroke(1.dp, Color(0xFFD97706))
+            ) {
+              Icon(Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(12.dp))
+              Spacer(modifier = Modifier.width(2.dp))
+              Text("အသုံး/လေလွင့်", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
             }
           }
 
@@ -1234,7 +1280,44 @@ fun EditMedicineDialog(
   var selectedMedicineType by remember { mutableStateOf(medicine.effectiveMedicineType) }
   var selectedUnitType by remember { mutableStateOf(medicine.unitType) }
   var selectedSupplier by remember { mutableStateOf(medicine.primarySupplier) }
-  var profitMarginText by remember { mutableStateOf(medicine.profitMarginPercent.toInt().toString()) }
+  var profitMarginText by remember {
+    mutableStateOf(
+      if (medicine.profitMarginPercent % 1.0 == 0.0) medicine.profitMarginPercent.toInt().toString()
+      else String.format(Locale.US, "%.2f", medicine.profitMarginPercent)
+    )
+  }
+  var isUpdatingProgrammatically by remember { mutableStateOf(false) }
+  var sellingPriceText by remember {
+    val initialCost = medicine.latestCostPrice
+    val initialMargin = medicine.profitMarginPercent
+    val calculatedSelling = initialCost + (initialCost * (initialMargin / 100.0))
+    mutableStateOf(if (calculatedSelling % 1.0 == 0.0) calculatedSelling.toInt().toString() else String.format(Locale.US, "%.1f", calculatedSelling))
+  }
+
+  fun updateSellingFromMargin(cost: Double, margin: Double) {
+    if (isUpdatingProgrammatically) return
+    isUpdatingProgrammatically = true
+    val calculatedSelling = cost + (cost * (margin / 100.0))
+    sellingPriceText = if (calculatedSelling % 1.0 == 0.0) {
+      calculatedSelling.toInt().toString()
+    } else {
+      String.format(Locale.US, "%.1f", calculatedSelling)
+    }
+    isUpdatingProgrammatically = false
+  }
+
+  fun updateMarginFromSelling(cost: Double, selling: Double) {
+    if (isUpdatingProgrammatically) return
+    if (cost <= 0.0) return
+    isUpdatingProgrammatically = true
+    val calculatedMargin = ((selling - cost) / cost) * 100.0
+    profitMarginText = if (calculatedMargin % 1.0 == 0.0) {
+      calculatedMargin.toInt().toString()
+    } else {
+      String.format(Locale.US, "%.2f", calculatedMargin)
+    }
+    isUpdatingProgrammatically = false
+  }
   var minThresholdText by remember { mutableStateOf(medicine.minStockThreshold.toString()) }
   var isAllergyWarning by remember { mutableStateOf(medicine.isAllergyWarning) }
   var standardDosage by remember { mutableStateOf(medicine.standardDosage) }
@@ -1246,7 +1329,7 @@ fun EditMedicineDialog(
           EditableBatchState(
             batchNumber = it.batchNumber,
             expiryDate = it.expiryDate,
-            quantityText = it.quantity.toString(),
+            quantityText = if (it.quantity % 1.0 == 0.0) it.quantity.toInt().toString() else it.quantity.toString(),
             costPriceText = if (it.costPricePerUnit % 1.0 == 0.0) it.costPricePerUnit.toInt().toString() else it.costPricePerUnit.toString()
           )
         })
@@ -1301,10 +1384,10 @@ fun EditMedicineDialog(
               label = { Text(typeLabel, fontSize = 10.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
               colors = FilterChipDefaults.filterChipColors(
                 selectedContainerColor = when (typeKey) {
-                  "Injection" -> Color(0xFF0F766E)
+                  "Injection" -> Color(0xFFE11D48)
                   "Consumables" -> Color(0xFFD97706)
                   "Topical" -> Color(0xFF7C3AED)
-                  else -> MedicalGreen
+                  else -> Color(0xFF0284C7)
                 },
                 selectedLabelColor = PureWhite
               )
@@ -1351,21 +1434,39 @@ fun EditMedicineDialog(
           )
         }
 
-        // Profit Margin % & Min Stock Threshold
+        // Profit Margin % & Selling Price & Min Stock Threshold
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
           OutlinedTextField(
             value = profitMarginText,
-            onValueChange = { profitMarginText = it },
-            label = { Text("Profit Margin %", fontSize = 11.5.sp) },
+            onValueChange = {
+              profitMarginText = it
+              val margin = it.toDoubleOrNull() ?: 0.0
+              val currentCost = batchListState.firstOrNull()?.costPriceText?.toDoubleOrNull() ?: medicine.latestCostPrice
+              updateSellingFromMargin(currentCost, margin)
+            },
+            label = { Text("Margin %", fontSize = 11.sp) },
             modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(6.dp),
+            singleLine = true
+          )
+          OutlinedTextField(
+            value = sellingPriceText,
+            onValueChange = {
+              sellingPriceText = it
+              val selling = it.toDoubleOrNull() ?: 0.0
+              val currentCost = batchListState.firstOrNull()?.costPriceText?.toDoubleOrNull() ?: medicine.latestCostPrice
+              updateMarginFromSelling(currentCost, selling)
+            },
+            label = { Text("Selling (ရောင်းဈေး)", fontSize = 11.sp) },
+            modifier = Modifier.weight(1.2f),
             shape = RoundedCornerShape(6.dp),
             singleLine = true
           )
           OutlinedTextField(
             value = minThresholdText,
             onValueChange = { minThresholdText = it },
-            label = { Text("Min Stock Alert", fontSize = 11.5.sp) },
-            modifier = Modifier.weight(1f),
+            label = { Text("Min Alert", fontSize = 11.sp) },
+            modifier = Modifier.weight(0.9f),
             shape = RoundedCornerShape(6.dp),
             singleLine = true
           )
@@ -1490,7 +1591,7 @@ fun EditMedicineDialog(
         onClick = {
           if (tradeName.isBlank()) return@Button
           val updatedBatches = batchListState.mapNotNull { bs ->
-            val qty = bs.quantityText.toIntOrNull() ?: return@mapNotNull null
+            val qty = bs.quantityText.toDoubleOrNull() ?: return@mapNotNull null
             val cost = bs.costPriceText.toDoubleOrNull() ?: return@mapNotNull null
             val bNum = bs.batchNumber.trim().ifBlank { "B1" }
             val exp = bs.expiryDate.trim().ifBlank { "2027-12-31" }
@@ -1526,6 +1627,150 @@ fun EditMedicineDialog(
     dismissButton = {
       OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(6.dp)) {
         Text("Cancel", fontSize = 11.5.sp)
+      }
+    }
+  )
+}
+
+@Composable
+fun MedicineWastageDialog(
+  medicine: Medicine,
+  currencyFmt: NumberFormat,
+  onDismiss: () -> Unit,
+  onConfirm: (quantity: Double, reason: String) -> Unit
+) {
+  var quantityText by remember { mutableStateOf("0.5") }
+  var reasonText by remember { mutableStateOf("ရက်ကြာ/အသုံးမကုန် လေလွင့်စွန့်ပစ်") }
+  val quickQtyPresets = listOf("0.5", "1", "2", "3")
+  val parsedQty = quantityText.toDoubleOrNull() ?: 0.0
+  val estimatedCost = parsedQty * medicine.latestCostPrice
+
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    icon = {
+      Icon(
+        Icons.Default.DeleteSweep,
+        contentDescription = null,
+        tint = Color(0xFFD97706),
+        modifier = Modifier.size(28.dp)
+      )
+    },
+    title = {
+      Text(
+        "ဆေးဝါးလေလွင့် / ဆေးခန်းအသုံး စာရင်းနှုတ်ခြင်း",
+        fontWeight = FontWeight.Bold,
+        fontSize = 13.5.sp
+      )
+    },
+    text = {
+      Column(
+        modifier = Modifier
+          .fillMaxWidth()
+          .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+      ) {
+        Surface(
+          shape = RoundedCornerShape(6.dp),
+          color = Color(0xFFFFFBEB),
+          border = BorderStroke(0.8.dp, Color(0xFFFDE68A)),
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          Column(modifier = Modifier.padding(8.dp)) {
+            Text(
+              medicine.name,
+              fontWeight = FontWeight.Bold,
+              fontSize = 12.sp,
+              color = Color(0xFF92400E)
+            )
+            Text(
+              "${medicine.genericName} • လက်ကျန်စတော့: ${medicine.totalStockDisplay} ${medicine.unitType}",
+              fontSize = 10.sp,
+              color = Color(0xFFB45309)
+            )
+          }
+        }
+
+        Text("နှုတ်ပယ်မည့် အရေအတွက် (Deduction Quantity):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+
+        // Quick Preset Chips
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+          quickQtyPresets.forEach { preset ->
+            val isSel = quantityText == preset
+            FilterChip(
+              selected = isSel,
+              onClick = { quantityText = preset },
+              label = { Text("$preset ${medicine.unitType}", fontSize = 10.sp) },
+              colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = Color(0xFFD97706),
+                selectedLabelColor = PureWhite
+              )
+            )
+          }
+        }
+
+        OutlinedTextField(
+          value = quantityText,
+          onValueChange = { quantityText = it },
+          label = { Text("Quantity (${medicine.unitType}) *", fontSize = 11.sp) },
+          modifier = Modifier.fillMaxWidth(),
+          shape = RoundedCornerShape(6.dp),
+          singleLine = true
+        )
+
+        // Estimated Cost Preview
+        if (estimatedCost > 0.0) {
+          Surface(
+            shape = RoundedCornerShape(4.dp),
+            color = BgLightGray,
+            modifier = Modifier.fillMaxWidth()
+          ) {
+            Row(
+              modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFF0F766E), modifier = Modifier.size(14.dp))
+              Spacer(modifier = Modifier.width(6.dp))
+              Text(
+                "ဝယ်ရင်းတန်ဖိုး: ${currencyFmt.format(estimatedCost.toInt())} Ks အား ဆေးခန်းအသုံးစရိတ် (Expense) အဖြစ် အလိုအလျောက် စာရင်းသွင်းပေးပါမည်။",
+                fontSize = 9.5.sp,
+                color = SlateDark
+              )
+            }
+          }
+        }
+
+        OutlinedTextField(
+          value = reasonText,
+          onValueChange = { reasonText = it },
+          label = { Text("နှုတ်ရသည့် အကြောင်းပြချက် (Reason)", fontSize = 11.sp) },
+          modifier = Modifier.fillMaxWidth(),
+          shape = RoundedCornerShape(6.dp),
+          singleLine = true
+        )
+      }
+    },
+    confirmButton = {
+      Button(
+        onClick = {
+          if (parsedQty > 0.0) {
+            onConfirm(parsedQty, reasonText.trim())
+          }
+        },
+        enabled = parsedQty > 0.0 && parsedQty <= medicine.totalStock,
+        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)),
+        shape = RoundedCornerShape(6.dp)
+      ) {
+        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp), tint = PureWhite)
+        Spacer(modifier = Modifier.width(4.dp))
+        Text("Confirm Write-Off", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PureWhite)
+      }
+    },
+    dismissButton = {
+      OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(6.dp)) {
+        Text("Cancel", fontSize = 11.sp)
       }
     }
   )

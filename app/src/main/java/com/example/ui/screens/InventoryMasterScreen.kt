@@ -208,7 +208,7 @@ fun InventoryMasterScreen(
   }
 
   val zeroStockList = remember(medicines) {
-    medicines.filter { it.totalStock == 0 }
+    medicines.filter { it.totalStock <= 0.0 }
   }
 
   val criticalExpiryList = remember(medicines) {
@@ -242,7 +242,7 @@ fun InventoryMasterScreen(
         MasterStockFilter.LOW_STOCK -> med.totalStock <= med.minStockThreshold
         MasterStockFilter.CRITICAL_EXPIRY -> earliestDays in 0..90
         MasterStockFilter.EXPIRING_SOON -> earliestDays in 91..180
-        MasterStockFilter.ZERO_STOCK -> med.totalStock == 0
+        MasterStockFilter.ZERO_STOCK -> med.totalStock <= 0.0
       }
       matchesSearch && matchesFilter
     }
@@ -1172,7 +1172,7 @@ private fun MedicineValuationCard(
     border = BorderStroke(
       1.dp,
       when {
-        medicine.totalStock == 0 -> StatusCritical.copy(alpha = 0.6f)
+        medicine.totalStock <= 0.0 -> StatusCritical.copy(alpha = 0.6f)
         isCriticalExpiry -> StatusCritical.copy(alpha = 0.6f)
         isLowStock -> StatusWarning.copy(alpha = 0.7f)
         else -> BorderGrey
@@ -1220,14 +1220,14 @@ private fun MedicineValuationCard(
           Surface(
             shape = RoundedCornerShape(4.dp),
             color = when {
-              medicine.totalStock == 0 -> StatusCriticalContainer
+              medicine.totalStock <= 0.0 -> StatusCriticalContainer
               isLowStock -> StatusWarningContainer
               else -> SoftGreenContainer
             },
             border = BorderStroke(
               0.8.dp,
               when {
-                medicine.totalStock == 0 -> StatusCritical
+                medicine.totalStock <= 0.0 -> StatusCritical
                 isLowStock -> StatusWarning
                 else -> MedicalGreen
               }
@@ -1239,13 +1239,13 @@ private fun MedicineValuationCard(
             ) {
               Icon(
                 when {
-                  medicine.totalStock == 0 -> Icons.Default.Cancel
+                  medicine.totalStock <= 0.0 -> Icons.Default.Cancel
                   isLowStock -> Icons.Default.WarningAmber
                   else -> Icons.Default.CheckCircle
                 },
                 contentDescription = null,
                 tint = when {
-                  medicine.totalStock == 0 -> StatusCritical
+                  medicine.totalStock <= 0.0 -> StatusCritical
                   isLowStock -> StatusWarning
                   else -> MedicalGreen
                 },
@@ -1253,11 +1253,11 @@ private fun MedicineValuationCard(
               )
               Spacer(modifier = Modifier.width(3.dp))
               Text(
-                "${medicine.totalStock} ${medicine.unitType}",
+                "${medicine.totalStockDisplay} ${medicine.unitType}",
                 fontSize = 9.5.sp,
                 fontWeight = FontWeight.Bold,
                 color = when {
-                  medicine.totalStock == 0 -> StatusCritical
+                  medicine.totalStock <= 0.0 -> StatusCritical
                   isLowStock -> Color(0xFFB45309)
                   else -> MedicalGreenDark
                 }
@@ -1299,8 +1299,9 @@ private fun MedicineValuationCard(
               fontWeight = FontWeight.Medium,
               color = SlateDark
             )
+            val marginStr = if (medicine.profitMarginPercent % 1.0 == 0.0) "+${medicine.profitMarginPercent.toInt()}%" else String.format(Locale.US, "+%.2f%%", medicine.profitMarginPercent)
             Text(
-              "Retail ${currencyFmt.format(medicine.currentSellingPrice.toInt())} Ks (+${medicine.profitMarginPercent.toInt()}%)",
+              "Retail ${currencyFmt.format(medicine.currentSellingPrice.toInt())} Ks ($marginStr)",
               fontSize = 9.5.sp,
               fontWeight = FontWeight.Bold,
               color = MedicalGreenDark
@@ -1348,8 +1349,9 @@ private fun MedicineValuationCard(
               fontWeight = FontWeight.SemiBold,
               color = SlateDark
             )
+            val marginStr = if (medicine.profitMarginPercent % 1.0 == 0.0) "+${medicine.profitMarginPercent.toInt()}%" else String.format(Locale.US, "+%.2f%%", medicine.profitMarginPercent)
             Text(
-              "Retail: ${currencyFmt.format(medicine.currentSellingPrice.toInt())} Ks (+${medicine.profitMarginPercent.toInt()}%)",
+              "Retail: ${currencyFmt.format(medicine.currentSellingPrice.toInt())} Ks ($marginStr)",
               fontSize = 8.5.sp,
               fontWeight = FontWeight.Bold,
               color = MedicalGreenDark

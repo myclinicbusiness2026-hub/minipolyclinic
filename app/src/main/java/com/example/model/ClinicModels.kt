@@ -88,11 +88,20 @@ data class Patient(
 data class StockBatch(
   val batchNumber: String,
   val expiryDate: String, // YYYY-MM-DD
-  val quantity: Int,
+  val quantity: Double,
   val costPricePerUnit: Double,
   val supplierName: String? = null,
   val lastUpdated: Long = System.currentTimeMillis()
-)
+) {
+  constructor(
+    batchNumber: String,
+    expiryDate: String,
+    quantity: Int,
+    costPricePerUnit: Double,
+    supplierName: String? = null,
+    lastUpdated: Long = System.currentTimeMillis()
+  ) : this(batchNumber, expiryDate, quantity.toDouble(), costPricePerUnit, supplierName, lastUpdated)
+}
 
 data class Medicine(
   val id: String = UUID.randomUUID().toString(),
@@ -131,8 +140,10 @@ data class Medicine(
       else -> "Oral"
     }
   }
-  val totalStock: Int get() = batches.sumOf { it.quantity }
-  val sortedBatches: List<StockBatch> get() = batches.filter { it.quantity > 0 }.sortedBy { it.expiryDate }
+  val totalStock: Double get() = batches.sumOf { it.quantity }
+  val totalStockInt: Int get() = totalStock.toInt()
+  val totalStockDisplay: String get() = if (totalStock % 1.0 == 0.0) totalStock.toInt().toString() else String.format(Locale.US, "%.1f", totalStock)
+  val sortedBatches: List<StockBatch> get() = batches.filter { it.quantity > 0.0 }.sortedBy { it.expiryDate }
   val allBatches: List<StockBatch> get() = batches.sortedBy { it.expiryDate }
   val earliestExpiry: String get() = sortedBatches.firstOrNull()?.expiryDate ?: (batches.firstOrNull()?.expiryDate ?: "N/A")
   val latestCostPrice: Double get() = sortedBatches.firstOrNull()?.costPricePerUnit ?: (batches.firstOrNull()?.costPricePerUnit ?: 0.0)
