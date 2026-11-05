@@ -188,7 +188,7 @@ fun DashboardScreen(
           genericOrCategory = med?.category ?: "ဆေးဝါး",
           dispensedCount = entry.value,
           unitType = med?.unitType ?: "Tabs",
-          stockRemaining = med?.totalStock ?: 0
+          stockRemaining = med?.totalStock?.toInt() ?: 0
         )
       }
 
@@ -204,7 +204,7 @@ fun DashboardScreen(
           name = med.name,
           category = med.category,
           dispensedCount = count,
-          currentStock = med.totalStock,
+          currentStock = med.totalStock.toInt(),
           unitType = med.unitType,
           earliestExpiry = med.earliestExpiry
         )

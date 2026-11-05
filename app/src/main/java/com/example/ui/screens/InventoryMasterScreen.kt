@@ -267,7 +267,7 @@ fun InventoryMasterScreen(
       CategoryStat(
         name = catName,
         itemCount = itemCount,
-        totalUnits = totalStockUnits,
+        totalUnits = totalStockUnits.toInt(),
         totalCost = catCost,
         totalRetail = catRetail,
         marginAmount = catMargin,
@@ -279,11 +279,11 @@ fun InventoryMasterScreen(
   // Reorder list for Tab 2
   val reorderItems = remember(medicines) {
     medicines.filter { it.totalStock <= it.minStockThreshold }.map { med ->
-      val suggestedOrderQty = maxOf(med.minStockThreshold * 2 - med.totalStock, med.minStockThreshold)
+      val suggestedOrderQty = maxOf(med.minStockThreshold * 2 - med.totalStock.toInt(), med.minStockThreshold)
       val estimatedCost = suggestedOrderQty * med.latestCostPrice
       ReorderRecommendation(
         medicine = med,
-        currentStock = med.totalStock,
+        currentStock = med.totalStock.toInt(),
         minThreshold = med.minStockThreshold,
         suggestedQty = suggestedOrderQty,
         unitCost = med.latestCostPrice,

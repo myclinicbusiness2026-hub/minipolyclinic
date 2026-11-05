@@ -689,10 +689,8 @@ fun PharmacyInventoryScreen(
           medicineForWastage = null
         }
       )
-          medicineToEdit = null
-        }
-      )
     }
+  }
 }
 fun getMedicineCategoryColor(category: String): Color {
   return when {

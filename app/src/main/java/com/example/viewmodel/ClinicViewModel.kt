@@ -1710,9 +1710,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val now = System.currentTimeMillis()
     val updated = _medicines.value.map { med ->
       if (med.id == medicineId) {
-        var rem = quantity
+        var rem = quantity.toDouble()
         val newBatches = med.batches.map { b ->
-          if (rem > 0 && b.quantity > 0) {
+          if (rem > 0.0 && b.quantity > 0.0) {
             val d = minOf(b.quantity, rem)
             rem -= d
             b.copy(quantity = b.quantity - d, lastUpdated = now)
@@ -2516,12 +2516,12 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       consumables.forEach { c ->
         val med = findMatchingMedicine(c.medicineId, c.name, medMap)
         if (med != null && c.quantity > 0) {
-          var remaining = c.quantity
+          var remaining = c.quantity.toDouble()
           val unitCost = med.batches.firstOrNull { it.quantity > 0 }?.costPricePerUnit
             ?: med.batches.firstOrNull()?.costPricePerUnit
             ?: (med.sellingPrice * 0.7)
           val updatedBatches = med.allBatches.map { b ->
-            if (remaining > 0 && b.quantity > 0) {
+            if (remaining > 0.0 && b.quantity > 0.0) {
               val deduct = minOf(b.quantity, remaining)
               remaining -= deduct
               b.copy(quantity = b.quantity - deduct, lastUpdated = now)
