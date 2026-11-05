@@ -691,7 +691,6 @@ fun PharmacyInventoryScreen(
       )
     }
   }
-}
 fun getMedicineCategoryColor(category: String): Color {
   return when {
     category.contains("Antibiotic", true) || category.contains("Anti-infective", true) -> Color(0xFF1D4ED8) // Deep Blue
