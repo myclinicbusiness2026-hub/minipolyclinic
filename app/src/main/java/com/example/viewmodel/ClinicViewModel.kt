@@ -2323,9 +2323,10 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             for (c in consToReturn) {
               val pMed = findMatchingMedicine(c.medicineId, c.name, medMap)
               if (pMed != null && !restockedMeds.contains(pMed.id)) {
-                val prev = availableDeducted[pMed.id] ?: 0
-                val qty = minOf(if (c.quantity > 0) c.quantity else 1, prev)
-                if (qty > 0) {
+                val prev = availableDeducted[pMed.id] ?: 0.0
+                val consQty = if (c.quantity > 0) c.quantity.toDouble() else 1.0
+                val qty = minOf(consQty, prev)
+                if (qty > 0.0) {
                   restockDrug(pMed.id, pMed.name, qty)
                   availableDeducted[pMed.id] = prev - qty
                   restockedMeds.add(pMed.id)
@@ -2379,7 +2380,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         items = remainingItems,
         totalAmount = newTotal,
         deductedDrugQuantities = availableDeducted,
-        isInventoryDeducted = availableDeducted.values.any { it > 0 }
+        isInventoryDeducted = availableDeducted.values.any { it > 0.0 }
       )
       val updatedInvoices = _invoices.value.map { if (it.id == invoiceId) updatedInv else it }
       _invoices.value = updatedInvoices
