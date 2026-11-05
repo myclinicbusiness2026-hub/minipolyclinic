@@ -99,7 +99,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     listOf("All", "Antibiotics", "Analgesic / Antipyretic", "Antacid / PPI", "Cardiovascular", "Antidiabetic", "Respiratory", "Consumables")
   )
   val procedureCategories = MutableStateFlow<List<String>>(
-    listOf("All", "Minor Surgery", "Wound Dressing", "Injection / Infusion", "Diagnostic Test", "Others")
+    listOf("All", "Minor Surgery", "Wound Dressing", "Injection / Infusion", "Diagnostic Test", "General Services", "Others")
   )
 
   val customAttendingDoctor = MutableStateFlow<String?>(null)

@@ -373,13 +373,13 @@ fun ClinicSettingsDialog(
               Icon(Icons.Default.Info, contentDescription = null, tint = MedicalGreenDark, modifier = Modifier.size(20.dp))
               Column {
                 Text(
-                  "ဆေးကုသခနှင့် ဆေးခန်းဝန်ဆောင်ခများ (Service Fee Master)",
+                  "ကုသမှုလုပ်ငန်းနှင့် အထူးဝန်ဆောင်ခများ (Procedures & Services)",
                   fontSize = 11.5.sp,
                   fontWeight = FontWeight.Bold,
                   color = MedicalGreenDark
                 )
                 Text(
-                  "ဆရာဝန်ပြသခ၊ ဆေးထိုးခနှင့် ဝန်ဆောင်ခ နှုန်းထားများကို ဘယ်ဘက် Menu ရှိ 'Service Fee Master (ကုသမှုနှင့် ဝန်ဆောင်ခများ)' တွင် သီးသန့် အတည်ပြု သတ်မှတ်နိုင်ပါသည်။",
+                  "ကုသမှုလုပ်ငန်းများ (Minor Surgery/Dressing) နှင့် ဆေးခန်းဝန်ဆောင်ခ နှုန်းထားများကို ဘယ်ဘက် Menu ရှိ 'Procedures & Services (ကုသမှုနှင့် ဝန်ဆောင်ခများ)' တွင် စနစ်တကျ သတ်မှတ်နိုင်ပါသည်။ (မှတ်ချက် - ဆရာဝန်ပြသခကိုမူ လူနာပြသချိန်တွင် သီးသန့် ပြင်ဆင်ကောက်ခံနိုင်ပါသည်)",
                   fontSize = 11.sp,
                   color = SlateDark,
                   lineHeight = 16.sp

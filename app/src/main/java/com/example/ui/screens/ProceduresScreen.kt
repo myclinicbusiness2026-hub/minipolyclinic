@@ -111,7 +111,7 @@ fun ProceduresScreen(
           Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
               Text(
-                "Minor Procedures & Dressing",
+                "Procedures & Clinical Services",
                 fontWeight = FontWeight.Bold,
                 fontSize = 13.sp,
                 color = DarkGrayText
@@ -131,7 +131,7 @@ fun ProceduresScreen(
               }
             }
             Text(
-              "ကုသမှုများနှင့် အသေးစားခွဲစိတ်မှု မှတ်တမ်း",
+              "ကုသမှုလုပ်ငန်းများ၊ အသေးစားခွဲစိတ်မှုနှင့် အထူးဝန်ဆောင်ခများ စာရင်း",
               fontSize = 10.sp,
               color = SlateMuted
             )

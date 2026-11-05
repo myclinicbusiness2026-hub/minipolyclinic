@@ -81,7 +81,7 @@ val navDrawerItems = listOf(
 
   // 2. Records, Procedures & Inventory Management
   NavDrawerItem("Medical Records", "လူနာ ဆေးမှတ်တမ်းများ (Archive)", Icons.Default.FolderShared, 8, "RECORDS & OPERATIONS", { it.canAccessMedicalRecords }),
-  NavDrawerItem("Service Fee Master", "ကုသမှုလုပ်ငန်းနှင့် ဝန်ဆောင်ခများ (Procedures)", Icons.Default.MedicalInformation, 5, "RECORDS & OPERATIONS", { it.canAccessProcedures }),
+  NavDrawerItem("Procedures & Services", "ကုသမှုလုပ်ငန်းနှင့် အထူးဝန်ဆောင်ခများ (Procedures)", Icons.Default.MedicalInformation, 5, "RECORDS & OPERATIONS", { it.canAccessProcedures }),
   NavDrawerItem("Income & Expenses", "ဝင်ငွေ ထွက်ငွေ ဇယား (Ledger)", Icons.Default.AccountBalanceWallet, 7, "RECORDS & OPERATIONS", { it.canAccessFinancialLedger }),
   NavDrawerItem("Inventory Master", "စတော့အချုပ် & တန်ဖိုးသတ်မှတ်ချက်", Icons.Default.Inventory2, 6, "RECORDS & OPERATIONS", { it.canAccessInventoryMaster })
 )
@@ -654,7 +654,7 @@ fun MiniPolyclinicMainApp(
                     2 -> "ရွှေခေတ် - Doctor Consultation EMR"
                     3 -> "ရွှေခေတ် - Pharmacy Dispensing"
                     4 -> "ရွှေခေတ် - Cashier & Billing"
-                    5 -> "ရွှေခေတ် - Service Fee Master (ကုသမှုနှင့် ဝန်ဆောင်ခများ)"
+                    5 -> "ရွှေခေတ် - Procedures & Services (ကုသမှုနှင့် ဝန်ဆောင်ခများ)"
                     6 -> "ရွှေခေတ် - Inventory Master (စတော့အချုပ်)"
                     7 -> "ရွှေခေတ် - ဝင်ငွေ ထွက်ငွေ ဇယား (Ledger)"
                     8 -> "ရွှေခေတ် - လူနာ ဆေးမှတ်တမ်းများ (EMR Archive)"
