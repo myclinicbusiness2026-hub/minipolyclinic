@@ -2011,6 +2011,23 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
   }
 
+  private fun getMedicineFallbackCostPrice(med: com.example.model.Medicine, inv: com.example.model.Invoice? = null): Double {
+    val existingCost = med.batches.firstOrNull { it.costPricePerUnit > 0.0 }?.costPricePerUnit
+    if (existingCost != null && existingCost > 0.0) return existingCost
+    if (med.latestCostPrice > 0.0) return med.latestCostPrice
+    if (inv != null) {
+      val matchingItem = inv.items.find { (it.medicineId.isNotBlank() && it.medicineId == med.id) || it.name.equals(med.name, ignoreCase = true) }
+      if (matchingItem != null && matchingItem.unitPrice > 0.0) {
+        val marginMultiplier = 1.0 + (med.profitMarginPercent / 100.0)
+        if (marginMultiplier > 0.1) {
+          return matchingItem.unitPrice / marginMultiplier
+        }
+        return matchingItem.unitPrice
+      }
+    }
+    return 0.0
+  }
+
   fun deleteInvoiceAndReturnStock(invoiceId: String): Pair<Boolean, List<String>> {
     val inv = _invoices.value.find { it.id == invoiceId }
     val restored = mutableListOf<String>()
@@ -2035,7 +2052,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             val updatedBatches = if (primaryBatch != null) {
               med.batches.mapIndexed { idx, b -> if (idx == 0) b.copy(quantity = b.quantity + qty, lastUpdated = now) else b }
             } else {
-              listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", qty, 0.0, lastUpdated = now))
+              val restoreCost = getMedicineFallbackCostPrice(med, inv)
+              listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", qty.toDouble(), restoreCost, lastUpdated = now))
             }
             medMap[med.id] = med.copy(batches = updatedBatches)
             modified = true
@@ -2049,15 +2067,43 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         }
       }
 
-      // Cascade remove linked treatment cards
+      // Cascade remove or discontinue linked treatment cards
+      // CLINICAL SAFETY: If any dose has already been administered, NEVER wipe nurse records! Preserve as DISCONTINUED.
       if (linkedCards.isNotEmpty()) {
         val ctxLocal = getApplication<Application>()
-        linkedCards.forEach { c ->
-          ClinicDataPersistence.addDeletedTreatmentCardId(ctxLocal, c.id)
+        val cardsToDiscontinue = linkedCards.filter { c ->
+          c.sessions.any { it.status == com.example.ui.screens.treatment.TreatmentStatus.COMPLETED } || c.completedSessionsCount > 0
         }
-        val remainingCards = _treatmentCards.value.filterNot { card -> linkedCards.any { it.id == card.id } }
-        _treatmentCards.value = remainingCards
-        ClinicDataPersistence.saveTreatmentCards(ctxLocal, remainingCards)
+        val cardsToDelete = linkedCards.filterNot { c ->
+          c.sessions.any { it.status == com.example.ui.screens.treatment.TreatmentStatus.COMPLETED } || c.completedSessionsCount > 0
+        }
+
+        if (cardsToDelete.isNotEmpty()) {
+          cardsToDelete.forEach { c ->
+            ClinicDataPersistence.addDeletedTreatmentCardId(ctxLocal, c.id)
+          }
+        }
+
+        val updatedCards = _treatmentCards.value.mapNotNull { card ->
+          when {
+            cardsToDelete.any { it.id == card.id } -> null
+            cardsToDiscontinue.any { it.id == card.id } -> {
+              card.copy(
+                cardStatus = com.example.ui.screens.treatment.TreatmentStatus.DISCONTINUED,
+                discontinueReason = "Consultation invoice voided/deleted (Preserved completed session history)",
+                discontinuedAt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date()),
+                sessions = card.sessions.map { s ->
+                  if (s.status == com.example.ui.screens.treatment.TreatmentStatus.PENDING || s.status == com.example.ui.screens.treatment.TreatmentStatus.IN_PROGRESS) {
+                    s.copy(status = com.example.ui.screens.treatment.TreatmentStatus.CANCELLED, notes = (if (s.notes.isNotBlank()) "${s.notes} | " else "") + "Invoice Voided")
+                  } else s
+                }
+              )
+            }
+            else -> card
+          }
+        }
+        _treatmentCards.value = updatedCards
+        ClinicDataPersistence.saveTreatmentCards(ctxLocal, updatedCards)
       }
     }
     val ctx = getApplication<Application>()
@@ -2092,6 +2138,42 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
     val cardsToRemove = mutableListOf<TreatmentCard>()
 
+    fun processTreatmentCardsUpdate(cardsCandidate: List<TreatmentCard>) {
+      if (cardsCandidate.isEmpty()) return
+      val ctxLocal = getApplication<Application>()
+      val cardsToDiscontinue = cardsCandidate.filter { c ->
+        c.sessions.any { it.status == com.example.ui.screens.treatment.TreatmentStatus.COMPLETED } || c.completedSessionsCount > 0
+      }
+      val cardsToDelete = cardsCandidate.filterNot { c ->
+        c.sessions.any { it.status == com.example.ui.screens.treatment.TreatmentStatus.COMPLETED } || c.completedSessionsCount > 0
+      }
+
+      if (cardsToDelete.isNotEmpty()) {
+        cardsToDelete.forEach { c -> ClinicDataPersistence.addDeletedTreatmentCardId(ctxLocal, c.id) }
+      }
+
+      val updatedCards = _treatmentCards.value.mapNotNull { card ->
+        when {
+          cardsToDelete.any { it.id == card.id } -> null
+          cardsToDiscontinue.any { it.id == card.id } -> {
+            card.copy(
+              cardStatus = com.example.ui.screens.treatment.TreatmentStatus.DISCONTINUED,
+              discontinueReason = "Invoice item returned/voided (Preserved completed session history)",
+              discontinuedAt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date()),
+              sessions = card.sessions.map { s ->
+                if (s.status == com.example.ui.screens.treatment.TreatmentStatus.PENDING || s.status == com.example.ui.screens.treatment.TreatmentStatus.IN_PROGRESS) {
+                  s.copy(status = com.example.ui.screens.treatment.TreatmentStatus.CANCELLED, notes = (if (s.notes.isNotBlank()) "${s.notes} | " else "") + "Invoice Voided/Returned")
+                } else s
+              }
+            )
+          }
+          else -> card
+        }
+      }
+      _treatmentCards.value = updatedCards
+      ClinicDataPersistence.saveTreatmentCards(ctxLocal, updatedCards)
+    }
+
     fun restockDrug(medId: String?, medName: String, qty: Int) {
       if (!inv.isInventoryDeducted || qty <= 0) return
       val med = (if (!medId.isNullOrBlank()) medMap[medId] else null)
@@ -2101,7 +2183,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         val updatedBatches = if (primaryBatch != null) {
           med.batches.mapIndexed { idx, b -> if (idx == 0) b.copy(quantity = b.quantity + qty, lastUpdated = now) else b }
         } else {
-          listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", qty, 0.0, lastUpdated = now))
+          val restoreCost = getMedicineFallbackCostPrice(med, inv)
+          listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", qty.toDouble(), restoreCost, lastUpdated = now))
         }
         medMap[med.id] = med.copy(batches = updatedBatches)
         medModified = true
@@ -2122,12 +2205,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           }
         }
         if (cardsToRem.isNotEmpty()) {
-          cardsToRemove.addAll(cardsToRem)
-          val ctxLocal = getApplication<Application>()
-          cardsToRem.forEach { c -> ClinicDataPersistence.addDeletedTreatmentCardId(ctxLocal, c.id) }
-          val remainingCards = _treatmentCards.value.filterNot { card -> cardsToRem.any { it.id == card.id } }
-          _treatmentCards.value = remainingCards
-          ClinicDataPersistence.saveTreatmentCards(ctxLocal, remainingCards)
+          processTreatmentCardsUpdate(cardsToRem)
         }
       }
     } else if (voidEntireInvoice) {
@@ -2137,12 +2215,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       }
       availableDeducted.clear()
       if (linkedCards.isNotEmpty()) {
-        cardsToRemove.addAll(linkedCards)
-        val ctxLocal = getApplication<Application>()
-        linkedCards.forEach { c -> ClinicDataPersistence.addDeletedTreatmentCardId(ctxLocal, c.id) }
-        val remainingCards = _treatmentCards.value.filterNot { card -> linkedCards.any { it.id == card.id } }
-        _treatmentCards.value = remainingCards
-        ClinicDataPersistence.saveTreatmentCards(ctxLocal, remainingCards)
+        processTreatmentCardsUpdate(linkedCards)
       }
     } else {
       // 1. Partial Return: only restock up to the quantity actually deducted for each returned item
@@ -2213,13 +2286,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         }
       }
       if (cardsToRemove.isNotEmpty()) {
-        val ctxLocal = getApplication<Application>()
-        cardsToRemove.forEach { c ->
-          ClinicDataPersistence.addDeletedTreatmentCardId(ctxLocal, c.id)
-        }
-        val remainingCards = _treatmentCards.value.filterNot { card -> cardsToRemove.any { it.id == card.id } }
-        _treatmentCards.value = remainingCards
-        ClinicDataPersistence.saveTreatmentCards(ctxLocal, remainingCards)
+        processTreatmentCardsUpdate(cardsToRemove)
       }
 
       // 3. Return Clinical Procedure Consumables
@@ -2775,7 +2842,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
               val updatedBatches = if (primaryBatch != null) {
                 med.batches.mapIndexed { idx, b -> if (idx == 0) b.copy(quantity = b.quantity + qty, lastUpdated = now) else b }
               } else {
-                listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", qty, 0.0, lastUpdated = now))
+                val restoreCost = getMedicineFallbackCostPrice(med, inv)
+                listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", qty.toDouble(), restoreCost, lastUpdated = now))
               }
               medMap[med.id] = med.copy(batches = updatedBatches)
               restoredNames.add("${med.name} (+$qty)")
@@ -2791,7 +2859,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             val updatedBatches = if (primaryBatch != null) {
               med.batches.mapIndexed { idx, b -> if (idx == 0) b.copy(quantity = b.quantity + qty, lastUpdated = now) else b }
             } else {
-              listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", qty, 0.0, lastUpdated = now))
+              val restoreCost = getMedicineFallbackCostPrice(med, inv)
+              listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", qty.toDouble(), restoreCost, lastUpdated = now))
             }
             medMap[med.id] = med.copy(batches = updatedBatches)
             restoredNames.add("${med.name} (+$qty)")
@@ -2808,7 +2877,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
               val updatedBatches = if (primaryBatch != null) {
                 med.batches.mapIndexed { idx, b -> if (idx == 0) b.copy(quantity = b.quantity + c.quantity, lastUpdated = now) else b }
               } else {
-                listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", c.quantity, 0.0, lastUpdated = now))
+                val restoreCost = getMedicineFallbackCostPrice(med, inv)
+                listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", c.quantity.toDouble(), restoreCost, lastUpdated = now))
               }
               medMap[med.id] = med.copy(batches = updatedBatches)
               restoredNames.add("${med.name} (+${c.quantity})")

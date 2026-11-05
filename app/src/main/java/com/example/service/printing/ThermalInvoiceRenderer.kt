@@ -29,7 +29,8 @@ object ThermalInvoiceRenderer {
 
     invoice.items.forEach { item ->
       val truncatedName = if (item.name.length > 22) item.name.take(20) + ".." else item.name
-      sb.appendLine(String.format("%-22s %4d %12.0f", truncatedName, item.quantity, item.totalPrice))
+      val qtyStr = item.quantity.toString()
+      sb.appendLine(String.format("%-22s %4s %12.0f", truncatedName, qtyStr, item.totalPrice))
     }
 
     sb.appendLine(divider)

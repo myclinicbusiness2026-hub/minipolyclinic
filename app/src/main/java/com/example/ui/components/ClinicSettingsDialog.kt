@@ -48,12 +48,6 @@ fun ClinicSettingsDialog(
   var addressMm by remember { mutableStateOf(currentSettings.addressMm) }
   var clinicHours by remember { mutableStateOf(currentSettings.clinicHours) }
   var clinicRegNo by remember { mutableStateOf(currentSettings.clinicRegNo) }
-  var defaultConsultationFee by remember { mutableStateOf(currentSettings.defaultConsultationFee.toInt().toString()) }
-  var defaultImInjectionFee by remember { mutableStateOf(currentSettings.defaultImInjectionFee.toInt().toString()) }
-  var defaultIvPushFee by remember { mutableStateOf(currentSettings.defaultIvPushFee.toInt().toString()) }
-  var defaultIvInfusionFee by remember { mutableStateOf(currentSettings.defaultIvInfusionFee.toInt().toString()) }
-  var defaultNebulizerFee by remember { mutableStateOf(currentSettings.defaultNebulizerFee.toInt().toString()) }
-  var defaultDepoFee by remember { mutableStateOf(currentSettings.defaultDepoFee.toInt().toString()) }
   var thermalPaperWidthMm by remember { mutableStateOf(currentSettings.thermalPaperWidthMm) }
   var receiptGreetingMm by remember { mutableStateOf(currentSettings.receiptGreetingMm) }
   var activeStationName by remember { mutableStateOf(currentSettings.activeStationName) }
@@ -364,70 +358,34 @@ fun ClinicSettingsDialog(
             textStyle = LocalTextStyle.current.copy(fontSize = 12.sp)
           )
 
-          OutlinedTextField(
-            value = defaultConsultationFee,
-            onValueChange = { defaultConsultationFee = it.filter { ch -> ch.isDigit() } },
-            label = { Text("အထွေထွေ ဆေးကုသခ အခြေခံနှုန်း (Ks)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            textStyle = LocalTextStyle.current.copy(fontSize = 12.sp)
-          )
-
-          Spacer(modifier = Modifier.height(4.dp))
-          Text("ဆေးထိုးခနှင့် ဝန်ဆောင်ခ ပုံသေနှုန်းထားများ (Default Injection Service Fees)", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
-
-          Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-              value = defaultImInjectionFee,
-              onValueChange = { defaultImInjectionFee = it.filter { ch -> ch.isDigit() } },
-              label = { Text("အသားဆေးထိုးခ (IM Ks)", fontSize = 9.5.sp) },
-              modifier = Modifier.weight(1f),
-              singleLine = true,
-              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-              textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
-            )
-            OutlinedTextField(
-              value = defaultIvPushFee,
-              onValueChange = { defaultIvPushFee = it.filter { ch -> ch.isDigit() } },
-              label = { Text("အကြောဆေးထိုးခ (IV Push Ks)", fontSize = 9.5.sp) },
-              modifier = Modifier.weight(1f),
-              singleLine = true,
-              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-              textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
-            )
+          Surface(
+            color = Color(0xFFF0FDF4),
+            shape = RoundedCornerShape(8.dp),
+            border = BorderStroke(1.dp, Color(0xFFBBF7D0)),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+          ) {
+            Row(
+              modifier = Modifier.padding(12.dp),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+              Icon(Icons.Default.Info, contentDescription = null, tint = MedicalGreenDark, modifier = Modifier.size(20.dp))
+              Column {
+                Text(
+                  "ဆေးကုသခနှင့် ဆေးခန်းဝန်ဆောင်ခများ (Service Fee Master)",
+                  fontSize = 11.5.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = MedicalGreenDark
+                )
+                Text(
+                  "ဆရာဝန်ပြသခ၊ ဆေးထိုးခနှင့် ဝန်ဆောင်ခ နှုန်းထားများကို 'Clinical Procedures & Services Master' တွင် သီးသန့် အတည်ပြု သတ်မှတ်ထားရှိပြီး ဖြစ်ပါသည်။",
+                  fontSize = 11.sp,
+                  color = SlateDark,
+                  lineHeight = 16.sp
+                )
+              }
+            }
           }
-
-          Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-              value = defaultIvInfusionFee,
-              onValueChange = { defaultIvInfusionFee = it.filter { ch -> ch.isDigit() } },
-              label = { Text("ပုလင်းချိတ်ခ (IV Drip Ks)", fontSize = 9.5.sp) },
-              modifier = Modifier.weight(1f),
-              singleLine = true,
-              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-              textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
-            )
-            OutlinedTextField(
-              value = defaultNebulizerFee,
-              onValueChange = { defaultNebulizerFee = it.filter { ch -> ch.isDigit() } },
-              label = { Text("အငွေ့ရှူခ (Nebulizer Ks)", fontSize = 9.5.sp) },
-              modifier = Modifier.weight(1f),
-              singleLine = true,
-              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-              textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
-            )
-          }
-
-          OutlinedTextField(
-            value = defaultDepoFee,
-            onValueChange = { defaultDepoFee = it.filter { ch -> ch.isDigit() } },
-            label = { Text("သားဆက်ခြား/အရေပြားအောက်ထိုးခ (Depo/SC Ks)", fontSize = 9.5.sp) },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
-          )
 
           Divider(color = BorderGrey, thickness = 0.8.dp)
 
@@ -653,12 +611,12 @@ fun ClinicSettingsDialog(
                   clinicAddress = addressMm.trim(),
                   clinicHours = clinicHours.trim(),
                   clinicRegNo = clinicRegNo.trim(),
-                  defaultConsultationFee = defaultConsultationFee.toDoubleOrNull() ?: 8000.0,
-                  defaultImInjectionFee = defaultImInjectionFee.toDoubleOrNull() ?: 2000.0,
-                  defaultIvPushFee = defaultIvPushFee.toDoubleOrNull() ?: 3000.0,
-                  defaultIvInfusionFee = defaultIvInfusionFee.toDoubleOrNull() ?: 6000.0,
-                  defaultNebulizerFee = defaultNebulizerFee.toDoubleOrNull() ?: 3000.0,
-                  defaultDepoFee = defaultDepoFee.toDoubleOrNull() ?: 2500.0,
+                  defaultConsultationFee = currentSettings.defaultConsultationFee,
+                  defaultImInjectionFee = currentSettings.defaultImInjectionFee,
+                  defaultIvPushFee = currentSettings.defaultIvPushFee,
+                  defaultIvInfusionFee = currentSettings.defaultIvInfusionFee,
+                  defaultNebulizerFee = currentSettings.defaultNebulizerFee,
+                  defaultDepoFee = currentSettings.defaultDepoFee,
                   thermalPaperWidthMm = thermalPaperWidthMm,
                   bluetoothPrinterMac = currentSettings.bluetoothPrinterMac,
                   receiptGreetingMm = receiptGreetingMm.trim(),

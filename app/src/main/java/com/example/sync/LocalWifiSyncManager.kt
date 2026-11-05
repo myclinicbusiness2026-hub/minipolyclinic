@@ -532,14 +532,34 @@ class LocalWifiSyncManager(
           medMap[rm.id] = rm
           newMedCount++
         } else {
-          val batchMap = existing.batches.associateBy { it.batchNumber }.toMutableMap()
-          rm.batches.forEach { rb ->
-            val exBatch = batchMap[rb.batchNumber]
-            if (exBatch == null) {
-              batchMap[rb.batchNumber] = rb
+          fun getBatchKey(b: com.example.model.StockBatch): String {
+            val bn = b.batchNumber.trim()
+            return if (bn.isNotBlank() && !bn.equals("DEFAULT", true) && !bn.equals("RESTORE", true)) {
+              "NUM_$bn"
             } else {
-              val winner = if (rb.lastUpdated > exBatch.lastUpdated) rb else exBatch
-              batchMap[rb.batchNumber] = winner
+              "EXP_${b.expiryDate}_${b.costPricePerUnit}"
+            }
+          }
+
+          val batchMap = existing.batches.associateBy { getBatchKey(it) }.toMutableMap()
+          rm.batches.forEach { rb ->
+            val key = getBatchKey(rb)
+            val exBatch = batchMap[key]
+            if (exBatch == null) {
+              batchMap[key] = rb
+            } else {
+              val effectiveCost = when {
+                rb.costPricePerUnit > 0.0 && exBatch.costPricePerUnit > 0.0 -> if (rb.lastUpdated > exBatch.lastUpdated) rb.costPricePerUnit else exBatch.costPricePerUnit
+                rb.costPricePerUnit > 0.0 -> rb.costPricePerUnit
+                exBatch.costPricePerUnit > 0.0 -> exBatch.costPricePerUnit
+                else -> 0.0
+              }
+              val winner = if (rb.lastUpdated > exBatch.lastUpdated) {
+                rb.copy(costPricePerUnit = effectiveCost)
+              } else {
+                exBatch.copy(costPricePerUnit = effectiveCost)
+              }
+              batchMap[key] = winner
             }
           }
           medMap[existing.id] = existing.copy(

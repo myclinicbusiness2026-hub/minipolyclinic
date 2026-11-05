@@ -214,8 +214,20 @@ fun DoctorConsultationScreen(
   val selectedInvestigations = remember(patientId) { mutableStateListOf<String>() }
   val orderedTreatmentCards = remember(patientId) { mutableStateListOf<TreatmentCard>() }
   var showAddTreatmentOrderModal by remember { mutableStateOf(false) }
-  val initialConsultationFee = remember(clinicSettings.defaultConsultationFee) {
-    if (clinicSettings.defaultConsultationFee > 0) clinicSettings.defaultConsultationFee.toInt().toString() else "8000"
+  val initialConsultationFee = remember(clinicSettings.defaultConsultationFee, procedures) {
+    val masterDocFee = procedures.find {
+      it.name.contains("Consultation", ignoreCase = true) ||
+      it.name.contains("Doctor Fee", ignoreCase = true) ||
+      it.myanmarName.contains("ဆေးကုသခ", ignoreCase = true) ||
+      it.category.contains("Consultation", ignoreCase = true)
+    }?.standardFee
+    if (masterDocFee != null && masterDocFee > 0.0) {
+      masterDocFee.toInt().toString()
+    } else if (clinicSettings.defaultConsultationFee > 0) {
+      clinicSettings.defaultConsultationFee.toInt().toString()
+    } else {
+      "8000"
+    }
   }
   var consultationFeeText by remember(patientId, initialConsultationFee) { mutableStateOf(initialConsultationFee) }
   var serviceFeeText by remember { mutableStateOf("0") }

@@ -356,19 +356,32 @@ END $$;
           if (mid.isNotBlank() && !deletedMedicineIds.contains(mid)) {
             val existing = medMap[mid]
             if (existing != null && existing.has("batches") && o.has("batches")) {
+              fun getBatchKey(bo: JSONObject): String {
+                val bn = bo.optString("batchNumber", "").trim()
+                return if (bn.isNotBlank() && !bn.equals("DEFAULT", true) && !bn.equals("RESTORE", true)) {
+                  "NUM_$bn"
+                } else {
+                  "EXP_${bo.optString("expiryDate")}_${bo.optDouble("costPricePerUnit", 0.0)}"
+                }
+              }
               val bMap = mutableMapOf<String, JSONObject>()
               val eb = existing.getJSONArray("batches")
               for (k in 0 until eb.length()) {
                 val bo = eb.getJSONObject(k)
-                bMap[bo.optString("batchNumber")] = bo
+                bMap[getBatchKey(bo)] = bo
               }
               val ob = o.getJSONArray("batches")
               for (k in 0 until ob.length()) {
                 val bo = ob.getJSONObject(k)
-                val bNum = bo.optString("batchNumber")
-                val exBo = bMap[bNum]
+                val key = getBatchKey(bo)
+                val exBo = bMap[key]
                 if (exBo == null || bo.optLong("lastUpdated", 0L) >= exBo.optLong("lastUpdated", 0L)) {
-                  bMap[bNum] = bo
+                  val exCost = exBo?.optDouble("costPricePerUnit", 0.0) ?: 0.0
+                  val obCost = bo.optDouble("costPricePerUnit", 0.0)
+                  if (obCost <= 0.0 && exCost > 0.0) {
+                    bo.put("costPricePerUnit", exCost)
+                  }
+                  bMap[key] = bo
                 }
               }
               val mbArr = JSONArray()
