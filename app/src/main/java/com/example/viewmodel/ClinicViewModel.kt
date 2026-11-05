@@ -2016,7 +2016,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     if (existingCost != null && existingCost > 0.0) return existingCost
     if (med.latestCostPrice > 0.0) return med.latestCostPrice
     if (inv != null) {
-      val matchingItem = inv.items.find { (it.medicineId.isNotBlank() && it.medicineId == med.id) || it.name.equals(med.name, ignoreCase = true) }
+      val matchingItem = inv.items.find { it.name.equals(med.name, ignoreCase = true) || it.name.contains(med.name, ignoreCase = true) || med.name.contains(it.name, ignoreCase = true) }
       if (matchingItem != null && matchingItem.unitPrice > 0.0) {
         val marginMultiplier = 1.0 + (med.profitMarginPercent / 100.0)
         if (marginMultiplier > 0.1) {
