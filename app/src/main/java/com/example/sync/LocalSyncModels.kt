@@ -246,6 +246,15 @@ data class SyncDataPayload(
       io.put("changeAmount", inv.changeAmount)
       io.put("cashierName", inv.cashierName)
       io.put("timestamp", inv.timestamp)
+      io.put("isInventoryDeducted", inv.isInventoryDeducted)
+      io.put("isPrescriptionsDeducted", inv.isPrescriptionsDeducted)
+      val dedObj = JSONObject()
+      inv.deductedDrugQuantities.forEach { (k, v) -> dedObj.put(k, v) }
+      io.put("deductedDrugQuantities", dedObj)
+      io.put("doctorFeeDiscount", inv.doctorFeeDiscount)
+      io.put("pharmacyDiscount", inv.pharmacyDiscount)
+      io.put("procedureDiscount", inv.procedureDiscount)
+      io.put("discountPercent", inv.discountPercent)
 
       val itemArr = JSONArray()
       inv.items.forEach { item ->

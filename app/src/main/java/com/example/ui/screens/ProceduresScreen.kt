@@ -3,6 +3,7 @@ package com.example.ui.screens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -41,9 +42,14 @@ fun ProceduresScreen(
 
   var showAddDialog by remember { mutableStateOf(false) }
   var showAddCategoryDialog by remember { mutableStateOf(false) }
+  var categoryToDelete by remember { mutableStateOf<String?>(null) }
   var procedureToDelete by remember { mutableStateOf<ProcedureItem?>(null) }
   var procedureToEdit by remember { mutableStateOf<ProcedureItem?>(null) }
   var selectedCategory by remember { mutableStateOf<String?>("All") }
+
+  val defaultSystemCategories = remember {
+    listOf("All", "Minor Surgery", "Wound Dressing", "Injection / Infusion", "Diagnostic Test", "General Services", "Others")
+  }
 
   val filteredProcedures = remember(procedures, selectedCategory) {
     if (selectedCategory == null || selectedCategory == "All") {
@@ -55,12 +61,13 @@ fun ProceduresScreen(
 
   val currencyFmt = NumberFormat.getNumberInstance(Locale.US)
 
-  Column(
-    modifier = Modifier
-      .fillMaxSize()
-      .background(BackgroundSurface)
-      .padding(horizontal = 10.dp, vertical = 6.dp)
-  ) {
+  Box(modifier = Modifier.fillMaxSize()) {
+    Column(
+      modifier = Modifier
+        .fillMaxSize()
+        .background(BackgroundSurface)
+        .padding(horizontal = 10.dp, vertical = 6.dp)
+    ) {
     if (isReadOnly) {
       Surface(
         shape = RoundedCornerShape(6.dp),
@@ -97,7 +104,10 @@ fun ProceduresScreen(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
       ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+          modifier = Modifier.weight(1f),
+          verticalAlignment = Alignment.CenterVertically
+        ) {
           Box(
             modifier = Modifier
               .size(32.dp)
@@ -108,13 +118,15 @@ fun ProceduresScreen(
             Icon(Icons.Default.Healing, contentDescription = null, tint = Color(0xFFEA580C), modifier = Modifier.size(17.dp))
           }
           Spacer(modifier = Modifier.width(8.dp))
-          Column {
+          Column(modifier = Modifier.weight(1f, fill = false)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
               Text(
-                "Procedures & Clinical Services",
+                "Procedures & Services",
                 fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
-                color = DarkGrayText
+                fontSize = 12.5.sp,
+                color = DarkGrayText,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
               )
               Spacer(modifier = Modifier.width(6.dp))
               Surface(
@@ -124,31 +136,35 @@ fun ProceduresScreen(
                 Text(
                   "${filteredProcedures.size} items",
                   fontWeight = FontWeight.Bold,
-                  fontSize = 10.5.sp,
+                  fontSize = 10.sp,
                   color = MedicalGreenDark,
-                  modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                  modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
                 )
               }
             }
             Text(
-              "ကုသမှုလုပ်ငန်းများ၊ အသေးစားခွဲစိတ်မှုနှင့် အထူးဝန်ဆောင်ခများ စာရင်း",
-              fontSize = 10.sp,
-              color = SlateMuted
+              "ကုသမှုလုပ်ငန်းနှင့် အထူးဝန်ဆောင်ခများ",
+              fontSize = 9.5.sp,
+              color = SlateMuted,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis
             )
           }
         }
+
+        Spacer(modifier = Modifier.width(8.dp))
 
         if (!isReadOnly) {
           Button(
             onClick = { showAddDialog = true },
             colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
-            shape = RoundedCornerShape(4.dp),
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-            modifier = Modifier.height(30.dp)
+            shape = RoundedCornerShape(6.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+            modifier = Modifier.height(32.dp)
           ) {
-            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
-            Spacer(modifier = Modifier.width(3.dp))
-            Text("Add", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("Add Item", fontSize = 11.sp, fontWeight = FontWeight.Bold)
           }
         }
       }
@@ -187,10 +203,23 @@ fun ProceduresScreen(
       procedureCategories.forEach { cat ->
         val isSelected = selectedCategory.equals(cat, ignoreCase = true)
         val countInCat = procedures.count { it.category.equals(cat, ignoreCase = true) }
+        val isCustom = !defaultSystemCategories.any { it.equals(cat, ignoreCase = true) }
         FilterChip(
           selected = isSelected,
           onClick = { selectedCategory = cat },
           label = { Text("$cat ($countInCat)", fontSize = 10.5.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+          trailingIcon = if (!isReadOnly && isCustom) {
+            {
+              Icon(
+                Icons.Default.Close,
+                contentDescription = "Delete Category",
+                modifier = Modifier
+                  .size(13.dp)
+                  .clickable { categoryToDelete = cat },
+                tint = if (isSelected) Color(0xFFC2410C) else SlateMedium
+              )
+            }
+          } else null,
           shape = RoundedCornerShape(5.dp),
           colors = FilterChipDefaults.filterChipColors(
             selectedContainerColor = Color(0xFFFFEDD5),
@@ -431,6 +460,28 @@ fun ProceduresScreen(
     }
   }
 
+  if (!isReadOnly) {
+    FloatingActionButton(
+      onClick = { showAddDialog = true },
+      modifier = Modifier
+        .align(Alignment.BottomEnd)
+        .padding(16.dp),
+      containerColor = MedicalGreen,
+      contentColor = PureWhite,
+      shape = RoundedCornerShape(16.dp)
+    ) {
+      Row(
+        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Icon(Icons.Default.Add, contentDescription = "Add Procedure", modifier = Modifier.size(20.dp))
+        Spacer(modifier = Modifier.width(6.dp))
+        Text("Add Item", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+      }
+    }
+  }
+}
+
   if (showAddDialog) {
     AddProcedureDialog(
       categoryOptions = procedureCategories,
@@ -564,6 +615,50 @@ fun ProceduresScreen(
       dismissButton = {
         OutlinedButton(
           onClick = { showAddCategoryDialog = false },
+          shape = RoundedCornerShape(6.dp)
+        ) {
+          Text("Cancel", fontSize = 11.5.sp)
+        }
+      }
+    )
+  }
+
+  // Delete Custom Category Confirmation Dialog
+  if (categoryToDelete != null) {
+    val cat = categoryToDelete!!
+    val countInCat = procedures.count { it.category.equals(cat, ignoreCase = true) }
+    AlertDialog(
+      onDismissRequest = { categoryToDelete = null },
+      icon = { Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+      title = { Text("Delete Category (အမျိုးအစား ဖျက်မည်)", fontWeight = FontWeight.Bold, fontSize = 14.sp) },
+      text = {
+        Text(
+          if (countInCat > 0)
+            "'$cat' category ကို ဖျက်ရန် သေချာပါသလား?\n\n(မှတ်ချက် - ဤ category အောက်ရှိ ပစ္စည်း $countInCat ခုကို 'Others' သို့ အလိုအလျောက် ပြောင်းလဲသတ်မှတ်ပေးပါမည်။)"
+          else
+            "'$cat' category ကို ဖျက်ရန် သေချာပါသလား?",
+          fontSize = 12.sp,
+          color = DarkGrayText
+        )
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            viewModel.deleteProcedureCategory(cat)
+            if (selectedCategory.equals(cat, ignoreCase = true)) {
+              selectedCategory = "All"
+            }
+            categoryToDelete = null
+          },
+          colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+          shape = RoundedCornerShape(6.dp)
+        ) {
+          Text("Delete (ဖျက်မည်)", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+        }
+      },
+      dismissButton = {
+        OutlinedButton(
+          onClick = { categoryToDelete = null },
           shape = RoundedCornerShape(6.dp)
         ) {
           Text("Cancel", fontSize = 11.5.sp)

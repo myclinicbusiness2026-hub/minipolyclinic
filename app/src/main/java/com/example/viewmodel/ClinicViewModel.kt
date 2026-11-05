@@ -139,6 +139,12 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       .filter { !deletedMedicines.contains(it.id) }
     _procedures.value = (ClinicDataPersistence.loadProcedures(ctx) ?: ClinicInitialDataSeeder.getSeedProcedures())
 
+    val defaultProcCats = listOf("All", "Minor Surgery", "Wound Dressing", "Injection / Infusion", "Diagnostic Test", "General Services", "Others")
+    val savedProcCats = ClinicDataPersistence.loadProcedureCategories(ctx)
+    val existingProcCats = _procedures.value.map { it.category }.filter { it.isNotBlank() }
+    val mergedProcCats = (defaultProcCats + (savedProcCats ?: emptyList()) + existingProcCats).distinct()
+    procedureCategories.value = mergedProcCats
+
     val loadedConsultations = (ClinicDataPersistence.loadConsultations(ctx) ?: ClinicInitialDataSeeder.getSeedConsultations())
       .filter { !deletedConsultations.contains(it.id) && !deletedPatients.contains(it.patientId) }
     _consultations.value = loadedConsultations
@@ -3125,7 +3131,35 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   fun addProcedureCategory(category: String) {
     val clean = category.trim()
     if (clean.isNotBlank() && !procedureCategories.value.contains(clean)) {
-      procedureCategories.value = procedureCategories.value + clean
+      val updated = procedureCategories.value + clean
+      procedureCategories.value = updated
+      ClinicDataPersistence.saveProcedureCategories(getApplication(), updated)
+    }
+  }
+
+  fun deleteProcedureCategory(categoryToDelete: String) {
+    val clean = categoryToDelete.trim()
+    val defaultCategories = listOf("All", "Minor Surgery", "Wound Dressing", "Injection / Infusion", "Diagnostic Test", "General Services", "Others")
+    if (defaultCategories.any { it.equals(clean, ignoreCase = true) }) {
+      return
+    }
+
+    // 1. Move any procedures belonging to this category to "Others"
+    val updatedProcs = _procedures.value.map { proc ->
+      if (proc.category.equals(clean, ignoreCase = true)) {
+        proc.copy(category = "Others")
+      } else proc
+    }
+    _procedures.value = updatedProcs
+    ClinicDataPersistence.saveProcedures(getApplication(), updatedProcs)
+
+    // 2. Remove category and persist
+    val updatedCats = procedureCategories.value.filterNot { it.equals(clean, ignoreCase = true) }
+    procedureCategories.value = updatedCats
+    ClinicDataPersistence.saveProcedureCategories(getApplication(), updatedCats)
+
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
     }
   }
 

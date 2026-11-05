@@ -1514,6 +1514,29 @@ object ClinicDataPersistence {
   }
 
   // 10b. Master Procedures Persistence
+  private const val KEY_PROCEDURE_CATEGORIES = "procedure_categories_list"
+
+  fun saveProcedureCategories(context: Context, categories: List<String>) {
+    val arr = JSONArray()
+    categories.forEach { arr.put(it) }
+    getPrefs(context).edit().putString(KEY_PROCEDURE_CATEGORIES, arr.toString()).apply()
+  }
+
+  fun loadProcedureCategories(context: Context): List<String>? {
+    val str = getPrefs(context).getString(KEY_PROCEDURE_CATEGORIES, null) ?: return null
+    return try {
+      val arr = JSONArray(str)
+      val list = mutableListOf<String>()
+      for (i in 0 until arr.length()) {
+        val s = arr.optString(i)
+        if (s.isNotBlank()) list.add(s)
+      }
+      list
+    } catch (_: Exception) {
+      null
+    }
+  }
+
   fun saveProcedures(context: Context, list: List<ProcedureItem>) {
     val arr = JSONArray()
     list.forEach { p ->

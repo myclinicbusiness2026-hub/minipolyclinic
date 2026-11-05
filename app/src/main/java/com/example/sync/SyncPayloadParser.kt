@@ -231,6 +231,15 @@ object SyncPayloadParser {
           )
         }
       }
+      val dedMap = mutableMapOf<String, Double>()
+      val dObj = o.optJSONObject("deductedDrugQuantities")
+      if (dObj != null) {
+        val keys = dObj.keys()
+        while (keys.hasNext()) {
+          val k = keys.next()
+          dedMap[k] = dObj.optDouble(k, 0.0)
+        }
+      }
       list.add(
         Invoice(
           id = o.optString("id"),
@@ -248,7 +257,14 @@ object SyncPayloadParser {
           paidAmount = o.optDouble("paidAmount", 0.0),
           changeAmount = o.optDouble("changeAmount", 0.0),
           cashierName = o.optString("cashierName", "Staff"),
-          timestamp = o.optString("timestamp")
+          timestamp = o.optString("timestamp"),
+          isInventoryDeducted = o.optBoolean("isInventoryDeducted", false),
+          isPrescriptionsDeducted = o.optBoolean("isPrescriptionsDeducted", false),
+          deductedDrugQuantities = dedMap,
+          doctorFeeDiscount = o.optDouble("doctorFeeDiscount", 0.0),
+          pharmacyDiscount = o.optDouble("pharmacyDiscount", 0.0),
+          procedureDiscount = o.optDouble("procedureDiscount", 0.0),
+          discountPercent = o.optDouble("discountPercent", 0.0)
         )
       )
     }
