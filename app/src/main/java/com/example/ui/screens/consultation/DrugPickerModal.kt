@@ -1072,14 +1072,6 @@ fun DrugPickerModal(
               textStyle = LocalTextStyle.current.copy(fontSize = 11.sp, color = DarkGrayText)
             )
           }
-              placeholder = { Text("14", fontSize = 10.sp) },
-              modifier = Modifier.weight(0.9f),
-              shape = RoundedCornerShape(6.dp),
-              singleLine = true,
-              colors = clinicTextFieldColors(),
-              textStyle = LocalTextStyle.current.copy(fontSize = 11.sp, color = DarkGrayText)
-            )
-          }
 
           Spacer(modifier = Modifier.height(6.dp))
 
