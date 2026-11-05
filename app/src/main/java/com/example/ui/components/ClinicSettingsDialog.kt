@@ -379,7 +379,7 @@ fun ClinicSettingsDialog(
                   color = MedicalGreenDark
                 )
                 Text(
-                  "ဆရာဝန်ပြသခ၊ ဆေးထိုးခနှင့် ဝန်ဆောင်ခ နှုန်းထားများကို 'Clinical Procedures & Services Master' တွင် သီးသန့် အတည်ပြု သတ်မှတ်ထားရှိပြီး ဖြစ်ပါသည်။",
+                  "ဆရာဝန်ပြသခ၊ ဆေးထိုးခနှင့် ဝန်ဆောင်ခ နှုန်းထားများကို ဘယ်ဘက် Menu ရှိ 'Service Fee Master (ကုသမှုနှင့် ဝန်ဆောင်ခများ)' တွင် သီးသန့် အတည်ပြု သတ်မှတ်နိုင်ပါသည်။",
                   fontSize = 11.sp,
                   color = SlateDark,
                   lineHeight = 16.sp

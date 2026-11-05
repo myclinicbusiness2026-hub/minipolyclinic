@@ -391,7 +391,7 @@ data class Invoice(
   val procedureDiscount: Double = 0.0,
   val isInventoryDeducted: Boolean = false,
   val isPrescriptionsDeducted: Boolean = false,
-  val deductedDrugQuantities: Map<String, Int> = emptyMap()
+  val deductedDrugQuantities: Map<String, Double> = emptyMap()
 ) {
   val invoiceNo: String get() = invoiceNumber
   val createdAt: String get() = timestamp

@@ -1028,13 +1028,13 @@ object ClinicDataPersistence {
             )
           }
         }
-        val dedMap = mutableMapOf<String, Int>()
+        val dedMap = mutableMapOf<String, Double>()
         val dObj = o.optJSONObject("deductedDrugQuantities")
         if (dObj != null) {
           val itKeys = dObj.keys()
           while (itKeys.hasNext()) {
             val k = itKeys.next()
-            dedMap[k] = dObj.optInt(k, 0)
+            dedMap[k] = dObj.optDouble(k, 0.0)
           }
         }
 

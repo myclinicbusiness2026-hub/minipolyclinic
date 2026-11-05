@@ -1840,8 +1840,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       medMap[med.id] = med.copy(batches = updatedBatches)
       val deducted = qtyToDeduct - remaining
       if (deducted > 0.0) {
-        val intDeducted = if (deducted % 1.0 == 0.0) deducted.toInt() else 1
-        newlyDeducted[med.id] = (newlyDeducted[med.id] ?: 0) + intDeducted
+        newlyDeducted[med.id] = (newlyDeducted[med.id] ?: 0.0) + deducted
         deductedMedIds.add(med.id)
         modified = true
       }
@@ -1851,9 +1850,28 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
     val consultation = _consultations.value.find { it.id == inv.consultationId }
 
+    // Locate linked Day-Care Treatment Cards (Cocktails, Injections)
+    val linkedCards = _treatmentCards.value.filter { card ->
+      card.consultationInvoiceId == inv.id || (card.patientId == inv.patientId && card.sessions.any { it.invoiceId == inv.id })
+    }
+
     // 1. Deduct consultation prescriptions (if present, not external)
     if (consultation != null && consultation.prescriptions.isNotEmpty()) {
       for (item in consultation.prescriptions.filter { !it.isExternal }) {
+        val cleanRxName = (item.effectiveName.ifBlank { item.medicineName })
+          .replace(Regex("(?i)^inj\\.?\\s*"), "")
+          .replace(Regex("(?i)^iv\\s*"), "")
+          .replace(Regex("(?i)^im\\s*"), "")
+          .replace(Regex("(?i)^sc\\s*"), "")
+          .trim()
+        val isCoveredByLinkedCard = linkedCards.any { card ->
+          (card.medicationId.isNotBlank() && item.medicineId.isNotBlank() && card.medicationId == item.medicineId) ||
+          (cleanRxName.isNotBlank() && (card.medicationName.contains(cleanRxName, ignoreCase = true) || cleanRxName.contains(card.medicationName, ignoreCase = true)))
+        }
+        if (isCoveredByLinkedCard) {
+          // CLINICAL SAFETY: Skip prescription deduction to prevent double-deducting drugs administered via Treatment Card!
+          continue
+        }
         val med = findMatchingMedicine(item.medicineId, item.effectiveName.ifBlank { item.medicineName }, medMap)
         if (med != null && item.quantity > 0) {
           deductMed(med, item.quantity)
@@ -1862,9 +1880,6 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     // 2. Deduct constituent medicines and consumables from Day-Care Treatment Cards (Cocktails, Injections)
-    val linkedCards = _treatmentCards.value.filter { card ->
-      card.consultationInvoiceId == inv.id || (card.patientId == inv.patientId && card.sessions.any { it.invoiceId == inv.id })
-    }
     for (card in linkedCards) {
       if (card.isPatientSupplied) continue
 
@@ -2174,8 +2189,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       ClinicDataPersistence.saveTreatmentCards(ctxLocal, updatedCards)
     }
 
-    fun restockDrug(medId: String?, medName: String, qty: Int) {
-      if (!inv.isInventoryDeducted || qty <= 0) return
+    fun restockDrug(medId: String?, medName: String, qty: Double) {
+      if (!inv.isInventoryDeducted || qty <= 0.0) return
       val med = (if (!medId.isNullOrBlank()) medMap[medId] else null)
         ?: medMap.values.find { it.name.equals(medName, ignoreCase = true) || medName.contains(it.name, ignoreCase = true) }
       if (med != null) {
@@ -2184,13 +2199,16 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           med.batches.mapIndexed { idx, b -> if (idx == 0) b.copy(quantity = b.quantity + qty, lastUpdated = now) else b }
         } else {
           val restoreCost = getMedicineFallbackCostPrice(med, inv)
-          listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", qty.toDouble(), restoreCost, lastUpdated = now))
+          listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", qty, restoreCost, lastUpdated = now))
         }
         medMap[med.id] = med.copy(batches = updatedBatches)
         medModified = true
-        restored.add("${med.name} (+$qty)")
+        val qtyDisplay = if (qty % 1.0 == 0.0) qty.toInt().toString() else String.format(java.util.Locale.US, "%.1f", qty)
+        restored.add("${med.name} (+$qtyDisplay)")
       }
     }
+
+    fun restockDrug(medId: String?, medName: String, qty: Int) = restockDrug(medId, medName, qty.toDouble())
 
     val availableDeducted = inv.deductedDrugQuantities.toMutableMap()
 
@@ -2223,9 +2241,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       for (item in itemsToReturn) {
         val med = findMatchingMedicine(null, item.name, medMap)
         if (med != null && !restockedMeds.contains(med.id)) {
-          val previouslyDeducted = availableDeducted[med.id] ?: 0
-          val qtyToReturn = minOf(item.quantity, previouslyDeducted)
-          if (qtyToReturn > 0) {
+          val previouslyDeducted = availableDeducted[med.id] ?: 0.0
+          val qtyToReturn = minOf(item.quantity.toDouble(), previouslyDeducted)
+          if (qtyToReturn > 0.0) {
             restockDrug(med.id, med.name, qtyToReturn)
             availableDeducted[med.id] = previouslyDeducted - qtyToReturn
             restockedMeds.add(med.id)
@@ -2247,9 +2265,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
               for (cItem in card.cocktailItems) {
                 val cMed = findMatchingMedicine(cItem.medicineId, cItem.name, medMap)
                 if (cMed != null && !restockedMeds.contains(cMed.id)) {
-                  val prev = availableDeducted[cMed.id] ?: 0
-                  val qty = minOf((if (cItem.quantity > 0) cItem.quantity else 1) * billedDoses, prev)
-                  if (qty > 0) {
+                  val prev = availableDeducted[cMed.id] ?: 0.0
+                  val qty = minOf((if (cItem.quantity > 0) cItem.quantity.toDouble() else 1.0) * billedDoses, prev)
+                  if (qty > 0.0) {
                     restockDrug(cMed.id, cMed.name, qty)
                     availableDeducted[cMed.id] = prev - qty
                     restockedMeds.add(cMed.id)
@@ -2259,9 +2277,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             } else if (card.medicationName.isNotBlank()) {
               val med = findMatchingMedicine(card.medicationId, card.medicationName, medMap)
               if (med != null && !restockedMeds.contains(med.id)) {
-                val prev = availableDeducted[med.id] ?: 0
-                val qty = minOf(billedDoses, prev)
-                if (qty > 0) {
+                val prev = availableDeducted[med.id] ?: 0.0
+                val qty = minOf(billedDoses.toDouble(), prev)
+                if (qty > 0.0) {
                   restockDrug(med.id, med.name, qty)
                   availableDeducted[med.id] = prev - qty
                   restockedMeds.add(med.id)
@@ -2272,9 +2290,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
               for (c in s.consumables) {
                 val cMed = findMatchingMedicine(c.medicineId, c.name, medMap)
                 if (cMed != null) {
-                  val prev = availableDeducted[cMed.id] ?: 0
-                  val qty = minOf(c.quantity, prev)
-                  if (qty > 0) {
+                  val prev = availableDeducted[cMed.id] ?: 0.0
+                  val qty = minOf(c.quantity.toDouble(), prev)
+                  if (qty > 0.0) {
                     restockDrug(cMed.id, cMed.name, qty)
                     availableDeducted[cMed.id] = prev - qty
                   }
@@ -2835,15 +2853,15 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         if (card.isCocktail && card.cocktailItems.isNotEmpty()) {
           for (cItem in card.cocktailItems) {
             val med = findMatchingMedicine(cItem.medicineId, cItem.name, medMap)
-            val maxCanReturn = if (inv != null) (inv.deductedDrugQuantities[med?.id] ?: 0) else Int.MAX_VALUE
-            val qty = minOf((if (cItem.quantity > 0) cItem.quantity else 1) * dosesToReturn, maxCanReturn)
-            if (med != null && qty > 0) {
+            val maxCanReturn = if (inv != null) (inv.deductedDrugQuantities[med?.id] ?: 0.0) else Double.MAX_VALUE
+            val qty = minOf((if (cItem.quantity > 0) cItem.quantity.toDouble() else 1.0) * dosesToReturn, maxCanReturn)
+            if (med != null && qty > 0.0) {
               val primaryBatch = med.batches.firstOrNull()
               val updatedBatches = if (primaryBatch != null) {
                 med.batches.mapIndexed { idx, b -> if (idx == 0) b.copy(quantity = b.quantity + qty, lastUpdated = now) else b }
               } else {
                 val restoreCost = getMedicineFallbackCostPrice(med, inv)
-                listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", qty.toDouble(), restoreCost, lastUpdated = now))
+                listOf(com.example.model.StockBatch("RESTORE", "2028-12-31", qty, restoreCost, lastUpdated = now))
               }
               medMap[med.id] = med.copy(batches = updatedBatches)
               restoredNames.add("${med.name} (+$qty)")
@@ -2852,9 +2870,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           }
         } else if (card.medicationName.isNotBlank()) {
           val med = findMatchingMedicine(card.medicationId, card.medicationName, medMap)
-          val maxCanReturn = if (inv != null) (inv.deductedDrugQuantities[med?.id] ?: 0) else Int.MAX_VALUE
-          val qty = minOf(dosesToReturn, maxCanReturn)
-          if (med != null && qty > 0) {
+          val maxCanReturn = if (inv != null) (inv.deductedDrugQuantities[med?.id] ?: 0.0) else Double.MAX_VALUE
+          val qty = minOf(dosesToReturn.toDouble(), maxCanReturn)
+          if (med != null && qty > 0.0) {
             val primaryBatch = med.batches.firstOrNull()
             val updatedBatches = if (primaryBatch != null) {
               med.batches.mapIndexed { idx, b -> if (idx == 0) b.copy(quantity = b.quantity + qty, lastUpdated = now) else b }
