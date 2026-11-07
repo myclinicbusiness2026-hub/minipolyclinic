@@ -296,9 +296,10 @@ fun StockInScreen(
               singleLine = true
             )
 
-            ExposedDropdownMenu(
+            DropdownMenu(
               expanded = tradeNameDropdownExpanded && matchingMedicines.isNotEmpty(),
               onDismissRequest = { tradeNameDropdownExpanded = false },
+              modifier = Modifier.exposedDropdownSize(),
               properties = androidx.compose.ui.window.PopupProperties(focusable = false)
             ) {
               matchingMedicines.forEach { existing ->

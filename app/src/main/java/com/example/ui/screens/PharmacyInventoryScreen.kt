@@ -35,7 +35,6 @@ import java.text.SimpleDateFormat
 import java.util.*
 import android.app.DatePickerDialog
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.window.PopupProperties
 
 enum class PharmacyViewTab(val label: String) {
   INVENTORY("Inventory"),
@@ -1544,8 +1543,7 @@ fun EditMedicineDialog(
                 )
                 ExposedDropdownMenu(
                   expanded = categoryExpanded,
-                  onDismissRequest = { categoryExpanded = false },
-                  properties = PopupProperties(focusable = false)
+                  onDismissRequest = { categoryExpanded = false }
                 ) {
                   categories.filter { it != "All" }.forEach { cat ->
                     DropdownMenuItem(
@@ -1586,8 +1584,7 @@ fun EditMedicineDialog(
                 )
                 ExposedDropdownMenu(
                   expanded = unitExpanded,
-                  onDismissRequest = { unitExpanded = false },
-                  properties = PopupProperties(focusable = false)
+                  onDismissRequest = { unitExpanded = false }
                 ) {
                   units.forEach { u ->
                     DropdownMenuItem(
@@ -1707,8 +1704,7 @@ fun EditMedicineDialog(
               )
               ExposedDropdownMenu(
                 expanded = supplierExpanded,
-                onDismissRequest = { supplierExpanded = false },
-                properties = PopupProperties(focusable = false)
+                onDismissRequest = { supplierExpanded = false }
               ) {
                 if (suppliers.isEmpty()) {
                   DropdownMenuItem(
