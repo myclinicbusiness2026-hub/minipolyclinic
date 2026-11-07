@@ -283,6 +283,9 @@ data class SyncDataPayload(
       mo.put("unitType", m.unitType)
       mo.put("medicineType", m.effectiveMedicineType)
       mo.put("profitMarginPercent", m.profitMarginPercent)
+      if (m.customSellingPrice != null && m.customSellingPrice > 0.0) {
+        mo.put("customSellingPrice", m.customSellingPrice)
+      }
 
       val bArr = JSONArray()
       m.batches.forEach { b ->

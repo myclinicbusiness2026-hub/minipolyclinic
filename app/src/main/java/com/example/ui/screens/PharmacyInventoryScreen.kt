@@ -33,6 +33,9 @@ import com.example.viewmodel.ClinicViewModel
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
+import android.app.DatePickerDialog
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.window.PopupProperties
 
 enum class PharmacyViewTab(val label: String) {
   INVENTORY("Inventory"),
@@ -71,6 +74,9 @@ fun PharmacyInventoryScreen(
     "Consumables" to "Consumables (ဆေးခန်းသုံး)"
   )
   var selectedCategoryFilter by remember { mutableStateOf<String?>("All") }
+  val medicineUnits by viewModel.medicineUnits.collectAsState()
+  var selectedMedicineForDetails by remember { mutableStateOf<Medicine?>(null) }
+  var categoryToManage by remember { mutableStateOf<String?>(null) }
   var showAddCategoryDialog by remember { mutableStateOf(false) }
   var medicineToDelete by remember { mutableStateOf<Medicine?>(null) }
   var medicineToEdit by remember { mutableStateOf<Medicine?>(null) }
@@ -420,12 +426,26 @@ fun PharmacyInventoryScreen(
                     )
                   )
 
+                  val defaultMedCats = remember { listOf("All", "Antibiotics", "Analgesic / Antipyretic", "Antacid / PPI", "Cardiovascular", "Antidiabetic", "Respiratory", "Consumables", "Others") }
                   medicineCategories.forEach { cat ->
                     val isCatSelected = selectedCategoryFilter.equals(cat, ignoreCase = true)
+                    val isCustom = !defaultMedCats.any { it.equals(cat, ignoreCase = true) }
                     FilterChip(
                       selected = isCatSelected,
                       onClick = { selectedCategoryFilter = cat },
                       label = { Text(cat, fontSize = 10.5.sp, fontWeight = if (isCatSelected) FontWeight.Bold else FontWeight.Normal) },
+                      trailingIcon = if (!isReadOnly && isCustom) {
+                        {
+                          Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "Manage Category",
+                            modifier = Modifier
+                              .size(13.dp)
+                              .clickable { categoryToManage = cat },
+                            tint = if (isCatSelected) Color(0xFF0369A1) else SlateMedium
+                          )
+                        }
+                      } else null,
                       shape = RoundedCornerShape(5.dp),
                       colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = Color(0xFFE0F2FE),
@@ -488,6 +508,7 @@ fun PharmacyInventoryScreen(
                 currencyFmt = currencyFmt,
                 suppliers = suppliers,
                 getDaysUntilExpiry = ::getDaysUntilExpiry,
+                onMedicineClick = { selectedMedicineForDetails = med },
                 onEditMedicine = { if (!isReadOnly) medicineToEdit = med },
                 onWastageClick = { if (!isReadOnly) medicineForWastage = med },
                 onDeleteMedicine = { if (!isReadOnly) medicineToDelete = med }
@@ -670,11 +691,59 @@ fun PharmacyInventoryScreen(
         medicine = med,
         suppliers = suppliers,
         categories = medicineCategories,
+        units = medicineUnits,
+        onAddCategory = { viewModel.addMedicineCategory(it) },
+        onAddUnit = { viewModel.addMedicineUnit(it) },
         onDismiss = { medicineToEdit = null },
         onSave = { updatedMed ->
           viewModel.updateMedicine(updatedMed)
           medicineToEdit = null
         }
+      )
+    }
+
+    // Medicine Details & Batch Inspector Dialog
+    selectedMedicineForDetails?.let { med ->
+      MedicineDetailsDialog(
+        medicine = med,
+        suppliers = suppliers,
+        currencyFmt = currencyFmt,
+        getDaysUntilExpiry = ::getDaysUntilExpiry,
+        onDismiss = { selectedMedicineForDetails = null },
+        onEditClick = {
+          selectedMedicineForDetails = null
+          if (!isReadOnly) medicineToEdit = med
+        },
+        onStockInClick = {
+          selectedMedicineForDetails = null
+          currentTab = PharmacyViewTab.STOCK_IN
+        },
+        onWastageClick = {
+          selectedMedicineForDetails = null
+          if (!isReadOnly) medicineForWastage = med
+        }
+      )
+    }
+
+    // Manage Category Dialog (Rename / Delete)
+    categoryToManage?.let { cat ->
+      ManageMedicineCategoryDialog(
+        category = cat,
+        onRename = { newName ->
+          viewModel.renameMedicineCategory(cat, newName)
+          if (selectedCategoryFilter.equals(cat, ignoreCase = true)) {
+            selectedCategoryFilter = newName
+          }
+          categoryToManage = null
+        },
+        onDelete = {
+          viewModel.deleteMedicineCategory(cat)
+          if (selectedCategoryFilter.equals(cat, ignoreCase = true)) {
+            selectedCategoryFilter = "All"
+          }
+          categoryToManage = null
+        },
+        onDismiss = { categoryToManage = null }
       )
     }
 
@@ -713,7 +782,8 @@ fun EnhancedMedicineItemCard(
   getDaysUntilExpiry: (String) -> Long,
   onEditMedicine: (() -> Unit)? = null,
   onWastageClick: (() -> Unit)? = null,
-  onDeleteMedicine: (() -> Unit)? = null
+  onDeleteMedicine: (() -> Unit)? = null,
+  onMedicineClick: (() -> Unit)? = null
 ) {
   var isExpanded by remember { mutableStateOf(false) }
   val isLowStock = medicine.totalStock <= medicine.minStockThreshold
@@ -728,7 +798,9 @@ fun EnhancedMedicineItemCard(
   val categoryColor = remember(medicine.category) { getMedicineCategoryColor(medicine.category) }
 
   Card(
-    modifier = Modifier.fillMaxWidth(),
+    modifier = Modifier
+      .fillMaxWidth()
+      .then(if (onMedicineClick != null) Modifier.clickable { onMedicineClick() } else Modifier),
     shape = RoundedCornerShape(8.dp),
     colors = CardDefaults.cardColors(containerColor = PureWhite),
     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -1268,9 +1340,15 @@ fun EditMedicineDialog(
   medicine: Medicine,
   suppliers: List<Supplier>,
   categories: List<String>,
+  units: List<String>,
+  onAddCategory: (String) -> Unit = {},
+  onAddUnit: (String) -> Unit = {},
   onDismiss: () -> Unit,
   onSave: (Medicine) -> Unit
 ) {
+  val context = LocalContext.current
+  val calendar = Calendar.getInstance()
+
   var tradeName by remember { mutableStateOf(medicine.name) }
   var genericName by remember { mutableStateOf(medicine.genericName) }
   var selectedCategory by remember { mutableStateOf(medicine.category) }
@@ -1285,10 +1363,14 @@ fun EditMedicineDialog(
   }
   var isUpdatingProgrammatically by remember { mutableStateOf(false) }
   var sellingPriceText by remember {
-    val initialCost = medicine.latestCostPrice
-    val initialMargin = medicine.profitMarginPercent
-    val calculatedSelling = initialCost + (initialCost * (initialMargin / 100.0))
-    mutableStateOf(if (calculatedSelling % 1.0 == 0.0) calculatedSelling.toInt().toString() else String.format(Locale.US, "%.1f", calculatedSelling))
+    val initialSelling = if (medicine.customSellingPrice != null && medicine.customSellingPrice > 0.0) {
+      medicine.customSellingPrice
+    } else {
+      val initialCost = medicine.latestCostPrice
+      val initialMargin = medicine.profitMarginPercent
+      initialCost + (initialCost * (initialMargin / 100.0))
+    }
+    mutableStateOf(if (initialSelling % 1.0 == 0.0) initialSelling.toInt().toString() else String.format(Locale.US, "%.1f", initialSelling))
   }
 
   fun updateSellingFromMargin(cost: Double, margin: Double) {
@@ -1315,9 +1397,21 @@ fun EditMedicineDialog(
     }
     isUpdatingProgrammatically = false
   }
+
   var minThresholdText by remember { mutableStateOf(medicine.minStockThreshold.toString()) }
   var isAllergyWarning by remember { mutableStateOf(medicine.isAllergyWarning) }
   var standardDosage by remember { mutableStateOf(medicine.standardDosage) }
+
+  // Dropdown expansion states
+  var categoryExpanded by remember { mutableStateOf(false) }
+  var showAddCategoryModal by remember { mutableStateOf(false) }
+  var newCategoryModalText by remember { mutableStateOf("") }
+
+  var unitExpanded by remember { mutableStateOf(false) }
+  var showAddUnitModal by remember { mutableStateOf(false) }
+  var newUnitModalText by remember { mutableStateOf("") }
+
+  var supplierExpanded by remember { mutableStateOf(false) }
 
   val batchListState = remember {
     mutableStateListOf<EditableBatchState>().apply {
@@ -1336,9 +1430,21 @@ fun EditMedicineDialog(
     }
   }
 
+  fun showBatchDatePicker(batchIndex: Int) {
+    val currentExp = batchListState[batchIndex].expiryDate
+    val parts = currentExp.split("-")
+    val y = parts.getOrNull(0)?.toIntOrNull() ?: (calendar.get(Calendar.YEAR) + 2)
+    val m = (parts.getOrNull(1)?.toIntOrNull() ?: (calendar.get(Calendar.MONTH) + 1)) - 1
+    val d = parts.getOrNull(2)?.toIntOrNull() ?: calendar.get(Calendar.DAY_OF_MONTH)
+
+    DatePickerDialog(context, { _, year, month, dayOfMonth ->
+      batchListState[batchIndex].expiryDate = String.format(Locale.US, "%04d-%02d-%02d", year, month + 1, dayOfMonth)
+    }, y, m, d).show()
+  }
+
   val typeOptions = listOf(
     "Oral" to "Oral (သောက်ဆေး)",
-    "Injection" to "Injection (ထိုးဆေး)",
+    "Injection" to "Injection (ထိုးဆေး/သွင်းဆေး)",
     "Topical" to "Topical (လိမ်းဆေး/ခရင်မ်)",
     "Consumables" to "Consumables (ဆေးခန်းသုံး)"
   )
@@ -1349,7 +1455,10 @@ fun EditMedicineDialog(
       Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Default.Edit, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(20.dp))
         Spacer(modifier = Modifier.width(6.dp))
-        Text("Edit Medicine & Stock (ဆေးအချက်အလက် ပြင်ဆင်ရန်)", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Column {
+          Text("Edit Medicine & Stock Details", fontWeight = FontWeight.Bold, fontSize = 13.5.sp, color = DarkGrayText)
+          Text("ဆေးအချက်အလက်၊ စတော့နှင့် ရောင်းဈေး ပြင်ဆင်ရန်", fontSize = 10.sp, color = SlateMuted)
+        }
       }
     },
     text = {
@@ -1359,224 +1468,362 @@ fun EditMedicineDialog(
           .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(8.dp)
       ) {
-        // Classification
-        Text("Classification (အမျိုးအစား ခွဲခြားမှု):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
-        Row(
-          modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-          horizontalArrangement = Arrangement.spacedBy(6.dp)
+        // Section 1: Classification & Basic Information
+        Card(
+          shape = RoundedCornerShape(6.dp),
+          colors = CardDefaults.cardColors(containerColor = BgLightGray),
+          border = BorderStroke(0.6.dp, BorderGray)
         ) {
-          typeOptions.forEach { (typeKey, typeLabel) ->
-            val isSel = selectedMedicineType == typeKey
-            FilterChip(
-              selected = isSel,
-              onClick = {
-                selectedMedicineType = typeKey
-                when (typeKey) {
-                  "Oral" -> if (selectedUnitType in listOf("Ampoule", "Vial", "Piece", "Set", "Tube")) selectedUnitType = "Strip"
-                  "Injection" -> selectedUnitType = "Ampoule"
-                  "Topical" -> selectedUnitType = "Tube"
-                  "Consumables" -> selectedUnitType = "Piece"
+          Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("၁။ အခြေခံ အချက်အလက် (Classification & Name)", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+
+            Row(
+              modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+              horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+              typeOptions.forEach { (typeKey, typeLabel) ->
+                val isSel = selectedMedicineType == typeKey
+                FilterChip(
+                  selected = isSel,
+                  onClick = {
+                    selectedMedicineType = typeKey
+                    when (typeKey) {
+                      "Oral" -> if (selectedUnitType in listOf("Ampoule", "Vial", "Piece", "Set", "Tube")) selectedUnitType = "Tab"
+                      "Injection" -> selectedUnitType = "Ampoule"
+                      "Topical" -> selectedUnitType = "Tube"
+                      "Consumables" -> selectedUnitType = "Piece"
+                    }
+                  },
+                  label = { Text(typeLabel, fontSize = 9.5.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
+                  colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = when (typeKey) {
+                      "Injection" -> Color(0xFFE11D48)
+                      "Consumables" -> Color(0xFFD97706)
+                      "Topical" -> Color(0xFF7C3AED)
+                      else -> Color(0xFF0284C7)
+                    },
+                    selectedLabelColor = PureWhite
+                  )
+                )
+              }
+            }
+
+            OutlinedTextField(
+              value = tradeName,
+              onValueChange = { tradeName = it },
+              label = { Text("Trade / Brand Name (ဆေးအမည်) *", fontSize = 11.sp) },
+              modifier = Modifier.fillMaxWidth(),
+              shape = RoundedCornerShape(6.dp),
+              singleLine = true
+            )
+
+            OutlinedTextField(
+              value = genericName,
+              onValueChange = { genericName = it },
+              label = { Text("Generic Formula (ပါဝင်ဆေးပစ္စည်း)", fontSize = 11.sp) },
+              modifier = Modifier.fillMaxWidth(),
+              shape = RoundedCornerShape(6.dp),
+              singleLine = true
+            )
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+              // Category Dropdown
+              ExposedDropdownMenuBox(
+                expanded = categoryExpanded,
+                onExpandedChange = { categoryExpanded = it },
+                modifier = Modifier.weight(1f)
+              ) {
+                OutlinedTextField(
+                  value = selectedCategory,
+                  onValueChange = { selectedCategory = it },
+                  label = { Text("Category", fontSize = 11.sp) },
+                  trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
+                  modifier = Modifier.menuAnchor().fillMaxWidth(),
+                  shape = RoundedCornerShape(6.dp),
+                  singleLine = true
+                )
+                ExposedDropdownMenu(
+                  expanded = categoryExpanded,
+                  onDismissRequest = { categoryExpanded = false },
+                  properties = PopupProperties(focusable = false)
+                ) {
+                  categories.filter { it != "All" }.forEach { cat ->
+                    DropdownMenuItem(
+                      text = { Text(cat, fontSize = 11.sp) },
+                      onClick = {
+                        selectedCategory = cat
+                        categoryExpanded = false
+                      }
+                    )
+                  }
+                  HorizontalDivider()
+                  DropdownMenuItem(
+                    leadingIcon = { Icon(Icons.Default.Add, contentDescription = null, tint = MedicalGreenDark, modifier = Modifier.size(13.dp)) },
+                    text = { Text("+ Category အသစ်...", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark) },
+                    onClick = {
+                      categoryExpanded = false
+                      newCategoryModalText = ""
+                      showAddCategoryModal = true
+                    }
+                  )
                 }
-              },
-              label = { Text(typeLabel, fontSize = 10.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
-              colors = FilterChipDefaults.filterChipColors(
-                selectedContainerColor = when (typeKey) {
-                  "Injection" -> Color(0xFFE11D48)
-                  "Consumables" -> Color(0xFFD97706)
-                  "Topical" -> Color(0xFF7C3AED)
-                  else -> Color(0xFF0284C7)
+              }
+
+              // Unit Dropdown
+              ExposedDropdownMenuBox(
+                expanded = unitExpanded,
+                onExpandedChange = { unitExpanded = it },
+                modifier = Modifier.weight(1f)
+              ) {
+                OutlinedTextField(
+                  value = selectedUnitType,
+                  onValueChange = { selectedUnitType = it },
+                  label = { Text("Unit Type", fontSize = 11.sp) },
+                  trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
+                  modifier = Modifier.menuAnchor().fillMaxWidth(),
+                  shape = RoundedCornerShape(6.dp),
+                  singleLine = true
+                )
+                ExposedDropdownMenu(
+                  expanded = unitExpanded,
+                  onDismissRequest = { unitExpanded = false },
+                  properties = PopupProperties(focusable = false)
+                ) {
+                  units.forEach { u ->
+                    DropdownMenuItem(
+                      text = { Text(u, fontSize = 11.sp) },
+                      onClick = {
+                        selectedUnitType = u
+                        unitExpanded = false
+                      }
+                    )
+                  }
+                  HorizontalDivider()
+                  DropdownMenuItem(
+                    leadingIcon = { Icon(Icons.Default.Add, contentDescription = null, tint = MedicalGreenDark, modifier = Modifier.size(13.dp)) },
+                    text = { Text("+ Unit အသစ်...", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark) },
+                    onClick = {
+                      unitExpanded = false
+                      newUnitModalText = ""
+                      showAddUnitModal = true
+                    }
+                  )
+                }
+              }
+            }
+          }
+        }
+
+        // Section 2: Pricing & Inventory Control
+        Card(
+          shape = RoundedCornerShape(6.dp),
+          colors = CardDefaults.cardColors(containerColor = BgLightGray),
+          border = BorderStroke(0.6.dp, BorderGray)
+        ) {
+          Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("၂။ ဈေးနှုန်းနှင့် စတော့သတ်မှတ်ချက် (Pricing & Margin)", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+              OutlinedTextField(
+                value = profitMarginText,
+                onValueChange = {
+                  profitMarginText = it
+                  val margin = it.toDoubleOrNull() ?: 0.0
+                  val currentCost = batchListState.firstOrNull()?.costPriceText?.toDoubleOrNull() ?: medicine.latestCostPrice
+                  updateSellingFromMargin(currentCost, margin)
                 },
-                selectedLabelColor = PureWhite
+                label = { Text("Margin %", fontSize = 11.sp) },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(6.dp),
+                singleLine = true
               )
+              OutlinedTextField(
+                value = sellingPriceText,
+                onValueChange = {
+                  sellingPriceText = it
+                  val selling = it.toDoubleOrNull() ?: 0.0
+                  val currentCost = batchListState.firstOrNull()?.costPriceText?.toDoubleOrNull() ?: medicine.latestCostPrice
+                  updateMarginFromSelling(currentCost, selling)
+                },
+                label = { Text("Selling (ရောင်းဈေး အတိအကျ)", fontSize = 11.sp) },
+                modifier = Modifier.weight(1.3f),
+                shape = RoundedCornerShape(6.dp),
+                singleLine = true
+              )
+              OutlinedTextField(
+                value = minThresholdText,
+                onValueChange = { minThresholdText = it },
+                label = { Text("Min Alert", fontSize = 11.sp) },
+                modifier = Modifier.weight(0.9f),
+                shape = RoundedCornerShape(6.dp),
+                singleLine = true
+              )
+            }
+
+            // Allergy Warning
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              modifier = Modifier.fillMaxWidth().clickable { isAllergyWarning = !isAllergyWarning }
+            ) {
+              Checkbox(checked = isAllergyWarning, onCheckedChange = { isAllergyWarning = it })
+              Spacer(modifier = Modifier.width(4.dp))
+              Text("Allergy Warning (ဓာတ်မတည့်မှု အထူးသတိပေးရန်)", fontSize = 10.5.sp, color = if (isAllergyWarning) StatusCritical else DarkGrayText, fontWeight = if (isAllergyWarning) FontWeight.Bold else FontWeight.Normal)
+            }
+
+            OutlinedTextField(
+              value = standardDosage,
+              onValueChange = { standardDosage = it },
+              label = { Text("Standard Instructions / သောက်သုံးရန် ညွှန်ကြားချက်", fontSize = 11.sp) },
+              modifier = Modifier.fillMaxWidth(),
+              shape = RoundedCornerShape(6.dp),
+              singleLine = true
             )
           }
         }
 
-        // Trade Name & Generic Name
-        OutlinedTextField(
-          value = tradeName,
-          onValueChange = { tradeName = it },
-          label = { Text("Trade Name (ဆေးအမည်) *", fontSize = 11.5.sp) },
-          modifier = Modifier.fillMaxWidth(),
+        // Section 3: Registered Supplier Dropdown
+        Card(
           shape = RoundedCornerShape(6.dp),
-          singleLine = true
-        )
-
-        OutlinedTextField(
-          value = genericName,
-          onValueChange = { genericName = it },
-          label = { Text("Generic / Formula (ပါဝင်ဆေးပစ္စည်း)", fontSize = 11.5.sp) },
-          modifier = Modifier.fillMaxWidth(),
-          shape = RoundedCornerShape(6.dp),
-          singleLine = true
-        )
-
-        // Category & Unit Type
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-          OutlinedTextField(
-            value = selectedCategory,
-            onValueChange = { selectedCategory = it },
-            label = { Text("Category", fontSize = 11.5.sp) },
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(6.dp),
-            singleLine = true
-          )
-          OutlinedTextField(
-            value = selectedUnitType,
-            onValueChange = { selectedUnitType = it },
-            label = { Text("Unit (Strip, Amp, etc.)", fontSize = 11.5.sp) },
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(6.dp),
-            singleLine = true
-          )
-        }
-
-        // Profit Margin % & Selling Price & Min Stock Threshold
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-          OutlinedTextField(
-            value = profitMarginText,
-            onValueChange = {
-              profitMarginText = it
-              val margin = it.toDoubleOrNull() ?: 0.0
-              val currentCost = batchListState.firstOrNull()?.costPriceText?.toDoubleOrNull() ?: medicine.latestCostPrice
-              updateSellingFromMargin(currentCost, margin)
-            },
-            label = { Text("Margin %", fontSize = 11.sp) },
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(6.dp),
-            singleLine = true
-          )
-          OutlinedTextField(
-            value = sellingPriceText,
-            onValueChange = {
-              sellingPriceText = it
-              val selling = it.toDoubleOrNull() ?: 0.0
-              val currentCost = batchListState.firstOrNull()?.costPriceText?.toDoubleOrNull() ?: medicine.latestCostPrice
-              updateMarginFromSelling(currentCost, selling)
-            },
-            label = { Text("Selling (ရောင်းဈေး)", fontSize = 11.sp) },
-            modifier = Modifier.weight(1.2f),
-            shape = RoundedCornerShape(6.dp),
-            singleLine = true
-          )
-          OutlinedTextField(
-            value = minThresholdText,
-            onValueChange = { minThresholdText = it },
-            label = { Text("Min Alert", fontSize = 11.sp) },
-            modifier = Modifier.weight(0.9f),
-            shape = RoundedCornerShape(6.dp),
-            singleLine = true
-          )
-        }
-
-        // Supplier
-        OutlinedTextField(
-          value = selectedSupplier,
-          onValueChange = { selectedSupplier = it },
-          label = { Text("Supplier (ကုမ္ပဏီ)", fontSize = 11.5.sp) },
-          modifier = Modifier.fillMaxWidth(),
-          shape = RoundedCornerShape(6.dp),
-          singleLine = true
-        )
-
-        // Standard Dosage / Instructions
-        OutlinedTextField(
-          value = standardDosage,
-          onValueChange = { standardDosage = it },
-          label = { Text("Standard Instructions / သောက်သုံးရန် ညွှန်ကြားချက်", fontSize = 11.5.sp) },
-          modifier = Modifier.fillMaxWidth(),
-          shape = RoundedCornerShape(6.dp),
-          singleLine = true
-        )
-
-        // Allergy Warning
-        Row(
-          verticalAlignment = Alignment.CenterVertically,
-          modifier = Modifier.fillMaxWidth().clickable { isAllergyWarning = !isAllergyWarning }
+          colors = CardDefaults.cardColors(containerColor = BgLightGray),
+          border = BorderStroke(0.6.dp, BorderGray)
         ) {
-          Checkbox(checked = isAllergyWarning, onCheckedChange = { isAllergyWarning = it })
-          Spacer(modifier = Modifier.width(4.dp))
-          Text("Allergy Warning (ဓာတ်မတည့်မှု အထူးသတိပေးရန်)", fontSize = 11.sp, color = if (isAllergyWarning) StatusCritical else DarkGrayText, fontWeight = if (isAllergyWarning) FontWeight.Bold else FontWeight.Normal)
-        }
+          Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("၃။ ပစ္စည်းပေးသွင်းသူ (Primary Supplier)", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
 
-        Spacer(modifier = Modifier.height(4.dp))
-        HorizontalDivider(color = BorderGray)
-        Spacer(modifier = Modifier.height(4.dp))
-
-        // Batches Section
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.CenterVertically
-        ) {
-          Text("Stock Batches & Quantities (စတော့အသုတ်များ):", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = MedicalGreenDark)
-          TextButton(
-            onClick = {
-              val nextNum = "B${batchListState.size + 1}"
-              batchListState.add(EditableBatchState(batchNumber = nextNum, expiryDate = "2027-12-31", quantityText = "10", costPriceText = "1000"))
-            },
-            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
-          ) {
-            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
-            Spacer(modifier = Modifier.width(2.dp))
-            Text("Add Batch", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
-          }
-        }
-
-        batchListState.forEachIndexed { index, batchState ->
-          Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(6.dp),
-            colors = CardDefaults.cardColors(containerColor = BgLightGray),
-            border = BorderStroke(0.5.dp, BorderGray)
-          ) {
-            Column(modifier = Modifier.fillMaxWidth().padding(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-              Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Batch #${index + 1}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = SlateDark)
-                if (batchListState.size > 1) {
-                  IconButton(
-                    onClick = { batchListState.removeAt(index) },
-                    modifier = Modifier.size(20.dp)
-                  ) {
-                    Icon(Icons.Default.Close, contentDescription = "Remove Batch", tint = Color(0xFFDC2626), modifier = Modifier.size(13.dp))
+            ExposedDropdownMenuBox(
+              expanded = supplierExpanded,
+              onExpandedChange = { supplierExpanded = it },
+              modifier = Modifier.fillMaxWidth()
+            ) {
+              OutlinedTextField(
+                value = selectedSupplier,
+                onValueChange = { selectedSupplier = it },
+                label = { Text("Supplier (ကုမ္ပဏီအမည် ရွေးချယ်ပါ/ရိုက်ထည့်ပါ)", fontSize = 11.sp) },
+                leadingIcon = { Icon(Icons.Default.Business, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(16.dp)) },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = supplierExpanded) },
+                modifier = Modifier.menuAnchor().fillMaxWidth(),
+                shape = RoundedCornerShape(6.dp),
+                singleLine = true
+              )
+              ExposedDropdownMenu(
+                expanded = supplierExpanded,
+                onDismissRequest = { supplierExpanded = false },
+                properties = PopupProperties(focusable = false)
+              ) {
+                if (suppliers.isEmpty()) {
+                  DropdownMenuItem(
+                    text = { Text("စာရင်းသွင်းထားသော Supplier မရှိသေးပါ", fontSize = 11.sp, color = SlateMedium) },
+                    onClick = { supplierExpanded = false }
+                  )
+                } else {
+                  suppliers.forEach { sup ->
+                    DropdownMenuItem(
+                      text = {
+                        Column {
+                          Text(sup.name, fontWeight = FontWeight.Bold, fontSize = 11.5.sp, color = DarkGrayText)
+                          if (sup.phone.isNotBlank()) Text(sup.phone, fontSize = 9.sp, color = SlateMuted)
+                        }
+                      },
+                      onClick = {
+                        selectedSupplier = sup.name
+                        supplierExpanded = false
+                      }
+                    )
                   }
                 }
               }
-              Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                OutlinedTextField(
-                  value = batchState.batchNumber,
-                  onValueChange = { batchState.batchNumber = it },
-                  label = { Text("Batch #", fontSize = 10.sp) },
-                  modifier = Modifier.weight(1f),
-                  shape = RoundedCornerShape(4.dp),
-                  singleLine = true
-                )
-                OutlinedTextField(
-                  value = batchState.expiryDate,
-                  onValueChange = { batchState.expiryDate = it },
-                  label = { Text("Expiry (YYYY-MM-DD)", fontSize = 10.sp) },
-                  modifier = Modifier.weight(1.3f),
-                  shape = RoundedCornerShape(4.dp),
-                  singleLine = true
-                )
+            }
+          }
+        }
+
+        // Section 4: Batches Management
+        Card(
+          shape = RoundedCornerShape(6.dp),
+          colors = CardDefaults.cardColors(containerColor = BgLightGray),
+          border = BorderStroke(0.6.dp, BorderGray)
+        ) {
+          Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Text("၄။ စတော့အသုတ်များ (Stock Batches - ${batchListState.size} အသုတ်):", fontWeight = FontWeight.Bold, fontSize = 10.5.sp, color = MedicalGreenDark)
+              TextButton(
+                onClick = {
+                  val nextNum = "BAT-${calendar.get(Calendar.YEAR)}-${batchListState.size + 1}"
+                  val defExp = String.format(Locale.US, "%04d-12-31", calendar.get(Calendar.YEAR) + 2)
+                  batchListState.add(EditableBatchState(batchNumber = nextNum, expiryDate = defExp, quantityText = "50", costPriceText = "1000"))
+                },
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+              ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                Spacer(modifier = Modifier.width(2.dp))
+                Text("Add Batch", fontSize = 10.sp, fontWeight = FontWeight.Bold)
               }
-              Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                OutlinedTextField(
-                  value = batchState.quantityText,
-                  onValueChange = { batchState.quantityText = it },
-                  label = { Text("Qty ($selectedUnitType)", fontSize = 10.sp) },
-                  modifier = Modifier.weight(1f),
-                  shape = RoundedCornerShape(4.dp),
-                  singleLine = true
-                )
-                OutlinedTextField(
-                  value = batchState.costPriceText,
-                  onValueChange = { batchState.costPriceText = it },
-                  label = { Text("Cost Price (Ks)", fontSize = 10.sp) },
-                  modifier = Modifier.weight(1f),
-                  shape = RoundedCornerShape(4.dp),
-                  singleLine = true
-                )
+            }
+
+            batchListState.forEachIndexed { index, batchState ->
+              Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(6.dp),
+                colors = CardDefaults.cardColors(containerColor = PureWhite),
+                border = BorderStroke(0.5.dp, BorderGray)
+              ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                  Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Batch #${index + 1}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+                    if (batchListState.size > 1) {
+                      IconButton(
+                        onClick = { batchListState.removeAt(index) },
+                        modifier = Modifier.size(20.dp)
+                      ) {
+                        Icon(Icons.Default.Close, contentDescription = "Remove Batch", tint = Color(0xFFDC2626), modifier = Modifier.size(13.dp))
+                      }
+                    }
+                  }
+                  Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    OutlinedTextField(
+                      value = batchState.batchNumber,
+                      onValueChange = { batchState.batchNumber = it },
+                      label = { Text("Batch #", fontSize = 10.sp) },
+                      modifier = Modifier.weight(1f),
+                      shape = RoundedCornerShape(4.dp),
+                      singleLine = true
+                    )
+                    OutlinedTextField(
+                      value = batchState.expiryDate,
+                      onValueChange = { batchState.expiryDate = it },
+                      label = { Text("Exp (YYYY-MM-DD)", fontSize = 10.sp) },
+                      trailingIcon = {
+                        IconButton(onClick = { showBatchDatePicker(index) }, modifier = Modifier.size(22.dp)) {
+                          Icon(Icons.Default.CalendarMonth, contentDescription = "Pick Date", tint = MedicalGreen, modifier = Modifier.size(15.dp))
+                        }
+                      },
+                      modifier = Modifier.weight(1.3f),
+                      shape = RoundedCornerShape(4.dp),
+                      singleLine = true
+                    )
+                  }
+                  Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    OutlinedTextField(
+                      value = batchState.quantityText,
+                      onValueChange = { batchState.quantityText = it },
+                      label = { Text("Qty ($selectedUnitType)", fontSize = 10.sp) },
+                      modifier = Modifier.weight(1f),
+                      shape = RoundedCornerShape(4.dp),
+                      singleLine = true
+                    )
+                    OutlinedTextField(
+                      value = batchState.costPriceText,
+                      onValueChange = { batchState.costPriceText = it },
+                      label = { Text("Cost Price (Ks)", fontSize = 10.sp) },
+                      modifier = Modifier.weight(1f),
+                      shape = RoundedCornerShape(4.dp),
+                      singleLine = true
+                    )
+                  }
+                }
               }
             }
           }
@@ -1597,21 +1844,24 @@ fun EditMedicineDialog(
               expiryDate = exp,
               quantity = qty,
               costPricePerUnit = cost,
-              supplierName = selectedSupplier.trim()
+              supplierName = selectedSupplier.trim(),
+              lastUpdated = System.currentTimeMillis()
             )
           }
+          val exactSelling = sellingPriceText.toDoubleOrNull()
           val updated = medicine.copy(
             name = tradeName.trim(),
             genericName = genericName.trim().ifBlank { tradeName.trim() },
             category = selectedCategory.trim().ifBlank { "General" },
             medicineType = selectedMedicineType,
-            unitType = selectedUnitType.trim().ifBlank { "Strip" },
+            unitType = selectedUnitType.trim().ifBlank { "Tab" },
             primarySupplier = selectedSupplier.trim().ifBlank { "AA Medical Products" },
             profitMarginPercent = profitMarginText.toDoubleOrNull() ?: 25.0,
             minStockThreshold = minThresholdText.toIntOrNull() ?: 20,
             isAllergyWarning = isAllergyWarning,
             standardDosage = standardDosage.trim(),
-            batches = updatedBatches
+            batches = updatedBatches,
+            customSellingPrice = if (exactSelling != null && exactSelling > 0.0) exactSelling else null
           )
           onSave(updated)
         },
@@ -1627,6 +1877,500 @@ fun EditMedicineDialog(
       }
     }
   )
+
+  // Sub-dialog: Add Category Modal
+  if (showAddCategoryModal) {
+    AlertDialog(
+      onDismissRequest = { showAddCategoryModal = false },
+      title = { Text("Add Category အသစ်", fontWeight = FontWeight.Bold, fontSize = 13.sp) },
+      text = {
+        OutlinedTextField(
+          value = newCategoryModalText,
+          onValueChange = { newCategoryModalText = it },
+          placeholder = { Text("e.g. Analgesic / Inhaler", fontSize = 11.5.sp) },
+          modifier = Modifier.fillMaxWidth(),
+          singleLine = true,
+          shape = RoundedCornerShape(6.dp)
+        )
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            val clean = newCategoryModalText.trim()
+            if (clean.isNotBlank()) {
+              onAddCategory(clean)
+              selectedCategory = clean
+              showAddCategoryModal = false
+            }
+          },
+          enabled = newCategoryModalText.isNotBlank(),
+          colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+          shape = RoundedCornerShape(6.dp)
+        ) {
+          Text("Add", fontSize = 11.sp)
+        }
+      },
+      dismissButton = {
+        OutlinedButton(onClick = { showAddCategoryModal = false }, shape = RoundedCornerShape(6.dp)) {
+          Text("Cancel", fontSize = 11.sp)
+        }
+      }
+    )
+  }
+
+  // Sub-dialog: Add Unit Modal
+  if (showAddUnitModal) {
+    AlertDialog(
+      onDismissRequest = { showAddUnitModal = false },
+      title = { Text("Add Unit အသစ်", fontWeight = FontWeight.Bold, fontSize = 13.sp) },
+      text = {
+        OutlinedTextField(
+          value = newUnitModalText,
+          onValueChange = { newUnitModalText = it },
+          placeholder = { Text("e.g. Puff / Jar / Set", fontSize = 11.5.sp) },
+          modifier = Modifier.fillMaxWidth(),
+          singleLine = true,
+          shape = RoundedCornerShape(6.dp)
+        )
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            val clean = newUnitModalText.trim()
+            if (clean.isNotBlank()) {
+              onAddUnit(clean)
+              selectedUnitType = clean
+              showAddUnitModal = false
+            }
+          },
+          enabled = newUnitModalText.isNotBlank(),
+          colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+          shape = RoundedCornerShape(6.dp)
+        ) {
+          Text("Add", fontSize = 11.sp)
+        }
+      },
+      dismissButton = {
+        OutlinedButton(onClick = { showAddUnitModal = false }, shape = RoundedCornerShape(6.dp)) {
+          Text("Cancel", fontSize = 11.sp)
+        }
+      }
+    )
+  }
+}
+
+// -------------------------------------------------------------------------------------------------
+// Medicine Details & Batch Inspector Dialog
+// -------------------------------------------------------------------------------------------------
+@Composable
+fun MedicineDetailsDialog(
+  medicine: Medicine,
+  suppliers: List<Supplier>,
+  currencyFmt: NumberFormat,
+  getDaysUntilExpiry: (String) -> Long,
+  onDismiss: () -> Unit,
+  onEditClick: () -> Unit,
+  onStockInClick: () -> Unit,
+  onWastageClick: () -> Unit
+) {
+  val isLowStock = medicine.totalStock <= medicine.minStockThreshold
+  val supplierInfo = suppliers.find { it.name.equals(medicine.primarySupplier, ignoreCase = true) }
+  val totalValuationCost = medicine.batches.sumOf { it.quantity * it.costPricePerUnit }
+  val totalValuationSelling = medicine.batches.sumOf { it.quantity * medicine.calculatedSellingPrice }
+
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = {
+      Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+          modifier = Modifier
+            .size(36.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(SoftGreenContainer),
+          contentAlignment = Alignment.Center
+        ) {
+          Icon(Icons.Default.Medication, contentDescription = null, tint = MedicalGreenDark, modifier = Modifier.size(20.dp))
+        }
+        Spacer(modifier = Modifier.width(10.dp))
+        Column(modifier = Modifier.weight(1f)) {
+          Text(medicine.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = DarkGrayText, maxLines = 1, overflow = TextOverflow.Ellipsis)
+          Text(medicine.genericName.ifBlank { "Generic formula not specified" }, fontSize = 10.5.sp, color = SlateMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+      }
+    },
+    text = {
+      Column(
+        modifier = Modifier
+          .fillMaxWidth()
+          .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+      ) {
+        // Badges Row
+        Row(
+          modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+          horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+          val (typeColor, typeBg) = when (medicine.effectiveMedicineType) {
+            "Injection" -> Color(0xFFE11D48) to Color(0xFFFFE4E6)
+            "Consumables" -> Color(0xFFD97706) to Color(0xFFFEF3C7)
+            "Topical" -> Color(0xFF7C3AED) to Color(0xFFF3E8FF)
+            else -> Color(0xFF0284C7) to Color(0xFFE0F2FE)
+          }
+          Surface(shape = RoundedCornerShape(4.dp), color = typeBg, border = BorderStroke(0.6.dp, typeColor.copy(alpha = 0.5f))) {
+            Text(medicine.effectiveMedicineType, color = typeColor, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+          }
+          Surface(shape = RoundedCornerShape(4.dp), color = PureWhite, border = BorderStroke(0.6.dp, BorderGray)) {
+            Text("Category: ${medicine.category}", fontSize = 9.sp, color = SlateDark, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+          }
+          Surface(shape = RoundedCornerShape(4.dp), color = PureWhite, border = BorderStroke(0.6.dp, BorderGray)) {
+            Text("Unit: ${medicine.unitType}", fontSize = 9.sp, color = SlateDark, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+          }
+          if (medicine.isAllergyWarning) {
+            Surface(shape = RoundedCornerShape(4.dp), color = StatusCriticalContainer) {
+              Text("⚠ Allergy Warning", color = StatusCritical, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+            }
+          }
+        }
+
+        // 4-Box Key Metrics Grid
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+          // Box 1: Total Stock
+          Card(
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(6.dp),
+            colors = CardDefaults.cardColors(containerColor = if (isLowStock) Color(0xFFFEF2F2) else Color(0xFFF0FDF4)),
+            border = BorderStroke(0.6.dp, if (isLowStock) Color(0xFFFECACA) else Color(0xFFBBF7D0))
+          ) {
+            Column(modifier = Modifier.padding(6.dp)) {
+              Text("လက်ကျန် စုစုပေါင်း", fontSize = 9.sp, color = SlateMedium)
+              Text(
+                "${medicine.totalStockDisplay} ${medicine.unitType}",
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                color = if (isLowStock) StatusCritical else MedicalGreenDark
+              )
+              if (isLowStock) {
+                Text("Low Stock (Min: ${medicine.minStockThreshold})", fontSize = 8.sp, color = StatusCritical, fontWeight = FontWeight.Bold)
+              }
+            }
+          }
+
+          // Box 2: Latest Cost Price
+          Card(
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(6.dp),
+            colors = CardDefaults.cardColors(containerColor = BgLightGray),
+            border = BorderStroke(0.6.dp, BorderGray)
+          ) {
+            Column(modifier = Modifier.padding(6.dp)) {
+              Text("ဝယ်ဈေး (Cost)", fontSize = 9.sp, color = SlateMedium)
+              Text("${currencyFmt.format(medicine.latestCostPrice.toInt())} Ks", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = DarkGrayText)
+              Text("Per ${medicine.unitType}", fontSize = 8.sp, color = SlateMuted)
+            }
+          }
+        }
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+          // Box 3: Exact Selling Price
+          Card(
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(6.dp),
+            colors = CardDefaults.cardColors(containerColor = BgLightGray),
+            border = BorderStroke(0.6.dp, BorderGray)
+          ) {
+            Column(modifier = Modifier.padding(6.dp)) {
+              Text("ရောင်းဈေး (Selling)", fontSize = 9.sp, color = SlateMedium)
+              Text("${currencyFmt.format(medicine.calculatedSellingPrice.toInt())} Ks", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = MedicalGreenDark)
+              Text("+${medicine.profitMarginPercent.toInt()}% Margin", fontSize = 8.sp, color = MedicalGreen, fontWeight = FontWeight.Bold)
+            }
+          }
+
+          // Box 4: Total Valuation
+          Card(
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(6.dp),
+            colors = CardDefaults.cardColors(containerColor = BgLightGray),
+            border = BorderStroke(0.6.dp, BorderGray)
+          ) {
+            Column(modifier = Modifier.padding(6.dp)) {
+              Text("စတော့တန်ဖိုး စုစုပေါင်း", fontSize = 9.sp, color = SlateMedium)
+              Text("${currencyFmt.format(totalValuationCost.toInt())} Ks", fontWeight = FontWeight.Bold, fontSize = 11.5.sp, color = DarkGrayText)
+              Text("ရောင်းရငွေ: ${currencyFmt.format(totalValuationSelling.toInt())} Ks", fontSize = 8.sp, color = SlateMuted)
+            }
+          }
+        }
+
+        // Supplier Info Strip
+        Surface(
+          shape = RoundedCornerShape(6.dp),
+          color = PureWhite,
+          border = BorderStroke(0.6.dp, BorderGray),
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Icon(Icons.Default.Business, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Column {
+              Text("ပေးသွင်းသူ: ${medicine.primarySupplier}", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+              if (supplierInfo != null && supplierInfo.phone.isNotBlank()) {
+                Text("ဖုန်း: ${supplierInfo.phone}${if (supplierInfo.contactPerson.isNotBlank()) " (${supplierInfo.contactPerson})" else ""}", fontSize = 9.5.sp, color = SlateMedium)
+              }
+            }
+          }
+        }
+
+        if (medicine.standardDosage.isNotBlank()) {
+          Surface(
+            shape = RoundedCornerShape(6.dp),
+            color = PureWhite,
+            border = BorderStroke(0.6.dp, BorderGray),
+            modifier = Modifier.fillMaxWidth()
+          ) {
+            Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)) {
+              Text("ညွှန်ကြားချက်: ", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+              Text(medicine.standardDosage, fontSize = 10.sp, color = DarkGrayText)
+            }
+          }
+        }
+
+        // Batches Breakdown Table
+        Text(
+          "စတော့အသုတ်များ အသေးစိတ် (Stock Batches - ${medicine.batches.size} batches):",
+          fontSize = 11.sp,
+          fontWeight = FontWeight.Bold,
+          color = MedicalGreenDark
+        )
+
+        Card(
+          shape = RoundedCornerShape(6.dp),
+          colors = CardDefaults.cardColors(containerColor = PureWhite),
+          border = BorderStroke(0.6.dp, BorderGray)
+        ) {
+          Column(modifier = Modifier.fillMaxWidth()) {
+            // Table Header
+            Row(
+              modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFFF1F5F9))
+                .padding(horizontal = 6.dp, vertical = 4.dp),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Text("Batch #", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = SlateDark, modifier = Modifier.weight(1f))
+              Text("Exp Date", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = SlateDark, modifier = Modifier.weight(1.3f))
+              Text("Qty", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = SlateDark, modifier = Modifier.weight(0.8f))
+              Text("Cost (Ks)", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = SlateDark, modifier = Modifier.weight(0.9f))
+            }
+            HorizontalDivider(color = BorderGray, thickness = 0.5.dp)
+
+            medicine.allBatches.forEachIndexed { idx, batch ->
+              val daysLeft = getDaysUntilExpiry(batch.expiryDate)
+              val (badgeColor, badgeBg, badgeText) = when {
+                daysLeft <= 0 -> Triple(Color(0xFFDC2626), Color(0xFFFEE2E2), "Expired")
+                daysLeft <= 90 -> Triple(Color(0xFFEA580C), Color(0xFFFFEDD5), "$daysLeft d")
+                else -> Triple(Color(0xFF16A34A), Color(0xFFDCFCE7), "$daysLeft d")
+              }
+
+              Row(
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .background(if (idx % 2 == 1) Color(0xFFF8FAFC) else PureWhite)
+                  .padding(horizontal = 6.dp, vertical = 5.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Text(batch.batchNumber, fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = DarkGrayText, modifier = Modifier.weight(1f))
+
+                Row(modifier = Modifier.weight(1.3f), verticalAlignment = Alignment.CenterVertically) {
+                  Text(batch.expiryDate, fontSize = 9.sp, color = DarkGrayText)
+                  Spacer(modifier = Modifier.width(3.dp))
+                  Surface(shape = RoundedCornerShape(3.dp), color = badgeBg) {
+                    Text(badgeText, fontSize = 7.5.sp, fontWeight = FontWeight.Bold, color = badgeColor, modifier = Modifier.padding(horizontal = 3.dp, vertical = 1.dp))
+                  }
+                }
+
+                val qStr = if (batch.quantity % 1.0 == 0.0) batch.quantity.toInt().toString() else batch.quantity.toString()
+                Text("$qStr ${medicine.unitType}", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark, modifier = Modifier.weight(0.8f))
+
+                Text(currencyFmt.format(batch.costPricePerUnit.toInt()), fontSize = 9.5.sp, color = SlateDark, modifier = Modifier.weight(0.9f))
+              }
+              if (idx < medicine.allBatches.size - 1) {
+                HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 0.5.dp)
+              }
+            }
+          }
+        }
+      }
+    },
+    confirmButton = {
+      Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Button(
+          onClick = onStockInClick,
+          colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+          shape = RoundedCornerShape(6.dp),
+          contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+          modifier = Modifier.height(30.dp)
+        ) {
+          Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
+          Spacer(modifier = Modifier.width(3.dp))
+          Text("Stock-In", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+        }
+
+        Button(
+          onClick = onEditClick,
+          colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary),
+          shape = RoundedCornerShape(6.dp),
+          contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+          modifier = Modifier.height(30.dp)
+        ) {
+          Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(13.dp))
+          Spacer(modifier = Modifier.width(3.dp))
+          Text("Edit", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+        }
+      }
+    },
+    dismissButton = {
+      Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        OutlinedButton(
+          onClick = onWastageClick,
+          shape = RoundedCornerShape(6.dp),
+          contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+          modifier = Modifier.height(30.dp),
+          colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFD97706)),
+          border = BorderStroke(1.dp, Color(0xFFD97706))
+        ) {
+          Icon(Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(12.dp))
+          Spacer(modifier = Modifier.width(2.dp))
+          Text("အသုံး/လေလွင့်", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        }
+
+        OutlinedButton(
+          onClick = onDismiss,
+          shape = RoundedCornerShape(6.dp),
+          contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+          modifier = Modifier.height(30.dp)
+        ) {
+          Text("Close", fontSize = 10.5.sp)
+        }
+      }
+    }
+  )
+}
+
+// -------------------------------------------------------------------------------------------------
+// Manage Medicine Category Dialog (Rename / Delete)
+// -------------------------------------------------------------------------------------------------
+@Composable
+fun ManageMedicineCategoryDialog(
+  category: String,
+  onRename: (String) -> Unit,
+  onDelete: () -> Unit,
+  onDismiss: () -> Unit
+) {
+  var isRenaming by remember { mutableStateOf(false) }
+  var renameText by remember { mutableStateOf(category) }
+  var showDeleteConfirm by remember { mutableStateOf(false) }
+
+  if (showDeleteConfirm) {
+    AlertDialog(
+      onDismissRequest = { showDeleteConfirm = false },
+      icon = { Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+      title = { Text("Delete Category (အမျိုးအစား ဖျက်မည်)", fontWeight = FontWeight.Bold, fontSize = 13.5.sp) },
+      text = {
+        Text("'$category' category ကို ဖျက်ရန် သေချာပါသလား?\n\n(မှတ်ချက် - ဤ category အောက်ရှိ ဆေးဝါးများကို 'Others' သို့ အလိုအလျောက် ရွှေ့ပြောင်းပေးပါမည်။)", fontSize = 11.5.sp, color = DarkGrayText)
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            onDelete()
+            showDeleteConfirm = false
+            onDismiss()
+          },
+          colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+          shape = RoundedCornerShape(6.dp)
+        ) {
+          Text("Delete (ဖျက်မည်)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        }
+      },
+      dismissButton = {
+        OutlinedButton(onClick = { showDeleteConfirm = false }, shape = RoundedCornerShape(6.dp)) {
+          Text("Cancel", fontSize = 11.sp)
+        }
+      }
+    )
+  } else {
+    AlertDialog(
+      onDismissRequest = onDismiss,
+      icon = { Icon(Icons.Default.Category, contentDescription = null, tint = SkyBluePrimary) },
+      title = { Text("Manage Category ($category)", fontWeight = FontWeight.Bold, fontSize = 13.5.sp) },
+      text = {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+          if (isRenaming) {
+            Text("အမျိုးအစား အမည်သစ် ရိုက်ထည့်ပါ:", fontSize = 11.sp, color = SlateMedium)
+            OutlinedTextField(
+              value = renameText,
+              onValueChange = { renameText = it },
+              modifier = Modifier.fillMaxWidth(),
+              singleLine = true,
+              shape = RoundedCornerShape(6.dp)
+            )
+          } else {
+            Text("ဤ Category အတွက် လုပ်ဆောင်ချက် ရွေးချယ်ပါ:", fontSize = 11.5.sp, color = DarkGrayText)
+          }
+        }
+      },
+      confirmButton = {
+        if (isRenaming) {
+          Button(
+            onClick = {
+              val clean = renameText.trim()
+              if (clean.isNotBlank()) {
+                onRename(clean)
+                onDismiss()
+              }
+            },
+            enabled = renameText.isNotBlank(),
+            colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+            shape = RoundedCornerShape(6.dp)
+          ) {
+            Text("Save Rename", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+          }
+        } else {
+          Button(
+            onClick = { isRenaming = true },
+            colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary),
+            shape = RoundedCornerShape(6.dp)
+          ) {
+            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(13.dp))
+            Spacer(modifier = Modifier.width(3.dp))
+            Text("Rename", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+          }
+        }
+      },
+      dismissButton = {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+          if (!isRenaming) {
+            OutlinedButton(
+              onClick = { showDeleteConfirm = true },
+              colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+              border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+              shape = RoundedCornerShape(6.dp)
+            ) {
+              Icon(Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(13.dp))
+              Spacer(modifier = Modifier.width(3.dp))
+              Text("Delete", fontSize = 11.sp)
+            }
+          }
+          OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(6.dp)) {
+            Text("Cancel", fontSize = 11.sp)
+          }
+        }
+      }
+    )
+  }
 }
 
 @Composable

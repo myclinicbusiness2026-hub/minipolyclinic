@@ -28,6 +28,8 @@ object ClinicDataPersistence {
   private const val KEY_CLINIC_SETTINGS = "clinic_settings"
   private const val KEY_DRAFT_CONSULTATIONS = "draft_consultations"
   private const val KEY_SELECTED_PATIENT_ID = "selected_patient_id"
+  private const val KEY_MEDICINE_CATEGORIES = "medicine_categories_list"
+  private const val KEY_MEDICINE_UNITS = "medicine_units_list"
 
   private fun getPrefs(context: Context) =
     context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -367,6 +369,9 @@ object ClinicDataPersistence {
         put("profitMarginPercent", m.profitMarginPercent)
         put("isAllergyWarning", m.isAllergyWarning)
         put("primarySupplier", m.primarySupplier)
+        if (m.customSellingPrice != null && m.customSellingPrice > 0.0) {
+          put("customSellingPrice", m.customSellingPrice)
+        }
 
         val bArr = JSONArray()
         m.batches.forEach { b ->
@@ -424,9 +429,52 @@ object ClinicDataPersistence {
             profitMarginPercent = o.optDouble("profitMarginPercent", 25.0),
             isAllergyWarning = o.optBoolean("isAllergyWarning", false),
             primarySupplier = o.optString("primarySupplier", "AA Medical"),
-            medicineType = o.optString("medicineType", "")
+            medicineType = o.optString("medicineType", ""),
+            customSellingPrice = if (o.has("customSellingPrice") && !o.isNull("customSellingPrice")) o.getDouble("customSellingPrice") else null
           )
         )
+      }
+      list
+    } catch (_: Exception) {
+      null
+    }
+  }
+
+  fun saveMedicineCategories(context: Context, categories: List<String>) {
+    val arr = JSONArray()
+    categories.forEach { arr.put(it) }
+    getPrefs(context).edit().putString(KEY_MEDICINE_CATEGORIES, arr.toString()).apply()
+  }
+
+  fun loadMedicineCategories(context: Context): List<String>? {
+    val str = getPrefs(context).getString(KEY_MEDICINE_CATEGORIES, null) ?: return null
+    return try {
+      val arr = JSONArray(str)
+      val list = mutableListOf<String>()
+      for (i in 0 until arr.length()) {
+        val s = arr.optString(i)
+        if (s.isNotBlank()) list.add(s)
+      }
+      list
+    } catch (_: Exception) {
+      null
+    }
+  }
+
+  fun saveMedicineUnits(context: Context, units: List<String>) {
+    val arr = JSONArray()
+    units.forEach { arr.put(it) }
+    getPrefs(context).edit().putString(KEY_MEDICINE_UNITS, arr.toString()).apply()
+  }
+
+  fun loadMedicineUnits(context: Context): List<String>? {
+    val str = getPrefs(context).getString(KEY_MEDICINE_UNITS, null) ?: return null
+    return try {
+      val arr = JSONArray(str)
+      val list = mutableListOf<String>()
+      for (i in 0 until arr.length()) {
+        val s = arr.optString(i)
+        if (s.isNotBlank()) list.add(s)
       }
       list
     } catch (_: Exception) {

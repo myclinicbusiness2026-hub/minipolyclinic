@@ -98,6 +98,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   val medicineCategories = MutableStateFlow<List<String>>(
     listOf("All", "Antibiotics", "Analgesic / Antipyretic", "Antacid / PPI", "Cardiovascular", "Antidiabetic", "Respiratory", "Consumables")
   )
+  val medicineUnits = MutableStateFlow<List<String>>(
+    listOf("Tab", "Cap", "Strip", "Ampoule", "Vial", "Bottle", "Box", "Tube", "Sachet", "Piece", "Respule", "Set")
+  )
   val procedureCategories = MutableStateFlow<List<String>>(
     listOf("All", "Minor Surgery", "Wound Dressing", "Injection / Infusion", "Diagnostic Test", "General Services", "Others")
   )
@@ -138,6 +141,18 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     _medicines.value = (ClinicDataPersistence.loadMedicines(ctx) ?: ClinicInitialDataSeeder.getSeedMedicines())
       .filter { !deletedMedicines.contains(it.id) }
     _procedures.value = (ClinicDataPersistence.loadProcedures(ctx) ?: ClinicInitialDataSeeder.getSeedProcedures())
+
+    val defaultMedCats = listOf("All", "Antibiotics", "Analgesic / Antipyretic", "Antacid / PPI", "Cardiovascular", "Antidiabetic", "Respiratory", "Consumables", "Others")
+    val savedMedCats = ClinicDataPersistence.loadMedicineCategories(ctx)
+    val existingMedCats = _medicines.value.map { it.category }.filter { it.isNotBlank() }
+    val mergedMedCats = (defaultMedCats + (savedMedCats ?: emptyList()) + existingMedCats).distinct()
+    medicineCategories.value = mergedMedCats
+
+    val defaultUnits = listOf("Tab", "Cap", "Strip", "Ampoule", "Vial", "Bottle", "Box", "Tube", "Sachet", "Piece", "Respule", "Set")
+    val savedUnits = ClinicDataPersistence.loadMedicineUnits(ctx)
+    val existingUnits = _medicines.value.map { it.unitType }.filter { it.isNotBlank() }
+    val mergedUnits = (defaultUnits + (savedUnits ?: emptyList()) + existingUnits).distinct()
+    medicineUnits.value = mergedUnits
 
     val defaultProcCats = listOf("All", "Minor Surgery", "Wound Dressing", "Injection / Infusion", "Diagnostic Test", "General Services", "Others")
     val savedProcCats = ClinicDataPersistence.loadProcedureCategories(ctx)
@@ -2985,7 +3000,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     profitMarginPercent: Double = 25.0,
     minThreshold: Int = 20,
     supplierName: String = "",
-    medicineType: String = ""
+    medicineType: String = "",
+    sellingPrice: Double? = null
   ) {
     val existing = _medicines.value.find { it.name.equals(tradeName, ignoreCase = true) }
     val newBatch = StockBatch(
@@ -3017,7 +3033,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             batches = updatedBatches,
             profitMarginPercent = profitMarginPercent,
             minStockThreshold = minThreshold,
-            medicineType = if (medicineType.isNotBlank()) medicineType else med.medicineType
+            medicineType = if (medicineType.isNotBlank()) medicineType else med.medicineType,
+            customSellingPrice = if (sellingPrice != null && sellingPrice > 0.0) sellingPrice else med.customSellingPrice
           )
         } else med
       }
@@ -3034,7 +3051,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         minStockThreshold = minThreshold,
         profitMarginPercent = profitMarginPercent,
         primarySupplier = supplierName.ifBlank { "AA Medical Products" },
-        medicineType = medicineType
+        medicineType = medicineType,
+        customSellingPrice = if (sellingPrice != null && sellingPrice > 0.0) sellingPrice else null
       )
       val updated = _medicines.value + newMed
       _medicines.value = updated
@@ -3124,7 +3142,68 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   fun addMedicineCategory(category: String) {
     val clean = category.trim()
     if (clean.isNotBlank() && !medicineCategories.value.contains(clean)) {
-      medicineCategories.value = medicineCategories.value + clean
+      val updated = medicineCategories.value + clean
+      medicineCategories.value = updated
+      ClinicDataPersistence.saveMedicineCategories(getApplication(), updated)
+    }
+  }
+
+  fun renameMedicineCategory(oldCategory: String, newCategory: String) {
+    val oldClean = oldCategory.trim()
+    val newClean = newCategory.trim()
+    if (oldClean.isBlank() || newClean.isBlank() || oldClean.equals(newClean, ignoreCase = true)) return
+
+    // 1. Reassign medicines
+    val updatedMeds = _medicines.value.map { med ->
+      if (med.category.equals(oldClean, ignoreCase = true)) {
+        med.copy(category = newClean)
+      } else med
+    }
+    _medicines.value = updatedMeds
+    ClinicDataPersistence.saveMedicines(getApplication(), updatedMeds)
+
+    // 2. Update category list
+    val updatedCats = medicineCategories.value.map { if (it.equals(oldClean, ignoreCase = true)) newClean else it }.distinct()
+    medicineCategories.value = updatedCats
+    ClinicDataPersistence.saveMedicineCategories(getApplication(), updatedCats)
+
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
+  }
+
+  fun deleteMedicineCategory(categoryToDelete: String) {
+    val clean = categoryToDelete.trim()
+    val defaultCategories = listOf("All", "Antibiotics", "Analgesic / Antipyretic", "Antacid / PPI", "Cardiovascular", "Antidiabetic", "Respiratory", "Consumables", "Others")
+    if (defaultCategories.any { it.equals(clean, ignoreCase = true) }) {
+      return // Protect default categories
+    }
+
+    // 1. Move any medicines in this category to "Others"
+    val updatedMeds = _medicines.value.map { med ->
+      if (med.category.equals(clean, ignoreCase = true)) {
+        med.copy(category = "Others")
+      } else med
+    }
+    _medicines.value = updatedMeds
+    ClinicDataPersistence.saveMedicines(getApplication(), updatedMeds)
+
+    // 2. Remove category and persist
+    val updatedCats = medicineCategories.value.filterNot { it.equals(clean, ignoreCase = true) }
+    medicineCategories.value = updatedCats
+    ClinicDataPersistence.saveMedicineCategories(getApplication(), updatedCats)
+
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
+  }
+
+  fun addMedicineUnit(unit: String) {
+    val clean = unit.trim()
+    if (clean.isNotBlank() && !medicineUnits.value.contains(clean)) {
+      val updated = medicineUnits.value + clean
+      medicineUnits.value = updated
+      ClinicDataPersistence.saveMedicineUnits(getApplication(), updated)
     }
   }
 

@@ -316,7 +316,8 @@ object SyncPayloadParser {
           minStockThreshold = o.optInt("minStockThreshold", 10),
           primarySupplier = o.optString("primarySupplier", ""),
           isAllergyWarning = o.optBoolean("isAllergyWarning", false),
-          medicineType = o.optString("medicineType", "")
+          medicineType = o.optString("medicineType", ""),
+          customSellingPrice = if (o.has("customSellingPrice") && !o.isNull("customSellingPrice")) o.getDouble("customSellingPrice") else null
         )
       )
     }

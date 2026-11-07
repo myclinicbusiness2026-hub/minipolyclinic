@@ -52,14 +52,14 @@ fun StockInScreen(
     "Consumables" to "Consumables (ဆေးခန်းသုံးပစ္စည်းများ)"
   )
   var selectedCategory by remember { mutableStateOf("Antibiotics") }
-  var selectedUnitType by remember { mutableStateOf("Strip") }
+  val dynamicUnits by viewModel.medicineUnits.collectAsState()
+  var selectedUnitType by remember { mutableStateOf("Tab") }
   var minStockThresholdText by remember { mutableStateOf("20") }
   var isExistingMedicineSelected by remember { mutableStateOf(false) }
 
   // Custom Unit Type Dialog State
   var showAddCustomUnitDialog by remember { mutableStateOf(false) }
   var newCustomUnitInput by remember { mutableStateOf("") }
-  var customUnitList by remember { mutableStateOf(listOf("Strip", "Bottle", "Box", "Piece", "Vial", "Ampoule", "Tube", "Respule", "Sachet", "Cartridge", "Set")) }
 
   // 2. Batch Details State
   var batchNumber by remember { mutableStateOf("BAT-2026-") }
@@ -298,7 +298,8 @@ fun StockInScreen(
 
             ExposedDropdownMenu(
               expanded = tradeNameDropdownExpanded && matchingMedicines.isNotEmpty(),
-              onDismissRequest = { tradeNameDropdownExpanded = false }
+              onDismissRequest = { tradeNameDropdownExpanded = false },
+              properties = androidx.compose.ui.window.PopupProperties(focusable = false)
             ) {
               matchingMedicines.forEach { existing ->
                 DropdownMenuItem(
@@ -448,7 +449,7 @@ fun StockInScreen(
                 expanded = unitExpanded,
                 onDismissRequest = { unitExpanded = false }
               ) {
-                customUnitList.forEach { unit ->
+                dynamicUnits.forEach { unit ->
                   DropdownMenuItem(
                     text = { Text(unit, fontSize = 12.sp) },
                     onClick = {
@@ -893,7 +894,8 @@ fun StockInScreen(
                 profitMarginPercent = margin,
                 minThreshold = threshold,
                 supplierName = selectedSupplierName,
-                medicineType = selectedMedicineType
+                medicineType = selectedMedicineType,
+                sellingPrice = sellingPriceText.toDoubleOrNull()
               )
 
               if (recordAsExpense && (cost * qty) > 0) {
@@ -1015,9 +1017,7 @@ fun StockInScreen(
           onClick = {
             val clean = newCustomUnitInput.trim()
             if (clean.isNotBlank()) {
-              if (!customUnitList.contains(clean)) {
-                customUnitList = customUnitList + clean
-              }
+              viewModel.addMedicineUnit(clean)
               selectedUnitType = clean
               showAddCustomUnitDialog = false
             }

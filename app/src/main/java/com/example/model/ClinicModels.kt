@@ -116,7 +116,8 @@ data class Medicine(
   val isAllergyWarning: Boolean = false,
   val primarySupplier: String = "AA Medical Products",
   val standardDosage: String = "",
-  val medicineType: String = "" // "Oral", "Injection", "Topical", "Consumables"
+  val medicineType: String = "", // "Oral", "Injection", "Topical", "Consumables"
+  val customSellingPrice: Double? = null
 ) {
   val supplierName: String get() = primarySupplier
   val effectiveMedicineType: String get() {
@@ -148,6 +149,7 @@ data class Medicine(
   val earliestExpiry: String get() = sortedBatches.firstOrNull()?.expiryDate ?: (batches.firstOrNull()?.expiryDate ?: "N/A")
   val latestCostPrice: Double get() = sortedBatches.firstOrNull()?.costPricePerUnit ?: (batches.firstOrNull()?.costPricePerUnit ?: 0.0)
   val calculatedSellingPrice: Double get() {
+    if (customSellingPrice != null && customSellingPrice > 0.0) return customSellingPrice
     val cost = latestCostPrice
     return cost + (cost * (profitMarginPercent / 100.0))
   }
