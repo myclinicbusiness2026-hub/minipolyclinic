@@ -204,7 +204,7 @@ fun InventoryMasterScreen(
 
   // Stock Risk Counters
   val lowStockList = remember(medicines) {
-    medicines.filter { it.totalStock <= it.minStockThreshold }
+    medicines.filter { it.isLowStock }
   }
 
   val zeroStockList = remember(medicines) {
@@ -239,7 +239,7 @@ fun InventoryMasterScreen(
 
       val matchesFilter = when (activeFilter) {
         MasterStockFilter.ALL -> true
-        MasterStockFilter.LOW_STOCK -> med.totalStock <= med.minStockThreshold
+        MasterStockFilter.LOW_STOCK -> med.isLowStock
         MasterStockFilter.CRITICAL_EXPIRY -> earliestDays in 0..90
         MasterStockFilter.EXPIRING_SOON -> earliestDays in 91..180
         MasterStockFilter.ZERO_STOCK -> med.totalStock <= 0.0
@@ -278,7 +278,7 @@ fun InventoryMasterScreen(
 
   // Reorder list for Tab 2
   val reorderItems = remember(medicines) {
-    medicines.filter { it.totalStock <= it.minStockThreshold }.map { med ->
+    medicines.filter { it.isLowStock }.map { med ->
       val suggestedOrderQty = maxOf(med.minStockThreshold * 2 - med.totalStock.toInt(), med.minStockThreshold)
       val estimatedCost = suggestedOrderQty * med.latestCostPrice
       ReorderRecommendation(
@@ -1161,7 +1161,7 @@ private fun MedicineValuationCard(
     } else 999
   } catch (_: Exception) { 999 }
 
-  val isLowStock = medicine.totalStock <= medicine.minStockThreshold
+  val isLowStock = medicine.isLowStock
   val isCriticalExpiry = daysToExpiry in 0..90
   val isExpiringSoon = daysToExpiry in 91..180
 

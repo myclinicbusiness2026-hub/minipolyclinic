@@ -69,7 +69,7 @@ fun DashboardScreen(
   val waitingCount = patients.count { it.status == QueueStatus.WAITING }
   val inConsultCount = patients.count { it.status == QueueStatus.IN_CONSULTATION }
   val pharmacyCount = patients.count { it.status == QueueStatus.AT_PHARMACY }
-  val lowStockCount = medicines.count { it.totalStock <= it.minStockThreshold }
+  val lowStockCount = medicines.count { it.isLowStock }
   val todayRevenue = invoices.filter { it.isPaid }.sumOf { it.grandTotal }
   val todayDateStr = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
   val todayExpenses = expenses.filter { it.date == todayDateStr }.sumOf { it.amount }

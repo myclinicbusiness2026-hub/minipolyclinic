@@ -149,23 +149,22 @@ class WifiNetworkHelper(
             }.toString()
 
             val bytes = beaconJson.toByteArray()
-            val socket = DatagramSocket()
-            socket.broadcast = true
+            DatagramSocket().use { socket ->
+              socket.broadcast = true
 
-            // Send to standard broadcast
-            val packet = DatagramPacket(bytes, bytes.size, broadcastIp, BROADCAST_PORT)
-            socket.send(packet)
+              // Send to standard broadcast
+              val packet = DatagramPacket(bytes, bytes.size, broadcastIp, BROADCAST_PORT)
+              socket.send(packet)
 
-            // Also send to 255.255.255.255 for subnet coverage
-            val universalPacket = DatagramPacket(
-              bytes,
-              bytes.size,
-              InetAddress.getByName("255.255.255.255"),
-              BROADCAST_PORT
-            )
-            socket.send(universalPacket)
-
-            socket.close()
+              // Also send to 255.255.255.255 for subnet coverage
+              val universalPacket = DatagramPacket(
+                bytes,
+                bytes.size,
+                InetAddress.getByName("255.255.255.255"),
+                BROADCAST_PORT
+              )
+              socket.send(universalPacket)
+            }
           }
         } catch (e: Exception) {
           Log.e(TAG, "Broadcast error: ${e.message}")

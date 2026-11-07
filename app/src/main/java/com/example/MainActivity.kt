@@ -132,7 +132,7 @@ fun MiniPolyclinicMainApp(
 
   val waitingCount = patients.count { it.status == QueueStatus.WAITING }
   val pharmacyCount = patients.count { it.status == QueueStatus.AT_PHARMACY }
-  val lowStockCount = medicines.count { it.totalStock <= it.minStockThreshold }
+  val lowStockCount = medicines.count { it.isLowStock }
   val treatmentCards by clinicViewModel.treatmentCards.collectAsState()
   val dueInjectionsCount = treatmentCards.filter { !it.isDiscontinued && !it.isFullyCompleted }
     .flatMap { it.sessions }

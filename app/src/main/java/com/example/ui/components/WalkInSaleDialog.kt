@@ -199,7 +199,7 @@ fun WalkInSaleDialog(
                           Text(
                             "${med.genericName} • Stock: ${med.totalStock} ${med.unitType}",
                             fontSize = 9.5.sp,
-                            color = if (med.totalStock <= med.minStockThreshold) StatusCritical else SlateMuted
+                            color = if (med.isLowStock) StatusCritical else SlateMuted
                           )
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {

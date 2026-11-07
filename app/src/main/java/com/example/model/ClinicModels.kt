@@ -144,14 +144,15 @@ data class Medicine(
   val totalStock: Double get() = batches.sumOf { it.quantity }
   val totalStockInt: Int get() = totalStock.toInt()
   val totalStockDisplay: String get() = if (totalStock % 1.0 == 0.0) totalStock.toInt().toString() else String.format(Locale.US, "%.1f", totalStock)
+  val isLowStock: Boolean get() = minStockThreshold > 0 && totalStock < minStockThreshold
   val sortedBatches: List<StockBatch> get() = batches.filter { it.quantity > 0.0 }.sortedBy { it.expiryDate }
   val allBatches: List<StockBatch> get() = batches.sortedBy { it.expiryDate }
   val earliestExpiry: String get() = sortedBatches.firstOrNull()?.expiryDate ?: (batches.firstOrNull()?.expiryDate ?: "N/A")
   val latestCostPrice: Double get() = sortedBatches.firstOrNull()?.costPricePerUnit ?: (batches.firstOrNull()?.costPricePerUnit ?: 0.0)
   val calculatedSellingPrice: Double get() {
-    if (customSellingPrice != null && customSellingPrice > 0.0) return customSellingPrice
+    if (customSellingPrice != null && customSellingPrice > 0.0) return kotlin.math.round(customSellingPrice)
     val cost = latestCostPrice
-    return cost + (cost * (profitMarginPercent / 100.0))
+    return kotlin.math.round(cost + (cost * (profitMarginPercent / 100.0)))
   }
   val currentSellingPrice: Double get() = calculatedSellingPrice
   val effectiveCostPrice: Double get() = latestCostPrice

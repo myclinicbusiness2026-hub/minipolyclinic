@@ -237,21 +237,21 @@ object LocalWifiSyncService {
               val beaconMsg = "SHWEKHIT_SYNC_DISCOVER|$DEFAULT_HTTP_PORT|$currentDeviceName|$currentDeviceRole|${System.currentTimeMillis()}"
               val data = beaconMsg.toByteArray(Charsets.UTF_8)
               
-              val socket = DatagramSocket()
-              socket.broadcast = true
-              
-              // Broadcast to universal broadcast address
-              val packetAll = DatagramPacket(data, data.size, InetAddress.getByName("255.255.255.255"), DISCOVERY_PORT)
-              socket.send(packetAll)
+              DatagramSocket().use { socket ->
+                socket.broadcast = true
+                
+                // Broadcast to universal broadcast address
+                val packetAll = DatagramPacket(data, data.size, InetAddress.getByName("255.255.255.255"), DISCOVERY_PORT)
+                socket.send(packetAll)
 
-              // Also broadcast to subnet broadcast address (e.g. 192.168.1.255)
-              val subnetParts = localIp.split(".")
-              if (subnetParts.size == 4) {
-                val subnetBroadcast = "${subnetParts[0]}.${subnetParts[1]}.${subnetParts[2]}.255"
-                val packetSubnet = DatagramPacket(data, data.size, InetAddress.getByName(subnetBroadcast), DISCOVERY_PORT)
-                socket.send(packetSubnet)
+                // Also broadcast to subnet broadcast address (e.g. 192.168.1.255)
+                val subnetParts = localIp.split(".")
+                if (subnetParts.size == 4) {
+                  val subnetBroadcast = "${subnetParts[0]}.${subnetParts[1]}.${subnetParts[2]}.255"
+                  val packetSubnet = DatagramPacket(data, data.size, InetAddress.getByName(subnetBroadcast), DISCOVERY_PORT)
+                  socket.send(packetSubnet)
+                }
               }
-              socket.close()
             }
 
             // Prune dead peers (not seen for > 20 seconds)

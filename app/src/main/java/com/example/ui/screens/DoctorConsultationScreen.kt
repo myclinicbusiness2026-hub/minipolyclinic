@@ -62,6 +62,7 @@ import com.example.ui.components.VaccinationTrackerDialog
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.foundation.horizontalScroll
+import kotlinx.coroutines.delay
 import com.example.ui.theme.*
 import com.example.viewmodel.ClinicViewModel
 import java.text.NumberFormat
@@ -327,6 +328,7 @@ fun DoctorConsultationScreen(
     orderedTreatmentCards.size,
     selectedProcedures.size
   ) {
+    delay(800L)
     if (activePatient != null && (activePatient.status == QueueStatus.WAITING || activePatient.status == QueueStatus.IN_CONSULTATION)) {
       val resolvedPages = if (drawingPagesState.isNotEmpty()) {
         drawingPagesState.toList()

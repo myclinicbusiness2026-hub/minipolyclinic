@@ -103,31 +103,64 @@ fun PharmacyInventoryScreen(
     }
   }
 
-  // Filtered Medicines List
-  val filteredMedicines = medicines.filter { med ->
-    val matchesSearch = searchQuery.isBlank() ||
-        med.name.contains(searchQuery, ignoreCase = true) ||
-        med.genericName.contains(searchQuery, ignoreCase = true) ||
-        med.category.contains(searchQuery, ignoreCase = true) ||
-        med.batches.any { it.batchNumber.contains(searchQuery, ignoreCase = true) }
-
-    val matchesCategory = selectedCategoryFilter == null ||
-        selectedCategoryFilter == "All" ||
-        med.category.equals(selectedCategoryFilter, ignoreCase = true)
-
-    val matchesType = selectedTypeFilter == "All" ||
-        med.effectiveMedicineType.equals(selectedTypeFilter, ignoreCase = true)
-
-    val earliestExpDays = med.sortedBatches.firstOrNull()?.let { getDaysUntilExpiry(it.expiryDate) } ?: 999
-
-    val matchesFilter = when (activeFilter) {
-      InventoryFilter.ALL -> true
-      InventoryFilter.LOW_STOCK -> med.totalStock <= med.minStockThreshold
-      InventoryFilter.EXPIRING_SOON -> earliestExpDays <= 180 // < 6 months
-      InventoryFilter.CRITICAL_EXPIRY -> earliestExpDays <= 90 // < 3 months
+  // Summary Counts for Status & Expiry Filter Badges
+  val filterCounts = remember(medicines) {
+    var lowStock = 0
+    var exp6m = 0
+    var exp3m = 0
+    val nowMs = System.currentTimeMillis()
+    val sdfLocal = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+    medicines.forEach { med ->
+      if (med.isLowStock) {
+        lowStock++
+      }
+      val earliestBatch = med.sortedBatches.firstOrNull()
+      if (earliestBatch != null) {
+        try {
+          val expDate = sdfLocal.parse(earliestBatch.expiryDate)
+          if (expDate != null) {
+            val days = (expDate.time - nowMs) / (1000 * 60 * 60 * 24)
+            if (days <= 90) {
+              exp3m++
+              exp6m++
+            } else if (days <= 180) {
+              exp6m++
+            }
+          }
+        } catch (_: Exception) {}
+      }
     }
+    Triple(lowStock, exp6m, exp3m)
+  }
 
-    matchesSearch && matchesCategory && matchesType && matchesFilter
+  // Filtered Medicines List (Memoized to prevent jank & unnecessary recompositions)
+  val filteredMedicines = remember(medicines, searchQuery, selectedCategoryFilter, selectedTypeFilter, activeFilter) {
+    val queryTrimmed = searchQuery.trim()
+    medicines.filter { med ->
+      val matchesSearch = queryTrimmed.isBlank() ||
+          med.name.contains(queryTrimmed, ignoreCase = true) ||
+          med.genericName.contains(queryTrimmed, ignoreCase = true) ||
+          med.category.contains(queryTrimmed, ignoreCase = true) ||
+          med.batches.any { it.batchNumber.contains(queryTrimmed, ignoreCase = true) }
+
+      val matchesCategory = selectedCategoryFilter == null ||
+          selectedCategoryFilter == "All" ||
+          med.category.equals(selectedCategoryFilter, ignoreCase = true)
+
+      val matchesType = selectedTypeFilter == "All" ||
+          med.effectiveMedicineType.equals(selectedTypeFilter, ignoreCase = true)
+
+      val earliestExpDays = med.sortedBatches.firstOrNull()?.let { getDaysUntilExpiry(it.expiryDate) } ?: 999
+
+      val matchesFilter = when (activeFilter) {
+        InventoryFilter.ALL -> true
+        InventoryFilter.LOW_STOCK -> med.isLowStock
+        InventoryFilter.EXPIRING_SOON -> earliestExpDays <= 180 // < 6 months
+        InventoryFilter.CRITICAL_EXPIRY -> earliestExpDays <= 90 // < 3 months
+      }
+
+      matchesSearch && matchesCategory && matchesType && matchesFilter
+    }
   }
 
   Column(
@@ -341,10 +374,16 @@ fun PharmacyInventoryScreen(
                   horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                   InventoryFilter.entries.forEach { filter ->
+                    val filterLabel = when (filter) {
+                      InventoryFilter.ALL -> "All (${medicines.size})"
+                      InventoryFilter.LOW_STOCK -> "Low Stock Alert (${filterCounts.first})"
+                      InventoryFilter.EXPIRING_SOON -> "Expiring Soon (<6 Mo) (${filterCounts.second})"
+                      InventoryFilter.CRITICAL_EXPIRY -> "Critical (<3 Mo) (${filterCounts.third})"
+                    }
                     FilterChip(
                       selected = activeFilter == filter,
                       onClick = { activeFilter = filter },
-                      label = { Text(filter.label, fontSize = 11.sp, fontWeight = if (activeFilter == filter) FontWeight.Bold else FontWeight.Normal) },
+                      label = { Text(filterLabel, fontSize = 11.sp, fontWeight = if (activeFilter == filter) FontWeight.Bold else FontWeight.Normal) },
                       shape = RoundedCornerShape(6.dp),
                       colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = SoftGreenContainer,
@@ -785,7 +824,7 @@ fun EnhancedMedicineItemCard(
   onMedicineClick: (() -> Unit)? = null
 ) {
   var isExpanded by remember { mutableStateOf(false) }
-  val isLowStock = medicine.totalStock <= medicine.minStockThreshold
+  val isLowStock = medicine.isLowStock
   val earliestBatch = medicine.sortedBatches.firstOrNull()
   val earliestDays = earliestBatch?.let { getDaysUntilExpiry(it.expiryDate) } ?: 999
 
@@ -1844,7 +1883,7 @@ fun EditMedicineDialog(
               lastUpdated = System.currentTimeMillis()
             )
           }
-          val exactSelling = sellingPriceText.toDoubleOrNull()
+          val exactSelling = sellingPriceText.toDoubleOrNull()?.let { kotlin.math.round(it) }
           val updated = medicine.copy(
             name = tradeName.trim(),
             genericName = genericName.trim().ifBlank { tradeName.trim() },
@@ -1969,7 +2008,7 @@ fun MedicineDetailsDialog(
   onStockInClick: () -> Unit,
   onWastageClick: () -> Unit
 ) {
-  val isLowStock = medicine.totalStock <= medicine.minStockThreshold
+  val isLowStock = medicine.isLowStock
   val supplierInfo = suppliers.find { it.name.equals(medicine.primarySupplier, ignoreCase = true) }
   val totalValuationCost = medicine.batches.sumOf { it.quantity * it.costPricePerUnit }
   val totalValuationSelling = medicine.batches.sumOf { it.quantity * medicine.calculatedSellingPrice }

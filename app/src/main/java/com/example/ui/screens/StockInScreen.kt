@@ -900,7 +900,7 @@ fun StockInScreen(
                 minThreshold = threshold,
                 supplierName = selectedSupplierName,
                 medicineType = selectedMedicineType,
-                sellingPrice = sellingPriceText.toDoubleOrNull()
+                sellingPrice = sellingPriceText.toDoubleOrNull()?.let { kotlin.math.round(it) }
               )
 
               if (recordAsExpense && (cost * qty) > 0) {
