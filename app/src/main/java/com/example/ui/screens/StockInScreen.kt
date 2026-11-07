@@ -62,8 +62,8 @@ fun StockInScreen(
   var newCustomUnitInput by remember { mutableStateOf("") }
 
   // 2. Batch Details State
-  var batchNumber by remember { mutableStateOf("BAT-2026-") }
-  var manufacturer by remember { mutableStateOf("AA Pharmaceuticals") }
+  var batchNumber by remember { mutableStateOf("") }
+  var manufacturer by remember { mutableStateOf("") }
   var manufactureDate by remember { mutableStateOf("2025-06-01") }
   var expiryDate by remember { mutableStateOf("2027-12-31") }
   var quantityText by remember { mutableStateOf("100") }
@@ -333,7 +333,7 @@ fun StockInScreen(
                     marginPercentText = if (existing.profitMarginPercent % 1.0 == 0.0) existing.profitMarginPercent.toInt().toString() else String.format(Locale.US, "%.2f", existing.profitMarginPercent)
                     updateSellingFromMargin(existing.latestCostPrice, existing.profitMarginPercent)
                     selectedSupplierName = existing.primarySupplier.ifBlank { selectedSupplierName }
-                    batchNumber = "BAT-${SimpleDateFormat("yyyyMM", Locale.getDefault()).format(Date())}-${existing.batches.size + 1}"
+                    batchNumber = ""
                     isExistingMedicineSelected = true
                     tradeNameDropdownExpanded = false
                   }
@@ -512,8 +512,8 @@ fun StockInScreen(
             OutlinedTextField(
               value = batchNumber,
               onValueChange = { batchNumber = it },
-              label = { Text("Batch Number *", fontSize = 12.sp) },
-              placeholder = { Text("BAT-2026-08", fontSize = 12.sp) },
+              label = { Text("Batch Number", fontSize = 12.sp) },
+              placeholder = { Text("e.g. B104 (အလွတ်ထားနိုင်)", fontSize = 11.sp) },
               modifier = Modifier.weight(1f),
               shape = RoundedCornerShape(6.dp),
               singleLine = true
@@ -535,8 +535,8 @@ fun StockInScreen(
           OutlinedTextField(
             value = manufacturer,
             onValueChange = { manufacturer = it },
-            label = { Text("Manufacturer / Supplier", fontSize = 12.sp) },
-            placeholder = { Text("e.g. GlaxoSmithKline / Mega We Care", fontSize = 12.sp) },
+            label = { Text("Manufacturer / ထုတ်လုပ်သူ", fontSize = 12.sp) },
+            placeholder = { Text("e.g. Mega We Care / Zifam (စိတ်ကြိုက်)", fontSize = 11.sp) },
             leadingIcon = { Icon(Icons.Default.Factory, contentDescription = null, tint = SlateMuted, modifier = Modifier.size(18.dp)) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(6.dp),
@@ -857,7 +857,8 @@ fun StockInScreen(
           onClick = {
             tradeName = ""
             genericName = ""
-            batchNumber = "BAT-2026-"
+            batchNumber = ""
+            manufacturer = ""
             quantityText = "100"
           },
           modifier = Modifier
@@ -878,15 +879,18 @@ fun StockInScreen(
             val margin = marginPercentText.toDoubleOrNull() ?: 25.0
             val qty = quantityText.toIntOrNull() ?: 50
             val threshold = minStockThresholdText.toIntOrNull() ?: 20
+            val effectiveBatchNumber = batchNumber.trim().ifBlank {
+              "BAT-${SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())}"
+            }
 
-            if (tradeName.isNotBlank() && batchNumber.isNotBlank() && cost > 0) {
+            if (tradeName.isNotBlank() && cost > 0) {
               viewModel.stockInMedicine(
                 tradeName = tradeName.trim(),
                 genericName = genericName.trim().ifBlank { tradeName.trim() },
                 dosageForm = selectedUnitType,
                 category = selectedCategory,
                 unitType = selectedUnitType,
-                batchNumber = batchNumber.trim(),
+                batchNumber = effectiveBatchNumber,
                 manufacturer = manufacturer.trim(),
                 manufactureDate = manufactureDate,
                 expiryDate = expiryDate,
@@ -905,20 +909,21 @@ fun StockInScreen(
                   category = "Pharmacy Stock",
                   amount = cost * qty,
                   payee = selectedSupplierName,
-                  notes = "Batch: ${batchNumber.trim()} • Exp: $expiryDate"
+                  notes = "Batch: $effectiveBatchNumber • Exp: $expiryDate"
                 )
               }
 
               // Clear or reset fields
               tradeName = ""
               genericName = ""
-              batchNumber = "BAT-2026-"
+              batchNumber = ""
+              manufacturer = ""
               quantityText = "100"
 
               onStockInSuccess()
             }
           },
-          enabled = tradeName.isNotBlank() && batchNumber.isNotBlank() && (costPriceText.toDoubleOrNull() ?: 0.0) > 0,
+          enabled = tradeName.isNotBlank() && (costPriceText.toDoubleOrNull() ?: 0.0) > 0,
           modifier = Modifier
             .weight(1.6f)
             .height(38.dp),

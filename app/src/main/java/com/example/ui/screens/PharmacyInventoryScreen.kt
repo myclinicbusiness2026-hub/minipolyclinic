@@ -1747,7 +1747,7 @@ fun EditMedicineDialog(
               Text("၄။ စတော့အသုတ်များ (Stock Batches - ${batchListState.size} အသုတ်):", fontWeight = FontWeight.Bold, fontSize = 10.5.sp, color = MedicalGreenDark)
               TextButton(
                 onClick = {
-                  val nextNum = "BAT-${calendar.get(Calendar.YEAR)}-${batchListState.size + 1}"
+                  val nextNum = ""
                   val defExp = String.format(Locale.US, "%04d-12-31", calendar.get(Calendar.YEAR) + 2)
                   batchListState.add(EditableBatchState(batchNumber = nextNum, expiryDate = defExp, quantityText = "50", costPriceText = "1000"))
                 },

@@ -601,7 +601,7 @@ END $$;
           val colName = if (remoteDoc.has("treatment_cards")) "treatment_cards" else "treatmentCards"
           put(colName, mergedTcArr)
         }
-        if (mergedSettingsObj != null) {
+        if (mergedSettingsObj != null && (remoteDoc == null || remoteDoc.has("settings") || remoteDoc.has("clinicSettings"))) {
           put("settings", mergedSettingsObj)
         }
         if (remoteDoc != null && remoteDoc.has("deleted_patient_ids")) {
