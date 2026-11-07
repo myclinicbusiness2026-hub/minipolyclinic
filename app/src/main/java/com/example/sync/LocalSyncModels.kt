@@ -283,6 +283,10 @@ data class SyncDataPayload(
       mo.put("unitType", m.unitType)
       mo.put("medicineType", m.effectiveMedicineType)
       mo.put("profitMarginPercent", m.profitMarginPercent)
+      mo.put("minStockThreshold", m.minStockThreshold)
+      mo.put("primarySupplier", m.primarySupplier)
+      mo.put("standardDosage", m.standardDosage)
+      mo.put("isAllergyWarning", m.isAllergyWarning)
       if (m.customSellingPrice != null && m.customSellingPrice > 0.0) {
         mo.put("customSellingPrice", m.customSellingPrice)
       }

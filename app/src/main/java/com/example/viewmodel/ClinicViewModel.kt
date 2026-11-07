@@ -3559,6 +3559,12 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                   dosageForm = m.dosageForm,
                   unitType = m.unitType,
                   medicineType = if (m.medicineType.isNotBlank()) m.medicineType else existing.medicineType,
+                  minStockThreshold = if (m.minStockThreshold > 0) m.minStockThreshold else existing.minStockThreshold,
+                  profitMarginPercent = if (m.profitMarginPercent > 0.0) m.profitMarginPercent else existing.profitMarginPercent,
+                  customSellingPrice = if (m.customSellingPrice != null && m.customSellingPrice > 0.0) m.customSellingPrice else existing.customSellingPrice,
+                  primarySupplier = if (m.primarySupplier.isNotBlank()) m.primarySupplier else existing.primarySupplier,
+                  isAllergyWarning = m.isAllergyWarning || existing.isAllergyWarning,
+                  standardDosage = if (m.standardDosage.isNotBlank()) m.standardDosage else existing.standardDosage,
                   batches = batchMap.values.toList()
                 )
               }
@@ -3882,9 +3888,15 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val res = SupabaseSyncManager.pullDataFromCloud(set.supabaseUrl, set.supabaseAnonKey)
     isSyncing.value = false
     if (res.first) {
-      restoreFullBackupJson(res.second)
+      val restoreOk = restoreFullBackupJson(res.second)
+      if (restoreOk) {
+        Pair(true, "Cloud မှ ဆေးခန်းဒေတာများ အောင်မြင်စွာ ဒေါင်းလုဒ်ဆွဲပြီး ထည့်သွင်းပြီးပါပြီ")
+      } else {
+        Pair(false, "Cloud ဒေတာများကို စက်တွင်းသို့ ပေါင်းစပ်ရာတွင် အမှားတစ်ခု ဖြစ်ပေါ်ခဲ့ပါသည်")
+      }
+    } else {
+      Pair(false, res.second)
     }
-    res
   }
 
   fun pullFromSupabaseCloud(callback: (Boolean, String) -> Unit) {

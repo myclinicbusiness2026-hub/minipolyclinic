@@ -1402,24 +1402,20 @@ fun EditMedicineDialog(
   var isUpdatingProgrammatically by remember { mutableStateOf(false) }
   var sellingPriceText by remember {
     val initialSelling = if (medicine.customSellingPrice != null && medicine.customSellingPrice > 0.0) {
-      medicine.customSellingPrice
+      kotlin.math.round(medicine.customSellingPrice)
     } else {
       val initialCost = medicine.latestCostPrice
       val initialMargin = medicine.profitMarginPercent
-      initialCost + (initialCost * (initialMargin / 100.0))
+      kotlin.math.round(initialCost + (initialCost * (initialMargin / 100.0)))
     }
-    mutableStateOf(if (initialSelling % 1.0 == 0.0) initialSelling.toInt().toString() else String.format(Locale.US, "%.1f", initialSelling))
+    mutableStateOf(initialSelling.toInt().toString())
   }
 
   fun updateSellingFromMargin(cost: Double, margin: Double) {
     if (isUpdatingProgrammatically) return
     isUpdatingProgrammatically = true
-    val calculatedSelling = cost + (cost * (margin / 100.0))
-    sellingPriceText = if (calculatedSelling % 1.0 == 0.0) {
-      calculatedSelling.toInt().toString()
-    } else {
-      String.format(Locale.US, "%.1f", calculatedSelling)
-    }
+    val calculatedSelling = kotlin.math.round(cost + (cost * (margin / 100.0)))
+    sellingPriceText = calculatedSelling.toInt().toString()
     isUpdatingProgrammatically = false
   }
 

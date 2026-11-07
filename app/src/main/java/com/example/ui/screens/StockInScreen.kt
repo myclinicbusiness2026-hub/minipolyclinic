@@ -95,12 +95,8 @@ fun StockInScreen(
   fun updateSellingFromMargin(cost: Double, margin: Double) {
     if (isUpdatingProgrammatically) return
     isUpdatingProgrammatically = true
-    val calculatedSelling = cost + (cost * (margin / 100.0))
-    sellingPriceText = if (calculatedSelling % 1.0 == 0.0) {
-      calculatedSelling.toInt().toString()
-    } else {
-      String.format(Locale.US, "%.1f", calculatedSelling)
-    }
+    val calculatedSelling = kotlin.math.round(cost + (cost * (margin / 100.0)))
+    sellingPriceText = calculatedSelling.toInt().toString()
     isUpdatingProgrammatically = false
   }
 
@@ -330,8 +326,11 @@ fun StockInScreen(
                     selectedUnitType = existing.unitType
                     minStockThresholdText = existing.minStockThreshold.toString()
                     costPriceText = if (existing.latestCostPrice % 1.0 == 0.0) existing.latestCostPrice.toInt().toString() else existing.latestCostPrice.toString()
-                    marginPercentText = if (existing.profitMarginPercent % 1.0 == 0.0) existing.profitMarginPercent.toInt().toString() else String.format(Locale.US, "%.2f", existing.profitMarginPercent)
-                    updateSellingFromMargin(existing.latestCostPrice, existing.profitMarginPercent)
+                    if (existing.customSellingPrice != null && existing.customSellingPrice > 0.0) {
+                      sellingPriceText = kotlin.math.round(existing.customSellingPrice).toInt().toString()
+                    } else {
+                      updateSellingFromMargin(existing.latestCostPrice, existing.profitMarginPercent)
+                    }
                     selectedSupplierName = existing.primarySupplier.ifBlank { selectedSupplierName }
                     batchNumber = ""
                     isExistingMedicineSelected = true

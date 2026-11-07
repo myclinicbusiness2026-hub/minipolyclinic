@@ -313,7 +313,7 @@ object SyncPayloadParser {
           unitType = o.optString("unitType", "Tab"),
           profitMarginPercent = o.optDouble("profitMarginPercent", 25.0),
           batches = batches,
-          minStockThreshold = o.optInt("minStockThreshold", 10),
+          minStockThreshold = o.optInt("minStockThreshold", 20),
           primarySupplier = o.optString("primarySupplier", ""),
           isAllergyWarning = o.optBoolean("isAllergyWarning", false),
           medicineType = o.optString("medicineType", ""),

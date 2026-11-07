@@ -1440,7 +1440,7 @@ fun SyncStatusDialog(
               )
               Spacer(modifier = Modifier.width(6.dp))
               Text(
-                statusMessage ?: "",
+                (statusMessage ?: "").take(250),
                 fontSize = 10.5.sp,
                 color = if (isErrorStatus) Color(0xFFDC2626) else Color(0xFF166534),
                 fontWeight = FontWeight.Medium
