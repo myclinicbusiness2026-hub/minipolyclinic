@@ -1,10 +1,10 @@
 {
-  "versionCode": 34,
-  "versionName": "1.5.10",
+  "versionCode": 35,
+  "versionName": "1.5.11",
   "minSupportedVersion": 1,
-  "releaseNotes": "• Multi-Device Invoice Sync Packet: Added complete sync packet for isInventoryDeducted, decimal deductedDrugQuantities, and granular discounts across devices via Wi-Fi P2P.\n• Procedure 'Add Item' Button Prominence: Weighted header to guarantee 'Add Item' button never gets clipped on mobile screens, and added dedicated bottom Floating Action Button (FAB).\n• Category Management & Deletion: Added deletion support for custom procedure categories with confirmation dialog and safe fallback of items to 'Others'.\n• Procedures & Clinical Services: Renamed menu and screens to cleanly separate surgical/minor procedures from general service fees.",
-  "releaseNotesMm": "• စက်အများအပြား ချိတ်ဆက်ရာတွင် ဘောက်ချာ စတော့နှုတ်ယူမှုနှင့် ဒဿမနှုတ်ယူစာရင်း အပြည့်အစုံ Wi-Fi Sync Packet ဖြည့်စွက်ခြင်း\n• Procedures & Services တွင် 'Add Item' ခလုတ် ဖုန်းစခရင်တိုင်းတွင် အမြဲပေါ်နေစေရန်နှင့် ညာဘက်အောက်ထောင့်တွင် Floating Action Button (FAB) အသစ် ထည့်သွင်းပေးခြင်း\n• ကုသမှု Category အသစ်များ စိတ်ကြိုက် ဖျက်နိုင်သည့်စနစ် (Delete Category) နှင့် ပစ္စည်းများ မပျောက်ပျက်စေရန် အလိုအလျောက် ရွှေ့ပြောင်းပေးခြင်း\n• ဆေးကုသမှု (Procedures) နှင့် သာမန်ဝန်ဆောင်ခများ မရောထွေးစေရန် စနစ်တကျ ခွဲခြားပေးခြင်း",
+  "releaseNotes": "• Custom Pharmacy Categories: Persisted custom categories across app restarts and Wi-Fi sync, with Rename and Safe Delete support.\n• Pharmacy Units (Tab & Cap Presets): Added Tab and Cap as primary quick presets; persisted custom unit types to local storage and sync.\n• Exact Selling Price (No 1 Kyat Drift): Stored explicit custom selling price to eliminate floating-point margin drift.\n• External Hardware Keyboard Fix: Non-focusable dropdown popup prevents input lockups when typing medicine brand names on tablets.\n• Pharmacy Item Inspector: Clicking any medicine in inventory now opens a full detail inspector with FEFO batches table, expiry badges, cost price, and stock valuation.\n• Structured Drug Edit & Supplier Selector: Drug Edit dialog overhauled to mirror Stock-In layout with supplier dropdown selection and DatePicker batch editing.",
+  "releaseNotesMm": "• ဆေးဝါး Category အသစ်များ မှတ်သားထားခြင်း၊ အမည်ပြင်ခြင်း (Rename) နှင့် ဘေးကင်းစွာ ဖျက်ခြင်း (Delete) စနစ် ထည့်သွင်းခြင်း\n• အသုံးအများဆုံး Unit များဖြစ်သည့် Cap, Tab များကို အရှေ့ဆုံးတွင် Preset ထားပေးပြီး စိတ်ကြိုက်ယူနစ်များ ရိုက်ထည့်ပါက မပျောက်သွားအောင် သိမ်းဆည်းပေးခြင်း\n• ရောင်းဈေး ၁ ကျပ် ကွာဟမှု မဖြစ်စေရန် ရိုက်ထည့်လိုက်သော ရောင်းဈေးအတိအကျကို တိုက်ရိုက်သိမ်းဆည်းပေးခြင်း\n• Tablet တွင် External Keyboard ဖြင့် ဆေးအမည်ရိုက်စဉ် Suggestion တက်လာပါက စာရိုက်မရ တစ်မသွားစေရန် အဆင်ပြေအောင် ပြုပြင်ခြင်း\n• Pharmacy Inventory တွင် ဆေးကို နှိပ်လိုက်ပါက ဆေးအချက်အလက်အပြည့်အစုံ၊ သက်တမ်းကုန်ရက် (FEFO Batches)၊ ဝယ်ဈေးနှင့် စုစုပေါင်းတန်ဖိုး အသေးစိတ် ကြည့်ရှုနိုင်ခြင်း\n• Drug Edit စာမျက်နှာကို Stock-In စာမျက်နှာပုံစံအတိုင်း ပြင်ဆင်ပြီး စာရင်းသွင်းထားပြီးသော Supplier များကို Dropdown ဖြင့် အလွယ်တကူ ရွေးချယ်နိုင်စေခြင်း",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
-  "publishedAt": "2026-11-05",
-  "apkSizeBytes": 21908402
+  "publishedAt": "2026-11-07",
+  "apkSizeBytes": 21973934
 }
