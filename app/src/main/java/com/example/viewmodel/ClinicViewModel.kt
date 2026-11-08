@@ -192,9 +192,17 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     _invoices.value = (ClinicDataPersistence.loadInvoices(ctx) ?: ClinicInitialDataSeeder.getSeedInvoices())
       .filter { !deletedInvoices.contains(it.id) && !deletedPatients.contains(it.patientId) }
     _expenses.value = ClinicDataPersistence.loadExpenses(ctx) ?: ClinicInitialDataSeeder.getSeedExpenses()
-    _vaccines.value = ClinicDataPersistence.loadVaccines(ctx) ?: ClinicInitialDataSeeder.getSeedVaccines()
-    _suppliers.value = ClinicDataPersistence.loadSuppliers(ctx) ?: ClinicInitialDataSeeder.getSeedSuppliers()
-    val rawCards = ClinicDataPersistence.loadTreatmentCards(ctx) ?: emptyList()
+    val loadedSuppliers = ClinicDataPersistence.loadSuppliers(ctx) ?: ClinicInitialDataSeeder.getSeedSuppliers()
+    val cleanedSuppliers = loadedSuppliers.filterNot { 
+      it.id.startsWith("SUP-0") || 
+      it.name.contains("AA Medical", ignoreCase = true) || 
+      it.name.contains("Mega Lifesciences", ignoreCase = true) || 
+      it.name.contains("DKSH", ignoreCase = true) 
+    }
+    _suppliers.value = cleanedSuppliers
+    if (cleanedSuppliers.size != loadedSuppliers.size) {
+      ClinicDataPersistence.saveSuppliers(ctx, cleanedSuppliers)
+    }
     val deletedCardIds = ClinicDataPersistence.loadDeletedTreatmentCardIds(ctx)
     val validPatientIds = loadedPatients.map { it.id }.toSet()
     val cleanedCards = rawCards.filter {
@@ -3050,7 +3058,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         batches = listOf(newBatch),
         minStockThreshold = minThreshold,
         profitMarginPercent = profitMarginPercent,
-        primarySupplier = supplierName.ifBlank { "AA Medical Products" },
+        primarySupplier = supplierName.trim(),
         medicineType = medicineType,
         customSellingPrice = if (sellingPrice != null && sellingPrice > 0.0) sellingPrice else null
       )
@@ -3867,8 +3875,13 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val payload = exportFullBackupJson()
     val res = SupabaseSyncManager.syncDataToCloud(set.supabaseUrl, set.supabaseAnonKey, payload)
     isSyncing.value = false
-    if (res.first && SupabaseSyncManager.lastMergedJson != null) {
-      restoreFullBackupJson(SupabaseSyncManager.lastMergedJson!!)
+    if (res.first) {
+      if (SupabaseSyncManager.lastMergedJson != null) {
+        restoreFullBackupJson(SupabaseSyncManager.lastMergedJson!!)
+      }
+      withContext(Dispatchers.Main) {
+        com.example.util.SoundHelper.playSyncSuccessSound(getApplication())
+      }
     }
     res
   }
@@ -3890,6 +3903,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     if (res.first) {
       val restoreOk = restoreFullBackupJson(res.second)
       if (restoreOk) {
+        withContext(Dispatchers.Main) {
+          com.example.util.SoundHelper.playSyncSuccessSound(getApplication())
+        }
         Pair(true, "Cloud မှ ဆေးခန်းဒေတာများ အောင်မြင်စွာ ဒေါင်းလုဒ်ဆွဲပြီး ထည့်သွင်းပြီးပါပြီ")
       } else {
         Pair(false, "Cloud ဒေတာများကို စက်တွင်းသို့ ပေါင်းစပ်ရာတွင် အမှားတစ်ခု ဖြစ်ပေါ်ခဲ့ပါသည်")

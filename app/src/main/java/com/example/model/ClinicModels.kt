@@ -114,7 +114,7 @@ data class Medicine(
   val minStockThreshold: Int = 20,
   val profitMarginPercent: Double = 25.0,
   val isAllergyWarning: Boolean = false,
-  val primarySupplier: String = "AA Medical Products",
+  val primarySupplier: String = "",
   val standardDosage: String = "",
   val medicineType: String = "", // "Oral", "Injection", "Topical", "Consumables"
   val customSellingPrice: Double? = null
@@ -144,7 +144,8 @@ data class Medicine(
   val totalStock: Double get() = batches.sumOf { it.quantity }
   val totalStockInt: Int get() = totalStock.toInt()
   val totalStockDisplay: String get() = if (totalStock % 1.0 == 0.0) totalStock.toInt().toString() else String.format(Locale.US, "%.1f", totalStock)
-  val isLowStock: Boolean get() = minStockThreshold > 0 && totalStock < minStockThreshold
+  val isLowStock: Boolean get() = minStockThreshold > 0 && totalStock <= minStockThreshold
+  val isOutOfStock: Boolean get() = totalStock <= 0.0
   val sortedBatches: List<StockBatch> get() = batches.filter { it.quantity > 0.0 }.sortedBy { it.expiryDate }
   val allBatches: List<StockBatch> get() = batches.sortedBy { it.expiryDate }
   val earliestExpiry: String get() = sortedBatches.firstOrNull()?.expiryDate ?: (batches.firstOrNull()?.expiryDate ?: "N/A")

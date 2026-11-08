@@ -45,6 +45,7 @@ enum class PharmacyViewTab(val label: String) {
 enum class InventoryFilter(val label: String) {
   ALL("All Items"),
   LOW_STOCK("Low Stock Alert"),
+  OUT_OF_STOCK("Out of Stock"),
   EXPIRING_SOON("Expiring Soon (<6 Mo)"),
   CRITICAL_EXPIRY("Critical (<3 Mo)")
 }
@@ -106,6 +107,7 @@ fun PharmacyInventoryScreen(
   // Summary Counts for Status & Expiry Filter Badges
   val filterCounts = remember(medicines) {
     var lowStock = 0
+    var outOfStock = 0
     var exp6m = 0
     var exp3m = 0
     val nowMs = System.currentTimeMillis()
@@ -113,6 +115,9 @@ fun PharmacyInventoryScreen(
     medicines.forEach { med ->
       if (med.isLowStock) {
         lowStock++
+      }
+      if (med.isOutOfStock) {
+        outOfStock++
       }
       val earliestBatch = med.sortedBatches.firstOrNull()
       if (earliestBatch != null) {
@@ -130,10 +135,16 @@ fun PharmacyInventoryScreen(
         } catch (_: Exception) {}
       }
     }
-    Triple(lowStock, exp6m, exp3m)
+    object {
+      val all = medicines.size
+      val lowStock = lowStock
+      val outOfStock = outOfStock
+      val exp6m = exp6m
+      val exp3m = exp3m
+    }
   }
 
-  // Filtered Medicines List (Memoized to prevent jank & unnecessary recompositions)
+  // Filtered Medicines List (Memoized and Sorted Alphabetically A-Z)
   val filteredMedicines = remember(medicines, searchQuery, selectedCategoryFilter, selectedTypeFilter, activeFilter) {
     val queryTrimmed = searchQuery.trim()
     medicines.filter { med ->
@@ -155,12 +166,13 @@ fun PharmacyInventoryScreen(
       val matchesFilter = when (activeFilter) {
         InventoryFilter.ALL -> true
         InventoryFilter.LOW_STOCK -> med.isLowStock
+        InventoryFilter.OUT_OF_STOCK -> med.isOutOfStock
         InventoryFilter.EXPIRING_SOON -> earliestExpDays <= 180 // < 6 months
         InventoryFilter.CRITICAL_EXPIRY -> earliestExpDays <= 90 // < 3 months
       }
 
       matchesSearch && matchesCategory && matchesType && matchesFilter
-    }
+    }.sortedBy { it.name.lowercase() }
   }
 
   Column(
@@ -374,28 +386,47 @@ fun PharmacyInventoryScreen(
                   horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                   InventoryFilter.entries.forEach { filter ->
-                    val filterLabel = when (filter) {
-                      InventoryFilter.ALL -> "All (${medicines.size})"
-                      InventoryFilter.LOW_STOCK -> "Low Stock Alert (${filterCounts.first})"
-                      InventoryFilter.EXPIRING_SOON -> "Expiring Soon (<6 Mo) (${filterCounts.second})"
-                      InventoryFilter.CRITICAL_EXPIRY -> "Critical (<3 Mo) (${filterCounts.third})"
+                    val (title, count, isAlert) = when (filter) {
+                      InventoryFilter.ALL -> Triple("All Items", filterCounts.all, false)
+                      InventoryFilter.LOW_STOCK -> Triple("Low Stock", filterCounts.lowStock, true)
+                      InventoryFilter.OUT_OF_STOCK -> Triple("Out of Stock", filterCounts.outOfStock, true)
+                      InventoryFilter.EXPIRING_SOON -> Triple("Expiring <6 Mo", filterCounts.exp6m, true)
+                      InventoryFilter.CRITICAL_EXPIRY -> Triple("Critical <3 Mo", filterCounts.exp3m, true)
                     }
+                    val isSelected = activeFilter == filter
                     FilterChip(
-                      selected = activeFilter == filter,
+                      selected = isSelected,
                       onClick = { activeFilter = filter },
-                      label = { Text(filterLabel, fontSize = 11.sp, fontWeight = if (activeFilter == filter) FontWeight.Bold else FontWeight.Normal) },
+                      label = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                          Text(title, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+                          Spacer(modifier = Modifier.width(5.dp))
+                          Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (isAlert && count > 0) Color(0xFFDC2626) else if (isSelected) MedicalGreenDark else Color(0xFFE2E8F0)
+                          ) {
+                            Text(
+                              "$count",
+                              fontSize = 9.5.sp,
+                              fontWeight = FontWeight.Bold,
+                              color = if (isAlert && count > 0) PureWhite else if (isSelected) PureWhite else SlateDark,
+                              modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                            )
+                          }
+                        }
+                      },
                       shape = RoundedCornerShape(6.dp),
                       colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = SoftGreenContainer,
-                        selectedLabelColor = MedicalGreenDark,
+                        selectedContainerColor = if (isAlert && count > 0) Color(0xFFFEF2F2) else SoftGreenContainer,
+                        selectedLabelColor = if (isAlert && count > 0) Color(0xFFDC2626) else MedicalGreenDark,
                         containerColor = PureWhite,
                         labelColor = SlateMedium
                       ),
                       border = FilterChipDefaults.filterChipBorder(
                         enabled = true,
-                        selected = activeFilter == filter,
-                        borderColor = BorderGray,
-                        selectedBorderColor = MedicalGreen,
+                        selected = isSelected,
+                        borderColor = if (isAlert && count > 0) Color(0xFFFCA5A5) else BorderGray,
+                        selectedBorderColor = if (isAlert && count > 0) Color(0xFFDC2626) else MedicalGreen,
                         borderWidth = 1.dp
                       )
                     )
@@ -1886,7 +1917,7 @@ fun EditMedicineDialog(
             category = selectedCategory.trim().ifBlank { "General" },
             medicineType = selectedMedicineType,
             unitType = selectedUnitType.trim().ifBlank { "Tab" },
-            primarySupplier = selectedSupplier.trim().ifBlank { "AA Medical Products" },
+            primarySupplier = selectedSupplier.trim(),
             profitMarginPercent = profitMarginText.toDoubleOrNull() ?: 25.0,
             minStockThreshold = minThresholdText.toIntOrNull() ?: 20,
             isAllergyWarning = isAllergyWarning,

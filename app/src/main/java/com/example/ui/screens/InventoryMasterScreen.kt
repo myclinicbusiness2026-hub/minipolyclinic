@@ -288,7 +288,7 @@ fun InventoryMasterScreen(
         suggestedQty = suggestedOrderQty,
         unitCost = med.latestCostPrice,
         totalCost = estimatedCost,
-        supplierName = med.primarySupplier.ifBlank { "AA Medical Products" }
+        supplierName = med.primarySupplier.ifBlank { "Direct Purchase" }
       )
     }.sortedBy { it.supplierName }
   }

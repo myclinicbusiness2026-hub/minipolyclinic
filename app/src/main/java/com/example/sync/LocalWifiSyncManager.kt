@@ -623,6 +623,11 @@ class LocalWifiSyncManager(
 
       scope.launch(Dispatchers.Main) {
         onDataUpdated()
+        if (newPatCount > 0) {
+          com.example.util.SoundHelper.playNewPatientIncomingSound(context)
+        } else {
+          com.example.util.SoundHelper.playSyncSuccessSound(context)
+        }
       }
 
       Pair(true, "Merged +$newPatCount pat, +$newConsCount cons, +$newInvCount inv, +$newMedCount med, +$newUserCount users (Purged: ${allDeletedPatientIds.size})")

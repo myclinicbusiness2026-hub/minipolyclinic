@@ -75,7 +75,7 @@ fun StockInScreen(
   var isUpdatingProgrammatically by remember { mutableStateOf(false) }
 
   // 4. Supplier Selection
-  var selectedSupplierName by remember { mutableStateOf(suppliers.firstOrNull()?.name ?: "AA Medical Products Ltd.") }
+  var selectedSupplierName by remember { mutableStateOf(suppliers.firstOrNull()?.name ?: "") }
   var showAddSupplierDialog by remember { mutableStateOf(false) }
   var supplierDropdownExpanded by remember { mutableStateOf(false) }
   var recordAsExpense by remember { mutableStateOf(true) }
