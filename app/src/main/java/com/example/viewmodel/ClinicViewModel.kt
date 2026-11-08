@@ -192,6 +192,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     _invoices.value = (ClinicDataPersistence.loadInvoices(ctx) ?: ClinicInitialDataSeeder.getSeedInvoices())
       .filter { !deletedInvoices.contains(it.id) && !deletedPatients.contains(it.patientId) }
     _expenses.value = ClinicDataPersistence.loadExpenses(ctx) ?: ClinicInitialDataSeeder.getSeedExpenses()
+    _vaccines.value = ClinicDataPersistence.loadVaccines(ctx) ?: ClinicInitialDataSeeder.getSeedVaccines()
     val loadedSuppliers = ClinicDataPersistence.loadSuppliers(ctx) ?: ClinicInitialDataSeeder.getSeedSuppliers()
     val cleanedSuppliers = loadedSuppliers.filterNot { 
       it.id.startsWith("SUP-0") || 
@@ -203,6 +204,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     if (cleanedSuppliers.size != loadedSuppliers.size) {
       ClinicDataPersistence.saveSuppliers(ctx, cleanedSuppliers)
     }
+    val rawCards = ClinicDataPersistence.loadTreatmentCards(ctx) ?: emptyList()
     val deletedCardIds = ClinicDataPersistence.loadDeletedTreatmentCardIds(ctx)
     val validPatientIds = loadedPatients.map { it.id }.toSet()
     val cleanedCards = rawCards.filter {
