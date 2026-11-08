@@ -535,7 +535,13 @@ END $$;
           val o = lArr.getJSONObject(i)
           val uid = o.optString("username").lowercase()
           val id = o.optString("id")
-          if (uid.isNotBlank() && !deletedUserIds.contains(uid) && !deletedUserIds.contains(id)) userMap[uid] = o
+          if (uid.isNotBlank() && !deletedUserIds.contains(uid) && !deletedUserIds.contains(id)) {
+            val ex = userMap[uid]
+            if (ex != null && !o.has("customPermissions") && ex.has("customPermissions")) {
+              o.put("customPermissions", ex.get("customPermissions"))
+            }
+            userMap[uid] = o
+          }
         }
       }
       userMap.values.forEach { mergedUserArr.put(it) }

@@ -428,7 +428,7 @@ object ClinicDataPersistence {
             minStockThreshold = o.optInt("minStockThreshold", 20),
             profitMarginPercent = o.optDouble("profitMarginPercent", 25.0),
             isAllergyWarning = o.optBoolean("isAllergyWarning", false),
-            primarySupplier = o.optString("primarySupplier", "AA Medical"),
+            primarySupplier = o.optString("primarySupplier", ""),
             medicineType = o.optString("medicineType", ""),
             customSellingPrice = if (o.has("customSellingPrice") && !o.isNull("customSellingPrice")) o.getDouble("customSellingPrice") else null
           )

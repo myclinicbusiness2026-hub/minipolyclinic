@@ -346,6 +346,19 @@ data class SyncDataPayload(
         put("phone", u.phone)
         put("department", u.department)
         put("isActive", u.isActive)
+        val permObj = JSONObject().apply {
+          put("queueAccess", u.customPermissions.queueAccess.name)
+          put("doctorEmrAccess", u.customPermissions.doctorEmrAccess.name)
+          put("pharmacyAccess", u.customPermissions.pharmacyAccess.name)
+          put("billingAccess", u.customPermissions.billingAccess.name)
+          put("treatmentAccess", u.customPermissions.treatmentAccess.name)
+          put("proceduresAccess", u.customPermissions.proceduresAccess.name)
+          put("inventoryAccess", u.customPermissions.inventoryAccess.name)
+          put("financialLedgerAccess", u.customPermissions.financialLedgerAccess.name)
+          put("medicalRecordsAccess", u.customPermissions.medicalRecordsAccess.name)
+          put("userManagementAccess", u.customPermissions.userManagementAccess.name)
+        }
+        put("customPermissions", permObj)
       }
       userArr.put(uo)
     }

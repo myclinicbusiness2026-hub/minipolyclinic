@@ -204,6 +204,82 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     if (cleanedSuppliers.size != loadedSuppliers.size) {
       ClinicDataPersistence.saveSuppliers(ctx, cleanedSuppliers)
     }
+
+    // Reconcile and restore accurate Supplier names from Expense/Ledger records
+    val currentExpenses = _expenses.value
+    var medicinesNeedSave = false
+    val newlyDiscoveredSuppliers = mutableListOf<Supplier>()
+
+    val reconciledMeds = _medicines.value.map { med ->
+      val isPresetOrBlank = med.primarySupplier.isBlank() || 
+        med.primarySupplier.contains("AA Medical", ignoreCase = true) ||
+        med.primarySupplier.contains("Mega Lifesciences", ignoreCase = true) ||
+        med.primarySupplier.contains("DKSH", ignoreCase = true)
+
+      if (isPresetOrBlank) {
+        val batchSup = med.batches.firstOrNull { 
+          !it.supplierName.isNullOrBlank() && 
+          !it.supplierName.contains("AA Medical", ignoreCase = true) &&
+          !it.supplierName.contains("Mega Lifesciences", ignoreCase = true) &&
+          !it.supplierName.contains("DKSH", ignoreCase = true)
+        }?.supplierName?.trim()
+
+        val medNameTrimmed = med.name.trim()
+        val matchingExpense = currentExpenses.filter { exp ->
+          val payee = exp.payee.trim()
+          payee.isNotBlank() && 
+          !payee.contains("AA Medical", ignoreCase = true) &&
+          !payee.contains("Mega Lifesciences", ignoreCase = true) &&
+          !payee.contains("DKSH", ignoreCase = true)
+        }.firstOrNull { exp ->
+          val title = exp.title
+          title.contains(medNameTrimmed, ignoreCase = true) ||
+          (med.genericName.isNotBlank() && title.contains(med.genericName.trim(), ignoreCase = true)) ||
+          med.batches.any { b -> b.batchNumber.isNotBlank() && exp.notes.contains(b.batchNumber, ignoreCase = true) }
+        }
+
+        val restoredSupplier = batchSup ?: matchingExpense?.payee?.trim()
+
+        if (!restoredSupplier.isNullOrBlank()) {
+          medicinesNeedSave = true
+          if (_suppliers.value.none { it.name.equals(restoredSupplier, ignoreCase = true) } &&
+              newlyDiscoveredSuppliers.none { it.name.equals(restoredSupplier, ignoreCase = true) }) {
+            newlyDiscoveredSuppliers.add(
+              Supplier(
+                id = UUID.randomUUID().toString(),
+                name = restoredSupplier,
+                contactPerson = "",
+                phone = "",
+                address = ""
+              )
+            )
+          }
+          med.copy(primarySupplier = restoredSupplier)
+        } else {
+          if (med.primarySupplier.contains("AA Medical", ignoreCase = true) ||
+              med.primarySupplier.contains("Mega Lifesciences", ignoreCase = true) ||
+              med.primarySupplier.contains("DKSH", ignoreCase = true)) {
+            medicinesNeedSave = true
+            med.copy(primarySupplier = "")
+          } else {
+            med
+          }
+        }
+      } else {
+        med
+      }
+    }
+
+    if (medicinesNeedSave) {
+      _medicines.value = reconciledMeds
+      ClinicDataPersistence.saveMedicines(ctx, reconciledMeds)
+    }
+
+    if (newlyDiscoveredSuppliers.isNotEmpty()) {
+      val mergedSuppliers = _suppliers.value + newlyDiscoveredSuppliers
+      _suppliers.value = mergedSuppliers
+      ClinicDataPersistence.saveSuppliers(ctx, mergedSuppliers)
+    }
     val rawCards = ClinicDataPersistence.loadTreatmentCards(ctx) ?: emptyList()
     val deletedCardIds = ClinicDataPersistence.loadDeletedTreatmentCardIds(ctx)
     val validPatientIds = loadedPatients.map { it.id }.toSet()
@@ -3553,7 +3629,10 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             if (!activeDelMeds.contains(m.id)) {
               val existing = currentMedMap[m.id]
               if (existing == null) {
-                currentMedMap[m.id] = m
+                val cleanSup = if (m.primarySupplier.contains("AA Medical", ignoreCase = true) ||
+                                   m.primarySupplier.contains("Mega Lifesciences", ignoreCase = true) ||
+                                   m.primarySupplier.contains("DKSH", ignoreCase = true)) "" else m.primarySupplier
+                currentMedMap[m.id] = m.copy(primarySupplier = cleanSup)
               } else {
                 val batchMap = existing.batches.associateBy { it.batchNumber }.toMutableMap()
                 m.batches.forEach { b ->
@@ -3572,7 +3651,11 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                   minStockThreshold = if (m.minStockThreshold > 0) m.minStockThreshold else existing.minStockThreshold,
                   profitMarginPercent = if (m.profitMarginPercent > 0.0) m.profitMarginPercent else existing.profitMarginPercent,
                   customSellingPrice = if (m.customSellingPrice != null && m.customSellingPrice > 0.0) m.customSellingPrice else existing.customSellingPrice,
-                  primarySupplier = if (m.primarySupplier.isNotBlank()) m.primarySupplier else existing.primarySupplier,
+                  primarySupplier = when {
+                    existing.primarySupplier.isNotBlank() && !existing.primarySupplier.contains("AA Medical", ignoreCase = true) -> existing.primarySupplier
+                    m.primarySupplier.isNotBlank() && !m.primarySupplier.contains("AA Medical", ignoreCase = true) -> m.primarySupplier
+                    else -> ""
+                  },
                   isAllergyWarning = m.isAllergyWarning || existing.isAllergyWarning,
                   standardDosage = if (m.standardDosage.isNotBlank()) m.standardDosage else existing.standardDosage,
                   batches = batchMap.values.toList()
@@ -3594,7 +3677,13 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           val currentUserMap = _users.value.filterNot { activeDelUsers.contains(it.id) || activeDelUsers.contains(it.username.lowercase()) }.associateBy { it.username.lowercase() }.toMutableMap()
           parsedUsers.forEach { u ->
             if (!activeDelUsers.contains(u.id) && !activeDelUsers.contains(u.username.lowercase())) {
-              currentUserMap[u.username.lowercase()] = u
+              val existing = currentUserMap[u.username.lowercase()]
+              val effectivePerms = if (u.customPermissions != UserRolePermissions.defaultFor(u.role)) {
+                u.customPermissions
+              } else {
+                existing?.customPermissions ?: u.customPermissions
+              }
+              currentUserMap[u.username.lowercase()] = u.copy(customPermissions = effectivePerms)
             }
           }
           val mergedUsers = currentUserMap.values.toList()

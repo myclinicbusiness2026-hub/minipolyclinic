@@ -334,6 +334,24 @@ object SyncPayloadParser {
       } catch (_: Exception) {
         UserRole.DOCTOR
       }
+      val defaultPerms = UserRolePermissions.defaultFor(role)
+      val permObj = o.optJSONObject("customPermissions")
+      val customPerms = if (permObj != null) {
+        UserRolePermissions(
+          queueAccess = TabAccessLevel.fromCode(permObj.optString("queueAccess"), defaultPerms.queueAccess),
+          doctorEmrAccess = TabAccessLevel.fromCode(permObj.optString("doctorEmrAccess"), defaultPerms.doctorEmrAccess),
+          pharmacyAccess = TabAccessLevel.fromCode(permObj.optString("pharmacyAccess"), defaultPerms.pharmacyAccess),
+          billingAccess = TabAccessLevel.fromCode(permObj.optString("billingAccess"), defaultPerms.billingAccess),
+          treatmentAccess = TabAccessLevel.fromCode(permObj.optString("treatmentAccess"), defaultPerms.treatmentAccess),
+          proceduresAccess = TabAccessLevel.fromCode(permObj.optString("proceduresAccess"), defaultPerms.proceduresAccess),
+          inventoryAccess = TabAccessLevel.fromCode(permObj.optString("inventoryAccess"), defaultPerms.inventoryAccess),
+          financialLedgerAccess = TabAccessLevel.fromCode(permObj.optString("financialLedgerAccess"), defaultPerms.financialLedgerAccess),
+          medicalRecordsAccess = TabAccessLevel.fromCode(permObj.optString("medicalRecordsAccess"), defaultPerms.medicalRecordsAccess),
+          userManagementAccess = TabAccessLevel.fromCode(permObj.optString("userManagementAccess"), defaultPerms.userManagementAccess)
+        )
+      } else {
+        defaultPerms
+      }
       list.add(
         UserAccount(
           id = o.optString("id", UUID.randomUUID().toString()),
@@ -342,11 +360,12 @@ object SyncPayloadParser {
           role = role,
           samaNumber = o.optString("samaNumber", ""),
           degree = o.optString("degree", ""),
-          pinCode = o.optString("pinCode", "1234"),
+          pinCode = o.optString("pinCode", "123456"),
           passwordHash = o.optString("passwordHash", "123456"),
           phone = o.optString("phone", ""),
           department = o.optString("department", "General OPD"),
-          isActive = o.optBoolean("isActive", true)
+          isActive = o.optBoolean("isActive", true),
+          customPermissions = customPerms
         )
       )
     }
