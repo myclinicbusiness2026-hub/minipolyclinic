@@ -251,15 +251,14 @@ fun LabInvestigationScreen(
                 }
               },
               singleLine = true,
-              modifier = Modifier.fillMaxWidth().height(40.dp),
+              modifier = Modifier.fillMaxWidth().height(48.dp),
               shape = RoundedCornerShape(6.dp),
-              textStyle = LocalTextStyle.current.copy(fontSize = 11.sp),
+              textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp),
               colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = Color(0xFFF8FAFC),
                 unfocusedContainerColor = Color(0xFFF8FAFC),
                 unfocusedBorderColor = BorderGray
-              ),
-              contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+              )
             )
           }
         }
