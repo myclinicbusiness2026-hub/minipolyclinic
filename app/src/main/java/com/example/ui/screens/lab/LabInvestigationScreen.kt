@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.example.data.LabInitialDataSeeder
 import com.example.model.*
@@ -47,6 +48,15 @@ import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * Mobile-First LabInvestigationScreen
+ *
+ * Fully responsive, thumb-friendly UI/UX built specifically for mobile screens:
+ * - Clean vertical stack cards with primary action buttons & more options menu.
+ * - Mobile card-based result entry form (replaces cramped desktop tables).
+ * - Walk-in direct lab patient support (no OPD consultation queue required).
+ * - Canon A4 letterhead printing (blank for analyzer feed / full report) & thermal cash vouchers.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LabInvestigationScreen(
@@ -106,76 +116,86 @@ fun LabInvestigationScreen(
     topBar = {
       Surface(
         color = PureWhite,
-        shadowElevation = 2.dp,
+        shadowElevation = 1.5.dp,
         modifier = Modifier.fillMaxWidth()
       ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
+          // Mobile Top Row
           Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
           ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              modifier = Modifier.weight(1f)
+            ) {
               if (onNavigateBack != null) {
-                IconButton(onClick = onNavigateBack, modifier = Modifier.size(36.dp)) {
-                  Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = DarkGrayText)
+                IconButton(onClick = onNavigateBack, modifier = Modifier.size(32.dp)) {
+                  Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = DarkGrayText, modifier = Modifier.size(20.dp))
                 }
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(4.dp))
               }
               Surface(
                 shape = CircleShape,
                 color = Color(0xFFE0F2FE),
-                modifier = Modifier.size(38.dp)
+                modifier = Modifier.size(32.dp)
               ) {
                 Box(contentAlignment = Alignment.Center) {
-                  Icon(Icons.Default.Science, contentDescription = null, tint = Color(0xFF0284C7), modifier = Modifier.size(22.dp))
+                  Icon(Icons.Default.Science, contentDescription = null, tint = Color(0xFF0284C7), modifier = Modifier.size(18.dp))
                 }
               }
-              Spacer(modifier = Modifier.width(10.dp))
+              Spacer(modifier = Modifier.width(8.dp))
               Column {
                 Text(
-                  "ဓာတ်ခွဲစစ်ဆေးမှု ကဏ္ဍ (Laboratory Services)",
-                  fontSize = 16.sp,
+                  "ဓာတ်ခွဲခန်း (Laboratory)",
+                  fontSize = 14.sp,
                   fontWeight = FontWeight.Bold,
-                  color = SlateDark
+                  color = SlateDark,
+                  maxLines = 1,
+                  overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                  "B2B Independent Module • Canon A4 Letterhead & Thermal Ready",
-                  fontSize = 11.sp,
-                  color = SlateMuted
+                  "B2B Module • A4 & Thermal",
+                  fontSize = 9.5.sp,
+                  color = SlateMuted,
+                  maxLines = 1
                 )
               }
             }
 
+            // Mobile New Order Button
             Button(
               onClick = { showNewOrderDialog = true },
               colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
-              shape = RoundedCornerShape(8.dp),
-              contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+              shape = RoundedCornerShape(6.dp),
+              contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+              modifier = Modifier.height(34.dp)
             ) {
-              Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-              Spacer(modifier = Modifier.width(6.dp))
-              Text("စစ်ဆေးမှုအသစ် မှာယူရန်", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+              Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+              Spacer(modifier = Modifier.width(3.dp))
+              Text("စစ်ဆေးမှုအသစ်", fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
           }
 
-          Spacer(modifier = Modifier.height(10.dp))
+          Spacer(modifier = Modifier.height(6.dp))
 
-          // Tab Navigation Bar
-          TabRow(
+          // Mobile-friendly Tab Row
+          ScrollableTabRow(
             selectedTabIndex = selectedTab,
             containerColor = Color.Transparent,
-            divider = { HorizontalDivider(color = BorderGray) }
+            edgePadding = 0.dp,
+            divider = { HorizontalDivider(color = Color(0xFFE2E8F0)) }
           ) {
             Tab(
               selected = selectedTab == 0,
               onClick = { selectedTab = 0 },
               text = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                  Text("စစ်ဆေးရန် စောင့်ဆိုင်းစာရင်း (Queue)", fontSize = 12.sp, fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal)
+                  Text("စောင့်ဆိုင်း (Queue)", fontSize = 11.5.sp, fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal)
                   if (queueOrders.isNotEmpty()) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Badge(containerColor = Color(0xFF0284C7)) { Text("${queueOrders.size}") }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Badge(containerColor = Color(0xFF0284C7)) { Text("${queueOrders.size}", fontSize = 9.sp) }
                   }
                 }
               }
@@ -185,10 +205,10 @@ fun LabInvestigationScreen(
               onClick = { selectedTab = 1 },
               text = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                  Text("ပြီးစီးပြီး အဖြေများ (Results)", fontSize = 12.sp, fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal)
+                  Text("အဖြေများ (Results)", fontSize = 11.5.sp, fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal)
                   if (completedOrders.isNotEmpty()) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Badge(containerColor = Color(0xFF16A34A)) { Text("${completedOrders.size}") }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Badge(containerColor = Color(0xFF16A34A)) { Text("${completedOrders.size}", fontSize = 9.sp) }
                   }
                 }
               }
@@ -198,10 +218,10 @@ fun LabInvestigationScreen(
               onClick = { selectedTab = 2 },
               text = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                  Text("သီးသန့် ဘောင်ချာများ (Lab Invoices)", fontSize = 12.sp, fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal)
+                  Text("ဘောင်ချာ (Vouchers)", fontSize = 11.5.sp, fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal)
                   if (filteredInvoices.isNotEmpty()) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Badge(containerColor = Color(0xFF7C3AED)) { Text("${filteredInvoices.size}") }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Badge(containerColor = Color(0xFF7C3AED)) { Text("${filteredInvoices.size}", fontSize = 9.sp) }
                   }
                 }
               }
@@ -210,34 +230,36 @@ fun LabInvestigationScreen(
               selected = selectedTab == 3,
               onClick = { selectedTab = 3 },
               text = {
-                Text("စစ်ဆေးမှုပုံစံများ (Templates)", fontSize = 12.sp, fontWeight = if (selectedTab == 3) FontWeight.Bold else FontWeight.Normal)
+                Text("စျေးနှုန်း (Prices)", fontSize = 11.5.sp, fontWeight = if (selectedTab == 3) FontWeight.Bold else FontWeight.Normal)
               }
             )
           }
 
-          // Search bar (for tabs 0, 1, 2)
+          // Compact Mobile Search Bar (Only for tabs 0, 1, 2)
           if (selectedTab in 0..2) {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             OutlinedTextField(
               value = searchQuery,
               onValueChange = { searchQuery = it },
-              placeholder = { Text("လူနာအမည် / HN / Order No ရှာဖွေရန်...", fontSize = 11.5.sp, color = SlateMuted) },
-              leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp), tint = SlateMuted) },
+              placeholder = { Text("ရှာဖွေရန် (လူနာအမည် / HN)...", fontSize = 11.sp, color = SlateMuted) },
+              leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp), tint = SlateMuted) },
               trailingIcon = {
                 if (searchQuery.isNotBlank()) {
                   IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(16.dp), tint = SlateMuted)
+                    Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(14.dp), tint = SlateMuted)
                   }
                 }
               },
               singleLine = true,
-              modifier = Modifier.fillMaxWidth().height(44.dp),
-              shape = RoundedCornerShape(8.dp),
+              modifier = Modifier.fillMaxWidth().height(40.dp),
+              shape = RoundedCornerShape(6.dp),
+              textStyle = LocalTextStyle.current.copy(fontSize = 11.sp),
               colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = Color(0xFFF8FAFC),
                 unfocusedContainerColor = Color(0xFFF8FAFC),
                 unfocusedBorderColor = BorderGray
-              )
+              ),
+              contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
             )
           }
         }
@@ -248,30 +270,30 @@ fun LabInvestigationScreen(
       modifier = Modifier
         .fillMaxSize()
         .padding(paddingValues)
-        .background(Color(0xFFF1F5F9))
+        .background(Color(0xFFF8FAFC))
     ) {
       when (selectedTab) {
         0 -> {
-          // Tab 1: Queue (Orders waiting for sample / testing)
+          // Tab 1: Queue (Orders waiting for testing)
           if (queueOrders.isEmpty()) {
-            EmptyStateView(
-              icon = Icons.Default.DoneAll,
-              title = "လက်ရှိ စစ်ဆေးရန် စောင့်ဆိုင်းလူနာ မရှိပါ",
-              description = "အပေါ်ရှိ '+ စစ်ဆေးမှုအသစ် မှာယူရန်' ကိုနှိပ်၍ သို့မဟုတ် Doctor Consultation screen မှ စစ်ဆေးမှုများကို စာရင်းသွင်းနိုင်ပါသည်။"
+            MobileEmptyState(
+              icon = Icons.Default.CheckCircleOutline,
+              title = "စစ်ဆေးရန် စောင့်ဆိုင်းလူနာ မရှိပါ",
+              description = "အပေါ်ရှိ '+ စစ်ဆေးမှုအသစ်' သို့မဟုတ် ဆရာဝန်စမ်းသပ်ခန်းမှ တိုက်ရိုက် မှာယူနိုင်ပါသည်။"
             )
           } else {
             LazyColumn(
-              contentPadding = PaddingValues(16.dp),
-              verticalArrangement = Arrangement.spacedBy(10.dp),
+              contentPadding = PaddingValues(10.dp),
+              verticalArrangement = Arrangement.spacedBy(8.dp),
               modifier = Modifier.fillMaxSize()
             ) {
               items(queueOrders, key = { it.id }) { order ->
-                LabOrderQueueCard(
+                MobileLabOrderQueueCard(
                   order = order,
                   clinicSettings = clinicSettings,
                   onSampleCollected = {
                     viewModel.updateLabOrderStatus(order.id, LabOrderStatus.SAMPLE_COLLECTED)
-                    Toast.makeText(context, "နမူနာရယူပြီးအဖြစ် မှတ်သားပြီးပါပြီ", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "နမူနာရယူပြီးအဖြစ် သတ်မှတ်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
                   },
                   onEnterResults = { orderToEnterResults = order },
                   onPrintBlankLetterhead = {
@@ -294,21 +316,21 @@ fun LabInvestigationScreen(
         }
 
         1 -> {
-          // Tab 2: Results (Completed orders with parameters & reports)
+          // Tab 2: Completed Results
           if (completedOrders.isEmpty()) {
-            EmptyStateView(
+            MobileEmptyState(
               icon = Icons.Default.Science,
               title = "ပြီးစီးပြီး အဖြေများ မရှိသေးပါ",
-              description = "Queue ထဲရှိ စစ်ဆေးမှုများအား အဖြေထည့်သွင်းပြီးပါက ဤနေရာတွင် စာရင်းနှင့်တကွ Canon A4 Report ထုတ်နိုင်ပါမည်။"
+              description = "Queue ရှိ စစ်ဆေးမှုများအား အဖြေထည့်သွင်းပြီးပါက ဤနေရာတွင် ကြည့်ရှု၍ Canon A4 Report ထုတ်နိုင်ပါမည်။"
             )
           } else {
             LazyColumn(
-              contentPadding = PaddingValues(16.dp),
-              verticalArrangement = Arrangement.spacedBy(12.dp),
+              contentPadding = PaddingValues(10.dp),
+              verticalArrangement = Arrangement.spacedBy(8.dp),
               modifier = Modifier.fillMaxSize()
             ) {
               items(completedOrders, key = { it.id }) { order ->
-                LabCompletedResultCard(
+                MobileLabCompletedResultCard(
                   order = order,
                   clinicSettings = clinicSettings,
                   onPrintFullReport = {
@@ -341,7 +363,7 @@ fun LabInvestigationScreen(
 
         2 -> {
           // Tab 3: Lab Invoices (Dedicated accounting)
-          LabInvoicesTabContent(
+          MobileLabInvoicesTabContent(
             invoices = filteredInvoices,
             clinicSettings = clinicSettings,
             currencyFmt = currencyFmt
@@ -350,7 +372,7 @@ fun LabInvestigationScreen(
 
         3 -> {
           // Tab 4: Templates & Pricing
-          LabTemplatesTabContent(
+          MobileLabTemplatesTabContent(
             templates = labTemplates,
             onAddNew = { isCreatingTemplate = true },
             onEdit = { templateToEdit = it },
@@ -371,9 +393,9 @@ fun LabInvestigationScreen(
 
   // --- Modals ---
 
-  // 1. New Lab Order Dialog
+  // 1. New Lab Order Dialog (Mobile Optimized with Walk-in toggle)
   if (showNewOrderDialog) {
-    NewLabOrderDialog(
+    MobileNewLabOrderDialog(
       patients = allPatients,
       templates = labTemplates,
       attendingDoctor = viewModel.currentUser.value?.displayName ?: clinicSettings.doctorName,
@@ -381,14 +403,14 @@ fun LabInvestigationScreen(
       onSubmit = { newOrder ->
         viewModel.createLabOrder(newOrder)
         showNewOrderDialog = false
-        Toast.makeText(context, "စစ်ဆေးမှု အသစ် စာရင်းသွင်းပြီးပါပြီ", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "သွေးစစ်မှု အသစ် စာရင်းသွင်းပြီးပါပြီ", Toast.LENGTH_SHORT).show()
       }
     )
   }
 
-  // 2. Result Entry Dialog
+  // 2. Result Entry Form (Mobile Card List Form)
   orderToEnterResults?.let { order ->
-    LabResultEntryDialog(
+    MobileLabResultEntryDialog(
       order = order,
       technicianName = viewModel.currentUser.value?.displayName ?: "Lab Technologist",
       onDismiss = { orderToEnterResults = null },
@@ -400,9 +422,9 @@ fun LabInvestigationScreen(
     )
   }
 
-  // 3. Create Lab Invoice Dialog
+  // 3. Create Lab Invoice Dialog (Mobile Friendly)
   orderToInvoice?.let { order ->
-    CreateLabInvoiceDialog(
+    MobileCreateLabInvoiceDialog(
       order = order,
       cashierName = viewModel.currentUser.value?.displayName ?: "Cashier",
       onDismiss = { orderToInvoice = null },
@@ -410,7 +432,6 @@ fun LabInvestigationScreen(
         viewModel.createLabInvoice(invoice)
         orderToInvoice = null
         Toast.makeText(context, "ဓာတ်ခွဲခန်း ဘောင်ချာ ဖွင့်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
-        // Prompt to print thermal slip
         LabPrintHelper.printLabVoucherThermal(context, invoice, clinicSettings)
       }
     )
@@ -418,7 +439,7 @@ fun LabInvestigationScreen(
 
   // 4. Template Editor Dialog
   if (isCreatingTemplate || templateToEdit != null) {
-    LabTemplateEditorDialog(
+    MobileLabTemplateEditorDialog(
       template = templateToEdit,
       onDismiss = {
         isCreatingTemplate = false
@@ -435,11 +456,11 @@ fun LabInvestigationScreen(
 }
 
 // -------------------------------------------------------------
-// Component: Lab Order Queue Card
+// Component: Mobile Lab Order Queue Card
 // -------------------------------------------------------------
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun LabOrderQueueCard(
+fun MobileLabOrderQueueCard(
   order: LabOrder,
   clinicSettings: ClinicSettings,
   onSampleCollected: () -> Unit,
@@ -449,53 +470,52 @@ fun LabOrderQueueCard(
   onCancelOrder: () -> Unit
 ) {
   val currencyFmt = remember { NumberFormat.getNumberInstance(Locale.US) }
+  var showMenu by remember { mutableStateOf(false) }
 
   Surface(
-    shape = RoundedCornerShape(10.dp),
+    shape = RoundedCornerShape(8.dp),
     color = PureWhite,
-    border = BorderStroke(1.dp, BorderGray),
+    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
     modifier = Modifier.fillMaxWidth().animateContentSize()
   ) {
-    Column(modifier = Modifier.padding(14.dp)) {
+    Column(modifier = Modifier.padding(10.dp)) {
+      // Top Row: Patient Name + HN + Status Pill + Menu
       Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
       ) {
-        Column {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-              order.patientName,
-              fontSize = 15.sp,
-              fontWeight = FontWeight.Bold,
-              color = SlateDark
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Surface(
-              shape = RoundedCornerShape(4.dp),
-              color = Color(0xFFF1F5F9),
-              border = BorderStroke(0.8.dp, Color(0xFFCBD5E1))
-            ) {
-              Text(
-                order.patientHn,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = SlateDark,
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-              )
-            }
-          }
-          Spacer(modifier = Modifier.height(2.dp))
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          modifier = Modifier.weight(1f)
+        ) {
           Text(
-            "Age: ${order.patientAge} • ${order.patientGender.name} • Dr: ${order.doctorName.ifBlank { "OPD" }} • ${order.orderDate} ${order.orderTime}",
-            fontSize = 11.sp,
-            color = SlateMuted
+            order.patientName,
+            fontSize = 13.5.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF0F172A),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
           )
+          Spacer(modifier = Modifier.width(6.dp))
+          Surface(
+            shape = RoundedCornerShape(3.dp),
+            color = if (order.patientHn == "WALK-IN") Color(0xFFEFF6FF) else Color(0xFFF1F5F9),
+            border = BorderStroke(0.6.dp, Color(0xFFCBD5E1))
+          ) {
+            Text(
+              order.patientHn,
+              fontSize = 9.5.sp,
+              fontWeight = FontWeight.SemiBold,
+              color = if (order.patientHn == "WALK-IN") Color(0xFF1D4ED8) else SlateDark,
+              modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+            )
+          }
         }
 
         // Status Badge
         Surface(
-          shape = RoundedCornerShape(12.dp),
+          shape = RoundedCornerShape(10.dp),
           color = when (order.status) {
             LabOrderStatus.ORDERED -> Color(0xFFFEF3C7)
             LabOrderStatus.SAMPLE_COLLECTED -> Color(0xFFE0F2FE)
@@ -505,12 +525,12 @@ fun LabOrderQueueCard(
         ) {
           Text(
             when (order.status) {
-              LabOrderStatus.ORDERED -> "စစ်ဆေးရန် စောင့်ဆိုင်း"
-              LabOrderStatus.SAMPLE_COLLECTED -> "နမူနာရယူပြီး (Testing)"
+              LabOrderStatus.ORDERED -> "စစ်ဆေးရန်"
+              LabOrderStatus.SAMPLE_COLLECTED -> "နမူနာရပြီး"
               LabOrderStatus.COMPLETED -> "ပြီးစီး"
               LabOrderStatus.CANCELLED -> "ပယ်ဖျက်"
             },
-            fontSize = 10.5.sp,
+            fontSize = 9.5.sp,
             fontWeight = FontWeight.Bold,
             color = when (order.status) {
               LabOrderStatus.ORDERED -> Color(0xFFD97706)
@@ -518,137 +538,144 @@ fun LabOrderQueueCard(
               LabOrderStatus.COMPLETED -> Color(0xFF16A34A)
               LabOrderStatus.CANCELLED -> Color(0xFFDC2626)
             },
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
           )
         }
       }
 
-      Spacer(modifier = Modifier.height(10.dp))
-      HorizontalDivider(color = Color(0xFFF1F5F9))
-      Spacer(modifier = Modifier.height(8.dp))
-
-      // Ordered Test Items Chips
-      Text("စစ်ဆေးရမည့် အကြောင်းအရာများ:", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = SlateDark)
       Spacer(modifier = Modifier.height(4.dp))
+
+      // Row 2: Demographics & Time
+      Text(
+        "Age: ${order.patientAge} • ${order.patientGender.name} • ${order.orderDate} ${order.orderTime}",
+        fontSize = 10.sp,
+        color = SlateMuted
+      )
+
+      Spacer(modifier = Modifier.height(6.dp))
+
+      // Row 3: Tests Ordered (Compact Chips)
       FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
       ) {
         order.items.forEach { item ->
           Surface(
-            shape = RoundedCornerShape(6.dp),
-            color = Color(0xFFEFF6FF),
-            border = BorderStroke(0.8.dp, Color(0xFFBFDBFE))
+            shape = RoundedCornerShape(4.dp),
+            color = Color(0xFFF0FDF4),
+            border = BorderStroke(0.6.dp, Color(0xFFBBF7D0))
           ) {
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-              Text(
-                item.testName,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color(0xFF1D4ED8)
-              )
-              Spacer(modifier = Modifier.width(6.dp))
-              Text(
-                "${currencyFmt.format(item.price.toInt())} Ks",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF2563EB)
-              )
-            }
+            Text(
+              "${item.testName} (${currencyFmt.format(item.price.toInt())} Ks)",
+              fontSize = 10.sp,
+              color = Color(0xFF166534),
+              fontWeight = FontWeight.Medium,
+              modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+            )
           }
         }
       }
 
-      Spacer(modifier = Modifier.height(10.dp))
+      Spacer(modifier = Modifier.height(8.dp))
+      HorizontalDivider(color = Color(0xFFF1F5F9))
+      Spacer(modifier = Modifier.height(6.dp))
 
-      // Payment & Action Bar
+      // Bottom Row: Price + Primary Action Button + More Actions Menu
       Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
       ) {
+        // Price & Paid Tag
         Row(verticalAlignment = Alignment.CenterVertically) {
           Text(
-            "ကျသင့်ငွေ: ",
-            fontSize = 12.sp,
-            color = SlateMuted
-          )
-          Text(
             "${currencyFmt.format(order.totalAmount.toInt())} Ks",
-            fontSize = 13.sp,
+            fontSize = 12.5.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF0F172A)
           )
-          Spacer(modifier = Modifier.width(8.dp))
+          Spacer(modifier = Modifier.width(6.dp))
           Surface(
-            shape = RoundedCornerShape(4.dp),
+            shape = RoundedCornerShape(3.dp),
             color = if (order.isPaid) Color(0xFFDCFCE7) else Color(0xFFFEF2F2)
           ) {
             Text(
-              if (order.isPaid) "ငွေရှင်းပြီး" else "မရှင်းရသေး",
-              fontSize = 10.sp,
+              if (order.isPaid) "Paid" else "Unpaid",
+              fontSize = 9.sp,
               fontWeight = FontWeight.Bold,
               color = if (order.isPaid) Color(0xFF16A34A) else Color(0xFFDC2626),
-              modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+              modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
             )
           }
         }
 
-        // Action Buttons
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-          // Print Blank Letterhead (Mode A)
-          OutlinedButton(
-            onClick = onPrintBlankLetterhead,
-            shape = RoundedCornerShape(6.dp),
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-            modifier = Modifier.height(32.dp)
-          ) {
-            Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(13.dp))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("A4 Letterhead", fontSize = 10.5.sp)
-          }
-
-          if (!order.isPaid) {
-            Button(
-              onClick = onCreateInvoice,
-              colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
-              shape = RoundedCornerShape(6.dp),
-              contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-              modifier = Modifier.height(32.dp)
-            ) {
-              Icon(Icons.Default.Receipt, contentDescription = null, modifier = Modifier.size(13.dp))
-              Spacer(modifier = Modifier.width(4.dp))
-              Text("ဘောင်ချာဖွင့်", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
-            }
-          }
-
+        // Action Buttons Row (Mobile optimized)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          // Primary Action
           if (order.status == LabOrderStatus.ORDERED) {
             Button(
               onClick = onSampleCollected,
               colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
               shape = RoundedCornerShape(6.dp),
-              contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-              modifier = Modifier.height(32.dp)
+              contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+              modifier = Modifier.height(30.dp)
             ) {
-              Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(13.dp))
-              Spacer(modifier = Modifier.width(4.dp))
-              Text("နမူနာရယူပြီး", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+              Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(12.dp))
+              Spacer(modifier = Modifier.width(3.dp))
+              Text("နမူနာရယူပြီး", fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
+            Spacer(modifier = Modifier.width(6.dp))
           }
 
           Button(
             onClick = onEnterResults,
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
             shape = RoundedCornerShape(6.dp),
-            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-            modifier = Modifier.height(32.dp)
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.height(30.dp)
           ) {
-            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(13.dp))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("အဖြေထည့်ရန်", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(12.dp))
+            Spacer(modifier = Modifier.width(3.dp))
+            Text("အဖြေထည့်ရန်", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+          }
+
+          // More Options Dropdown Menu (Contains A4 letterhead, voucher, cancel)
+          Box {
+            IconButton(
+              onClick = { showMenu = true },
+              modifier = Modifier.size(32.dp)
+            ) {
+              Icon(Icons.Default.MoreVert, contentDescription = "More", tint = SlateDark, modifier = Modifier.size(18.dp))
+            }
+
+            DropdownMenu(
+              expanded = showMenu,
+              onDismissRequest = { showMenu = false }
+            ) {
+              DropdownMenuItem(
+                text = { Text("📄 A4 Blank Letterhead ထုတ်ရန်", fontSize = 11.5.sp) },
+                onClick = {
+                  showMenu = false
+                  onPrintBlankLetterhead()
+                }
+              )
+              if (!order.isPaid) {
+                DropdownMenuItem(
+                  text = { Text("🧾 ငွေရှင်းဘောင်ချာ ဖွင့်ရန်", fontSize = 11.5.sp) },
+                  onClick = {
+                    showMenu = false
+                    onCreateInvoice()
+                  }
+                )
+              }
+              DropdownMenuItem(
+                text = { Text("❌ စစ်ဆေးမှု ပယ်ဖျက်ရန်", fontSize = 11.5.sp, color = Color(0xFFDC2626)) },
+                onClick = {
+                  showMenu = false
+                  onCancelOrder()
+                }
+              )
+            }
           }
         }
       }
@@ -657,10 +684,10 @@ fun LabOrderQueueCard(
 }
 
 // -------------------------------------------------------------
-// Component: Lab Completed Result Card
+// Component: Mobile Lab Completed Result Card
 // -------------------------------------------------------------
 @Composable
-fun LabCompletedResultCard(
+fun MobileLabCompletedResultCard(
   order: LabOrder,
   clinicSettings: ClinicSettings,
   onPrintFullReport: () -> Unit,
@@ -670,6 +697,7 @@ fun LabCompletedResultCard(
 ) {
   val context = LocalContext.current
   var isExpanded by remember { mutableStateOf(false) }
+  var showMenu by remember { mutableStateOf(false) }
 
   val photoLauncher = rememberLauncherForActivityResult(
     contract = ActivityResultContracts.GetContent()
@@ -681,178 +709,191 @@ fun LabCompletedResultCard(
   }
 
   Surface(
-    shape = RoundedCornerShape(10.dp),
+    shape = RoundedCornerShape(8.dp),
     color = PureWhite,
-    border = BorderStroke(1.dp, BorderGray),
+    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
     modifier = Modifier.fillMaxWidth().animateContentSize()
   ) {
-    Column(modifier = Modifier.padding(14.dp)) {
+    Column(modifier = Modifier.padding(10.dp)) {
+      // Header
       Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
       ) {
-        Column {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-              order.patientName,
-              fontSize = 15.sp,
-              fontWeight = FontWeight.Bold,
-              color = SlateDark
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Surface(
-              shape = RoundedCornerShape(4.dp),
-              color = Color(0xFFDCFCE7),
-              border = BorderStroke(0.8.dp, Color(0xFF86EFAC))
-            ) {
-              Text(
-                "Completed",
-                fontSize = 10.5.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF16A34A),
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-              )
-            }
-          }
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          modifier = Modifier.weight(1f)
+        ) {
           Text(
-            "HN: ${order.patientHn} • Order: ${order.orderNumber} • Date: ${order.orderDate}",
-            fontSize = 11.sp,
-            color = SlateMuted
+            order.patientName,
+            fontSize = 13.5.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF0F172A),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
           )
+          Spacer(modifier = Modifier.width(6.dp))
+          Surface(
+            shape = RoundedCornerShape(3.dp),
+            color = Color(0xFFDCFCE7),
+            border = BorderStroke(0.6.dp, Color(0xFF86EFAC))
+          ) {
+            Text(
+              "ပြီးစီး",
+              fontSize = 9.sp,
+              fontWeight = FontWeight.Bold,
+              color = Color(0xFF16A34A),
+              modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+            )
+          }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-          // Attach photo of analyzer slip
-          OutlinedButton(
-            onClick = { photoLauncher.launch("image/*") },
-            shape = RoundedCornerShape(6.dp),
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-            modifier = Modifier.height(32.dp)
-          ) {
-            Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(13.dp))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("စက်အဖြေပုံတင်", fontSize = 10.5.sp)
-          }
-
-          // Print Blank Letterhead
-          OutlinedButton(
-            onClick = onPrintBlankLetterhead,
-            shape = RoundedCornerShape(6.dp),
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-            modifier = Modifier.height(32.dp)
-          ) {
-            Icon(Icons.Default.Article, contentDescription = null, modifier = Modifier.size(13.dp))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("A4 အလွတ်", fontSize = 10.5.sp)
-          }
-
-          // Canon A4 Full Print
+        // Actions
+        Row(verticalAlignment = Alignment.CenterVertically) {
           Button(
             onClick = onPrintFullReport,
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
             shape = RoundedCornerShape(6.dp),
-            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-            modifier = Modifier.height(32.dp)
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.height(30.dp)
           ) {
-            Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(13.dp))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("A4 Report ထုတ်ရန်", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+            Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(12.dp))
+            Spacer(modifier = Modifier.width(3.dp))
+            Text("A4 Report", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+          }
+
+          Box {
+            IconButton(
+              onClick = { showMenu = true },
+              modifier = Modifier.size(32.dp)
+            ) {
+              Icon(Icons.Default.MoreVert, contentDescription = "More", tint = SlateDark, modifier = Modifier.size(18.dp))
+            }
+
+            DropdownMenu(
+              expanded = showMenu,
+              onDismissRequest = { showMenu = false }
+            ) {
+              DropdownMenuItem(
+                text = { Text("📄 A4 Blank Letterhead ထုတ်ရန်", fontSize = 11.5.sp) },
+                onClick = {
+                  showMenu = false
+                  onPrintBlankLetterhead()
+                }
+              )
+              DropdownMenuItem(
+                text = { Text("📷 စက်အဖြေ Slip ပုံတင်ရန်", fontSize = 11.5.sp) },
+                onClick = {
+                  showMenu = false
+                  photoLauncher.launch("image/*")
+                }
+              )
+              DropdownMenuItem(
+                text = { Text("✏️ အဖြေများ ပြန်လည်ပြင်ဆင်ရန်", fontSize = 11.5.sp) },
+                onClick = {
+                  showMenu = false
+                  onEditResults()
+                }
+              )
+            }
           }
         }
       }
 
-      Spacer(modifier = Modifier.height(8.dp))
-      HorizontalDivider(color = Color(0xFFF1F5F9))
-      Spacer(modifier = Modifier.height(8.dp))
+      Text(
+        "HN: ${order.patientHn} • ${order.orderDate} • Dr: ${order.doctorName.ifBlank { "Direct" }}",
+        fontSize = 10.sp,
+        color = SlateMuted
+      )
 
-      // Summary of tests in order
+      Spacer(modifier = Modifier.height(6.dp))
+
+      // Expand / Collapse Result Details Toggle
       Row(
-        modifier = Modifier.fillMaxWidth().clickable { isExpanded = !isExpanded },
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)).background(Color(0xFFF1F5F9)).clickable { isExpanded = !isExpanded }.padding(horizontal = 8.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
       ) {
         Text(
-          "Tests: " + order.items.joinToString(", ") { it.testName },
-          fontSize = 12.sp,
-          fontWeight = FontWeight.SemiBold,
+          "စစ်ဆေးချက်: " + order.items.joinToString(", ") { it.testName },
+          fontSize = 11.sp,
+          fontWeight = FontWeight.Medium,
           color = Color(0xFF1E293B),
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
           modifier = Modifier.weight(1f)
         )
         Text(
-          if (isExpanded) "အသေးစိတ် ပိတ်ရန် ▲" else "အဖြေ အသေးစိတ် ကြည့်ရန် ▼",
-          fontSize = 11.sp,
+          if (isExpanded) "ပိတ်ရန် ▲" else "အဖြေကြည့်ရန် ▼",
+          fontSize = 10.5.sp,
           fontWeight = FontWeight.Bold,
           color = Color(0xFF0284C7)
         )
       }
 
-      // Expanded Parameter Table
+      // Mobile Expanded Result Parameter Cards
       AnimatedVisibility(visible = isExpanded) {
-        Column(modifier = Modifier.padding(top = 10.dp)) {
+        Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
           for (item in order.items) {
             Surface(
               shape = RoundedCornerShape(6.dp),
               color = Color(0xFFF8FAFC),
-              border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-              modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+              border = BorderStroke(0.8.dp, Color(0xFFCBD5E1)),
+              modifier = Modifier.fillMaxWidth()
             ) {
-              Column(modifier = Modifier.padding(10.dp)) {
+              Column(modifier = Modifier.padding(8.dp)) {
                 Text(
                   "🔬 ${item.testName} (${item.specimenType})",
-                  fontSize = 12.sp,
+                  fontSize = 11.5.sp,
                   fontWeight = FontWeight.Bold,
                   color = Color(0xFF0F172A)
                 )
-                Spacer(modifier = Modifier.height(6.dp))
 
                 if (item.parameters.isNotEmpty()) {
-                  // Table header
-                  Row(
-                    modifier = Modifier.fillMaxWidth().background(Color(0xFFE2E8F0), RoundedCornerShape(4.dp)).padding(6.dp)
-                  ) {
-                    Text("Parameter", fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(2f))
-                    Text("Result", fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.5f))
-                    Text("Unit", fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    Text("Reference", fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.5f))
-                    Text("Flag", fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                  }
+                  Spacer(modifier = Modifier.height(4.dp))
+                  Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    item.parameters.forEach { p ->
+                      Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                      ) {
+                        Column(modifier = Modifier.weight(1.5f)) {
+                          Text(p.name, fontSize = 10.5.sp, fontWeight = FontWeight.Medium)
+                          Text("Ref: ${p.referenceRange} ${p.unit}", fontSize = 9.sp, color = SlateMuted)
+                        }
 
-                  item.parameters.forEach { p ->
-                    Row(
-                      modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp),
-                      verticalAlignment = Alignment.CenterVertically
-                    ) {
-                      Text(p.name, fontSize = 11.sp, modifier = Modifier.weight(2f))
-                      Text(p.result.ifBlank { "-" }, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A), modifier = Modifier.weight(1.5f))
-                      Text(p.unit.ifBlank { "-" }, fontSize = 10.sp, color = SlateMuted, modifier = Modifier.weight(1f))
-                      Text(p.referenceRange.ifBlank { "-" }, fontSize = 10.sp, color = SlateMuted, modifier = Modifier.weight(1.5f))
-                      Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        if (p.flag.isNotBlank()) {
-                          Surface(
-                            shape = RoundedCornerShape(3.dp),
-                            color = when (p.flag.uppercase()) {
-                              "HIGH" -> Color(0xFFFEE2E2)
-                              "LOW" -> Color(0xFFFEF3C7)
-                              else -> Color(0xFFDCFCE7)
-                            }
-                          ) {
-                            Text(
-                              p.flag,
-                              fontSize = 9.sp,
-                              fontWeight = FontWeight.Bold,
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                          Text(
+                            "${p.result.ifBlank { "-" }} ${p.unit}",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0284C7)
+                          )
+                          if (p.flag.isNotBlank()) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                              shape = RoundedCornerShape(3.dp),
                               color = when (p.flag.uppercase()) {
-                                "HIGH" -> Color(0xFFDC2626)
-                                "LOW" -> Color(0xFFD97706)
-                                else -> Color(0xFF16A34A)
-                              },
-                              modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                            )
+                                "HIGH" -> Color(0xFFFEE2E2)
+                                "LOW" -> Color(0xFFFEF3C7)
+                                else -> Color(0xFFDCFCE7)
+                              }
+                            ) {
+                              Text(
+                                p.flag,
+                                fontSize = 8.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = when (p.flag.uppercase()) {
+                                  "HIGH" -> Color(0xFFDC2626)
+                                  "LOW" -> Color(0xFFD97706)
+                                  else -> Color(0xFF16A34A)
+                                },
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                              )
+                            }
                           }
-                        } else {
-                          Text("-", fontSize = 10.sp, color = SlateMuted)
                         }
                       }
                     }
@@ -861,33 +902,20 @@ fun LabCompletedResultCard(
 
                 if (item.remarks.isNotBlank()) {
                   Spacer(modifier = Modifier.height(4.dp))
-                  Text("Remarks: ${item.remarks}", fontSize = 10.5.sp, color = SlateDark)
+                  Text("Remarks: ${item.remarks}", fontSize = 9.5.sp, color = SlateDark)
                 }
 
-                // If attached image exists
+                // If attached slip photo exists
                 if (!item.attachedImageUri.isNullOrBlank()) {
-                  Spacer(modifier = Modifier.height(8.dp))
-                  Text("Attached Slip Photo:", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = SlateMuted)
-                  Spacer(modifier = Modifier.height(4.dp))
+                  Spacer(modifier = Modifier.height(6.dp))
                   AsyncImage(
                     model = item.attachedImageUri,
-                    contentDescription = "Analyzer Slip",
+                    contentDescription = "Slip Image",
                     contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(6.dp))
+                    modifier = Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(4.dp))
                   )
                 }
               }
-            }
-          }
-
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
-          ) {
-            TextButton(onClick = onEditResults) {
-              Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(14.dp))
-              Spacer(modifier = Modifier.width(4.dp))
-              Text("အဖြေများ ပြန်လည်ပြင်ဆင်ရန်", fontSize = 11.sp)
             }
           }
         }
@@ -897,10 +925,10 @@ fun LabCompletedResultCard(
 }
 
 // -------------------------------------------------------------
-// Component: Lab Invoices Tab Content
+// Component: Mobile Lab Invoices Tab Content
 // -------------------------------------------------------------
 @Composable
-fun LabInvoicesTabContent(
+fun MobileLabInvoicesTabContent(
   invoices: List<LabInvoice>,
   clinicSettings: ClinicSettings,
   currencyFmt: NumberFormat
@@ -911,97 +939,91 @@ fun LabInvoicesTabContent(
   val totalTodayRevenue = remember(todayInvoices) { todayInvoices.sumOf { it.paidAmount } }
   val totalAllRevenue = remember(invoices) { invoices.sumOf { it.paidAmount } }
 
-  Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-    // KPI Cards
+  Column(modifier = Modifier.fillMaxSize().padding(10.dp)) {
+    // Compact KPI Row
     Row(
       modifier = Modifier.fillMaxWidth(),
-      horizontalArrangement = Arrangement.spacedBy(10.dp)
+      horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
       Surface(
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(6.dp),
         color = Color(0xFFF5F3FF),
         border = BorderStroke(1.dp, Color(0xFFDDD6FE)),
         modifier = Modifier.weight(1f)
       ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-          Text("ယနေ့ ဓာတ်ခွဲခန်း ရငွေ", fontSize = 11.sp, color = Color(0xFF6D28D9))
-          Spacer(modifier = Modifier.height(4.dp))
-          Text("${currencyFmt.format(totalTodayRevenue.toInt())} Ks", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4C1D95))
-          Text("${todayInvoices.size} Vouchers", fontSize = 10.sp, color = Color(0xFF7C3AED))
+        Column(modifier = Modifier.padding(8.dp)) {
+          Text("ယနေ့ ဓာတ်ခွဲရငွေ", fontSize = 10.sp, color = Color(0xFF6D28D9))
+          Text("${currencyFmt.format(totalTodayRevenue.toInt())} Ks", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4C1D95))
+          Text("${todayInvoices.size} Vouchers", fontSize = 9.sp, color = Color(0xFF7C3AED))
         }
       }
 
       Surface(
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(6.dp),
         color = Color(0xFFF0FDF4),
         border = BorderStroke(1.dp, Color(0xFFBBF7D0)),
         modifier = Modifier.weight(1f)
       ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-          Text("စုစုပေါင်း ဓာတ်ခွဲခန်း ရငွေ", fontSize = 11.sp, color = Color(0xFF15803D))
-          Spacer(modifier = Modifier.height(4.dp))
-          Text("${currencyFmt.format(totalAllRevenue.toInt())} Ks", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF14532D))
-          Text("${invoices.size} Invoices", fontSize = 10.sp, color = Color(0xFF16A34A))
+        Column(modifier = Modifier.padding(8.dp)) {
+          Text("စုစုပေါင်း ရငွေ", fontSize = 10.sp, color = Color(0xFF15803D))
+          Text("${currencyFmt.format(totalAllRevenue.toInt())} Ks", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF14532D))
+          Text("${invoices.size} Invoices", fontSize = 9.sp, color = Color(0xFF16A34A))
         }
       }
     }
 
-    Spacer(modifier = Modifier.height(14.dp))
+    Spacer(modifier = Modifier.height(10.dp))
 
     if (invoices.isEmpty()) {
-      EmptyStateView(
+      MobileEmptyState(
         icon = Icons.Default.Receipt,
         title = "ဓာတ်ခွဲခန်း သီးသန့် ဘောင်ချာ မရှိသေးပါ",
-        description = "Queue ရှိ စစ်ဆေးမှုများအား ငွေရှင်း၍ ဘောင်ချာထုတ်ယူသည့်အခါ ဤနေရာတွင် သီးသန့် စာရင်းပေါ်လာပါမည်။"
+        description = "Queue ရှိ စစ်ဆေးမှုများအား ငွေရှင်းသည့်အခါ ဤနေရာတွင် စာရင်းပေါ်လာပါမည်။"
       )
     } else {
       LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.fillMaxSize()
       ) {
         items(invoices, key = { it.id }) { inv ->
           Surface(
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(6.dp),
             color = PureWhite,
-            border = BorderStroke(1.dp, BorderGray),
+            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
             modifier = Modifier.fillMaxWidth()
           ) {
             Row(
-              modifier = Modifier.padding(12.dp).fillMaxWidth(),
+              modifier = Modifier.padding(10.dp).fillMaxWidth(),
               horizontalArrangement = Arrangement.SpaceBetween,
               verticalAlignment = Alignment.CenterVertically
             ) {
               Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                  Text(inv.invoiceNumber, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4C1D95))
-                  Spacer(modifier = Modifier.width(8.dp))
-                  Surface(shape = RoundedCornerShape(4.dp), color = Color(0xFFF3E8FF)) {
-                    Text(inv.paymentMethod.name, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF7E22CE), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                  Text(inv.invoiceNumber, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4C1D95))
+                  Spacer(modifier = Modifier.width(6.dp))
+                  Surface(shape = RoundedCornerShape(3.dp), color = Color(0xFFF3E8FF)) {
+                    Text(inv.paymentMethod.label, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF7E22CE), modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
                   }
                 }
-                Spacer(modifier = Modifier.height(2.dp))
-                Text("${inv.patientName} (${inv.patientHn}) • ${inv.timestamp}", fontSize = 11.sp, color = SlateDark)
-                Text("Cashier: ${inv.cashierName}", fontSize = 10.sp, color = SlateMuted)
+                Text("${inv.patientName} (${inv.patientHn})", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                Text(inv.timestamp, fontSize = 9.5.sp, color = SlateMuted)
               }
 
-              Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Column(horizontalAlignment = Alignment.End) {
-                  Text("${currencyFmt.format(inv.paidAmount.toInt())} Ks", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
-                  Text("Total: ${currencyFmt.format(inv.totalAmount.toInt())} Ks", fontSize = 10.sp, color = SlateMuted)
-                }
-
+              Column(horizontalAlignment = Alignment.End) {
+                Text("${currencyFmt.format(inv.paidAmount.toInt())} Ks", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                Spacer(modifier = Modifier.height(4.dp))
                 Button(
                   onClick = {
                     LabPrintHelper.printLabVoucherThermal(context, inv, clinicSettings)
                   },
                   colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
-                  shape = RoundedCornerShape(6.dp),
-                  contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                  modifier = Modifier.height(32.dp)
+                  shape = RoundedCornerShape(4.dp),
+                  contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                  modifier = Modifier.height(28.dp)
                 ) {
-                  Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(13.dp))
-                  Spacer(modifier = Modifier.width(4.dp))
-                  Text("Thermal Print", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                  Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(11.dp))
+                  Spacer(modifier = Modifier.width(3.dp))
+                  Text("Thermal", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
                 }
               }
             }
@@ -1013,11 +1035,11 @@ fun LabInvoicesTabContent(
 }
 
 // -------------------------------------------------------------
-// Component: Lab Templates Tab Content
+// Component: Mobile Lab Templates Tab Content
 // -------------------------------------------------------------
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun LabTemplatesTabContent(
+fun MobileLabTemplatesTabContent(
   templates: List<LabTestTemplate>,
   onAddNew: () -> Unit,
   onEdit: (LabTestTemplate) -> Unit,
@@ -1026,15 +1048,15 @@ fun LabTemplatesTabContent(
 ) {
   val currencyFmt = remember { NumberFormat.getNumberInstance(Locale.US) }
 
-  Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+  Column(modifier = Modifier.fillMaxSize().padding(10.dp)) {
     Row(
       modifier = Modifier.fillMaxWidth(),
       horizontalArrangement = Arrangement.SpaceBetween,
       verticalAlignment = Alignment.CenterVertically
     ) {
       Text(
-        "ဓာတ်ခွဲစစ်ဆေးမှု ပုံစံများနှင့် စျေးနှုန်းများ (${templates.size} မျိုး)",
-        fontSize = 14.sp,
+        "စစ်ဆေးမှုပုံစံများ (${templates.size} မျိုး)",
+        fontSize = 13.sp,
         fontWeight = FontWeight.Bold,
         color = SlateDark
       )
@@ -1042,81 +1064,53 @@ fun LabTemplatesTabContent(
       Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         OutlinedButton(
           onClick = onResetPresets,
-          shape = RoundedCornerShape(6.dp),
-          contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-          modifier = Modifier.height(32.dp)
+          shape = RoundedCornerShape(4.dp),
+          contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+          modifier = Modifier.height(28.dp)
         ) {
-          Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(13.dp))
-          Spacer(modifier = Modifier.width(4.dp))
-          Text("Reset Presets", fontSize = 10.5.sp)
+          Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(11.dp))
+          Spacer(modifier = Modifier.width(2.dp))
+          Text("Reset", fontSize = 9.5.sp)
         }
 
         Button(
           onClick = onAddNew,
           colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
-          shape = RoundedCornerShape(6.dp),
-          contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-          modifier = Modifier.height(32.dp)
+          shape = RoundedCornerShape(4.dp),
+          contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+          modifier = Modifier.height(28.dp)
         ) {
-          Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
-          Spacer(modifier = Modifier.width(4.dp))
-          Text("စစ်ဆေးမှုပုံစံ အသစ်ထည့်", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+          Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(12.dp))
+          Spacer(modifier = Modifier.width(3.dp))
+          Text("အသစ်ထည့်", fontSize = 10.sp, fontWeight = FontWeight.Bold)
         }
       }
     }
 
-    Spacer(modifier = Modifier.height(12.dp))
+    Spacer(modifier = Modifier.height(8.dp))
 
     LazyColumn(
-      verticalArrangement = Arrangement.spacedBy(10.dp),
+      verticalArrangement = Arrangement.spacedBy(8.dp),
       modifier = Modifier.fillMaxSize()
     ) {
       items(templates, key = { it.id }) { template ->
         Surface(
-          shape = RoundedCornerShape(8.dp),
+          shape = RoundedCornerShape(6.dp),
           color = PureWhite,
-          border = BorderStroke(1.dp, BorderGray),
+          border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
           modifier = Modifier.fillMaxWidth()
         ) {
-          Column(modifier = Modifier.padding(12.dp)) {
+          Column(modifier = Modifier.padding(10.dp)) {
             Row(
               modifier = Modifier.fillMaxWidth(),
               horizontalArrangement = Arrangement.SpaceBetween,
               verticalAlignment = Alignment.CenterVertically
             ) {
-              Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                  Text(
-                    template.name,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0F172A)
-                  )
-                  Spacer(modifier = Modifier.width(8.dp))
-                  Surface(shape = RoundedCornerShape(4.dp), color = Color(0xFFF1F5F9)) {
-                    Text(
-                      template.category,
-                      fontSize = 10.sp,
-                      color = SlateMuted,
-                      modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
-                  }
-                  if (template.isAnalyzerSlipOnly) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Surface(shape = RoundedCornerShape(4.dp), color = Color(0xFFEFF6FF)) {
-                      Text(
-                        "စက်အဖြေ Slip သီးသန့်",
-                        fontSize = 9.5.sp,
-                        color = Color(0xFF1D4ED8),
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                      )
-                    }
-                  }
-                }
-                Spacer(modifier = Modifier.height(2.dp))
+              Column(modifier = Modifier.weight(1f)) {
+                Text(template.name, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
                 Text(
-                  "Specimen: ${template.specimenType} • Parameters: ${template.parameters.size} ခု",
-                  fontSize = 11.sp,
+                  "${template.category} • ${template.specimenType} • ${template.parameters.size} Params",
+                  fontSize = 9.5.sp,
                   color = SlateMuted
                 )
               }
@@ -1124,38 +1118,16 @@ fun LabTemplatesTabContent(
               Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                   "${currencyFmt.format(template.defaultPrice.toInt())} Ks",
-                  fontSize = 14.sp,
+                  fontSize = 12.sp,
                   fontWeight = FontWeight.Bold,
                   color = Color(0xFF16A34A)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                IconButton(onClick = { onEdit(template) }, modifier = Modifier.size(32.dp)) {
-                  Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(16.dp), tint = Color(0xFF0284C7))
+                Spacer(modifier = Modifier.width(4.dp))
+                IconButton(onClick = { onEdit(template) }, modifier = Modifier.size(28.dp)) {
+                  Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(14.dp), tint = Color(0xFF0284C7))
                 }
-                IconButton(onClick = { onDelete(template) }, modifier = Modifier.size(32.dp)) {
-                  Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp), tint = Color(0xFFDC2626))
-                }
-              }
-            }
-
-            if (template.parameters.isNotEmpty()) {
-              Spacer(modifier = Modifier.height(6.dp))
-              FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-              ) {
-                template.parameters.take(8).forEach { param ->
-                  Surface(shape = RoundedCornerShape(4.dp), color = Color(0xFFF8FAFC), border = BorderStroke(0.6.dp, Color(0xFFE2E8F0))) {
-                    Text(
-                      "${param.name} (${param.referenceRange})",
-                      fontSize = 9.5.sp,
-                      color = SlateDark,
-                      modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                    )
-                  }
-                }
-                if (template.parameters.size > 8) {
-                  Text("+${template.parameters.size - 8} more", fontSize = 10.sp, color = SlateMuted, modifier = Modifier.align(Alignment.CenterVertically))
+                IconButton(onClick = { onDelete(template) }, modifier = Modifier.size(28.dp)) {
+                  Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(14.dp), tint = Color(0xFFDC2626))
                 }
               }
             }
@@ -1167,10 +1139,10 @@ fun LabTemplatesTabContent(
 }
 
 // -------------------------------------------------------------
-// Component: Empty State View
+// Component: Mobile Empty State
 // -------------------------------------------------------------
 @Composable
-fun EmptyStateView(
+fun MobileEmptyState(
   icon: androidx.compose.ui.graphics.vector.ImageVector,
   title: String,
   description: String
@@ -1178,39 +1150,41 @@ fun EmptyStateView(
   Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
     Column(
       horizontalAlignment = Alignment.CenterHorizontally,
-      modifier = Modifier.padding(32.dp)
+      modifier = Modifier.padding(24.dp)
     ) {
-      Surface(shape = CircleShape, color = Color(0xFFE2E8F0), modifier = Modifier.size(64.dp)) {
+      Surface(shape = CircleShape, color = Color(0xFFE2E8F0), modifier = Modifier.size(48.dp)) {
         Box(contentAlignment = Alignment.Center) {
-          Icon(icon, contentDescription = null, tint = Color(0xFF64748B), modifier = Modifier.size(32.dp))
+          Icon(icon, contentDescription = null, tint = Color(0xFF64748B), modifier = Modifier.size(24.dp))
         }
       }
-      Spacer(modifier = Modifier.height(14.dp))
-      Text(title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = SlateDark, textAlign = TextAlign.Center)
-      Spacer(modifier = Modifier.height(6.dp))
-      Text(description, fontSize = 12.sp, color = SlateMuted, textAlign = TextAlign.Center, lineHeight = 18.sp)
+      Spacer(modifier = Modifier.height(10.dp))
+      Text(title, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = SlateDark, textAlign = TextAlign.Center)
+      Spacer(modifier = Modifier.height(4.dp))
+      Text(description, fontSize = 11.sp, color = SlateMuted, textAlign = TextAlign.Center, lineHeight = 16.sp)
     }
   }
 }
 
 // -------------------------------------------------------------
-// Dialog: New Lab Order
+// Dialog: Mobile New Lab Order Dialog (Walk-in vs Clinic Patient)
 // -------------------------------------------------------------
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun NewLabOrderDialog(
+fun MobileNewLabOrderDialog(
   patients: List<Patient>,
   templates: List<LabTestTemplate>,
   attendingDoctor: String,
   onDismiss: () -> Unit,
   onSubmit: (LabOrder) -> Unit
 ) {
+  var isWalkIn by remember { mutableStateOf(false) }
   var patientSearch by remember { mutableStateOf("") }
   var selectedPatient by remember { mutableStateOf<Patient?>(null) }
+
   var walkInName by remember { mutableStateOf("") }
   var walkInAge by remember { mutableStateOf("30") }
   var walkInGender by remember { mutableStateOf(Gender.MALE) }
-  var isWalkIn by remember { mutableStateOf(false) }
+  var walkInPhone by remember { mutableStateOf("") }
 
   var doctorName by remember { mutableStateOf(attendingDoctor) }
   var clinicalNotes by remember { mutableStateOf("") }
@@ -1218,8 +1192,8 @@ fun NewLabOrderDialog(
   val currencyFmt = remember { NumberFormat.getNumberInstance(Locale.US) }
 
   val filteredPatients = remember(patientSearch, patients) {
-    if (patientSearch.isBlank()) patients.take(10)
-    else patients.filter { it.name.contains(patientSearch, ignoreCase = true) || it.hn.contains(patientSearch, ignoreCase = true) }.take(8)
+    if (patientSearch.isBlank()) patients.take(6)
+    else patients.filter { it.name.contains(patientSearch, ignoreCase = true) || it.hn.contains(patientSearch, ignoreCase = true) }.take(6)
   }
 
   val selectedTemplates = remember(selectedTemplateIds.toList(), templates) {
@@ -1227,38 +1201,53 @@ fun NewLabOrderDialog(
   }
   val totalAmount = remember(selectedTemplates) { selectedTemplates.sumOf { it.defaultPrice } }
 
-  Dialog(onDismissRequest = onDismiss) {
+  Dialog(
+    onDismissRequest = onDismiss,
+    properties = DialogProperties(usePlatformDefaultWidth = false)
+  ) {
     Surface(
       shape = RoundedCornerShape(12.dp),
       color = PureWhite,
-      modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f)
+      modifier = Modifier.fillMaxWidth(0.95f).fillMaxHeight(0.92f)
     ) {
-      Column(modifier = Modifier.padding(18.dp)) {
-        Text("စစ်ဆေးမှုအသစ် မှာယူခြင်း (New Lab Order)", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = SlateDark)
-        Spacer(modifier = Modifier.height(12.dp))
+      Column(modifier = Modifier.padding(14.dp)) {
+        // Dialog Title
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Text("သွေးစစ်မှု အသစ်မှာယူခြင်း (New Lab Order)", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+          IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
+            Icon(Icons.Default.Close, contentDescription = "Close", modifier = Modifier.size(18.dp))
+          }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Mobile Segmented Toggle: [ဆေးခန်းလူနာ] vs [ပြင်ပသွေးစစ် (Walk-in)]
+        Row(
+          modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(6.dp)).background(Color(0xFFF1F5F9)).padding(3.dp)
+        ) {
+          Box(
+            modifier = Modifier.weight(1f).clip(RoundedCornerShape(4.dp)).background(if (!isWalkIn) PureWhite else Color.Transparent).clickable { isWalkIn = false }.padding(vertical = 6.dp),
+            contentAlignment = Alignment.Center
+          ) {
+            Text("ဆေးခန်းလူနာ", fontSize = 11.sp, fontWeight = if (!isWalkIn) FontWeight.Bold else FontWeight.Normal, color = if (!isWalkIn) Color(0xFF0284C7) else SlateMuted)
+          }
+          Box(
+            modifier = Modifier.weight(1f).clip(RoundedCornerShape(4.dp)).background(if (isWalkIn) PureWhite else Color.Transparent).clickable { isWalkIn = true }.padding(vertical = 6.dp),
+            contentAlignment = Alignment.Center
+          ) {
+            Text("ပြင်ပလူနာ (Walk-in သီးသန့်)", fontSize = 11.sp, fontWeight = if (isWalkIn) FontWeight.Bold else FontWeight.Normal, color = if (isWalkIn) Color(0xFF0284C7) else SlateMuted)
+          }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
 
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-          // Patient Selection
-          Text("လူနာ ရွေးချယ်ရန် / အသစ်ထည့်ရန်", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0284C7))
-          Spacer(modifier = Modifier.height(6.dp))
-
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            FilterChip(
-              selected = !isWalkIn,
-              onClick = { isWalkIn = false },
-              label = { Text("လက်ရှိဆေးခန်းလူနာစာရင်းမှ ရွေးရန်", fontSize = 11.sp) }
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            FilterChip(
-              selected = isWalkIn,
-              onClick = { isWalkIn = true },
-              label = { Text("ပြင်ပလူနာ (Walk-in)", fontSize = 11.sp) }
-            )
-          }
-
-          Spacer(modifier = Modifier.height(8.dp))
-
           if (!isWalkIn) {
+            // Existing Clinic Patient Search
             if (selectedPatient != null) {
               Surface(
                 shape = RoundedCornerShape(6.dp),
@@ -1267,16 +1256,19 @@ fun NewLabOrderDialog(
                 modifier = Modifier.fillMaxWidth()
               ) {
                 Row(
-                  modifier = Modifier.padding(10.dp).fillMaxWidth(),
+                  modifier = Modifier.padding(8.dp).fillMaxWidth(),
                   horizontalArrangement = Arrangement.SpaceBetween,
                   verticalAlignment = Alignment.CenterVertically
                 ) {
                   Column {
-                    Text(selectedPatient!!.name, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0369A1))
-                    Text("HN: ${selectedPatient!!.hn} • Age: ${selectedPatient!!.age} • ${selectedPatient!!.gender.name}", fontSize = 11.sp, color = Color(0xFF0284C7))
+                    Text(selectedPatient!!.name, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0369A1))
+                    Text("HN: ${selectedPatient!!.hn} • Age: ${selectedPatient!!.age} • ${selectedPatient!!.gender.name}", fontSize = 10.sp, color = Color(0xFF0284C7))
                   }
-                  TextButton(onClick = { selectedPatient = null }) {
-                    Text("ပြောင်းရန်", fontSize = 11.sp, color = Color(0xFFDC2626))
+                  TextButton(
+                    onClick = { selectedPatient = null },
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                  ) {
+                    Text("ပြောင်းရန်", fontSize = 10.5.sp, color = Color(0xFFDC2626))
                   }
                 }
               }
@@ -1286,8 +1278,9 @@ fun NewLabOrderDialog(
                 onValueChange = { patientSearch = it },
                 placeholder = { Text("လူနာအမည် သို့မဟုတ် HN ရိုက်ထည့်ရှာဖွေပါ...", fontSize = 11.sp) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth().height(46.dp),
-                shape = RoundedCornerShape(6.dp)
+                modifier = Modifier.fillMaxWidth().height(42.dp),
+                shape = RoundedCornerShape(6.dp),
+                textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
               )
               Spacer(modifier = Modifier.height(6.dp))
               Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1299,64 +1292,68 @@ fun NewLabOrderDialog(
                     modifier = Modifier.fillMaxWidth().clickable { selectedPatient = pat }
                   ) {
                     Row(
-                      modifier = Modifier.padding(8.dp).fillMaxWidth(),
+                      modifier = Modifier.padding(6.dp).fillMaxWidth(),
                       horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                      Text("${pat.name} (${pat.hn})", fontSize = 11.5.sp, fontWeight = FontWeight.Medium)
-                      Text("Age ${pat.age} • ${pat.gender.name}", fontSize = 10.5.sp, color = SlateMuted)
+                      Text("${pat.name} (${pat.hn})", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                      Text("Age ${pat.age} • ${pat.gender.name}", fontSize = 10.sp, color = SlateMuted)
                     }
                   }
                 }
               }
             }
           } else {
-            // Walk-in form
+            // Walk-in Direct Patient Form
             OutlinedTextField(
               value = walkInName,
               onValueChange = { walkInName = it },
-              label = { Text("လူနာအမည် *") },
+              label = { Text("လူနာအမည် *", fontSize = 10.5.sp) },
               singleLine = true,
-              modifier = Modifier.fillMaxWidth().height(52.dp),
-              shape = RoundedCornerShape(6.dp)
+              modifier = Modifier.fillMaxWidth().height(48.dp),
+              shape = RoundedCornerShape(6.dp),
+              textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
             )
             Spacer(modifier = Modifier.height(6.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
               OutlinedTextField(
                 value = walkInAge,
                 onValueChange = { walkInAge = it },
-                label = { Text("အသက်") },
+                label = { Text("အသက်", fontSize = 10.5.sp) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
-                modifier = Modifier.weight(1f).height(52.dp),
-                shape = RoundedCornerShape(6.dp)
+                modifier = Modifier.weight(1f).height(48.dp),
+                shape = RoundedCornerShape(6.dp),
+                textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
               )
               Row(modifier = Modifier.weight(1.5f), verticalAlignment = Alignment.CenterVertically) {
                 FilterChip(
                   selected = walkInGender == Gender.MALE,
                   onClick = { walkInGender = Gender.MALE },
-                  label = { Text("ကျား", fontSize = 11.sp) }
+                  label = { Text("ကျား", fontSize = 10.sp) },
+                  modifier = Modifier.height(28.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 FilterChip(
                   selected = walkInGender == Gender.FEMALE,
                   onClick = { walkInGender = Gender.FEMALE },
-                  label = { Text("မ", fontSize = 11.sp) }
+                  label = { Text("မ", fontSize = 10.sp) },
+                  modifier = Modifier.height(28.dp)
                 )
               }
             }
           }
 
-          Spacer(modifier = Modifier.height(14.dp))
-          HorizontalDivider(color = BorderGray)
           Spacer(modifier = Modifier.height(10.dp))
+          HorizontalDivider(color = Color(0xFFF1F5F9))
+          Spacer(modifier = Modifier.height(8.dp))
 
           // Test Selection
-          Text("စစ်ဆေးမည့် စမ်းသပ်ချက်များ ရွေးချယ်ရန် (${selectedTemplateIds.size} ခု ရွေးချယ်ထား)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0284C7))
+          Text("စစ်ဆေးမည့် Tests ရွေးရန် (${selectedTemplateIds.size} ခု ရွေးထား)", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0284C7))
           Spacer(modifier = Modifier.height(6.dp))
 
           FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
           ) {
             templates.forEach { tmpl ->
               val isSelected = selectedTemplateIds.contains(tmpl.id)
@@ -1369,59 +1366,66 @@ fun NewLabOrderDialog(
                 label = {
                   Text(
                     "${tmpl.name} (${currencyFmt.format(tmpl.defaultPrice.toInt())} Ks)",
-                    fontSize = 11.sp,
+                    fontSize = 10.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                   )
                 },
                 colors = FilterChipDefaults.filterChipColors(
                   selectedContainerColor = Color(0xFF0284C7),
                   selectedLabelColor = PureWhite
-                )
+                ),
+                modifier = Modifier.height(28.dp)
               )
             }
           }
 
-          Spacer(modifier = Modifier.height(14.dp))
-          HorizontalDivider(color = BorderGray)
           Spacer(modifier = Modifier.height(10.dp))
+          HorizontalDivider(color = Color(0xFFF1F5F9))
+          Spacer(modifier = Modifier.height(8.dp))
 
-          // Referring Doctor & Notes
           OutlinedTextField(
             value = doctorName,
             onValueChange = { doctorName = it },
-            label = { Text("ညွှန်ကြားသည့် ဆရာဝန် (Referring Doctor)") },
+            label = { Text("ညွှန်ကြားသူ (Doctor / Self)", fontSize = 10.5.sp) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(6.dp)
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            shape = RoundedCornerShape(6.dp),
+            textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
           )
-          Spacer(modifier = Modifier.height(8.dp))
+          Spacer(modifier = Modifier.height(6.dp))
           OutlinedTextField(
             value = clinicalNotes,
             onValueChange = { clinicalNotes = it },
-            label = { Text("ရောဂါအခြေအနေ / Clinical Notes (Optional)") },
-            modifier = Modifier.fillMaxWidth().height(65.dp),
-            shape = RoundedCornerShape(6.dp)
+            label = { Text("ရောဂါမှတ်ချက် / Clinical Notes (Optional)", fontSize = 10.5.sp) },
+            modifier = Modifier.fillMaxWidth().height(55.dp),
+            shape = RoundedCornerShape(6.dp),
+            textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
           )
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
-        HorizontalDivider(color = BorderGray)
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+        HorizontalDivider(color = Color(0xFFF1F5F9))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // Total & Submit Row
+        // Mobile Bottom Row: Total & Submit Button
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.SpaceBetween,
           verticalAlignment = Alignment.CenterVertically
         ) {
           Column {
-            Text("စုစုပေါင်း စစ်ဆေးခ:", fontSize = 11.sp, color = SlateMuted)
-            Text("${currencyFmt.format(totalAmount.toInt())} Ks", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+            Text("ကျသင့်ငွေ:", fontSize = 10.sp, color = SlateMuted)
+            Text("${currencyFmt.format(totalAmount.toInt())} Ks", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
           }
 
-          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(6.dp)) {
-              Text("ပယ်ဖျက်")
+          Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            OutlinedButton(
+              onClick = onDismiss,
+              shape = RoundedCornerShape(6.dp),
+              modifier = Modifier.height(34.dp),
+              contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+            ) {
+              Text("ပယ်ဖျက်", fontSize = 11.sp)
             }
 
             val canSubmit = (selectedPatient != null || (isWalkIn && walkInName.isNotBlank())) && selectedTemplateIds.isNotEmpty()
@@ -1467,7 +1471,7 @@ fun NewLabOrderDialog(
                   patientHn = pHn,
                   patientAge = pAge,
                   patientGender = pGender,
-                  doctorName = doctorName,
+                  doctorName = doctorName.ifBlank { if (isWalkIn) "Self-request" else "Clinic Doctor" },
                   orderDate = now,
                   orderTime = nowTime,
                   status = LabOrderStatus.ORDERED,
@@ -1484,9 +1488,11 @@ fun NewLabOrderDialog(
               },
               enabled = canSubmit,
               colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
-              shape = RoundedCornerShape(6.dp)
+              shape = RoundedCornerShape(6.dp),
+              modifier = Modifier.height(34.dp),
+              contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)
             ) {
-              Text("Order အတည်ပြုမည်", fontWeight = FontWeight.Bold)
+              Text("Order တင်မည်", fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
           }
         }
@@ -1496,10 +1502,10 @@ fun NewLabOrderDialog(
 }
 
 // -------------------------------------------------------------
-// Dialog: Lab Result Entry
+// Dialog: Mobile Lab Result Entry Form (Card-based parameter inputs)
 // -------------------------------------------------------------
 @Composable
-fun LabResultEntryDialog(
+fun MobileLabResultEntryDialog(
   order: LabOrder,
   technicianName: String,
   onDismiss: () -> Unit,
@@ -1515,40 +1521,46 @@ fun LabResultEntryDialog(
     }.toMutableStateList()
   }
 
-  Dialog(onDismissRequest = onDismiss) {
+  Dialog(
+    onDismissRequest = onDismiss,
+    properties = DialogProperties(usePlatformDefaultWidth = false)
+  ) {
     Surface(
       shape = RoundedCornerShape(12.dp),
       color = PureWhite,
-      modifier = Modifier.fillMaxWidth().fillMaxHeight(0.92f)
+      modifier = Modifier.fillMaxWidth(0.96f).fillMaxHeight(0.94f)
     ) {
-      Column(modifier = Modifier.padding(18.dp)) {
+      Column(modifier = Modifier.padding(14.dp)) {
+        // Sticky Header
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.SpaceBetween,
           verticalAlignment = Alignment.CenterVertically
         ) {
-          Column {
-            Text("ဓာတ်ခွဲအဖြေ ထည့်သွင်းခြင်း", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = SlateDark)
-            Text("${order.patientName} (${order.patientHn}) • Order: ${order.orderNumber}", fontSize = 11.5.sp, color = SlateMuted)
+          Column(modifier = Modifier.weight(1f)) {
+            Text("ဓာတ်ခွဲအဖြေ ထည့်သွင်းခြင်း", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+            Text("${order.patientName} (${order.patientHn}) • ${order.orderNumber}", fontSize = 10.5.sp, color = SlateMuted)
           }
-          IconButton(onClick = onDismiss) {
-            Icon(Icons.Default.Close, contentDescription = "Close")
+          IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
+            Icon(Icons.Default.Close, contentDescription = "Close", modifier = Modifier.size(18.dp))
           }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
-        HorizontalDivider(color = BorderGray)
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+        HorizontalDivider(color = Color(0xFFF1F5F9))
+        Spacer(modifier = Modifier.height(8.dp))
 
+        // Scrollable List of Tests & Parameter Cards (Mobile Friendly Form)
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
           itemsState.forEachIndexed { itemIdx, item ->
             Surface(
               shape = RoundedCornerShape(8.dp),
               color = Color(0xFFF8FAFC),
-              border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
-              modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+              border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+              modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)
             ) {
-              Column(modifier = Modifier.padding(12.dp)) {
+              Column(modifier = Modifier.padding(10.dp)) {
+                // Test Header Row
                 Row(
                   modifier = Modifier.fillMaxWidth(),
                   horizontalArrangement = Arrangement.SpaceBetween,
@@ -1556,7 +1568,7 @@ fun LabResultEntryDialog(
                 ) {
                   Text(
                     "🔬 ${item.testName} (${item.specimenType})",
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF0F172A)
                   )
@@ -1565,81 +1577,86 @@ fun LabResultEntryDialog(
                       checked = item.isCompleted,
                       onCheckedChange = { checked ->
                         itemsState[itemIdx] = item.copy(isCompleted = checked)
-                      }
+                      },
+                      modifier = Modifier.size(24.dp)
                     )
-                    Text("စစ်ဆေးပြီးစီး", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("ပြီးစီး", fontSize = 10.5.sp, fontWeight = FontWeight.Medium)
                   }
                 }
 
                 if (item.parameters.isNotEmpty()) {
-                  Spacer(modifier = Modifier.height(8.dp))
+                  Spacer(modifier = Modifier.height(6.dp))
+
+                  // Each Parameter is an individual mobile input card
                   item.parameters.forEachIndexed { pIdx, p ->
-                    Row(
-                      modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                      horizontalArrangement = Arrangement.spacedBy(8.dp),
-                      verticalAlignment = Alignment.CenterVertically
+                    Surface(
+                      shape = RoundedCornerShape(6.dp),
+                      color = PureWhite,
+                      border = BorderStroke(0.8.dp, Color(0xFFCBD5E1)),
+                      modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
                     ) {
-                      Column(modifier = Modifier.weight(2f)) {
-                        Text(p.name, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
-                        Text("Ref: ${p.referenceRange.ifBlank { "-" }} ${p.unit}", fontSize = 9.5.sp, color = SlateMuted)
-                      }
-
-                      OutlinedTextField(
-                        value = p.result,
-                        onValueChange = { newVal ->
-                          val updatedParams = item.parameters.toMutableList()
-                          updatedParams[pIdx] = p.copy(result = newVal)
-                          itemsState[itemIdx] = item.copy(parameters = updatedParams)
-                        },
-                        placeholder = { Text("Result", fontSize = 10.sp) },
-                        singleLine = true,
-                        modifier = Modifier.weight(2f).height(44.dp),
-                        shape = RoundedCornerShape(6.dp)
-                      )
-
-                      // Flag Selector (Normal / High / Low)
-                      var flagExpanded by remember { mutableStateOf(false) }
-                      Box(modifier = Modifier.weight(1.3f)) {
-                        Surface(
-                          shape = RoundedCornerShape(6.dp),
-                          color = when (p.flag.uppercase()) {
-                            "HIGH" -> Color(0xFFFEE2E2)
-                            "LOW" -> Color(0xFFFEF3C7)
-                            "NORMAL" -> Color(0xFFDCFCE7)
-                            else -> Color(0xFFF1F5F9)
-                          },
-                          border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
-                          modifier = Modifier.fillMaxWidth().height(44.dp).clickable { flagExpanded = true }
+                      Column(modifier = Modifier.padding(8.dp)) {
+                        Row(
+                          modifier = Modifier.fillMaxWidth(),
+                          horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                          Box(contentAlignment = Alignment.Center) {
-                            Text(
-                              p.flag.ifBlank { "Flag ▼" },
-                              fontSize = 11.sp,
-                              fontWeight = FontWeight.Bold,
-                              color = when (p.flag.uppercase()) {
-                                "HIGH" -> Color(0xFFDC2626)
-                                "LOW" -> Color(0xFFD97706)
-                                "NORMAL" -> Color(0xFF16A34A)
-                                else -> SlateDark
-                              }
-                            )
-                          }
+                          Text(p.name, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
+                          Text("Ref: ${p.referenceRange} ${p.unit}", fontSize = 9.5.sp, color = SlateMuted)
                         }
 
-                        DropdownMenu(
-                          expanded = flagExpanded,
-                          onDismissRequest = { flagExpanded = false }
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // Result Input Field
+                        Row(
+                          modifier = Modifier.fillMaxWidth(),
+                          horizontalArrangement = Arrangement.spacedBy(6.dp),
+                          verticalAlignment = Alignment.CenterVertically
                         ) {
-                          listOf("NORMAL", "HIGH", "LOW", "-").forEach { opt ->
-                            DropdownMenuItem(
-                              text = { Text(opt, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
-                              onClick = {
-                                val updatedParams = item.parameters.toMutableList()
-                                updatedParams[pIdx] = p.copy(flag = if (opt == "-") "" else opt)
-                                itemsState[itemIdx] = item.copy(parameters = updatedParams)
-                                flagExpanded = false
+                          OutlinedTextField(
+                            value = p.result,
+                            onValueChange = { newVal ->
+                              val updatedParams = item.parameters.toMutableList()
+                              updatedParams[pIdx] = p.copy(result = newVal)
+                              itemsState[itemIdx] = item.copy(parameters = updatedParams)
+                            },
+                            placeholder = { Text("အဖြေ Result (${p.unit})", fontSize = 10.5.sp) },
+                            singleLine = true,
+                            modifier = Modifier.weight(1.8f).height(42.dp),
+                            shape = RoundedCornerShape(4.dp),
+                            textStyle = LocalTextStyle.current.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                          )
+
+                          // Quick Thumb Chips: Normal / High / Low
+                          Row(modifier = Modifier.weight(1.8f), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                            listOf("NORMAL", "HIGH", "LOW").forEach { flagOpt ->
+                              val isFlagSelected = p.flag.equals(flagOpt, ignoreCase = true)
+                              Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = if (isFlagSelected) {
+                                  when (flagOpt) {
+                                    "HIGH" -> Color(0xFFDC2626)
+                                    "LOW" -> Color(0xFFD97706)
+                                    else -> Color(0xFF16A34A)
+                                  }
+                                } else Color(0xFFF1F5F9),
+                                border = BorderStroke(0.6.dp, Color(0xFFCBD5E1)),
+                                modifier = Modifier.weight(1f).height(42.dp).clickable {
+                                  val updatedParams = item.parameters.toMutableList()
+                                  updatedParams[pIdx] = p.copy(flag = if (isFlagSelected) "" else flagOpt)
+                                  itemsState[itemIdx] = item.copy(parameters = updatedParams)
+                                }
+                              ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                  Text(
+                                    flagOpt.take(3),
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isFlagSelected) PureWhite else SlateDark
+                                  )
+                                }
                               }
-                            )
+                            }
                           }
                         }
                       }
@@ -1647,65 +1664,74 @@ fun LabResultEntryDialog(
                   }
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 OutlinedTextField(
                   value = item.remarks,
                   onValueChange = { newRem ->
                     itemsState[itemIdx] = item.copy(remarks = newRem)
                   },
-                  placeholder = { Text("အဖြေအပေါ် မှတ်ချက် (e.g. Lipemic, Hemolyzed, Repeat checked)...", fontSize = 10.sp) },
+                  placeholder = { Text("စစ်ဆေးမှု မှတ်ချက် (e.g. Lipemic, Hemolyzed)...", fontSize = 10.sp) },
                   singleLine = true,
-                  modifier = Modifier.fillMaxWidth().height(44.dp),
-                  shape = RoundedCornerShape(6.dp)
+                  modifier = Modifier.fillMaxWidth().height(40.dp),
+                  shape = RoundedCornerShape(4.dp),
+                  textStyle = LocalTextStyle.current.copy(fontSize = 10.5.sp)
                 )
               }
             }
           }
 
-          Spacer(modifier = Modifier.height(6.dp))
           OutlinedTextField(
             value = techName,
             onValueChange = { techName = it },
-            label = { Text("စစ်ဆေးသူ ဓာတ်ခွဲကျွမ်းကျင်ပညာရှင် (Lab Technologist)") },
+            label = { Text("စစ်ဆေးသူ ဓာတ်ခွဲပညာရှင် (Technologist)", fontSize = 10.5.sp) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(6.dp)
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            shape = RoundedCornerShape(6.dp),
+            textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
           )
-          Spacer(modifier = Modifier.height(8.dp))
+          Spacer(modifier = Modifier.height(6.dp))
           OutlinedTextField(
             value = generalNotes,
             onValueChange = { generalNotes = it },
-            label = { Text("အထွေထွေ မှတ်ချက် (General Notes)") },
-            modifier = Modifier.fillMaxWidth().height(65.dp),
-            shape = RoundedCornerShape(6.dp)
+            label = { Text("အထွေထွေ မှတ်ချက် (General Notes)", fontSize = 10.5.sp) },
+            modifier = Modifier.fillMaxWidth().height(55.dp),
+            shape = RoundedCornerShape(6.dp),
+            textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
           )
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
-        HorizontalDivider(color = BorderGray)
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+        HorizontalDivider(color = Color(0xFFF1F5F9))
+        Spacer(modifier = Modifier.height(8.dp))
 
+        // Sticky Bottom Save Actions
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.End,
           verticalAlignment = Alignment.CenterVertically
         ) {
-          OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(6.dp)) {
-            Text("မသိမ်းပါ")
+          OutlinedButton(
+            onClick = onDismiss,
+            shape = RoundedCornerShape(6.dp),
+            modifier = Modifier.height(34.dp),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+          ) {
+            Text("မသိမ်းပါ", fontSize = 11.sp)
           }
-          Spacer(modifier = Modifier.width(8.dp))
+          Spacer(modifier = Modifier.width(6.dp))
           Button(
             onClick = {
-              // Mark items as completed if results are filled
               val finalizedItems = itemsState.map { it.copy(isCompleted = true) }
               onSave(finalizedItems, techName, generalNotes)
             },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
-            shape = RoundedCornerShape(6.dp)
+            shape = RoundedCornerShape(6.dp),
+            modifier = Modifier.height(34.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)
           ) {
-            Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
-            Spacer(modifier = Modifier.width(6.dp))
-            Text("အဖြေများ အတည်ပြုသိမ်းဆည်းမည်", fontWeight = FontWeight.Bold)
+            Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(13.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("အဖြေ အတည်ပြုသိမ်းမည်", fontSize = 11.sp, fontWeight = FontWeight.Bold)
           }
         }
       }
@@ -1714,10 +1740,10 @@ fun LabResultEntryDialog(
 }
 
 // -------------------------------------------------------------
-// Dialog: Create Lab Invoice (Separate accounting)
+// Dialog: Mobile Create Lab Invoice Dialog
 // -------------------------------------------------------------
 @Composable
-fun CreateLabInvoiceDialog(
+fun MobileCreateLabInvoiceDialog(
   order: LabOrder,
   cashierName: String,
   onDismiss: () -> Unit,
@@ -1735,117 +1761,112 @@ fun CreateLabInvoiceDialog(
   val changeAmount = (paidAmount - netTotal).coerceAtLeast(0.0)
   val currencyFmt = remember { NumberFormat.getNumberInstance(Locale.US) }
 
-  Dialog(onDismissRequest = onDismiss) {
+  Dialog(
+    onDismissRequest = onDismiss,
+    properties = DialogProperties(usePlatformDefaultWidth = false)
+  ) {
     Surface(
       shape = RoundedCornerShape(12.dp),
       color = PureWhite,
-      modifier = Modifier.fillMaxWidth()
+      modifier = Modifier.fillMaxWidth(0.92f)
     ) {
-      Column(modifier = Modifier.padding(18.dp)) {
-        Text("ဓာတ်ခွဲခန်း သီးသန့် ဘောင်ချာဖွင့်ခြင်း (Lab Invoice)", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = SlateDark)
-        Text("ဆေးခန်း Inventory နှင့် ရောထွေးမှုမရှိဘဲ သီးသန့် စာရင်းသွင်းပါမည်", fontSize = 11.sp, color = Color(0xFF7C3AED))
+      Column(modifier = Modifier.padding(14.dp)) {
+        Text("ဓာတ်ခွဲခန်း သီးသန့် ဘောင်ချာ (Lab Invoice)", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+        Text("ဆေးခန်း OPD ငွေစာရင်းနှင့် မရောဘဲ သီးသန့်သွင်းပါမည်", fontSize = 10.sp, color = Color(0xFF7C3AED))
 
-        Spacer(modifier = Modifier.height(12.dp))
-        HorizontalDivider(color = BorderGray)
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+        HorizontalDivider(color = Color(0xFFF1F5F9))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // Order Summary
-        Text("လူနာ: ${order.patientName} (${order.patientHn})", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        Text("စစ်ဆေးချက်: " + order.items.joinToString(", ") { it.testName }, fontSize = 11.sp, color = SlateMuted)
-        Spacer(modifier = Modifier.height(10.dp))
+        Text("${order.patientName} (${order.patientHn})", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Text("Tests: " + order.items.joinToString(", ") { it.testName }, fontSize = 10.sp, color = SlateMuted)
+        Spacer(modifier = Modifier.height(8.dp))
 
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-          Text("Subtotal:", fontSize = 12.sp)
-          Text("${currencyFmt.format(subtotal.toInt())} Ks", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+          Text("Subtotal:", fontSize = 11.sp)
+          Text("${currencyFmt.format(subtotal.toInt())} Ks", fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
-        // Discount
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.SpaceBetween,
           verticalAlignment = Alignment.CenterVertically
         ) {
-          Text("Discount (Ks):", fontSize = 12.sp)
+          Text("Discount (Ks):", fontSize = 11.sp)
           OutlinedTextField(
             value = discountText,
             onValueChange = { discountText = it },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
-            modifier = Modifier.width(120.dp).height(44.dp),
-            shape = RoundedCornerShape(6.dp)
+            modifier = Modifier.width(100.dp).height(40.dp),
+            shape = RoundedCornerShape(4.dp),
+            textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
           )
         }
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-          Text("Net Total:", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-          Text("${currencyFmt.format(netTotal.toInt())} Ks", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF7C3AED))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+          Text("Net Total:", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+          Text("${currencyFmt.format(netTotal.toInt())} Ks", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF7C3AED))
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
-        HorizontalDivider(color = BorderGray)
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Payment Method
-        Text("ငွေပေးချေမှုပုံစံ:", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(8.dp))
+        HorizontalDivider(color = Color(0xFFF1F5F9))
         Spacer(modifier = Modifier.height(6.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+
+        Text("ငွေပေးချေမှုပုံစံ:", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
           listOf(PaymentMethod.CASH, PaymentMethod.KBZPAY, PaymentMethod.WAVEPAY, PaymentMethod.OTHER).forEach { pm ->
             FilterChip(
               selected = selectedMethod == pm,
               onClick = { selectedMethod = pm },
-              label = { Text(pm.label, fontSize = 10.5.sp) }
+              label = { Text(pm.label, fontSize = 9.5.sp) },
+              modifier = Modifier.height(26.dp)
             )
           }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
-        // Paid Amount & Change
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.SpaceBetween,
           verticalAlignment = Alignment.CenterVertically
         ) {
-          Text("လက်ခံရရှိငွေ (Ks):", fontSize = 12.sp)
+          Text("လက်ခံရရှိငွေ:", fontSize = 11.sp)
           OutlinedTextField(
             value = paidAmountText,
             onValueChange = { paidAmountText = it },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
-            modifier = Modifier.width(130.dp).height(44.dp),
-            shape = RoundedCornerShape(6.dp)
+            modifier = Modifier.width(110.dp).height(40.dp),
+            shape = RoundedCornerShape(4.dp),
+            textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
           )
         }
 
         if (changeAmount > 0.0) {
-          Spacer(modifier = Modifier.height(6.dp))
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-          ) {
-            Text("ပြန်အမ်းငွေ:", fontSize = 12.sp, color = Color(0xFF16A34A))
-            Text("${currencyFmt.format(changeAmount.toInt())} Ks", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF16A34A))
+          Spacer(modifier = Modifier.height(4.dp))
+          Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("ပြန်အမ်းငွေ:", fontSize = 11.sp, color = Color(0xFF16A34A))
+            Text("${currencyFmt.format(changeAmount.toInt())} Ks", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF16A34A))
           }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.End
-        ) {
-          OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(6.dp)) {
-            Text("ပယ်ဖျက်")
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+          OutlinedButton(
+            onClick = onDismiss,
+            shape = RoundedCornerShape(6.dp),
+            modifier = Modifier.height(34.dp),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+          ) {
+            Text("ပယ်ဖျက်", fontSize = 11.sp)
           }
-          Spacer(modifier = Modifier.width(8.dp))
+          Spacer(modifier = Modifier.width(6.dp))
           Button(
             onClick = {
               val now = BurmeseDateUtils.getNowFormatted()
@@ -1870,11 +1891,13 @@ fun CreateLabInvoiceDialog(
               onSubmit(invoice)
             },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
-            shape = RoundedCornerShape(6.dp)
+            shape = RoundedCornerShape(6.dp),
+            modifier = Modifier.height(34.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)
           ) {
-            Icon(Icons.Default.Receipt, contentDescription = null, modifier = Modifier.size(16.dp))
-            Spacer(modifier = Modifier.width(6.dp))
-            Text("ဘောင်ချာဖွင့် & Thermal Print", fontWeight = FontWeight.Bold)
+            Icon(Icons.Default.Receipt, contentDescription = null, modifier = Modifier.size(13.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("ဘောင်ချာဖွင့် & Print", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
           }
         }
       }
@@ -1883,10 +1906,10 @@ fun CreateLabInvoiceDialog(
 }
 
 // -------------------------------------------------------------
-// Dialog: Lab Test Template Editor
+// Dialog: Mobile Lab Template Editor Dialog
 // -------------------------------------------------------------
 @Composable
-fun LabTemplateEditorDialog(
+fun MobileLabTemplateEditorDialog(
   template: LabTestTemplate?,
   onDismiss: () -> Unit,
   onSave: (LabTestTemplate) -> Unit
@@ -1901,164 +1924,183 @@ fun LabTemplateEditorDialog(
     (template?.parameters ?: emptyList()).map { it.copy() }.toMutableStateList()
   }
 
-  Dialog(onDismissRequest = onDismiss) {
+  Dialog(
+    onDismissRequest = onDismiss,
+    properties = DialogProperties(usePlatformDefaultWidth = false)
+  ) {
     Surface(
       shape = RoundedCornerShape(12.dp),
       color = PureWhite,
-      modifier = Modifier.fillMaxWidth().fillMaxHeight(0.88f)
+      modifier = Modifier.fillMaxWidth(0.95f).fillMaxHeight(0.92f)
     ) {
-      Column(modifier = Modifier.padding(18.dp)) {
+      Column(modifier = Modifier.padding(14.dp)) {
         Text(
           if (template == null) "စစ်ဆေးမှုပုံစံ အသစ်ဖန်တီးခြင်း" else "စစ်ဆေးမှုပုံစံ ပြင်ဆင်ခြင်း",
-          fontSize = 16.sp,
+          fontSize = 14.sp,
           fontWeight = FontWeight.Bold,
           color = SlateDark
         )
 
-        Spacer(modifier = Modifier.height(10.dp))
-        HorizontalDivider(color = BorderGray)
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+        HorizontalDivider(color = Color(0xFFF1F5F9))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
           OutlinedTextField(
             value = name,
             onValueChange = { name = it },
-            label = { Text("စစ်ဆေးမှု အမည် * (e.g. CBC, Serum Creatinine)") },
+            label = { Text("စစ်ဆေးမှု အမည် * (e.g. CBC, Lipid)", fontSize = 10.5.sp) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(6.dp)
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            shape = RoundedCornerShape(6.dp),
+            textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
           )
-          Spacer(modifier = Modifier.height(8.dp))
+          Spacer(modifier = Modifier.height(6.dp))
 
-          Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+          Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
               value = category,
               onValueChange = { category = it },
-              label = { Text("အမျိုးအစား (Category)") },
+              label = { Text("Category", fontSize = 10.5.sp) },
               singleLine = true,
-              modifier = Modifier.weight(1f).height(52.dp),
-              shape = RoundedCornerShape(6.dp)
+              modifier = Modifier.weight(1f).height(48.dp),
+              shape = RoundedCornerShape(6.dp),
+              textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
             )
             OutlinedTextField(
               value = specimenType,
               onValueChange = { specimenType = it },
-              label = { Text("နမူနာ (Specimen)") },
+              label = { Text("Specimen", fontSize = 10.5.sp) },
               singleLine = true,
-              modifier = Modifier.weight(1f).height(52.dp),
-              shape = RoundedCornerShape(6.dp)
+              modifier = Modifier.weight(1f).height(48.dp),
+              shape = RoundedCornerShape(6.dp),
+              textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
             )
           }
 
-          Spacer(modifier = Modifier.height(8.dp))
+          Spacer(modifier = Modifier.height(6.dp))
 
           OutlinedTextField(
             value = priceText,
             onValueChange = { priceText = it },
-            label = { Text("ပုံမှန် စျေးနှုန်း (Default Price in Ks) *") },
+            label = { Text("ပုံမှန် စျေးနှုန်း (Price in Ks) *", fontSize = 10.5.sp) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(6.dp)
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            shape = RoundedCornerShape(6.dp),
+            textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
           )
 
           Spacer(modifier = Modifier.height(8.dp))
 
-          // Toggle for analyzer slip direct print
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-          ) {
+          Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Checkbox(
               checked = isAnalyzerSlipOnly,
-              onCheckedChange = { isAnalyzerSlipOnly = it }
+              onCheckedChange = { isAnalyzerSlipOnly = it },
+              modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(6.dp))
             Column {
-              Text("စက်မှ တိုက်ရိုက်ထွက်သော အဖြေ Slip သီးသန့်ဖြစ်သည် (CBC Analyzer Direct)", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
-              Text("ဤ Test အတွက် A4 Blank Letterhead ထုတ်ပေး၍ စက်ထဲထည့်သွင်းနိုင်ပါသည်", fontSize = 10.sp, color = SlateMuted)
+              Text("စက်အဖြေ Slip သီးသန့် Test ဖြစ်သည် (CBC)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+              Text("A4 Blank Letterhead ထုတ်၍ စက်ထဲထည့်သွင်းနိုင်ပါသည်", fontSize = 9.sp, color = SlateMuted)
             }
           }
 
-          Spacer(modifier = Modifier.height(12.dp))
-          HorizontalDivider(color = BorderGray)
           Spacer(modifier = Modifier.height(10.dp))
+          HorizontalDivider(color = Color(0xFFF1F5F9))
+          Spacer(modifier = Modifier.height(8.dp))
 
-          // Parameter Builder
+          // Parameters Builder
           Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
           ) {
-            Text("တိုင်းတာရမည့် Parameters (${parameters.size} ခု)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0284C7))
+            Text("Parameters (${parameters.size} ခု)", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0284C7))
             Button(
               onClick = {
                 parameters.add(LabTestParameter(name = "", unit = "", referenceRange = "", flag = ""))
               },
               colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
-              shape = RoundedCornerShape(6.dp),
-              contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-              modifier = Modifier.height(30.dp)
+              shape = RoundedCornerShape(4.dp),
+              contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+              modifier = Modifier.height(28.dp)
             ) {
-              Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
-              Spacer(modifier = Modifier.width(3.dp))
-              Text("Add Parameter", fontSize = 10.5.sp)
+              Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(11.dp))
+              Spacer(modifier = Modifier.width(2.dp))
+              Text("Add Param", fontSize = 9.5.sp)
             }
           }
 
           Spacer(modifier = Modifier.height(6.dp))
 
           parameters.forEachIndexed { pIdx, param ->
-            Row(
-              modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
-              horizontalArrangement = Arrangement.spacedBy(6.dp),
-              verticalAlignment = Alignment.CenterVertically
+            Surface(
+              shape = RoundedCornerShape(4.dp),
+              color = Color(0xFFF8FAFC),
+              border = BorderStroke(0.6.dp, Color(0xFFCBD5E1)),
+              modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
             ) {
-              OutlinedTextField(
-                value = param.name,
-                onValueChange = { parameters[pIdx] = param.copy(name = it) },
-                placeholder = { Text("Name", fontSize = 10.sp) },
-                singleLine = true,
-                modifier = Modifier.weight(2f).height(42.dp),
-                shape = RoundedCornerShape(4.dp)
-              )
-              OutlinedTextField(
-                value = param.unit,
-                onValueChange = { parameters[pIdx] = param.copy(unit = it) },
-                placeholder = { Text("Unit", fontSize = 10.sp) },
-                singleLine = true,
-                modifier = Modifier.weight(1f).height(42.dp),
-                shape = RoundedCornerShape(4.dp)
-              )
-              OutlinedTextField(
-                value = param.referenceRange,
-                onValueChange = { parameters[pIdx] = param.copy(referenceRange = it) },
-                placeholder = { Text("Normal Range", fontSize = 10.sp) },
-                singleLine = true,
-                modifier = Modifier.weight(1.5f).height(42.dp),
-                shape = RoundedCornerShape(4.dp)
-              )
-              IconButton(
-                onClick = { parameters.removeAt(pIdx) },
-                modifier = Modifier.size(32.dp)
-              ) {
-                Icon(Icons.Default.Delete, contentDescription = "Remove", tint = Color(0xFFDC2626), modifier = Modifier.size(16.dp))
+              Column(modifier = Modifier.padding(6.dp)) {
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.spacedBy(4.dp),
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  OutlinedTextField(
+                    value = param.name,
+                    onValueChange = { parameters[pIdx] = param.copy(name = it) },
+                    placeholder = { Text("Name", fontSize = 10.sp) },
+                    singleLine = true,
+                    modifier = Modifier.weight(2f).height(40.dp),
+                    shape = RoundedCornerShape(4.dp),
+                    textStyle = LocalTextStyle.current.copy(fontSize = 10.5.sp)
+                  )
+                  OutlinedTextField(
+                    value = param.unit,
+                    onValueChange = { parameters[pIdx] = param.copy(unit = it) },
+                    placeholder = { Text("Unit", fontSize = 10.sp) },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f).height(40.dp),
+                    shape = RoundedCornerShape(4.dp),
+                    textStyle = LocalTextStyle.current.copy(fontSize = 10.5.sp)
+                  )
+                  IconButton(
+                    onClick = { parameters.removeAt(pIdx) },
+                    modifier = Modifier.size(28.dp)
+                  ) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFDC2626), modifier = Modifier.size(14.dp))
+                  }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                  value = param.referenceRange,
+                  onValueChange = { parameters[pIdx] = param.copy(referenceRange = it) },
+                  placeholder = { Text("Normal / Reference Range (e.g. 13.0 - 17.5)", fontSize = 10.sp) },
+                  singleLine = true,
+                  modifier = Modifier.fillMaxWidth().height(40.dp),
+                  shape = RoundedCornerShape(4.dp),
+                  textStyle = LocalTextStyle.current.copy(fontSize = 10.5.sp)
+                )
               }
             }
           }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
-        HorizontalDivider(color = BorderGray)
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+        HorizontalDivider(color = Color(0xFFF1F5F9))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.End
-        ) {
-          OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(6.dp)) {
-            Text("ပယ်ဖျက်")
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+          OutlinedButton(
+            onClick = onDismiss,
+            shape = RoundedCornerShape(6.dp),
+            modifier = Modifier.height(34.dp),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+          ) {
+            Text("ပယ်ဖျက်", fontSize = 11.sp)
           }
-          Spacer(modifier = Modifier.width(8.dp))
+          Spacer(modifier = Modifier.width(6.dp))
           Button(
             onClick = {
               val pVal = priceText.toDoubleOrNull() ?: 5000.0
@@ -2075,9 +2117,11 @@ fun LabTemplateEditorDialog(
             },
             enabled = name.isNotBlank(),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
-            shape = RoundedCornerShape(6.dp)
+            shape = RoundedCornerShape(6.dp),
+            modifier = Modifier.height(34.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)
           ) {
-            Text("သိမ်းဆည်းမည်", fontWeight = FontWeight.Bold)
+            Text("သိမ်းဆည်းမည်", fontSize = 11.sp, fontWeight = FontWeight.Bold)
           }
         }
       }

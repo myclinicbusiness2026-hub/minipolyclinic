@@ -487,34 +487,31 @@ fun SuggestedInvestigationsCard(
             border = BorderStroke(1.dp, Color(0xFF86EFAC)),
             modifier = Modifier.fillMaxWidth()
           ) {
-            Row(
-              modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp).fillMaxWidth(),
-              horizontalArrangement = Arrangement.SpaceBetween,
-              verticalAlignment = Alignment.CenterVertically
+            Column(
+              modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp).fillMaxWidth()
             ) {
-              Column(modifier = Modifier.weight(1f)) {
-                Text(
-                  "🧪 ဓာတ်ခွဲခန်းတွင် တိုက်ရိုက်စစ်ဆေးနိုင်သော Test (${matchedTemplates.size} ခု တွေ့ရှိ)",
-                  fontSize = 11.sp,
-                  fontWeight = FontWeight.Bold,
-                  color = Color(0xFF166534)
-                )
-                Text(
-                  matchedTemplates.joinToString(", ") { "${it.name} (${it.defaultPrice.toInt()} Ks)" },
-                  fontSize = 10.sp,
-                  color = Color(0xFF15803D)
-                )
-              }
+              Text(
+                "🧪 ဓာတ်ခွဲခန်း တိုက်ရိုက် Test (${matchedTemplates.size} ခု တွေ့ရှိ)",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF166534)
+              )
+              Text(
+                matchedTemplates.joinToString(", ") { "${it.name} (${it.defaultPrice.toInt()} Ks)" },
+                fontSize = 10.sp,
+                color = Color(0xFF15803D)
+              )
+              Spacer(modifier = Modifier.height(6.dp))
               Button(
                 onClick = { onOrderToLab(matchedTemplates) },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
                 shape = RoundedCornerShape(6.dp),
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                modifier = Modifier.height(34.dp)
+                modifier = Modifier.fillMaxWidth().height(32.dp)
               ) {
                 Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(13.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Order to Lab", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+                Text("ဓာတ်ခွဲခန်းသို့ တိုက်ရိုက် Order ပို့မည်", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
               }
             }
           }
