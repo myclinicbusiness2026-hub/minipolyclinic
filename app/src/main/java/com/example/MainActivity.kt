@@ -45,6 +45,7 @@ import com.example.ui.components.SyncStatusDialog
 import com.example.ui.screens.*
 import com.example.ui.screens.treatment.TreatmentScreen
 import com.example.ui.screens.treatment.TreatmentStatus
+import com.example.ui.screens.lab.LabInvestigationScreen
 import com.example.ui.theme.*
 import com.example.viewmodel.ClinicViewModel
 import kotlinx.coroutines.launch
@@ -78,6 +79,7 @@ val navDrawerItems = listOf(
   NavDrawerItem("Treatment & Injections", "ဆေးထိုး/အကြောပုလင်း ကုသမှု", Icons.Default.Healing, 9, "CLINICAL OPD WORKFLOW", { it.canAccessTreatment }),
   NavDrawerItem("Pharmacy Dispense", "ဆေးထုတ်ပေးခြင်း (FEFO)", Icons.Default.Medication, 3, "CLINICAL OPD WORKFLOW", { it.canAccessPharmacy }),
   NavDrawerItem("Cashier & Invoices", "ငွေကောက်ခံ & ပြေစာထုတ်ပေးခြင်း", Icons.Default.PointOfSale, 4, "CLINICAL OPD WORKFLOW", { it.canAccessBilling }),
+  NavDrawerItem("Lab Investigation", "ဓာတ်ခွဲစစ်ဆေးမှုများ (B2B Lab)", Icons.Default.Science, 10, "CLINICAL OPD WORKFLOW", { true }),
 
   // 2. Records, Procedures & Inventory Management
   NavDrawerItem("Medical Records", "လူနာ ဆေးမှတ်တမ်းများ (Archive)", Icons.Default.FolderShared, 8, "RECORDS & OPERATIONS", { it.canAccessMedicalRecords }),
@@ -658,6 +660,8 @@ fun MiniPolyclinicMainApp(
                     6 -> "ရွှေခေတ် - Inventory Master (စတော့အချုပ်)"
                     7 -> "ရွှေခေတ် - ဝင်ငွေ ထွက်ငွေ ဇယား (Ledger)"
                     8 -> "ရွှေခေတ် - လူနာ ဆေးမှတ်တမ်းများ (EMR Archive)"
+                    9 -> "ရွှေခေတ် - ဆေးထိုး/အကြောပုလင်း ကုသမှု (Treatment)"
+                    10 -> "ရွှေခေတ် - ဓာတ်ခွဲစစ်ဆေးမှုများ (Lab Investigation)"
                     else -> "\"ရွှေခေတ်\" အထွေထွေရောဂါကုဆေးခန်း"
                   },
                   fontWeight = FontWeight.Bold,
@@ -839,6 +843,12 @@ fun MiniPolyclinicMainApp(
             } else {
               RestrictedAccessView()
             }
+          }
+          10 -> {
+            LabInvestigationScreen(
+              viewModel = clinicViewModel,
+              onNavigateBack = { safeNavigateToTab(0) }
+            )
           }
         }
       }

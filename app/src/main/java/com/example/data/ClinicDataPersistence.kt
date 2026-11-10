@@ -30,6 +30,9 @@ object ClinicDataPersistence {
   private const val KEY_SELECTED_PATIENT_ID = "selected_patient_id"
   private const val KEY_MEDICINE_CATEGORIES = "medicine_categories_list"
   private const val KEY_MEDICINE_UNITS = "medicine_units_list"
+  private const val KEY_LAB_ORDERS = "lab_orders_list"
+  private const val KEY_LAB_TEMPLATES = "lab_templates_list"
+  private const val KEY_LAB_INVOICES = "lab_invoices_list"
 
   private fun getPrefs(context: Context) =
     context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -1899,6 +1902,434 @@ object ClinicDataPersistence {
   fun loadKnownPeerIps(context: Context): Set<String> {
     val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
     return prefs.getStringSet("known_peer_ips", emptySet()) ?: emptySet()
+  }
+
+  // 17. Lab Templates
+  fun saveLabTemplates(context: Context, templates: List<LabTestTemplate>) {
+    val arr = JSONArray()
+    templates.forEach { tmpl ->
+      val to = JSONObject()
+      to.put("id", tmpl.id)
+      to.put("name", tmpl.name)
+      to.put("category", tmpl.category)
+      to.put("defaultPrice", tmpl.defaultPrice)
+      to.put("specimenType", tmpl.specimenType)
+      to.put("isAnalyzerSlipOnly", tmpl.isAnalyzerSlipOnly)
+      val pArr = JSONArray()
+      tmpl.parameters.forEach { p ->
+        val po = JSONObject()
+        po.put("name", p.name)
+        po.put("result", p.result)
+        po.put("unit", p.unit)
+        po.put("referenceRange", p.referenceRange)
+        po.put("flag", p.flag)
+        pArr.put(po)
+      }
+      to.put("parameters", pArr)
+      arr.put(to)
+    }
+    getPrefs(context).edit().putString(KEY_LAB_TEMPLATES, arr.toString()).apply()
+  }
+
+  fun loadLabTemplates(context: Context): List<LabTestTemplate>? {
+    val str = getPrefs(context).getString(KEY_LAB_TEMPLATES, null) ?: return null
+    return try {
+      val arr = JSONArray(str)
+      val list = mutableListOf<LabTestTemplate>()
+      for (i in 0 until arr.length()) {
+        val o = arr.getJSONObject(i)
+        val pArr = o.optJSONArray("parameters")
+        val params = mutableListOf<LabTestParameter>()
+        if (pArr != null) {
+          for (j in 0 until pArr.length()) {
+            val po = pArr.getJSONObject(j)
+            params.add(
+              LabTestParameter(
+                name = po.optString("name"),
+                result = po.optString("result"),
+                unit = po.optString("unit"),
+                referenceRange = po.optString("referenceRange"),
+                flag = po.optString("flag")
+              )
+            )
+          }
+        }
+        list.add(
+          LabTestTemplate(
+            id = o.optString("id", UUID.randomUUID().toString()),
+            name = o.optString("name"),
+            category = o.optString("category", "Hematology"),
+            defaultPrice = o.optDouble("defaultPrice", 0.0),
+            specimenType = o.optString("specimenType", "Blood"),
+            isAnalyzerSlipOnly = o.optBoolean("isAnalyzerSlipOnly", false),
+            parameters = params
+          )
+        )
+      }
+      list
+    } catch (_: Exception) {
+      null
+    }
+  }
+
+  // 18. Lab Orders
+  fun saveLabOrders(context: Context, orders: List<LabOrder>) {
+    val arr = JSONArray()
+    orders.forEach { ord ->
+      val oo = JSONObject()
+      oo.put("id", ord.id)
+      oo.put("orderNumber", ord.orderNumber)
+      oo.put("patientId", ord.patientId)
+      oo.put("patientName", ord.patientName)
+      oo.put("patientHn", ord.patientHn)
+      oo.put("patientAge", ord.patientAge)
+      oo.put("patientGender", ord.patientGender.name)
+      oo.put("doctorName", ord.doctorName)
+      oo.put("orderDate", ord.orderDate)
+      oo.put("orderTime", ord.orderTime)
+      oo.put("status", ord.status.name)
+      oo.put("totalAmount", ord.totalAmount)
+      oo.put("paidAmount", ord.paidAmount)
+      oo.put("paymentStatus", ord.paymentStatus)
+      oo.put("invoiceNumber", ord.invoiceNumber)
+      oo.put("technicianName", ord.technicianName)
+      oo.put("completedAt", ord.completedAt)
+      oo.put("notes", ord.notes)
+
+      val iArr = JSONArray()
+      ord.items.forEach { item ->
+        val io = JSONObject()
+        io.put("testId", item.testId)
+        io.put("testName", item.testName)
+        io.put("category", item.category)
+        io.put("price", item.price)
+        io.put("specimenType", item.specimenType)
+        io.put("remarks", item.remarks)
+        io.put("attachedImageUri", item.attachedImageUri ?: "")
+        io.put("isCompleted", item.isCompleted)
+
+        val pArr = JSONArray()
+        item.parameters.forEach { p ->
+          val po = JSONObject()
+          po.put("name", p.name)
+          po.put("result", p.result)
+          po.put("unit", p.unit)
+          po.put("referenceRange", p.referenceRange)
+          po.put("flag", p.flag)
+          pArr.put(po)
+        }
+        io.put("parameters", pArr)
+        iArr.put(io)
+      }
+      oo.put("items", iArr)
+      arr.put(oo)
+    }
+    getPrefs(context).edit().putString(KEY_LAB_ORDERS, arr.toString()).apply()
+  }
+
+  fun loadLabOrders(context: Context): List<LabOrder>? {
+    val str = getPrefs(context).getString(KEY_LAB_ORDERS, null) ?: return null
+    return try {
+      val arr = JSONArray(str)
+      val list = mutableListOf<LabOrder>()
+      for (i in 0 until arr.length()) {
+        val o = arr.getJSONObject(i)
+        val iArr = o.optJSONArray("items")
+        val items = mutableListOf<LabOrderItem>()
+        if (iArr != null) {
+          for (j in 0 until iArr.length()) {
+            val io = iArr.getJSONObject(j)
+            val pArr = io.optJSONArray("parameters")
+            val params = mutableListOf<LabTestParameter>()
+            if (pArr != null) {
+              for (k in 0 until pArr.length()) {
+                val po = pArr.getJSONObject(k)
+                params.add(
+                  LabTestParameter(
+                    name = po.optString("name"),
+                    result = po.optString("result"),
+                    unit = po.optString("unit"),
+                    referenceRange = po.optString("referenceRange"),
+                    flag = po.optString("flag")
+                  )
+                )
+              }
+            }
+            items.add(
+              LabOrderItem(
+                testId = io.optString("testId", UUID.randomUUID().toString()),
+                testName = io.optString("testName"),
+                category = io.optString("category", "General"),
+                price = io.optDouble("price", 0.0),
+                specimenType = io.optString("specimenType", "Blood"),
+                remarks = io.optString("remarks"),
+                attachedImageUri = io.optString("attachedImageUri").ifBlank { null },
+                isCompleted = io.optBoolean("isCompleted", false),
+                parameters = params
+              )
+            )
+          }
+        }
+        val gender = try {
+          Gender.valueOf(o.optString("patientGender", "MALE"))
+        } catch (_: Exception) {
+          Gender.MALE
+        }
+        val status = try {
+          LabOrderStatus.valueOf(o.optString("status", "ORDERED"))
+        } catch (_: Exception) {
+          LabOrderStatus.ORDERED
+        }
+        list.add(
+          LabOrder(
+            id = o.optString("id", UUID.randomUUID().toString()),
+            orderNumber = o.optString("orderNumber"),
+            patientId = o.optString("patientId"),
+            patientName = o.optString("patientName"),
+            patientHn = o.optString("patientHn"),
+            patientAge = o.optInt("patientAge", 0),
+            patientGender = gender,
+            doctorName = o.optString("doctorName"),
+            orderDate = o.optString("orderDate"),
+            orderTime = o.optString("orderTime"),
+            status = status,
+            totalAmount = o.optDouble("totalAmount", 0.0),
+            paidAmount = o.optDouble("paidAmount", 0.0),
+            paymentStatus = o.optString("paymentStatus", "Unpaid"),
+            invoiceNumber = o.optString("invoiceNumber"),
+            technicianName = o.optString("technicianName"),
+            completedAt = o.optString("completedAt"),
+            notes = o.optString("notes"),
+            items = items
+          )
+        )
+      }
+      list
+    } catch (_: Exception) {
+      null
+    }
+  }
+
+  // 19. Lab Invoices
+  fun saveLabInvoices(context: Context, invoices: List<LabInvoice>) {
+    val arr = JSONArray()
+    invoices.forEach { inv ->
+      val io = JSONObject()
+      io.put("id", inv.id)
+      io.put("invoiceNumber", inv.invoiceNumber)
+      io.put("orderId", inv.orderId)
+      io.put("patientId", inv.patientId)
+      io.put("patientName", inv.patientName)
+      io.put("patientHn", inv.patientHn)
+      io.put("totalAmount", inv.totalAmount)
+      io.put("paidAmount", inv.paidAmount)
+      io.put("paymentMethod", inv.paymentMethod.name)
+      io.put("cashierName", inv.cashierName)
+      io.put("timestamp", inv.timestamp)
+      arr.put(io)
+    }
+    getPrefs(context).edit().putString(KEY_LAB_INVOICES, arr.toString()).apply()
+  }
+
+  fun loadLabInvoices(context: Context): List<LabInvoice>? {
+    val str = getPrefs(context).getString(KEY_LAB_INVOICES, null) ?: return null
+    return try {
+      val arr = JSONArray(str)
+      val list = mutableListOf<LabInvoice>()
+      for (i in 0 until arr.length()) {
+        val o = arr.getJSONObject(i)
+        val pm = try {
+          PaymentMethod.valueOf(o.optString("paymentMethod", "CASH"))
+        } catch (_: Exception) {
+          PaymentMethod.CASH
+        }
+        list.add(
+          LabInvoice(
+            id = o.optString("id", UUID.randomUUID().toString()),
+            invoiceNumber = o.optString("invoiceNumber"),
+            orderId = o.optString("orderId"),
+            patientId = o.optString("patientId"),
+            patientName = o.optString("patientName"),
+            patientHn = o.optString("patientHn"),
+            totalAmount = o.optDouble("totalAmount", 0.0),
+            paidAmount = o.optDouble("paidAmount", 0.0),
+            paymentMethod = pm,
+            cashierName = o.optString("cashierName", "Cashier"),
+            timestamp = o.optString("timestamp")
+          )
+        )
+      }
+      list
+    } catch (_: Exception) {
+      null
+    }
+  }
+
+  fun getLabTemplatesJson(context: Context): String? {
+    return getPrefs(context).getString(KEY_LAB_TEMPLATES, null)
+  }
+
+  fun getLabOrdersJson(context: Context): String? {
+    return getPrefs(context).getString(KEY_LAB_ORDERS, null)
+  }
+
+  fun getLabInvoicesJson(context: Context): String? {
+    return getPrefs(context).getString(KEY_LAB_INVOICES, null)
+  }
+
+  fun parseLabTemplates(jsonString: String): List<LabTestTemplate> {
+    return try {
+      val arr = JSONArray(jsonString)
+      val list = mutableListOf<LabTestTemplate>()
+      for (i in 0 until arr.length()) {
+        val o = arr.getJSONObject(i)
+        val pArr = o.optJSONArray("parameters")
+        val params = mutableListOf<LabTestParameter>()
+        if (pArr != null) {
+          for (j in 0 until pArr.length()) {
+            val po = pArr.getJSONObject(j)
+            params.add(
+              LabTestParameter(
+                name = po.optString("name"),
+                result = po.optString("result"),
+                unit = po.optString("unit"),
+                referenceRange = po.optString("referenceRange"),
+                flag = po.optString("flag")
+              )
+            )
+          }
+        }
+        list.add(
+          LabTestTemplate(
+            id = o.optString("id", UUID.randomUUID().toString()),
+            name = o.optString("name"),
+            category = o.optString("category", "Hematology"),
+            defaultPrice = o.optDouble("defaultPrice", 0.0),
+            specimenType = o.optString("specimenType", "Blood"),
+            isAnalyzerSlipOnly = o.optBoolean("isAnalyzerSlipOnly", false),
+            parameters = params
+          )
+        )
+      }
+      list
+    } catch (_: Exception) {
+      emptyList()
+    }
+  }
+
+  fun parseLabOrders(jsonString: String): List<LabOrder> {
+    return try {
+      val arr = JSONArray(jsonString)
+      val list = mutableListOf<LabOrder>()
+      for (i in 0 until arr.length()) {
+        val o = arr.getJSONObject(i)
+        val iArr = o.optJSONArray("items")
+        val items = mutableListOf<LabOrderItem>()
+        if (iArr != null) {
+          for (j in 0 until iArr.length()) {
+            val io = iArr.getJSONObject(j)
+            val pArr = io.optJSONArray("parameters")
+            val params = mutableListOf<LabTestParameter>()
+            if (pArr != null) {
+              for (k in 0 until pArr.length()) {
+                val po = pArr.getJSONObject(k)
+                params.add(
+                  LabTestParameter(
+                    name = po.optString("name"),
+                    result = po.optString("result"),
+                    unit = po.optString("unit"),
+                    referenceRange = po.optString("referenceRange"),
+                    flag = po.optString("flag")
+                  )
+                )
+              }
+            }
+            items.add(
+              LabOrderItem(
+                testId = io.optString("testId", UUID.randomUUID().toString()),
+                testName = io.optString("testName"),
+                category = io.optString("category", "General"),
+                price = io.optDouble("price", 0.0),
+                specimenType = io.optString("specimenType", "Blood"),
+                remarks = io.optString("remarks"),
+                attachedImageUri = io.optString("attachedImageUri").ifBlank { null },
+                isCompleted = io.optBoolean("isCompleted", false),
+                parameters = params
+              )
+            )
+          }
+        }
+        val gender = try {
+          Gender.valueOf(o.optString("patientGender", "MALE"))
+        } catch (_: Exception) {
+          Gender.MALE
+        }
+        val status = try {
+          LabOrderStatus.valueOf(o.optString("status", "ORDERED"))
+        } catch (_: Exception) {
+          LabOrderStatus.ORDERED
+        }
+        list.add(
+          LabOrder(
+            id = o.optString("id", UUID.randomUUID().toString()),
+            orderNumber = o.optString("orderNumber"),
+            patientId = o.optString("patientId"),
+            patientName = o.optString("patientName"),
+            patientHn = o.optString("patientHn"),
+            patientAge = o.optInt("patientAge", 0),
+            patientGender = gender,
+            doctorName = o.optString("doctorName"),
+            orderDate = o.optString("orderDate"),
+            orderTime = o.optString("orderTime"),
+            status = status,
+            totalAmount = o.optDouble("totalAmount", 0.0),
+            paidAmount = o.optDouble("paidAmount", 0.0),
+            paymentStatus = o.optString("paymentStatus", "Unpaid"),
+            invoiceNumber = o.optString("invoiceNumber"),
+            technicianName = o.optString("technicianName"),
+            completedAt = o.optString("completedAt"),
+            notes = o.optString("notes"),
+            items = items
+          )
+        )
+      }
+      list
+    } catch (_: Exception) {
+      emptyList()
+    }
+  }
+
+  fun parseLabInvoices(jsonString: String): List<LabInvoice> {
+    return try {
+      val arr = JSONArray(jsonString)
+      val list = mutableListOf<LabInvoice>()
+      for (i in 0 until arr.length()) {
+        val o = arr.getJSONObject(i)
+        val pm = try {
+          PaymentMethod.valueOf(o.optString("paymentMethod", "CASH"))
+        } catch (_: Exception) {
+          PaymentMethod.CASH
+        }
+        list.add(
+          LabInvoice(
+            id = o.optString("id", UUID.randomUUID().toString()),
+            invoiceNumber = o.optString("invoiceNumber"),
+            orderId = o.optString("orderId"),
+            patientId = o.optString("patientId"),
+            patientName = o.optString("patientName"),
+            patientHn = o.optString("patientHn"),
+            totalAmount = o.optDouble("totalAmount", 0.0),
+            paidAmount = o.optDouble("paidAmount", 0.0),
+            paymentMethod = pm,
+            cashierName = o.optString("cashierName", "Cashier"),
+            timestamp = o.optString("timestamp")
+          )
+        )
+      }
+      list
+    } catch (_: Exception) {
+      emptyList()
+    }
   }
 }
 

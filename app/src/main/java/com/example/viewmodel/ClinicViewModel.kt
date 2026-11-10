@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.ClinicDataPersistence
 import com.example.data.ClinicInitialDataSeeder
+import com.example.data.LabInitialDataSeeder
 import com.example.model.*
 import com.example.ui.screens.treatment.*
 import com.example.service.sync.LocalWifiSyncService
@@ -82,6 +83,15 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
   private val _treatmentCards = MutableStateFlow<List<TreatmentCard>>(emptyList())
   val treatmentCards: StateFlow<List<TreatmentCard>> = _treatmentCards.asStateFlow()
+
+  private val _labOrders = MutableStateFlow<List<LabOrder>>(emptyList())
+  val labOrders: StateFlow<List<LabOrder>> = _labOrders.asStateFlow()
+
+  private val _labTemplates = MutableStateFlow<List<LabTestTemplate>>(emptyList())
+  val labTemplates: StateFlow<List<LabTestTemplate>> = _labTemplates.asStateFlow()
+
+  private val _labInvoices = MutableStateFlow<List<LabInvoice>>(emptyList())
+  val labInvoices: StateFlow<List<LabInvoice>> = _labInvoices.asStateFlow()
 
   private val _activePreviewRecord = MutableStateFlow<ConsultationRecord?>(null)
   val activePreviewRecord: StateFlow<ConsultationRecord?> = _activePreviewRecord.asStateFlow()
@@ -294,6 +304,17 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
     draftConsultations.value = ClinicDataPersistence.loadDraftConsultations(ctx)
     clinicSettings.value = ClinicDataPersistence.loadClinicSettings(ctx)
+
+    val savedLabTemplates = ClinicDataPersistence.loadLabTemplates(ctx)
+    _labTemplates.value = if (savedLabTemplates.isNullOrEmpty()) {
+      val seeds = LabInitialDataSeeder.getSeedTemplates()
+      ClinicDataPersistence.saveLabTemplates(ctx, seeds)
+      seeds
+    } else {
+      savedLabTemplates
+    }
+    _labOrders.value = ClinicDataPersistence.loadLabOrders(ctx) ?: emptyList()
+    _labInvoices.value = ClinicDataPersistence.loadLabInvoices(ctx) ?: emptyList()
   }
 
   fun setTab(index: Int) {
@@ -3524,6 +3545,18 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val root = JSONObject(payload.toJsonString(ctx))
     root.put("exportTime", BurmeseDateUtils.getNowFormatted())
     root.put("clinic", clinicSettings.value.clinicNameMm)
+    val labOrdersJson = ClinicDataPersistence.getLabOrdersJson(ctx)
+    if (!labOrdersJson.isNullOrBlank()) {
+      root.put("labOrders", JSONArray(labOrdersJson))
+    }
+    val labTemplatesJson = ClinicDataPersistence.getLabTemplatesJson(ctx)
+    if (!labTemplatesJson.isNullOrBlank()) {
+      root.put("labTemplates", JSONArray(labTemplatesJson))
+    }
+    val labInvoicesJson = ClinicDataPersistence.getLabInvoicesJson(ctx)
+    if (!labInvoicesJson.isNullOrBlank()) {
+      root.put("labInvoices", JSONArray(labInvoicesJson))
+    }
     return root.toString(2)
   }
 
@@ -3754,6 +3787,36 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         }
       }
 
+      // 11.1 Lab Orders (Non-destructive ID-based merge)
+      if (root.has("labOrders")) {
+        val parsedLabOrders = ClinicDataPersistence.parseLabOrders(root.getJSONArray("labOrders").toString())
+        val currentLabOrderMap = _labOrders.value.associateBy { it.id }.toMutableMap()
+        parsedLabOrders.forEach { o -> currentLabOrderMap[o.id] = o }
+        val mergedLabOrders = currentLabOrderMap.values.toList()
+        _labOrders.value = mergedLabOrders
+        ClinicDataPersistence.saveLabOrders(ctx, mergedLabOrders)
+      }
+
+      // 11.2 Lab Templates (Non-destructive ID-based merge)
+      if (root.has("labTemplates")) {
+        val parsedLabTemplates = ClinicDataPersistence.parseLabTemplates(root.getJSONArray("labTemplates").toString())
+        val currentLabTempMap = _labTemplates.value.associateBy { it.id }.toMutableMap()
+        parsedLabTemplates.forEach { t -> currentLabTempMap[t.id] = t }
+        val mergedLabTemplates = currentLabTempMap.values.toList()
+        _labTemplates.value = mergedLabTemplates
+        ClinicDataPersistence.saveLabTemplates(ctx, mergedLabTemplates)
+      }
+
+      // 11.3 Lab Invoices (Non-destructive ID-based merge)
+      if (root.has("labInvoices")) {
+        val parsedLabInvoices = ClinicDataPersistence.parseLabInvoices(root.getJSONArray("labInvoices").toString())
+        val currentLabInvMap = _labInvoices.value.associateBy { it.id }.toMutableMap()
+        parsedLabInvoices.forEach { inv -> currentLabInvMap[inv.id] = inv }
+        val mergedLabInvoices = currentLabInvMap.values.toList()
+        _labInvoices.value = mergedLabInvoices
+        ClinicDataPersistence.saveLabInvoices(ctx, mergedLabInvoices)
+      }
+
       // 12. Clinic Settings & Branding (Merge & Persist)
       val remoteSettingsObj = root.optJSONObject("clinicSettings") ?: root.optJSONObject("settings")
       if (remoteSettingsObj != null) {
@@ -3875,6 +3938,18 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       }
     }
     clinicSettings.value = ClinicDataPersistence.loadClinicSettings(ctx)
+    val loadedLabOrders = ClinicDataPersistence.loadLabOrders(ctx)
+    if (loadedLabOrders != null) {
+      _labOrders.value = loadedLabOrders
+    }
+    val loadedLabTemplates = ClinicDataPersistence.loadLabTemplates(ctx)
+    if (loadedLabTemplates != null) {
+      _labTemplates.value = loadedLabTemplates
+    }
+    val loadedLabInvoices = ClinicDataPersistence.loadLabInvoices(ctx)
+    if (loadedLabInvoices != null) {
+      _labInvoices.value = loadedLabInvoices
+    }
   }
 
   // --- Wi-Fi & Cloud Sync Handlers ---
@@ -4132,4 +4207,164 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
   }
 
+  // --- B2B Laboratory Investigation Methods ---
+  fun createLabOrder(order: LabOrder) {
+    val ctx = getApplication<Application>()
+    val current = _labOrders.value.toMutableList()
+    current.add(0, order)
+    _labOrders.value = current
+    ClinicDataPersistence.saveLabOrders(ctx, current)
+  }
+
+  fun updateLabOrder(order: LabOrder) {
+    val ctx = getApplication<Application>()
+    val updated = _labOrders.value.map { if (it.id == order.id) order else it }
+    _labOrders.value = updated
+    ClinicDataPersistence.saveLabOrders(ctx, updated)
+  }
+
+  fun updateLabOrderStatus(orderId: String, newStatus: LabOrderStatus) {
+    val ctx = getApplication<Application>()
+    val completedAtStr = if (newStatus == LabOrderStatus.COMPLETED) BurmeseDateUtils.getNowFormatted() else null
+    val updated = _labOrders.value.map { ord ->
+      if (ord.id == orderId) {
+        ord.copy(
+          status = newStatus,
+          completedAt = completedAtStr ?: ord.completedAt
+        )
+      } else ord
+    }
+    _labOrders.value = updated
+    ClinicDataPersistence.saveLabOrders(ctx, updated)
+  }
+
+  fun saveLabOrderResults(
+    orderId: String,
+    updatedItems: List<LabOrderItem>,
+    technicianName: String,
+    notes: String
+  ) {
+    val ctx = getApplication<Application>()
+    val isAllCompleted = updatedItems.all { it.isCompleted }
+    val completedAtStr = if (isAllCompleted) BurmeseDateUtils.getNowFormatted() else null
+    val updated = _labOrders.value.map { ord ->
+      if (ord.id == orderId) {
+        ord.copy(
+          items = updatedItems,
+          technicianName = technicianName.ifBlank { ord.technicianName },
+          notes = notes,
+          status = if (isAllCompleted) LabOrderStatus.COMPLETED else ord.status,
+          completedAt = completedAtStr ?: ord.completedAt
+        )
+      } else ord
+    }
+    _labOrders.value = updated
+    ClinicDataPersistence.saveLabOrders(ctx, updated)
+  }
+
+  fun deleteLabOrder(orderId: String) {
+    val ctx = getApplication<Application>()
+    val updated = _labOrders.value.filter { it.id != orderId }
+    _labOrders.value = updated
+    ClinicDataPersistence.saveLabOrders(ctx, updated)
+  }
+
+  fun saveLabTemplate(template: LabTestTemplate) {
+    val ctx = getApplication<Application>()
+    val current = _labTemplates.value.toMutableList()
+    val index = current.indexOfFirst { it.id == template.id }
+    if (index >= 0) {
+      current[index] = template
+    } else {
+      current.add(template)
+    }
+    _labTemplates.value = current
+    ClinicDataPersistence.saveLabTemplates(ctx, current)
+  }
+
+  fun deleteLabTemplate(templateId: String) {
+    val ctx = getApplication<Application>()
+    val updated = _labTemplates.value.filter { it.id != templateId }
+    _labTemplates.value = updated
+    ClinicDataPersistence.saveLabTemplates(ctx, updated)
+  }
+
+  fun createLabInvoice(invoice: LabInvoice) {
+    val ctx = getApplication<Application>()
+    val currentInvoices = _labInvoices.value.toMutableList()
+    currentInvoices.add(0, invoice)
+    _labInvoices.value = currentInvoices
+    ClinicDataPersistence.saveLabInvoices(ctx, currentInvoices)
+
+    // Mark corresponding LabOrder as paid
+    val updatedOrders = _labOrders.value.map { ord ->
+      if (ord.id == invoice.orderId || ord.orderNumber == invoice.orderId) {
+        ord.copy(
+          paidAmount = invoice.paidAmount,
+          paymentStatus = if (invoice.paidAmount >= ord.totalAmount) "Paid" else "Partial",
+          invoiceNumber = invoice.invoiceNumber
+        )
+      } else ord
+    }
+    _labOrders.value = updatedOrders
+    ClinicDataPersistence.saveLabOrders(ctx, updatedOrders)
+  }
+
+  fun orderLabTestsForPatient(
+    patient: Patient,
+    selectedTemplates: List<LabTestTemplate>,
+    doctorName: String,
+    clinicalNotes: String = ""
+  ): LabOrder {
+    val now = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+    val nowTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+    val orderNumber = "LAB-${SimpleDateFormat("yyMMdd-HHmm", Locale.getDefault()).format(Date())}-${(100..999).random()}"
+
+    val items = selectedTemplates.map { t ->
+      LabOrderItem(
+        testId = t.id,
+        testName = t.name,
+        category = t.category,
+        price = t.defaultPrice,
+        specimenType = t.specimenType,
+        remarks = "",
+        isCompleted = false,
+        parameters = t.parameters.map { p ->
+          LabTestParameter(
+            name = p.name,
+            result = "",
+            unit = p.unit,
+            referenceRange = p.referenceRange,
+            flag = ""
+          )
+        }
+      )
+    }
+
+    val totalAmount = items.sumOf { it.price }
+
+    val order = LabOrder(
+      id = UUID.randomUUID().toString(),
+      orderNumber = orderNumber,
+      patientId = patient.id,
+      patientName = patient.name,
+      patientHn = patient.hn,
+      patientAge = patient.age,
+      patientGender = patient.gender,
+      doctorName = doctorName,
+      orderDate = now,
+      orderTime = nowTime,
+      status = LabOrderStatus.ORDERED,
+      totalAmount = totalAmount,
+      paidAmount = 0.0,
+      paymentStatus = "Unpaid",
+      invoiceNumber = "",
+      technicianName = "",
+      notes = clinicalNotes,
+      items = items
+    )
+
+    createLabOrder(order)
+    return order
+  }
 }

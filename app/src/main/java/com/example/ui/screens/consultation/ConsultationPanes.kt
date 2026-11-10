@@ -206,8 +206,20 @@ fun ConsultationClinicalRecordPane(
     )
 
     // 4. Suggested Diagnostic Investigations (Labs, Imaging & Tests)
+    val labTemplates by viewModel.labTemplates.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
     SuggestedInvestigationsCard(
-      selectedInvestigations = selectedInvestigations
+      selectedInvestigations = selectedInvestigations,
+      labTemplates = labTemplates,
+      onOrderToLab = { templates ->
+        viewModel.orderLabTestsForPatient(
+          patient = patient,
+          selectedTemplates = templates,
+          doctorName = viewModel.currentUser.value?.displayName ?: "Attending Doctor",
+          clinicalNotes = "OPD Doctor Suggested Investigation"
+        )
+        android.widget.Toast.makeText(context, "ဓာတ်ခွဲခန်းသို့ တိုက်ရိုက်ပေးပို့ပြီးပါပြီ (Sent to Lab Queue)", android.widget.Toast.LENGTH_SHORT).show()
+      }
     )
 
     // 5. Diagnostic Scans & Attachments
@@ -308,7 +320,9 @@ fun ConsultationPrescriptionAndBillingPane(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SuggestedInvestigationsCard(
-  selectedInvestigations: SnapshotStateList<String>
+  selectedInvestigations: SnapshotStateList<String>,
+  labTemplates: List<LabTestTemplate> = emptyList(),
+  onOrderToLab: ((List<LabTestTemplate>) -> Unit)? = null
 ) {
   var customInvestigationText by remember { mutableStateOf("") }
   val commonInvestigations = remember {
@@ -447,6 +461,62 @@ fun SuggestedInvestigationsCard(
               ),
               modifier = Modifier.height(26.dp)
             )
+          }
+        }
+
+        // Direct Order to Lab Queue if matching templates exist
+        val matchedTemplates = remember(selectedInvestigations.toList(), labTemplates) {
+          labTemplates.filter { t ->
+            selectedInvestigations.any { inv ->
+              t.name.contains(inv, ignoreCase = true) || inv.contains(t.name, ignoreCase = true) ||
+              (inv.equals("CBC", ignoreCase = true) && t.name.contains("CBC", ignoreCase = true)) ||
+              (inv.equals("Urine RE", ignoreCase = true) && t.name.contains("Urine", ignoreCase = true)) ||
+              (inv.equals("LFT", ignoreCase = true) && t.name.contains("Liver", ignoreCase = true)) ||
+              (inv.equals("RBS", ignoreCase = true) && (t.name.contains("Glucose", ignoreCase = true) || t.name.contains("RBS", ignoreCase = true))) ||
+              (inv.contains("Lipid", ignoreCase = true) && t.name.contains("Lipid", ignoreCase = true)) ||
+              (inv.contains("Electrolyte", ignoreCase = true) && t.name.contains("Electrolyte", ignoreCase = true))
+            }
+          }
+        }
+
+        if (matchedTemplates.isNotEmpty() && onOrderToLab != null) {
+          Spacer(modifier = Modifier.height(10.dp))
+          Surface(
+            shape = RoundedCornerShape(6.dp),
+            color = Color(0xFFF0FDF4),
+            border = BorderStroke(1.dp, Color(0xFF86EFAC)),
+            modifier = Modifier.fillMaxWidth()
+          ) {
+            Row(
+              modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp).fillMaxWidth(),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Column(modifier = Modifier.weight(1f)) {
+                Text(
+                  "🧪 ဓာတ်ခွဲခန်းတွင် တိုက်ရိုက်စစ်ဆေးနိုင်သော Test (${matchedTemplates.size} ခု တွေ့ရှိ)",
+                  fontSize = 11.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = Color(0xFF166534)
+                )
+                Text(
+                  matchedTemplates.joinToString(", ") { "${it.name} (${it.defaultPrice.toInt()} Ks)" },
+                  fontSize = 10.sp,
+                  color = Color(0xFF15803D)
+                )
+              }
+              Button(
+                onClick = { onOrderToLab(matchedTemplates) },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
+                shape = RoundedCornerShape(6.dp),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                modifier = Modifier.height(34.dp)
+              ) {
+                Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(13.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Order to Lab", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+              }
+            }
           }
         }
       }
