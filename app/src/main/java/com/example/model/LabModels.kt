@@ -11,7 +11,9 @@ data class LabTestParameter(
   val unit: String = "",
   val referenceRange: String = "",
   val flag: String = "" // "Normal", "Low", "High", "Critical", or custom text
-)
+) {
+  val normalRange: String get() = referenceRange
+}
 
 /**
  * Pre-configured or user-defined dynamic test template

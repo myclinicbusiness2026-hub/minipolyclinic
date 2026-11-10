@@ -5,6 +5,8 @@ import com.example.model.LabTestTemplate
 
 object LabInitialDataSeeder {
 
+  fun getSeedTemplates(): List<LabTestTemplate> = getDefaultTemplates()
+
   fun getDefaultTemplates(): List<LabTestTemplate> = listOf(
     // 1. CBC (Complete Blood Count) - Analyzer Slip or Manual Input
     LabTestTemplate(

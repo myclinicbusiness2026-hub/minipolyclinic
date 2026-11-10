@@ -358,6 +358,8 @@ enum class PaymentMethod(val label: String, val myanmarLabel: String = label) {
   OTHER("Other", "အခြား");
 
   companion object {
+    val KPAY get() = KBZPAY
+    val CBPAY get() = OTHER
     val KBZ_PAY get() = KBZPAY
     val WAVE_PAY get() = WAVEPAY
     val BANK_TRANSFER get() = OTHER
@@ -572,6 +574,7 @@ data class UserAccount(
 ) {
   val effectivePermissions: UserRolePermissions
     get() = customPermissions
+  val displayName: String get() = fullName.ifBlank { username }
 }
 
 data class Supplier(

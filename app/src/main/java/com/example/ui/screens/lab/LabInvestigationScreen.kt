@@ -1797,11 +1797,11 @@ fun CreateLabInvoiceDialog(
         Text("ငွေပေးချေမှုပုံစံ:", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-          listOf(PaymentMethod.CASH, PaymentMethod.KPAY, PaymentMethod.CBPAY, PaymentMethod.WAVEPAY).forEach { pm ->
+          listOf(PaymentMethod.CASH, PaymentMethod.KBZPAY, PaymentMethod.WAVEPAY, PaymentMethod.OTHER).forEach { pm ->
             FilterChip(
               selected = selectedMethod == pm,
               onClick = { selectedMethod = pm },
-              label = { Text(pm.name, fontSize = 10.5.sp) }
+              label = { Text(pm.label, fontSize = 10.5.sp) }
             )
           }
         }

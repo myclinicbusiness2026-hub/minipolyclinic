@@ -404,7 +404,7 @@ object LabPrintHelper {
                 <td><strong>${param.name}</strong></td>
                 <td><strong style="color: #0b3954;">${param.result.ifBlank { "-" }}</strong></td>
                 <td>${param.unit.ifBlank { "-" }}</td>
-                <td>${param.normalRange.ifBlank { "-" }}</td>
+                <td>${param.referenceRange.ifBlank { "-" }}</td>
                 <td style="text-align: center;">$flagBadge</td>
               </tr>
             """.trimIndent())
