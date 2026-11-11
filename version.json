@@ -1,10 +1,10 @@
 {
-  "versionCode": 43,
-  "versionName": "1.5.19",
+  "versionCode": 44,
+  "versionName": "1.5.20",
   "minSupportedVersion": 1,
-  "releaseNotes": "• Mobile-First UI/UX Overhaul for Lab Investigation: Completely redesigned for mobile screens with compact cards, eliminating layout cramping, oversized components, and cut-off search bars.\n• Mobile-Optimized Parameter Entry Form: Replaced cramped 5-column desktop table with touch-friendly parameter cards featuring dedicated result inputs and one-tap thumb toggles for Normal / High / Low flags.\n• Direct Walk-in Lab Patients: Supports direct blood testing orders without requiring OPD doctor consultation queue registration.\n• Compact Queue & Result Cards: Clean vertical card architecture with primary action buttons and a 3-dot (⋮) menu for secondary actions (A4 blank letterhead, voucher, cancel) preventing button overlap.",
-  "releaseNotesMm": "• Mobile-First Lab UI/UX အဆင့်မြှင့်တင်ခြင်း - ဖုန်းမျက်နှာပြင်နှင့် အပြည့်အဝ ကိုက်ညီစေရန် ကတ်အရွယ်အစားများ ညှိယူခြင်း၊ စာမပြတ်တော့သော Search Bar နှင့် Scrollable Tabs များ ပြင်ဆင်ခြင်း\n• မိုဘိုင်းအတွက် အဆင်ပြေစေမည့် ဓာတ်ခွဲအဖြေထည့်ဖောင် - ကော်လံ ၅ ခုပါ ဇယားကျပ်ကျပ်များအစား Parameter တစ်ခုချင်းစီအတွက် နေရာကျယ်ဝန်းသည့် Card ဖောင်နှင့် လက်မတစ်ချက်နှိပ်ရုံဖြင့် Normal / High / Low ရွေးနိုင်သော စနစ်သစ်\n• ဆရာဝန်မပြဘဲ သွေးစစ်သီးသန့် လာရောက်သော ပြင်ပလူနာ (Walk-in) များအတွက် OPD Queue ထဲ ဝင်စရာမလိုဘဲ တိုက်ရိုက် သွေးစစ် Order ဖွင့်နိုင်ခြင်း\n• ပိုမိုသပ်ရပ်သော ကတ်ဒီဇိုင်း - ခလုတ်များ ဘေးတိုက်တန်းစီကျပ်ညပ်မှု မရှိစေဘဲ အဓိကခလုတ်တစ်ခုနှင့် ကျန်လုပ်ဆောင်ချက်များ (A4 အလွတ်၊ ဘောင်ချာ) ကို ⋮ Menu ထဲတွင် စနစ်တကျ ထားရှိပေးခြင်း",
+  "releaseNotes": "• Fixed text field input visibility & clipping: Resolved issue where text typed inside input boxes in the Lab Investigation module (Template Editor, Parameter Inputs, Search Bar, Walk-in Form) was hidden or clipped due to Material 3 height constraints.\n• High-Contrast Clean Text Styling: Enhanced all input fields with high-contrast text color (SlateDark) on pure white backgrounds and clear focus indicators.\n• Full Mobile-First Lab Experience: All screens, cards, forms, and dialogs are fully responsive and touch-friendly.",
+  "releaseNotesMm": "• စစ်ဆေးမှုပုံစံ အသစ်ထည့် Box အတွင်း စာသားများ မပေါ်သည့် ပြဿနာအား ဖြေရှင်းပြင်ဆင်ခြင်း - Material 3 Text Field များတွင် အမြင့်ကျဉ်းကျပ်မှုကြောင့် ရိုက်ထည့်စာသားများ ကွယ်ပျောက်/ညပ်နေမှုကို သဘာဝအမြင့်နှင့် စာလုံးအရွယ်အစား ပြင်ဆင်ပြီး ရှင်းလင်းပြတ်သားစွာ မြင်တွေ့ရအောင် ပြုပြင်ထားပါသည်။\n• ရှာဖွေရေးဘား (Search Bar) နှင့် အခြားဖောင်များတွင် စာတဝက်တပျက် ဖြစ်နေမှုများကို အပြည့်အဝ မြင်ရအောင် ညှိယူပေးထားခြင်း\n• အလင်းအမှောင် ကာလာပြတ်သားသော SlateDark အရောင်နှင့် အဖြူရောင်နောက်ခံတို့ဖြင့် မိုဘိုင်းဖုန်းတွင် စာရိုက်ရ ပိုမိုလွယ်ကူသပ်ရပ်စေခြင်း",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
-  "publishedAt": "2026-11-10",
-  "apkSizeBytes": 14736881
+  "publishedAt": "2026-11-11",
+  "apkSizeBytes": 14736879
 }
