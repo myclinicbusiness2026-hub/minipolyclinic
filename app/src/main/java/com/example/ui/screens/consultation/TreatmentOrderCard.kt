@@ -31,6 +31,7 @@ import com.example.model.Patient
 import com.example.ui.screens.treatment.CocktailDrugItem
 import com.example.ui.screens.treatment.TreatmentCard
 import com.example.ui.screens.treatment.TreatmentCardFactory
+import com.example.ui.screens.treatment.TreatmentConsumable
 import com.example.ui.screens.treatment.TreatmentRoute
 import com.example.ui.theme.*
 import java.text.NumberFormat
@@ -707,7 +708,7 @@ fun AddTreatmentOrderModal(
                 )
                 if (consumablesList.isNotEmpty()) {
                   Text(
-                    "Total: ${currencyFmt.format(consumablesList.sumOf { it.totalPrice }.toInt())} Ks",
+                    "Total: ${consumablesList.sumOf { it.totalPrice }.toInt()} Ks",
                     fontSize = 10.5.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF0284C7)
