@@ -1771,7 +1771,6 @@ fun MobileLabResultEntryDialog(
               focusedBorderColor = Color(0xFF0284C7)
             )
           )
-          )
         }
 
         Spacer(modifier = Modifier.height(8.dp))
