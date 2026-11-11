@@ -245,6 +245,9 @@ fun AddTreatmentOrderModal(
   var cocktailTitle by remember { mutableStateOf("") }
   val cocktailItems = remember { mutableStateListOf<CocktailDrugItem>() }
 
+  val consumablesList = remember { mutableStateListOf<TreatmentConsumable>() }
+  var consumableSearchQuery by remember { mutableStateOf("") }
+
   var dosage by remember { mutableStateOf("") }
   var selectedRoute by remember { mutableStateOf(TreatmentRoute.IV_PUSH) }
   var customRouteText by remember { mutableStateOf("") }
@@ -263,6 +266,24 @@ fun AddTreatmentOrderModal(
       (it.effectiveMedicineType in listOf("Injection", "Consumables")) &&
       (it.name.contains(searchQuery, ignoreCase = true) ||
        it.genericName.contains(searchQuery, ignoreCase = true))
+    }.take(8)
+  }
+
+  val filteredConsumables = remember(medicines, consumableSearchQuery) {
+    if (consumableSearchQuery.isBlank()) emptyList()
+    else medicines.filter {
+      (it.effectiveMedicineType == "Consumables" ||
+       it.category.contains("Consumable", ignoreCase = true) ||
+       it.name.contains("Syringe", ignoreCase = true) ||
+       it.name.contains("Needle", ignoreCase = true) ||
+       it.name.contains("Cannula", ignoreCase = true) ||
+       it.name.contains("Set", ignoreCase = true) ||
+       it.name.contains("Swab", ignoreCase = true) ||
+       it.name.contains("Plaster", ignoreCase = true) ||
+       it.name.contains("Water", ignoreCase = true) ||
+       it.name.contains(consumableSearchQuery, ignoreCase = true)) &&
+      (it.name.contains(consumableSearchQuery, ignoreCase = true) ||
+       it.genericName.contains(consumableSearchQuery, ignoreCase = true))
     }.take(8)
   }
 
@@ -665,6 +686,157 @@ fun AddTreatmentOrderModal(
             }
           }
 
+          // 2.5 Manual Consumables / Supplies Selection (Doctor picks manually - No auto-attach)
+          Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = Color(0xFFF8FAFC),
+            border = BorderStroke(1.dp, BorderGrey),
+            modifier = Modifier.fillMaxWidth()
+          ) {
+            Column(modifier = Modifier.padding(10.dp)) {
+              Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Text(
+                  "အသုံးစာရင်း / ဆေးထိုးပစ္စည်းများ (Consumables - ${consumablesList.size} items):",
+                  fontSize = 11.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = SlateDark
+                )
+                if (consumablesList.isNotEmpty()) {
+                  Text(
+                    "Total: ${currencyFmt.format(consumablesList.sumOf { it.totalPrice }.toInt())} Ks",
+                    fontSize = 10.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0284C7)
+                  )
+                }
+              }
+
+              Spacer(modifier = Modifier.height(4.dp))
+              OutlinedTextField(
+                value = consumableSearchQuery,
+                onValueChange = { consumableSearchQuery = it },
+                placeholder = { Text("+ Store စာရင်းမှ ဆေးထိုးအပ်/အသုံးပစ္စည်း ရှာဖွေထည့်ရန် (e.g. Syringe, Needle, Cannula)...", fontSize = 10.5.sp) },
+                leadingIcon = { Icon(Icons.Default.MedicalServices, contentDescription = null, tint = Color(0xFF0284C7), modifier = Modifier.size(16.dp)) },
+                trailingIcon = {
+                  if (consumableSearchQuery.isNotBlank()) {
+                    IconButton(onClick = { consumableSearchQuery = "" }, modifier = Modifier.size(20.dp)) {
+                      Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(14.dp))
+                    }
+                  }
+                },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+              )
+
+              if (filteredConsumables.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Surface(
+                  shape = RoundedCornerShape(6.dp),
+                  color = PureWhite,
+                  border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                  modifier = Modifier.fillMaxWidth()
+                ) {
+                  Column(modifier = Modifier.padding(4.dp)) {
+                    filteredConsumables.forEach { med ->
+                      Row(
+                        modifier = Modifier
+                          .fillMaxWidth()
+                          .clickable {
+                            val existingIdx = consumablesList.indexOfFirst { it.medicineId == med.id || it.name.equals(med.name, ignoreCase = true) }
+                            if (existingIdx >= 0) {
+                              val cur = consumablesList[existingIdx]
+                              consumablesList[existingIdx] = cur.copy(quantity = cur.quantity + 1)
+                            } else {
+                              consumablesList.add(
+                                TreatmentConsumable(
+                                  medicineId = med.id,
+                                  name = med.name,
+                                  quantity = 1,
+                                  unitPrice = med.sellingPrice
+                                )
+                              )
+                            }
+                            consumableSearchQuery = ""
+                          }
+                          .padding(horizontal = 8.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                      ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                          Text(med.name, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+                          Text("Stock: ${med.totalStock} ${med.unitType} • Price: ${med.sellingPrice.toInt()} Ks", fontSize = 9.sp, color = SlateMuted)
+                        }
+                        Text("+ Add", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0284C7))
+                      }
+                      HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 0.5.dp)
+                    }
+                  }
+                }
+              }
+
+              if (consumablesList.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                  consumablesList.forEachIndexed { idx, cons ->
+                    Surface(
+                      shape = RoundedCornerShape(4.dp),
+                      color = PureWhite,
+                      border = BorderStroke(0.6.dp, Color(0xFFE2E8F0)),
+                      modifier = Modifier.fillMaxWidth()
+                    ) {
+                      Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                      ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                          Text(cons.name, fontSize = 10.5.sp, fontWeight = FontWeight.Medium)
+                          Text("${cons.unitPrice.toInt()} Ks x ${cons.quantity} = ${cons.totalPrice.toInt()} Ks", fontSize = 9.sp, color = SlateMuted)
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                          IconButton(
+                            onClick = {
+                              if (cons.quantity > 1) {
+                                consumablesList[idx] = cons.copy(quantity = cons.quantity - 1)
+                              } else {
+                                consumablesList.removeAt(idx)
+                              }
+                            },
+                            modifier = Modifier.size(24.dp)
+                          ) {
+                            Text("-", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                          }
+                          Text("${cons.quantity}", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
+                          IconButton(
+                            onClick = {
+                              consumablesList[idx] = cons.copy(quantity = cons.quantity + 1)
+                            },
+                            modifier = Modifier.size(24.dp)
+                          ) {
+                            Text("+", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                          }
+                          IconButton(
+                            onClick = { consumablesList.removeAt(idx) },
+                            modifier = Modifier.size(24.dp)
+                          ) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFDC2626), modifier = Modifier.size(14.dp))
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              } else {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text("(ဆေးထိုးအပ်/ပစ္စည်း ထည့်သွင်းလိုပါက အထက်တွင် ရှာဖွေရွေးချယ်ပါ - မလိုပါက ကျော်နိုင်ပါသည်)", fontSize = 9.sp, color = SlateMuted)
+              }
+            }
+          }
+
           // 3. Route Selector
           Text("ထိုးမည့်နည်းလမ်း (Route of Administration):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SlateDark)
           Row(
@@ -921,7 +1093,8 @@ fun AddTreatmentOrderModal(
                 days = days,
                 medicationFee = medFee,
                 sessionFee = sessionFee,
-                splitVialMode = splitVialMode
+                splitVialMode = splitVialMode,
+                consumables = consumablesList.toList()
               )
               val card = TreatmentCard(
                 patientId = patient?.id ?: "",
@@ -946,6 +1119,7 @@ fun AddTreatmentOrderModal(
                 isPrepaidFullCourse = !isPayPerVisit,
                 isCocktail = isCocktail,
                 cocktailItems = if (isCocktail) cocktailItems.toList() else emptyList(),
+                consumables = consumablesList.toList(),
                 isPatientSupplied = isPatientSupplied
               )
               onConfirm(card)

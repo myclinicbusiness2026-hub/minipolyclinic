@@ -119,6 +119,7 @@ data class TreatmentCard(
   val isPrepaidFullCourse: Boolean = false,
   val isCocktail: Boolean = false,
   val cocktailItems: List<CocktailDrugItem> = emptyList(),
+  val consumables: List<TreatmentConsumable> = emptyList(),
   val isPatientSupplied: Boolean = false,
   val consultationInvoiceId: String? = null,
   val cardStatus: TreatmentStatus = TreatmentStatus.IN_PROGRESS,
@@ -192,7 +193,8 @@ object TreatmentCardFactory {
     days: Int,
     medicationFee: Double = 0.0,
     sessionFee: Double = 3000.0,
-    splitVialMode: Boolean = false
+    splitVialMode: Boolean = false,
+    consumables: List<TreatmentConsumable> = emptyList()
   ): List<TreatmentSession> {
     val list = mutableListOf<TreatmentSession>()
     val cal = Calendar.getInstance()
@@ -208,8 +210,8 @@ object TreatmentCardFactory {
         var count = 1
         for (d in 0 until days) {
           val dateStr = dateFormat.format(cal.time)
-          list.add(TreatmentSession(sessionNumber = count++, scheduledDate = dateStr, scheduledTime = "08:00 AM", medicationFee = medicationFee, sessionFee = sessionFee))
-          list.add(TreatmentSession(sessionNumber = count++, scheduledDate = dateStr, scheduledTime = "08:00 PM", medicationFee = if (splitVialMode) 0.0 else medicationFee, isClinicMed = !splitVialMode, sessionFee = sessionFee))
+          list.add(TreatmentSession(sessionNumber = count++, scheduledDate = dateStr, scheduledTime = "08:00 AM", medicationFee = medicationFee, sessionFee = sessionFee, consumables = consumables))
+          list.add(TreatmentSession(sessionNumber = count++, scheduledDate = dateStr, scheduledTime = "08:00 PM", medicationFee = if (splitVialMode) 0.0 else medicationFee, isClinicMed = !splitVialMode, sessionFee = sessionFee, consumables = consumables))
           cal.add(Calendar.DAY_OF_YEAR, 1)
         }
       }
@@ -217,21 +219,21 @@ object TreatmentCardFactory {
         var count = 1
         for (d in 0 until days) {
           val dateStr = dateFormat.format(cal.time)
-          list.add(TreatmentSession(sessionNumber = count++, scheduledDate = dateStr, scheduledTime = "06:00 AM", medicationFee = medicationFee, sessionFee = sessionFee))
-          list.add(TreatmentSession(sessionNumber = count++, scheduledDate = dateStr, scheduledTime = "02:00 PM", medicationFee = if (splitVialMode) 0.0 else medicationFee, isClinicMed = !splitVialMode, sessionFee = sessionFee))
-          list.add(TreatmentSession(sessionNumber = count++, scheduledDate = dateStr, scheduledTime = "10:00 PM", medicationFee = if (splitVialMode) 0.0 else medicationFee, isClinicMed = !splitVialMode, sessionFee = sessionFee))
+          list.add(TreatmentSession(sessionNumber = count++, scheduledDate = dateStr, scheduledTime = "06:00 AM", medicationFee = medicationFee, sessionFee = sessionFee, consumables = consumables))
+          list.add(TreatmentSession(sessionNumber = count++, scheduledDate = dateStr, scheduledTime = "02:00 PM", medicationFee = if (splitVialMode) 0.0 else medicationFee, isClinicMed = !splitVialMode, sessionFee = sessionFee, consumables = consumables))
+          list.add(TreatmentSession(sessionNumber = count++, scheduledDate = dateStr, scheduledTime = "10:00 PM", medicationFee = if (splitVialMode) 0.0 else medicationFee, isClinicMed = !splitVialMode, sessionFee = sessionFee, consumables = consumables))
           cal.add(Calendar.DAY_OF_YEAR, 1)
         }
       }
       frequency.contains("Stat", ignoreCase = true) -> {
         val dateStr = dateFormat.format(cal.time)
-        list.add(TreatmentSession(sessionNumber = 1, scheduledDate = dateStr, scheduledTime = "Immediate", medicationFee = medicationFee, sessionFee = sessionFee))
+        list.add(TreatmentSession(sessionNumber = 1, scheduledDate = dateStr, scheduledTime = "Immediate", medicationFee = medicationFee, sessionFee = sessionFee, consumables = consumables))
       }
       else -> {
         // Daily
         for (d in 1..days) {
           val dateStr = dateFormat.format(cal.time)
-          list.add(TreatmentSession(sessionNumber = d, scheduledDate = dateStr, scheduledTime = "09:00 AM", medicationFee = medicationFee, sessionFee = sessionFee))
+          list.add(TreatmentSession(sessionNumber = d, scheduledDate = dateStr, scheduledTime = "09:00 AM", medicationFee = medicationFee, sessionFee = sessionFee, consumables = consumables))
           cal.add(Calendar.DAY_OF_YEAR, 1)
         }
       }

@@ -1174,7 +1174,7 @@ object A4PdfNativeCanvasRenderer {
     val vitalsList = listOf(
       "BLOOD PRESSURE" to vitals.bloodPressure.ifBlank { "120/80" },
       "PULSE RATE" to "${vitals.pulseRate} bpm",
-      "TEMPERATURE" to "${String.format(java.util.Locale.US, "%.1f", vitals.temperatureCelsius)} °F",
+      "TEMPERATURE" to "${String.format(java.util.Locale.US, "%.1f", vitals.temperatureFahrenheit)} °F",
       "SPO2" to "${vitals.oxygenSaturation}%",
       "WEIGHT" to "${String.format(java.util.Locale.US, "%.1f", vitals.weightKg)} kg",
       "RBS" to (vitals.rbs?.let { if (it > 0) "${it.toInt()} mg/dL" else "-" } ?: "-")

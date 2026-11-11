@@ -621,12 +621,15 @@ fun ClinicalHistorySection(
               }
 
               Spacer(modifier = Modifier.height(6.dp))
+              val defaultPmhxList = listOf("None", "Hypertension (HTN)", "Diabetes Mellitus (T2DM)", "Asthma / COPD", "IHD / CAD", "CKD", "Dyslipidemia", "Stroke / CVA", "GERD / Gastritis", "Thyroid disorder", "Gout", "Epilepsy")
+              val customPmhxList = pastMedicalHistory.filter { it !in defaultPmhxList }
+
               FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(3.dp),
                 modifier = Modifier.fillMaxWidth()
               ) {
-                listOf("None", "Hypertension (HTN)", "Diabetes Mellitus (T2DM)", "Asthma / COPD", "IHD / CAD", "CKD", "Dyslipidemia", "Stroke / CVA", "GERD / Gastritis", "Thyroid disorder", "Gout", "Epilepsy").forEach { dis ->
+                defaultPmhxList.forEach { dis ->
                   val isPicked = pastMedicalHistory.contains(dis)
                   FilterChip(
                     selected = isPicked,
@@ -647,18 +650,56 @@ fun ClinicalHistorySection(
                     )
                   )
                 }
+                customPmhxList.forEach { customDis ->
+                  FilterChip(
+                    selected = true,
+                    onClick = {
+                      pastMedicalHistory.remove(customDis)
+                      syncHistory()
+                    },
+                    label = { Text("$customDis \u2715", fontSize = 9.sp, fontWeight = FontWeight.Bold) },
+                    colors = FilterChipDefaults.filterChipColors(
+                      selectedContainerColor = Color(0xFF0D47A1),
+                      selectedLabelColor = PureWhite
+                    )
+                  )
+                }
               }
               Spacer(modifier = Modifier.height(4.dp))
-              OutlinedTextField(
-                value = customPmhx,
-                onValueChange = { customPmhx = it },
-                placeholder = { Text("Custom PMHx (e.g. Hepatitis B, Chronic Kidney Disease Stage 3...)", fontSize = 9.5.sp, color = SlateMuted) },
+              Row(
                 modifier = Modifier.fillMaxWidth(),
-                textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
-                shape = RoundedCornerShape(4.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default),
-                singleLine = false, minLines = 1, maxLines = 3
-              )
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                OutlinedTextField(
+                  value = customPmhx,
+                  onValueChange = { customPmhx = it },
+                  placeholder = { Text("Custom PMHx (e.g. Hepatitis B, CKD Stage 3...)", fontSize = 9.5.sp, color = SlateMuted) },
+                  modifier = Modifier.weight(1f),
+                  textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
+                  shape = RoundedCornerShape(4.dp),
+                  keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
+                  singleLine = true
+                )
+                Button(
+                  onClick = {
+                    if (customPmhx.isNotBlank()) {
+                      pastMedicalHistory.remove("None")
+                      pastMedicalHistory.add(customPmhx.trim())
+                      customPmhx = ""
+                      syncHistory()
+                    }
+                  },
+                  colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2)),
+                  shape = RoundedCornerShape(4.dp),
+                  contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                  modifier = Modifier.height(36.dp)
+                ) {
+                  Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
+                  Spacer(modifier = Modifier.width(2.dp))
+                  Text("Add", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                }
+              }
             }
           }
 
@@ -701,12 +742,15 @@ fun ClinicalHistorySection(
               }
 
               Spacer(modifier = Modifier.height(6.dp))
+              val defaultPshxList = listOf("None", "Appendectomy", "Cholecystectomy", "C-Section (LSCS)", "Herniorrhaphy", "Orthopedic Fixation", "Cataract Surgery", "Tonsillectomy")
+              val customPshxList = pastSurgicalHistory.filter { it !in defaultPshxList }
+
               FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(3.dp),
                 modifier = Modifier.fillMaxWidth()
               ) {
-                listOf("None", "Appendectomy", "Cholecystectomy", "C-Section (LSCS)", "Herniorrhaphy", "Orthopedic Fixation", "Cataract Surgery", "Tonsillectomy").forEach { surg ->
+                defaultPshxList.forEach { surg ->
                   val isPicked = pastSurgicalHistory.contains(surg)
                   FilterChip(
                     selected = isPicked,
@@ -727,18 +771,56 @@ fun ClinicalHistorySection(
                     )
                   )
                 }
+                customPshxList.forEach { customSurg ->
+                  FilterChip(
+                    selected = true,
+                    onClick = {
+                      pastSurgicalHistory.remove(customSurg)
+                      syncHistory()
+                    },
+                    label = { Text("$customSurg \u2715", fontSize = 9.sp, fontWeight = FontWeight.Bold) },
+                    colors = FilterChipDefaults.filterChipColors(
+                      selectedContainerColor = Color(0xFF4A148C),
+                      selectedLabelColor = PureWhite
+                    )
+                  )
+                }
               }
               Spacer(modifier = Modifier.height(4.dp))
-              OutlinedTextField(
-                value = customPshx,
-                onValueChange = { customPshx = it },
-                placeholder = { Text("Custom surgical details (e.g. Laparoscopic Appendectomy 2021, Knee replacement...)", fontSize = 9.5.sp, color = SlateMuted) },
+              Row(
                 modifier = Modifier.fillMaxWidth(),
-                textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
-                shape = RoundedCornerShape(4.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default),
-                singleLine = false, minLines = 1, maxLines = 3
-              )
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                OutlinedTextField(
+                  value = customPshx,
+                  onValueChange = { customPshx = it },
+                  placeholder = { Text("Custom surgical details (e.g. Laparoscopic Appendectomy 2021...)", fontSize = 9.5.sp, color = SlateMuted) },
+                  modifier = Modifier.weight(1f),
+                  textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
+                  shape = RoundedCornerShape(4.dp),
+                  keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
+                  singleLine = true
+                )
+                Button(
+                  onClick = {
+                    if (customPshx.isNotBlank()) {
+                      pastSurgicalHistory.remove("None")
+                      pastSurgicalHistory.add(customPshx.trim())
+                      customPshx = ""
+                      syncHistory()
+                    }
+                  },
+                  colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7B1FA2)),
+                  shape = RoundedCornerShape(4.dp),
+                  contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                  modifier = Modifier.height(36.dp)
+                ) {
+                  Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
+                  Spacer(modifier = Modifier.width(2.dp))
+                  Text("Add", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                }
+              }
             }
           }
 
@@ -781,12 +863,15 @@ fun ClinicalHistorySection(
               }
 
               Spacer(modifier = Modifier.height(6.dp))
+              val defaultAllergyList = listOf("NKDA (No Known Allergies)", "Penicillin", "Cephalosporins", "NSAIDs / Ibuprofen", "Sulfa drugs", "Aspirin", "Paracetamol", "Ciprofloxacin")
+              val customAllergyList = drugAllergies.filter { it !in defaultAllergyList }
+
               FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(3.dp),
                 modifier = Modifier.fillMaxWidth()
               ) {
-                listOf("NKDA (No Known Allergies)", "Penicillin", "Cephalosporins", "NSAIDs / Ibuprofen", "Sulfa drugs", "Aspirin", "Paracetamol", "Ciprofloxacin").forEach { alg ->
+                defaultAllergyList.forEach { alg ->
                   val isPicked = drugAllergies.contains(alg)
                   FilterChip(
                     selected = isPicked,
@@ -807,18 +892,56 @@ fun ClinicalHistorySection(
                     )
                   )
                 }
+                customAllergyList.forEach { customAlg ->
+                  FilterChip(
+                    selected = true,
+                    onClick = {
+                      drugAllergies.remove(customAlg)
+                      syncHistory()
+                    },
+                    label = { Text("$customAlg \u2715", fontSize = 9.sp, fontWeight = FontWeight.Bold) },
+                    colors = FilterChipDefaults.filterChipColors(
+                      selectedContainerColor = Color(0xFFB71C1C),
+                      selectedLabelColor = PureWhite
+                    )
+                  )
+                }
               }
               Spacer(modifier = Modifier.height(4.dp))
-              OutlinedTextField(
-                value = customDrugAllergy,
-                onValueChange = { customDrugAllergy = it },
-                placeholder = { Text("Custom allergy (e.g. Paracetamol severe urticaria, Augmentin rash...)", fontSize = 9.5.sp, color = SlateMuted) },
+              Row(
                 modifier = Modifier.fillMaxWidth(),
-                textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
-                shape = RoundedCornerShape(4.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default),
-                singleLine = false, minLines = 1, maxLines = 3
-              )
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                OutlinedTextField(
+                  value = customDrugAllergy,
+                  onValueChange = { customDrugAllergy = it },
+                  placeholder = { Text("Custom allergy (e.g. Paracetamol severe urticaria, Augmentin rash...)", fontSize = 9.5.sp, color = SlateMuted) },
+                  modifier = Modifier.weight(1f),
+                  textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
+                  shape = RoundedCornerShape(4.dp),
+                  keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
+                  singleLine = true
+                )
+                Button(
+                  onClick = {
+                    if (customDrugAllergy.isNotBlank()) {
+                      drugAllergies.removeAll { it.startsWith("NKDA") }
+                      drugAllergies.add(customDrugAllergy.trim())
+                      customDrugAllergy = ""
+                      syncHistory()
+                    }
+                  },
+                  colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828)),
+                  shape = RoundedCornerShape(4.dp),
+                  contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                  modifier = Modifier.height(36.dp)
+                ) {
+                  Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
+                  Spacer(modifier = Modifier.width(2.dp))
+                  Text("Add", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                }
+              }
             }
           }
 
@@ -1019,7 +1142,10 @@ fun ClinicalHistorySection(
               Spacer(modifier = Modifier.height(6.dp))
               OutlinedTextField(
                 value = menstrualHistory,
-                onValueChange = { menstrualHistory = it },
+                onValueChange = { 
+                  menstrualHistory = it
+                  syncHistory()
+                },
                 placeholder = { Text("e.g. LMP: 05/10/2026, Regular 28-day cycle, G2P1, No dysmenorrhea...", fontSize = 9.5.sp, color = SlateMuted) },
                 modifier = Modifier.fillMaxWidth(),
                 textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
@@ -1069,12 +1195,15 @@ fun ClinicalHistorySection(
               }
 
               Spacer(modifier = Modifier.height(6.dp))
+              val defaultSocialList = listOf("Non-smoker", "Current Smoker", "Ex-smoker", "Non-drinker", "Social Alcohol", "Regular Alcohol", "Betel Chewer", "Sedentary", "Active Exercise")
+              val customSocialList = socialHabits.filter { it !in defaultSocialList }
+
               FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(3.dp),
                 modifier = Modifier.fillMaxWidth()
               ) {
-                listOf("Non-smoker", "Current Smoker", "Ex-smoker", "Non-drinker", "Social Alcohol", "Regular Alcohol", "Betel Chewer", "Sedentary", "Active Exercise").forEach { habit ->
+                defaultSocialList.forEach { habit ->
                   val isPicked = socialHabits.contains(habit)
                   FilterChip(
                     selected = isPicked,
@@ -1089,18 +1218,55 @@ fun ClinicalHistorySection(
                     )
                   )
                 }
+                customSocialList.forEach { customHabit ->
+                  FilterChip(
+                    selected = true,
+                    onClick = {
+                      socialHabits.remove(customHabit)
+                      syncHistory()
+                    },
+                    label = { Text("$customHabit \u2715", fontSize = 9.sp, fontWeight = FontWeight.Bold) },
+                    colors = FilterChipDefaults.filterChipColors(
+                      selectedContainerColor = Color(0xFF263238),
+                      selectedLabelColor = PureWhite
+                    )
+                  )
+                }
               }
               Spacer(modifier = Modifier.height(4.dp))
-              OutlinedTextField(
-                value = customSocial,
-                onValueChange = { customSocial = it },
-                placeholder = { Text("Custom social history (e.g. 10 pack-years, occupation: office worker, high stress...)", fontSize = 9.5.sp, color = SlateMuted) },
+              Row(
                 modifier = Modifier.fillMaxWidth(),
-                textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
-                shape = RoundedCornerShape(4.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default),
-                singleLine = false, minLines = 1, maxLines = 3
-              )
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                OutlinedTextField(
+                  value = customSocial,
+                  onValueChange = { customSocial = it },
+                  placeholder = { Text("Custom social history (e.g. 10 pack-years, office worker...)", fontSize = 9.5.sp, color = SlateMuted) },
+                  modifier = Modifier.weight(1f),
+                  textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
+                  shape = RoundedCornerShape(4.dp),
+                  keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
+                  singleLine = true
+                )
+                Button(
+                  onClick = {
+                    if (customSocial.isNotBlank()) {
+                      socialHabits.add(customSocial.trim())
+                      customSocial = ""
+                      syncHistory()
+                    }
+                  },
+                  colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF455A64)),
+                  shape = RoundedCornerShape(4.dp),
+                  contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                  modifier = Modifier.height(36.dp)
+                ) {
+                  Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
+                  Spacer(modifier = Modifier.width(2.dp))
+                  Text("Add", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                }
+              }
             }
           }
 
@@ -1143,12 +1309,15 @@ fun ClinicalHistorySection(
               }
 
               Spacer(modifier = Modifier.height(6.dp))
+              val defaultTraumaList = listOf("No trauma", "RTA (Road Traffic Accident)", "Slip & Fall", "Blunt Trauma", "Laceration / Cut", "Burn / Scald", "Head Injury (No LOC)", "Fracture history")
+              val customTraumaList = traumaHistory.filter { it !in defaultTraumaList }
+
               FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(3.dp),
                 modifier = Modifier.fillMaxWidth()
               ) {
-                listOf("No trauma", "RTA (Road Traffic Accident)", "Slip & Fall", "Blunt Trauma", "Laceration / Cut", "Burn / Scald", "Head Injury (No LOC)", "Fracture history").forEach { tr ->
+                defaultTraumaList.forEach { tr ->
                   val isPicked = traumaHistory.contains(tr)
                   FilterChip(
                     selected = isPicked,
@@ -1163,18 +1332,55 @@ fun ClinicalHistorySection(
                     )
                   )
                 }
+                customTraumaList.forEach { customTr ->
+                  FilterChip(
+                    selected = true,
+                    onClick = {
+                      traumaHistory.remove(customTr)
+                      syncHistory()
+                    },
+                    label = { Text("$customTr \u2715", fontSize = 9.sp, fontWeight = FontWeight.Bold) },
+                    colors = FilterChipDefaults.filterChipColors(
+                      selectedContainerColor = Color(0xFFBF360C),
+                      selectedLabelColor = PureWhite
+                    )
+                  )
+                }
               }
               Spacer(modifier = Modifier.height(4.dp))
-              OutlinedTextField(
-                value = customTrauma,
-                onValueChange = { customTrauma = it },
-                placeholder = { Text("Injury details (e.g. yesterday motorcycle slip, right knee abrasion, tetanus up-to-date...)", fontSize = 9.5.sp, color = SlateMuted) },
+              Row(
                 modifier = Modifier.fillMaxWidth(),
-                textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
-                shape = RoundedCornerShape(4.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default),
-                singleLine = false, minLines = 1, maxLines = 3
-              )
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                OutlinedTextField(
+                  value = customTrauma,
+                  onValueChange = { customTrauma = it },
+                  placeholder = { Text("Injury details (e.g. yesterday motorcycle slip, knee abrasion...)", fontSize = 9.5.sp, color = SlateMuted) },
+                  modifier = Modifier.weight(1f),
+                  textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
+                  shape = RoundedCornerShape(4.dp),
+                  keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
+                  singleLine = true
+                )
+                Button(
+                  onClick = {
+                    if (customTrauma.isNotBlank()) {
+                      traumaHistory.add(customTrauma.trim())
+                      customTrauma = ""
+                      syncHistory()
+                    }
+                  },
+                  colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE65100)),
+                  shape = RoundedCornerShape(4.dp),
+                  contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                  modifier = Modifier.height(36.dp)
+                ) {
+                  Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
+                  Spacer(modifier = Modifier.width(2.dp))
+                  Text("Add", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                }
+              }
             }
           }
         }

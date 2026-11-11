@@ -1604,48 +1604,49 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       )
     }
 
-        treatmentOrders.forEach { card ->
+    treatmentOrders.forEach { card ->
       val sFee = if (card.sessionFee > 0) card.sessionFee else card.route.getDefaultFee(clinicSettings.value)
       val numDoses = if (card.totalSessions > 1 && (card.isPrepaidFullCourse || !card.isPayPerVisit)) card.totalSessions else 1
       val isFullCourse = numDoses > 1
 
-      // 1. Medication Item (isProcedure = false -> Pharmacy Revenue)
-      if (!card.isPatientSupplied && card.medicationFee > 0) {
-        val doseStr = if (card.dosage.isNotBlank()) " (${card.dosage})" else ""
-        val medItemName = if (card.isCocktail && card.cocktailItems.isNotEmpty()) {
-          val ckNames = card.cocktailItems.joinToString("+") { it.name }
-          if (isFullCourse) "Cocktail ($ckNames) x $numDoses Doses" else "Cocktail ($ckNames)"
-        } else {
-          if (isFullCourse) "${card.medicationName}$doseStr x $numDoses Doses" else "${card.medicationName}$doseStr"
-        }
-        invoiceItems.add(
-          InvoiceItem(
-            name = medItemName,
-            quantity = numDoses,
-            unitPrice = card.medicationFee,
-            totalPrice = card.medicationFee * numDoses,
-            isProcedure = false
-          )
-        )
+      val perDoseMedFee = if (!card.isPatientSupplied && card.medicationFee > 0) card.medicationFee else 0.0
+      val perDoseConsFee = card.consumables.sumOf { it.totalPrice }
+      val perDoseSvcFee = sFee
+      val perDoseTotal = perDoseMedFee + perDoseConsFee + perDoseSvcFee
+
+      val doseStr = if (card.dosage.isNotBlank()) " (${card.dosage})" else ""
+      val medTitle = if (card.isCocktail && card.cocktailItems.isNotEmpty()) {
+        val ckNames = card.cocktailItems.joinToString("+") { it.name }
+        if (isFullCourse) "Cocktail ($ckNames) x $numDoses Doses" else "Cocktail ($ckNames)"
+      } else {
+        if (isFullCourse) "${card.medicationName}$doseStr x $numDoses Doses" else "${card.medicationName}$doseStr"
       }
 
-      // 2. Administration Service Fee (isProcedure = true -> Doctor/Service Revenue)
-      if (sFee > 0) {
-        val svcFeeName = if (isFullCourse) {
-          "${card.routeDisplay} Service Fee x $numDoses Doses"
-        } else {
-          "${card.routeDisplay} Service Fee"
-        }
-        invoiceItems.add(
-          InvoiceItem(
-            name = svcFeeName,
-            quantity = numDoses,
-            unitPrice = sFee,
-            totalPrice = sFee * numDoses,
-            isProcedure = true
-          )
-        )
+      val consText = if (card.consumables.isNotEmpty()) {
+        card.consumables.joinToString(", ") { "${it.name} x${it.quantity}" }
+      } else ""
+
+      // Comprehensive combined line item: [ဆေး + အသုံးစာရင်း + Service Fee]
+      val subDetails = mutableListOf<String>()
+      if (perDoseMedFee > 0) subDetails.add("ဆေး: ${perDoseMedFee.toInt()}Ks")
+      if (consText.isNotBlank()) subDetails.add("အသုံး: $consText (${perDoseConsFee.toInt()}Ks)")
+      if (perDoseSvcFee > 0) subDetails.add("ထိုးခ: ${perDoseSvcFee.toInt()}Ks")
+
+      val itemDisplayName = if (subDetails.isNotEmpty()) {
+        "${card.routeDisplay} ($medTitle)\n  • ${subDetails.joinToString(" | ")}"
+      } else {
+        "${card.routeDisplay} ($medTitle)"
       }
+
+      invoiceItems.add(
+        InvoiceItem(
+          name = itemDisplayName,
+          quantity = numDoses,
+          unitPrice = perDoseTotal,
+          totalPrice = perDoseTotal * numDoses,
+          isProcedure = true
+        )
+      )
     }
 
     val totalItemsPrice = invoiceItems.sumOf { it.totalPrice }
