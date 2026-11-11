@@ -241,23 +241,26 @@ fun LabInvestigationScreen(
             OutlinedTextField(
               value = searchQuery,
               onValueChange = { searchQuery = it },
-              placeholder = { Text("ရှာဖွေရန် (လူနာအမည် / HN)...", fontSize = 11.sp, color = SlateMuted) },
-              leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp), tint = SlateMuted) },
+              placeholder = { Text("ရှာဖွေရန် (လူနာအမည် / HN)...", fontSize = 12.sp, color = SlateMuted) },
+              leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp), tint = SlateMuted) },
               trailingIcon = {
                 if (searchQuery.isNotBlank()) {
-                  IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(14.dp), tint = SlateMuted)
+                  IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(16.dp), tint = SlateMuted)
                   }
                 }
               },
               singleLine = true,
-              modifier = Modifier.fillMaxWidth().height(48.dp),
-              shape = RoundedCornerShape(6.dp),
-              textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp),
+              modifier = Modifier.fillMaxWidth(),
+              shape = RoundedCornerShape(8.dp),
+              textStyle = LocalTextStyle.current.copy(fontSize = 12.5.sp, color = Color(0xFF0F172A)),
               colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color(0xFF0F172A),
+                unfocusedTextColor = Color(0xFF0F172A),
                 focusedContainerColor = Color(0xFFF8FAFC),
                 unfocusedContainerColor = Color(0xFFF8FAFC),
-                unfocusedBorderColor = BorderGray
+                unfocusedBorderColor = BorderGray,
+                focusedBorderColor = Color(0xFF0284C7)
               )
             )
           }
@@ -1275,11 +1278,19 @@ fun MobileNewLabOrderDialog(
               OutlinedTextField(
                 value = patientSearch,
                 onValueChange = { patientSearch = it },
-                placeholder = { Text("လူနာအမည် သို့မဟုတ် HN ရိုက်ထည့်ရှာဖွေပါ...", fontSize = 11.sp) },
+                placeholder = { Text("လူနာအမည် သို့မဟုတ် HN ရိုက်ထည့်ရှာဖွေပါ...", fontSize = 11.sp, color = SlateMuted) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth().height(42.dp),
-                shape = RoundedCornerShape(6.dp),
-                textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp),
+                textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = Color(0xFF0F172A)),
+                colors = OutlinedTextFieldDefaults.colors(
+                  focusedTextColor = Color(0xFF0F172A),
+                  unfocusedTextColor = Color(0xFF0F172A),
+                  focusedContainerColor = PureWhite,
+                  unfocusedContainerColor = PureWhite,
+                  unfocusedBorderColor = BorderGray,
+                  focusedBorderColor = Color(0xFF0284C7)
+                )
               )
               Spacer(modifier = Modifier.height(6.dp))
               Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1306,37 +1317,52 @@ fun MobileNewLabOrderDialog(
             OutlinedTextField(
               value = walkInName,
               onValueChange = { walkInName = it },
-              label = { Text("လူနာအမည် *", fontSize = 10.5.sp) },
+              label = { Text("လူနာအမည် *", fontSize = 11.sp) },
               singleLine = true,
-              modifier = Modifier.fillMaxWidth().height(48.dp),
-              shape = RoundedCornerShape(6.dp),
-              textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
+              modifier = Modifier.fillMaxWidth(),
+              shape = RoundedCornerShape(8.dp),
+              textStyle = LocalTextStyle.current.copy(fontSize = 12.5.sp, color = Color(0xFF0F172A), fontWeight = FontWeight.Medium),
+              colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color(0xFF0F172A),
+                unfocusedTextColor = Color(0xFF0F172A),
+                focusedContainerColor = PureWhite,
+                unfocusedContainerColor = PureWhite,
+                unfocusedBorderColor = BorderGray,
+                focusedBorderColor = Color(0xFF0284C7)
+              )
             )
             Spacer(modifier = Modifier.height(6.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
               OutlinedTextField(
                 value = walkInAge,
                 onValueChange = { walkInAge = it },
-                label = { Text("အသက်", fontSize = 10.5.sp) },
+                label = { Text("အသက်", fontSize = 11.sp) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
-                modifier = Modifier.weight(1f).height(48.dp),
-                shape = RoundedCornerShape(6.dp),
-                textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(8.dp),
+                textStyle = LocalTextStyle.current.copy(fontSize = 12.5.sp, color = Color(0xFF0F172A)),
+                colors = OutlinedTextFieldDefaults.colors(
+                  focusedTextColor = Color(0xFF0F172A),
+                  unfocusedTextColor = Color(0xFF0F172A),
+                  focusedContainerColor = PureWhite,
+                  unfocusedContainerColor = PureWhite,
+                  unfocusedBorderColor = BorderGray,
+                  focusedBorderColor = Color(0xFF0284C7)
+                )
               )
-              Row(modifier = Modifier.weight(1.5f), verticalAlignment = Alignment.CenterVertically) {
+              Row(modifier = Modifier.weight(1.5f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 FilterChip(
                   selected = walkInGender == Gender.MALE,
                   onClick = { walkInGender = Gender.MALE },
-                  label = { Text("ကျား", fontSize = 10.sp) },
-                  modifier = Modifier.height(28.dp)
+                  label = { Text("ကျား", fontSize = 11.sp) },
+                  modifier = Modifier.height(36.dp)
                 )
-                Spacer(modifier = Modifier.width(4.dp))
                 FilterChip(
                   selected = walkInGender == Gender.FEMALE,
                   onClick = { walkInGender = Gender.FEMALE },
-                  label = { Text("မ", fontSize = 10.sp) },
-                  modifier = Modifier.height(28.dp)
+                  label = { Text("မ", fontSize = 11.sp) },
+                  modifier = Modifier.height(36.dp)
                 )
               }
             }
@@ -1385,20 +1411,36 @@ fun MobileNewLabOrderDialog(
           OutlinedTextField(
             value = doctorName,
             onValueChange = { doctorName = it },
-            label = { Text("ညွှန်ကြားသူ (Doctor / Self)", fontSize = 10.5.sp) },
+            label = { Text("ညွှန်ကြားသူ (Doctor / Self)", fontSize = 11.sp) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-            shape = RoundedCornerShape(6.dp),
-            textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp),
+            textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = Color(0xFF0F172A)),
+            colors = OutlinedTextFieldDefaults.colors(
+              focusedTextColor = Color(0xFF0F172A),
+              unfocusedTextColor = Color(0xFF0F172A),
+              focusedContainerColor = PureWhite,
+              unfocusedContainerColor = PureWhite,
+              unfocusedBorderColor = BorderGray,
+              focusedBorderColor = Color(0xFF0284C7)
+            )
           )
           Spacer(modifier = Modifier.height(6.dp))
           OutlinedTextField(
             value = clinicalNotes,
             onValueChange = { clinicalNotes = it },
-            label = { Text("ရောဂါမှတ်ချက် / Clinical Notes (Optional)", fontSize = 10.5.sp) },
-            modifier = Modifier.fillMaxWidth().height(55.dp),
-            shape = RoundedCornerShape(6.dp),
-            textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
+            label = { Text("ရောဂါမှတ်ချက် / Clinical Notes (Optional)", fontSize = 11.sp) },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp),
+            shape = RoundedCornerShape(8.dp),
+            textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = Color(0xFF0F172A)),
+            colors = OutlinedTextFieldDefaults.colors(
+              focusedTextColor = Color(0xFF0F172A),
+              unfocusedTextColor = Color(0xFF0F172A),
+              focusedContainerColor = PureWhite,
+              unfocusedContainerColor = PureWhite,
+              unfocusedBorderColor = BorderGray,
+              focusedBorderColor = Color(0xFF0284C7)
+            )
           )
         }
 
@@ -1619,19 +1661,27 @@ fun MobileLabResultEntryDialog(
                               updatedParams[pIdx] = p.copy(result = newVal)
                               itemsState[itemIdx] = item.copy(parameters = updatedParams)
                             },
-                            placeholder = { Text("အဖြေ Result (${p.unit})", fontSize = 10.5.sp) },
+                            placeholder = { Text("အဖြေ Result (${p.unit})", fontSize = 11.sp, color = SlateMuted) },
                             singleLine = true,
-                            modifier = Modifier.weight(1.8f).height(42.dp),
-                            shape = RoundedCornerShape(4.dp),
-                            textStyle = LocalTextStyle.current.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            modifier = Modifier.weight(1.8f),
+                            shape = RoundedCornerShape(6.dp),
+                            textStyle = LocalTextStyle.current.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A)),
+                            colors = OutlinedTextFieldDefaults.colors(
+                              focusedTextColor = Color(0xFF0F172A),
+                              unfocusedTextColor = Color(0xFF0F172A),
+                              focusedContainerColor = PureWhite,
+                              unfocusedContainerColor = PureWhite,
+                              unfocusedBorderColor = BorderGray,
+                              focusedBorderColor = Color(0xFF0284C7)
+                            )
                           )
 
                           // Quick Thumb Chips: Normal / High / Low
-                          Row(modifier = Modifier.weight(1.8f), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                          Row(modifier = Modifier.weight(1.8f).height(52.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                             listOf("NORMAL", "HIGH", "LOW").forEach { flagOpt ->
                               val isFlagSelected = p.flag.equals(flagOpt, ignoreCase = true)
                               Surface(
-                                shape = RoundedCornerShape(4.dp),
+                                shape = RoundedCornerShape(6.dp),
                                 color = if (isFlagSelected) {
                                   when (flagOpt) {
                                     "HIGH" -> Color(0xFFDC2626)
@@ -1640,7 +1690,7 @@ fun MobileLabResultEntryDialog(
                                   }
                                 } else Color(0xFFF1F5F9),
                                 border = BorderStroke(0.6.dp, Color(0xFFCBD5E1)),
-                                modifier = Modifier.weight(1f).height(42.dp).clickable {
+                                modifier = Modifier.weight(1f).fillMaxHeight().clickable {
                                   val updatedParams = item.parameters.toMutableList()
                                   updatedParams[pIdx] = p.copy(flag = if (isFlagSelected) "" else flagOpt)
                                   itemsState[itemIdx] = item.copy(parameters = updatedParams)
@@ -1649,7 +1699,7 @@ fun MobileLabResultEntryDialog(
                                 Box(contentAlignment = Alignment.Center) {
                                   Text(
                                     flagOpt.take(3),
-                                    fontSize = 9.sp,
+                                    fontSize = 9.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = if (isFlagSelected) PureWhite else SlateDark
                                   )
@@ -1669,11 +1719,19 @@ fun MobileLabResultEntryDialog(
                   onValueChange = { newRem ->
                     itemsState[itemIdx] = item.copy(remarks = newRem)
                   },
-                  placeholder = { Text("စစ်ဆေးမှု မှတ်ချက် (e.g. Lipemic, Hemolyzed)...", fontSize = 10.sp) },
+                  placeholder = { Text("စစ်ဆေးမှု မှတ်ချက် (e.g. Lipemic, Hemolyzed)...", fontSize = 11.sp, color = SlateMuted) },
                   singleLine = true,
-                  modifier = Modifier.fillMaxWidth().height(40.dp),
-                  shape = RoundedCornerShape(4.dp),
-                  textStyle = LocalTextStyle.current.copy(fontSize = 10.5.sp)
+                  modifier = Modifier.fillMaxWidth(),
+                  shape = RoundedCornerShape(6.dp),
+                  textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp, color = Color(0xFF0F172A)),
+                  colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color(0xFF0F172A),
+                    unfocusedTextColor = Color(0xFF0F172A),
+                    focusedContainerColor = PureWhite,
+                    unfocusedContainerColor = PureWhite,
+                    unfocusedBorderColor = BorderGray,
+                    focusedBorderColor = Color(0xFF0284C7)
+                  )
                 )
               }
             }
@@ -1682,20 +1740,37 @@ fun MobileLabResultEntryDialog(
           OutlinedTextField(
             value = techName,
             onValueChange = { techName = it },
-            label = { Text("စစ်ဆေးသူ ဓာတ်ခွဲပညာရှင် (Technologist)", fontSize = 10.5.sp) },
+            label = { Text("စစ်ဆေးသူ ဓာတ်ခွဲပညာရှင် (Technologist)", fontSize = 11.sp) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-            shape = RoundedCornerShape(6.dp),
-            textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp),
+            textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = Color(0xFF0F172A)),
+            colors = OutlinedTextFieldDefaults.colors(
+              focusedTextColor = Color(0xFF0F172A),
+              unfocusedTextColor = Color(0xFF0F172A),
+              focusedContainerColor = PureWhite,
+              unfocusedContainerColor = PureWhite,
+              unfocusedBorderColor = BorderGray,
+              focusedBorderColor = Color(0xFF0284C7)
+            )
           )
           Spacer(modifier = Modifier.height(6.dp))
           OutlinedTextField(
             value = generalNotes,
             onValueChange = { generalNotes = it },
-            label = { Text("အထွေထွေ မှတ်ချက် (General Notes)", fontSize = 10.5.sp) },
-            modifier = Modifier.fillMaxWidth().height(55.dp),
-            shape = RoundedCornerShape(6.dp),
-            textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
+            label = { Text("အထွေထွေ မှတ်ချက် (General Notes)", fontSize = 11.sp) },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp),
+            shape = RoundedCornerShape(8.dp),
+            textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = Color(0xFF0F172A)),
+            colors = OutlinedTextFieldDefaults.colors(
+              focusedTextColor = Color(0xFF0F172A),
+              unfocusedTextColor = Color(0xFF0F172A),
+              focusedContainerColor = PureWhite,
+              unfocusedContainerColor = PureWhite,
+              unfocusedBorderColor = BorderGray,
+              focusedBorderColor = Color(0xFF0284C7)
+            )
+          )
           )
         }
 
@@ -1798,9 +1873,17 @@ fun MobileCreateLabInvoiceDialog(
             onValueChange = { discountText = it },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
-            modifier = Modifier.width(100.dp).height(40.dp),
-            shape = RoundedCornerShape(4.dp),
-            textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
+            modifier = Modifier.width(120.dp),
+            shape = RoundedCornerShape(6.dp),
+            textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = Color(0xFF0F172A), fontWeight = FontWeight.SemiBold),
+            colors = OutlinedTextFieldDefaults.colors(
+              focusedTextColor = Color(0xFF0F172A),
+              unfocusedTextColor = Color(0xFF0F172A),
+              focusedContainerColor = PureWhite,
+              unfocusedContainerColor = PureWhite,
+              unfocusedBorderColor = BorderGray,
+              focusedBorderColor = Color(0xFF0284C7)
+            )
           )
         }
         Spacer(modifier = Modifier.height(4.dp))
@@ -1840,9 +1923,17 @@ fun MobileCreateLabInvoiceDialog(
             onValueChange = { paidAmountText = it },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
-            modifier = Modifier.width(110.dp).height(40.dp),
-            shape = RoundedCornerShape(4.dp),
-            textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
+            modifier = Modifier.width(130.dp),
+            shape = RoundedCornerShape(6.dp),
+            textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = Color(0xFF0F172A), fontWeight = FontWeight.SemiBold),
+            colors = OutlinedTextFieldDefaults.colors(
+              focusedTextColor = Color(0xFF0F172A),
+              unfocusedTextColor = Color(0xFF0F172A),
+              focusedContainerColor = PureWhite,
+              unfocusedContainerColor = PureWhite,
+              unfocusedBorderColor = BorderGray,
+              focusedBorderColor = Color(0xFF0284C7)
+            )
           )
         }
 
@@ -1948,11 +2039,19 @@ fun MobileLabTemplateEditorDialog(
           OutlinedTextField(
             value = name,
             onValueChange = { name = it },
-            label = { Text("စစ်ဆေးမှု အမည် * (e.g. CBC, Lipid)", fontSize = 10.5.sp) },
+            label = { Text("စစ်ဆေးမှု အမည် * (e.g. CBC, Lipid)", fontSize = 11.sp) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-            shape = RoundedCornerShape(6.dp),
-            textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp),
+            textStyle = LocalTextStyle.current.copy(fontSize = 13.sp, color = Color(0xFF0F172A), fontWeight = FontWeight.Medium),
+            colors = OutlinedTextFieldDefaults.colors(
+              focusedTextColor = Color(0xFF0F172A),
+              unfocusedTextColor = Color(0xFF0F172A),
+              focusedContainerColor = PureWhite,
+              unfocusedContainerColor = PureWhite,
+              unfocusedBorderColor = BorderGray,
+              focusedBorderColor = Color(0xFF0284C7)
+            )
           )
           Spacer(modifier = Modifier.height(6.dp))
 
@@ -1960,20 +2059,36 @@ fun MobileLabTemplateEditorDialog(
             OutlinedTextField(
               value = category,
               onValueChange = { category = it },
-              label = { Text("Category", fontSize = 10.5.sp) },
+              label = { Text("Category", fontSize = 11.sp) },
               singleLine = true,
-              modifier = Modifier.weight(1f).height(48.dp),
-              shape = RoundedCornerShape(6.dp),
-              textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
+              modifier = Modifier.weight(1f),
+              shape = RoundedCornerShape(8.dp),
+              textStyle = LocalTextStyle.current.copy(fontSize = 12.5.sp, color = Color(0xFF0F172A)),
+              colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color(0xFF0F172A),
+                unfocusedTextColor = Color(0xFF0F172A),
+                focusedContainerColor = PureWhite,
+                unfocusedContainerColor = PureWhite,
+                unfocusedBorderColor = BorderGray,
+                focusedBorderColor = Color(0xFF0284C7)
+              )
             )
             OutlinedTextField(
               value = specimenType,
               onValueChange = { specimenType = it },
-              label = { Text("Specimen", fontSize = 10.5.sp) },
+              label = { Text("Specimen (e.g. Blood)", fontSize = 11.sp) },
               singleLine = true,
-              modifier = Modifier.weight(1f).height(48.dp),
-              shape = RoundedCornerShape(6.dp),
-              textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
+              modifier = Modifier.weight(1f),
+              shape = RoundedCornerShape(8.dp),
+              textStyle = LocalTextStyle.current.copy(fontSize = 12.5.sp, color = Color(0xFF0F172A)),
+              colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color(0xFF0F172A),
+                unfocusedTextColor = Color(0xFF0F172A),
+                focusedContainerColor = PureWhite,
+                unfocusedContainerColor = PureWhite,
+                unfocusedBorderColor = BorderGray,
+                focusedBorderColor = Color(0xFF0284C7)
+              )
             )
           }
 
@@ -1982,12 +2097,20 @@ fun MobileLabTemplateEditorDialog(
           OutlinedTextField(
             value = priceText,
             onValueChange = { priceText = it },
-            label = { Text("ပုံမှန် စျေးနှုန်း (Price in Ks) *", fontSize = 10.5.sp) },
+            label = { Text("ပုံမှန် စျေးနှုန်း (Price in Ks) *", fontSize = 11.sp) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-            shape = RoundedCornerShape(6.dp),
-            textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp),
+            textStyle = LocalTextStyle.current.copy(fontSize = 13.sp, color = Color(0xFF0F172A), fontWeight = FontWeight.SemiBold),
+            colors = OutlinedTextFieldDefaults.colors(
+              focusedTextColor = Color(0xFF0F172A),
+              unfocusedTextColor = Color(0xFF0F172A),
+              focusedContainerColor = PureWhite,
+              unfocusedContainerColor = PureWhite,
+              unfocusedBorderColor = BorderGray,
+              focusedBorderColor = Color(0xFF0284C7)
+            )
           )
 
           Spacer(modifier = Modifier.height(8.dp))
@@ -2035,51 +2158,75 @@ fun MobileLabTemplateEditorDialog(
 
           parameters.forEachIndexed { pIdx, param ->
             Surface(
-              shape = RoundedCornerShape(4.dp),
+              shape = RoundedCornerShape(6.dp),
               color = Color(0xFFF8FAFC),
-              border = BorderStroke(0.6.dp, Color(0xFFCBD5E1)),
-              modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
+              border = BorderStroke(0.8.dp, Color(0xFFCBD5E1)),
+              modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
             ) {
-              Column(modifier = Modifier.padding(6.dp)) {
+              Column(modifier = Modifier.padding(8.dp)) {
                 Row(
                   modifier = Modifier.fillMaxWidth(),
-                  horizontalArrangement = Arrangement.spacedBy(4.dp),
+                  horizontalArrangement = Arrangement.spacedBy(6.dp),
                   verticalAlignment = Alignment.CenterVertically
                 ) {
                   OutlinedTextField(
                     value = param.name,
                     onValueChange = { parameters[pIdx] = param.copy(name = it) },
-                    placeholder = { Text("Name", fontSize = 10.sp) },
+                    placeholder = { Text("Parameter အမည် (e.g. Hb)", fontSize = 11.sp, color = SlateMuted) },
                     singleLine = true,
-                    modifier = Modifier.weight(2f).height(40.dp),
-                    shape = RoundedCornerShape(4.dp),
-                    textStyle = LocalTextStyle.current.copy(fontSize = 10.5.sp)
+                    modifier = Modifier.weight(2f),
+                    shape = RoundedCornerShape(6.dp),
+                    textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = Color(0xFF0F172A)),
+                    colors = OutlinedTextFieldDefaults.colors(
+                      focusedTextColor = Color(0xFF0F172A),
+                      unfocusedTextColor = Color(0xFF0F172A),
+                      focusedContainerColor = PureWhite,
+                      unfocusedContainerColor = PureWhite,
+                      unfocusedBorderColor = BorderGray,
+                      focusedBorderColor = Color(0xFF0284C7)
+                    )
                   )
                   OutlinedTextField(
                     value = param.unit,
                     onValueChange = { parameters[pIdx] = param.copy(unit = it) },
-                    placeholder = { Text("Unit", fontSize = 10.sp) },
+                    placeholder = { Text("Unit (g/dL)", fontSize = 11.sp, color = SlateMuted) },
                     singleLine = true,
-                    modifier = Modifier.weight(1f).height(40.dp),
-                    shape = RoundedCornerShape(4.dp),
-                    textStyle = LocalTextStyle.current.copy(fontSize = 10.5.sp)
+                    modifier = Modifier.weight(1.2f),
+                    shape = RoundedCornerShape(6.dp),
+                    textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = Color(0xFF0F172A)),
+                    colors = OutlinedTextFieldDefaults.colors(
+                      focusedTextColor = Color(0xFF0F172A),
+                      unfocusedTextColor = Color(0xFF0F172A),
+                      focusedContainerColor = PureWhite,
+                      unfocusedContainerColor = PureWhite,
+                      unfocusedBorderColor = BorderGray,
+                      focusedBorderColor = Color(0xFF0284C7)
+                    )
                   )
                   IconButton(
                     onClick = { parameters.removeAt(pIdx) },
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(36.dp)
                   ) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFDC2626), modifier = Modifier.size(14.dp))
+                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFDC2626), modifier = Modifier.size(18.dp))
                   }
                 }
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 OutlinedTextField(
                   value = param.referenceRange,
                   onValueChange = { parameters[pIdx] = param.copy(referenceRange = it) },
-                  placeholder = { Text("Normal / Reference Range (e.g. 13.0 - 17.5)", fontSize = 10.sp) },
+                  placeholder = { Text("ပုံမှန်ပမာဏ / Normal Range (e.g. 13.0 - 17.5)", fontSize = 11.sp, color = SlateMuted) },
                   singleLine = true,
-                  modifier = Modifier.fillMaxWidth().height(40.dp),
-                  shape = RoundedCornerShape(4.dp),
-                  textStyle = LocalTextStyle.current.copy(fontSize = 10.5.sp)
+                  modifier = Modifier.fillMaxWidth(),
+                  shape = RoundedCornerShape(6.dp),
+                  textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = Color(0xFF0F172A)),
+                  colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color(0xFF0F172A),
+                    unfocusedTextColor = Color(0xFF0F172A),
+                    focusedContainerColor = PureWhite,
+                    unfocusedContainerColor = PureWhite,
+                    unfocusedBorderColor = BorderGray,
+                    focusedBorderColor = Color(0xFF0284C7)
+                  )
                 )
               }
             }
