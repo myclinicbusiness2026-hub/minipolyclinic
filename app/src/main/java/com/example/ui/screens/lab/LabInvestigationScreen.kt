@@ -79,6 +79,7 @@ fun LabInvestigationScreen(
   var orderToInvoice by remember { mutableStateOf<LabOrder?>(null) }
   var templateToEdit by remember { mutableStateOf<LabTestTemplate?>(null) }
   var isCreatingTemplate by remember { mutableStateOf(false) }
+  var orderToDelete by remember { mutableStateOf<LabOrder?>(null) }
 
   // Filtered orders
   val queueOrders = remember(labOrders, searchQuery) {
@@ -310,7 +311,8 @@ fun LabInvestigationScreen(
                   onCancelOrder = {
                     viewModel.updateLabOrderStatus(order.id, LabOrderStatus.CANCELLED)
                     Toast.makeText(context, "စစ်ဆေးမှု ပယ်ဖျက်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
-                  }
+                  },
+                  onDeleteOrder = { orderToDelete = order }
                 )
               }
             }
@@ -351,12 +353,21 @@ fun LabInvestigationScreen(
                       isBlankLetterhead = true
                     )
                   },
+                  onPrintVoucher = {
+                    val linkedInv = labInvoices.find { it.orderId == order.id || it.orderNumber == order.orderNumber || it.invoiceNumber == order.invoiceNumber }
+                    if (linkedInv != null) {
+                      LabPrintHelper.printLabVoucherThermal(context, linkedInv, clinicSettings)
+                    } else {
+                      orderToInvoice = order
+                    }
+                  },
                   onEditResults = { orderToEnterResults = order },
                   onAttachSlipImage = { imageUri ->
                     val updatedItems = order.items.map { it.copy(attachedImageUri = imageUri) }
                     viewModel.updateLabOrder(order.copy(items = updatedItems))
                     Toast.makeText(context, "စက်အဖြေပုံ တွဲစပ်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
-                  }
+                  },
+                  onDeleteOrder = { orderToDelete = order }
                 )
               }
             }
@@ -439,6 +450,32 @@ fun LabInvestigationScreen(
     )
   }
 
+  // 3.5 Delete Order Confirmation Dialog
+  orderToDelete?.let { ord ->
+    AlertDialog(
+      onDismissRequest = { orderToDelete = null },
+      title = { Text("စစ်ဆေးမှုအော်ဒါ အပြီးဖျက်မည်", fontWeight = FontWeight.Bold, fontSize = 14.sp) },
+      text = { Text("စစ်ဆေးမှုအော်ဒါ (${ord.orderNumber} - ${ord.patientName}) အား စာရင်းမှ အပြီးတိုင် ဖျက်ထုတ်ရန် သေချာပါသလား?\n\nဤလုပ်ဆောင်ချက်ကို ပြန်ပြင်၍မရနိုင်ပါ။", fontSize = 12.sp) },
+      confirmButton = {
+        Button(
+          onClick = {
+            viewModel.deleteLabOrder(ord.id)
+            orderToDelete = null
+            Toast.makeText(context, "စစ်ဆေးမှုအော်ဒါအား ဖျက်ထုတ်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
+          },
+          colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
+        ) {
+          Text("အပြီးဖျက်မည်", color = PureWhite, fontWeight = FontWeight.Bold)
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { orderToDelete = null }) {
+          Text("မဖျက်တော့ပါ")
+        }
+      }
+    )
+  }
+
   // 4. Template Editor Dialog
   if (isCreatingTemplate || templateToEdit != null) {
     MobileLabTemplateEditorDialog(
@@ -469,7 +506,8 @@ fun MobileLabOrderQueueCard(
   onEnterResults: () -> Unit,
   onPrintBlankLetterhead: () -> Unit,
   onCreateInvoice: () -> Unit,
-  onCancelOrder: () -> Unit
+  onCancelOrder: () -> Unit,
+  onDeleteOrder: () -> Unit = {}
 ) {
   val currencyFmt = remember { NumberFormat.getNumberInstance(Locale.US) }
   var showMenu by remember { mutableStateOf(false) }
@@ -677,6 +715,13 @@ fun MobileLabOrderQueueCard(
                   onCancelOrder()
                 }
               )
+              DropdownMenuItem(
+                text = { Text("🗑️ စစ်ဆေးမှု စာရင်းမှ ဖျက်မည်", fontSize = 11.5.sp, color = Color(0xFFDC2626)) },
+                onClick = {
+                  showMenu = false
+                  onDeleteOrder()
+                }
+              )
             }
           }
         }
@@ -694,8 +739,10 @@ fun MobileLabCompletedResultCard(
   clinicSettings: ClinicSettings,
   onPrintFullReport: () -> Unit,
   onPrintBlankLetterhead: () -> Unit,
+  onPrintVoucher: () -> Unit,
   onEditResults: () -> Unit,
-  onAttachSlipImage: (String) -> Unit
+  onAttachSlipImage: (String) -> Unit,
+  onDeleteOrder: () -> Unit = {}
 ) {
   val context = LocalContext.current
   var isExpanded by remember { mutableStateOf(false) }
@@ -752,7 +799,7 @@ fun MobileLabCompletedResultCard(
         }
 
         // Actions
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
           Button(
             onClick = onPrintFullReport,
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
@@ -763,6 +810,18 @@ fun MobileLabCompletedResultCard(
             Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(12.dp))
             Spacer(modifier = Modifier.width(3.dp))
             Text("A4 Report", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+          }
+
+          Button(
+            onClick = onPrintVoucher,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
+            shape = RoundedCornerShape(6.dp),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.height(30.dp)
+          ) {
+            Icon(Icons.Default.Receipt, contentDescription = null, modifier = Modifier.size(12.dp))
+            Spacer(modifier = Modifier.width(3.dp))
+            Text("ဘောင်ချာ", fontSize = 10.sp, fontWeight = FontWeight.Bold)
           }
 
           Box {
@@ -785,6 +844,13 @@ fun MobileLabCompletedResultCard(
                 }
               )
               DropdownMenuItem(
+                text = { Text("🧾 Thermal ဘောင်ချာ ထုတ်ရန်", fontSize = 11.5.sp) },
+                onClick = {
+                  showMenu = false
+                  onPrintVoucher()
+                }
+              )
+              DropdownMenuItem(
                 text = { Text("📷 စက်အဖြေ Slip ပုံတင်ရန်", fontSize = 11.5.sp) },
                 onClick = {
                   showMenu = false
@@ -796,6 +862,13 @@ fun MobileLabCompletedResultCard(
                 onClick = {
                   showMenu = false
                   onEditResults()
+                }
+              )
+              DropdownMenuItem(
+                text = { Text("🗑️ စစ်ဆေးမှု စာရင်းမှ ဖျက်မည်", fontSize = 11.5.sp, color = Color(0xFFDC2626)) },
+                onClick = {
+                  showMenu = false
+                  onDeleteOrder()
                 }
               )
             }
@@ -909,13 +982,32 @@ fun MobileLabCompletedResultCard(
 
                 // If attached slip photo exists
                 if (!item.attachedImageUri.isNullOrBlank()) {
+                  val slipUri = item.attachedImageUri
                   Spacer(modifier = Modifier.height(6.dp))
                   AsyncImage(
-                    model = item.attachedImageUri,
+                    model = slipUri,
                     contentDescription = "Slip Image",
                     contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(4.dp))
+                    modifier = Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(4.dp))
                   )
+                  Spacer(modifier = Modifier.height(4.dp))
+                  Button(
+                    onClick = {
+                      LabPrintHelper.printAttachedImage(
+                        context = context,
+                        imageUri = slipUri,
+                        jobTitle = "Lab_Slip_${order.orderNumber}"
+                      )
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D9488)),
+                    shape = RoundedCornerShape(4.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                    modifier = Modifier.height(30.dp)
+                  ) {
+                    Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(13.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("စက်အဖြေ Print ထုတ်ရန် (Print Slip)", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                  }
                 }
               }
             }

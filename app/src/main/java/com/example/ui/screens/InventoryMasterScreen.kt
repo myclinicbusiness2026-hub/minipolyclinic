@@ -192,10 +192,16 @@ fun InventoryMasterScreen(
       docFee + svcDocFee + procedureFee
     }
   }
+  val totalDocServiceDiscount = remember(paidInvoices) {
+    paidInvoices.sumOf { it.doctorFeeDiscount }
+  }
   val totalPharmacyRevenue = remember(paidInvoices) {
     paidInvoices.sumOf { inv ->
       inv.items.filter { !it.isProcedure }.sumOf { it.totalPrice }
     }
+  }
+  val totalDiscountsGiven = remember(paidInvoices) {
+    paidInvoices.sumOf { it.discountAmount }
   }
   val totalClinicRevenue = remember(paidInvoices) {
     paidInvoices.sumOf { it.totalAmount }
@@ -605,7 +611,7 @@ fun InventoryMasterScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
               ) {
-                // Col 1: Doctor & Service Fee
+                // Col 1: Doctor & Service Fee (Net)
                 Column(
                   modifier = Modifier.weight(1f),
                   horizontalAlignment = Alignment.CenterHorizontally
@@ -617,6 +623,9 @@ fun InventoryMasterScreen(
                   }
                   Spacer(modifier = Modifier.height(2.dp))
                   Text("${currencyFmt.format(totalDocServiceRevenue.toInt())} Ks", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+                  if (totalDocServiceDiscount > 0) {
+                    Text("FOC: -${currencyFmt.format(totalDocServiceDiscount.toInt())} Ks", fontSize = 8.sp, color = Color(0xFFD97706), fontWeight = FontWeight.SemiBold)
+                  }
                 }
 
                 VerticalDivider(
@@ -639,13 +648,35 @@ fun InventoryMasterScreen(
                   Text("${currencyFmt.format(totalPharmacyRevenue.toInt())} Ks", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
                 }
 
+                if (totalDiscountsGiven > 0) {
+                  VerticalDivider(
+                    modifier = Modifier.height(22.dp),
+                    color = BorderGrey,
+                    thickness = 0.8.dp
+                  )
+
+                  // Col 3: Total Discounts & FOC
+                  Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                  ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                      Icon(Icons.Default.Percent, contentDescription = null, tint = Color(0xFFDC2626), modifier = Modifier.size(11.dp))
+                      Spacer(modifier = Modifier.width(3.dp))
+                      Text("လျှော့ငွေ/FOC", fontSize = 9.sp, color = DarkGrayText, maxLines = 1)
+                    }
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text("-${currencyFmt.format(totalDiscountsGiven.toInt())} Ks", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC2626))
+                  }
+                }
+
                 VerticalDivider(
                   modifier = Modifier.height(22.dp),
                   color = BorderGrey,
                   thickness = 0.8.dp
                 )
 
-                // Col 3: Total Income
+                // Col 4: Total Net Cash Income
                 Column(
                   modifier = Modifier.weight(1f),
                   horizontalAlignment = Alignment.CenterHorizontally
@@ -653,7 +684,7 @@ fun InventoryMasterScreen(
                   Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.MonetizationOn, contentDescription = null, tint = OceanGreenPrimary, modifier = Modifier.size(11.dp))
                     Spacer(modifier = Modifier.width(3.dp))
-                    Text("စုစုပေါင်းရငွေ", fontSize = 9.sp, color = DarkGrayText, maxLines = 1)
+                    Text("တကယ်ရငွေ (Net)", fontSize = 9.sp, color = DarkGrayText, maxLines = 1)
                   }
                   Spacer(modifier = Modifier.height(2.dp))
                   Text("${currencyFmt.format(totalClinicRevenue.toInt())} Ks", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OceanGreenPrimary)

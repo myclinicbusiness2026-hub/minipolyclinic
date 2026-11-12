@@ -2568,10 +2568,18 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   fun applyDoctorFeeFoc(invoiceId: String) {
     val updated = _invoices.value.map { inv ->
       if (inv.id == invoiceId) {
-        val nonDocItems = inv.items.sumOf { it.totalPrice }
-        val newSub = nonDocItems + 0.0 + inv.serviceFee
-        val newTotal = (newSub - inv.discountAmount).coerceAtLeast(0.0)
-        inv.copy(consultationFee = 0.0, totalAmount = newTotal)
+        val originalFee = if (inv.consultationFee > 0.0) inv.consultationFee else 8000.0
+        val docDisc = originalFee
+        val totalGranular = docDisc + inv.pharmacyDiscount + inv.procedureDiscount
+        val pctDiscount = (inv.subTotal - totalGranular).coerceAtLeast(0.0) * (inv.discountPercent / 100.0)
+        val finalDiscount = totalGranular + pctDiscount
+        val newTotal = (inv.subTotal - finalDiscount).coerceAtLeast(0.0)
+        inv.copy(
+          consultationFee = originalFee,
+          doctorFeeDiscount = docDisc,
+          discount = finalDiscount,
+          totalAmount = newTotal
+        )
       } else inv
     }
     _invoices.value = updated
@@ -2582,9 +2590,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   fun applyAllFoc(invoiceId: String) {
     val updated = _invoices.value.map { inv ->
       if (inv.id == invoiceId) {
+        val originalFee = if (inv.consultationFee > 0.0) inv.consultationFee else 8000.0
         inv.copy(
-          consultationFee = 0.0,
-          serviceFee = 0.0,
+          consultationFee = originalFee,
           discountPercent = 100.0,
           discount = inv.subTotal,
           totalAmount = 0.0
@@ -2599,9 +2607,10 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   fun resetInvoiceDiscounts(invoiceId: String, originalConsultationFee: Double = 8000.0) {
     val updated = _invoices.value.map { inv ->
       if (inv.id == invoiceId) {
-        val sub = inv.items.sumOf { it.totalPrice } + originalConsultationFee + inv.serviceFee
+        val fee = if (inv.consultationFee > 0.0) inv.consultationFee else originalConsultationFee
+        val sub = inv.items.sumOf { it.totalPrice } + fee + inv.serviceFee
         inv.copy(
-          consultationFee = originalConsultationFee,
+          consultationFee = fee,
           discount = 0.0,
           discountPercent = 0.0,
           doctorFeeDiscount = 0.0,

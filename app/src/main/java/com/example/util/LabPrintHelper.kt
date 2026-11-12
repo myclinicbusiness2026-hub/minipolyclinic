@@ -349,22 +349,8 @@ object LabPrintHelper {
     """.trimIndent())
 
     if (isBlankLetterhead) {
-      // Mode A: Blank Letterhead for Analyzer feed / attachment
-      sb.append("""
-        <div class="blank-area">
-          <div class="blank-notice">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5" style="margin-bottom: 8px;">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <line x1="12" y1="18" x2="12" y2="12"></line>
-              <line x1="9" y1="15" x2="15" y2="15"></line>
-            </svg><br/>
-            <strong>စက်မှတိုက်ရိုက်ထွက်သောအဖြေ (Analyzer Slip) ထည့်သွင်း / ကပ်ရန်နေရာ</strong><br/>
-            (Auto-Hematology Analyzer / Blood Chemistry Printout Attachment Area)<br/>
-            <span style="font-size: 11px; color: #999;">ဤ A4 စာရွက်အား Analyzer စက်ထဲထည့်သွင်း၍ direct print ထုတ်နိုင်သလို၊ Thermal analyzer strip ကိုလည်း ကပ်နိုင်ပါသည်။</span>
-          </div>
-        </div>
-      """.trimIndent())
+      // Mode A: Blank Letterhead for Analyzer feed / attachment (100% clean white blank area below header)
+      // Nothing appended - leaving the remaining 75% of the page completely blank and pristine.
     } else {
       // Mode B: Dynamic Parameters Table
       for (testItem in itemsToPrint) {
@@ -423,10 +409,15 @@ object LabPrintHelper {
 
         // Attached analyzer image if present
         if (testItem.slipImageUri.isNotBlank()) {
+          val imgSrc = if (testItem.slipImageUri.startsWith("http") || testItem.slipImageUri.startsWith("file://") || testItem.slipImageUri.startsWith("data:")) {
+            testItem.slipImageUri
+          } else {
+            "file://${testItem.slipImageUri}"
+          }
           sb.append("""
             <div class="slip-attachment">
               <div style="font-weight: bold; font-size: 11.5px; color: #555; margin-bottom: 6px;">Attached Analyzer Result Slip:</div>
-              <img src="${testItem.slipImageUri}" class="slip-image" />
+              <img src="$imgSrc" class="slip-image" />
             </div>
           """.trimIndent())
         }
@@ -441,8 +432,9 @@ object LabPrintHelper {
       }
     }
 
-    // Signatures footer
-    sb.append("""
+    // Signatures footer (only when printing full clinical report; blank letterhead leaves bottom completely clean)
+    if (!isBlankLetterhead) {
+      sb.append("""
         <div class="footer-section">
           <table class="sign-table">
             <tr>
@@ -462,6 +454,10 @@ object LabPrintHelper {
             This investigation is processed by the Independent Laboratory Services at ${clinic.clinicNameMm}.
           </div>
         </div>
+      """.trimIndent())
+    }
+
+    sb.append("""
       </body>
       </html>
     """.trimIndent())
@@ -494,6 +490,69 @@ object LabPrintHelper {
       }
     } catch (e: Exception) {
       Toast.makeText(context, "Thermal print spooler error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+    }
+  }
+
+  /**
+   * Print an attached analyzer slip, image, or document directly to Android System Print (Canon, HP, PDF).
+   */
+  fun printAttachedImage(
+    context: Context,
+    imageUri: String,
+    jobTitle: String = "Lab_Analyzer_Slip"
+  ) {
+    if (imageUri.isBlank()) {
+      Toast.makeText(context, "No slip file attached to print", Toast.LENGTH_SHORT).show()
+      return
+    }
+    Handler(Looper.getMainLooper()).post {
+      try {
+        val imgSrc = if (imageUri.startsWith("http") || imageUri.startsWith("file://") || imageUri.startsWith("data:")) {
+          imageUri
+        } else {
+          "file://$imageUri"
+        }
+        val html = """
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              @page { size: auto; margin: 8mm; }
+              body { margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff; }
+              .slip-header { font-family: sans-serif; font-size: 13px; font-weight: bold; color: #333; margin-bottom: 12px; text-align: center; }
+              img { max-width: 95%; max-height: 90vh; object-fit: contain; border: 1px solid #ccc; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+            </style>
+          </head>
+          <body>
+            <div class="slip-header">Automated Analyzer Result Slip / Attached Document</div>
+            <img src="$imgSrc" />
+          </body>
+          </html>
+        """.trimIndent()
+        val webView = WebView(context)
+        webView.settings.allowFileAccess = true
+        webView.settings.allowContentAccess = true
+        webView.webViewClient = object : WebViewClient() {
+          override fun onPageFinished(view: WebView?, url: String?) {
+            val printManager = context.getSystemService(Context.PRINT_SERVICE) as? PrintManager
+            if (printManager != null) {
+              val printAdapter = webView.createPrintDocumentAdapter(jobTitle)
+              val printAttributes = PrintAttributes.Builder()
+                .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
+                .setColorMode(PrintAttributes.COLOR_MODE_COLOR)
+                .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
+                .build()
+              printManager.print(jobTitle, printAdapter, printAttributes)
+            } else {
+              Toast.makeText(context, "Print service not available", Toast.LENGTH_SHORT).show()
+            }
+          }
+        }
+        webView.loadDataWithBaseURL("file:///", html, "text/html", "UTF-8", null)
+      } catch (e: Exception) {
+        Toast.makeText(context, "Slip print error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+      }
     }
   }
 }

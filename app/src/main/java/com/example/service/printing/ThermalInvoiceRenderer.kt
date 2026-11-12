@@ -34,11 +34,26 @@ object ThermalInvoiceRenderer {
     }
 
     sb.appendLine(divider)
-    sb.appendLine(String.format("%-28s %12.0f", "စုစုပေါင်းသင့်ငွေ (Total):", invoice.totalAmount))
+    sb.appendLine(String.format("%-28s %12.0f", "မူလကျသင့်ငွေ (Subtotal):", invoice.subTotal))
 
-    if (invoice.discount > 0) {
-      sb.appendLine(String.format("%-28s %12.0f", "လျှော့ဈေး (Discount):", invoice.discount))
+    if (invoice.doctorFeeDiscount > 0) {
+      sb.appendLine(String.format("%-28s -%11.0f", "ဆရာဝန်ပြသခ FOC:", invoice.doctorFeeDiscount))
     }
+    if (invoice.pharmacyDiscount > 0) {
+      sb.appendLine(String.format("%-28s -%11.0f", "ဆေးဝါး လျှော့ငွေ:", invoice.pharmacyDiscount))
+    }
+    if (invoice.procedureDiscount > 0) {
+      sb.appendLine(String.format("%-28s -%11.0f", "ကုသမှု လျှော့ငွေ:", invoice.procedureDiscount))
+    }
+    if (invoice.discountPercent > 0) {
+      val overallVal = (invoice.subTotal - invoice.totalGranularDiscount).coerceAtLeast(0.0) * (invoice.discountPercent / 100.0)
+      sb.appendLine(String.format("%-28s -%11.0f", "အထွေထွေ လျှော့ဈေး (${invoice.discountPercent.toInt()}%):", overallVal))
+    } else if (invoice.discount > 0 && invoice.totalGranularDiscount == 0.0) {
+      sb.appendLine(String.format("%-28s -%11.0f", "လျှော့ငွေ (Discount):", invoice.discount))
+    }
+
+    sb.appendLine(divider)
+    sb.appendLine(String.format("%-28s %12.0f", "တကယ်ကျသင့်ငွေ (Net Total):", invoice.totalAmount))
 
     sb.appendLine(String.format("%-28s %12s", "ပေးချေမှုပုံစံ (Method):", invoice.paymentMethod))
     sb.appendLine(String.format("%-28s %12.0f", "ပေးငွေ (Paid Amount):", invoice.paidAmount))
