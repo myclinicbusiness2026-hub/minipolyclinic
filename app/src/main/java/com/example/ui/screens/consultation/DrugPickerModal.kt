@@ -789,7 +789,7 @@ fun DrugPickerModal(
                     extFrequency = "ပုံမှန်အတိုင်း"
                     extDuration = "ပုံမှန်သောက်ရန်"
                     extInstructions = "သောက်လက်စသောက်ဆေးများ ပုံမှန်အတိုင်းဆက်သောက်ရန်"
-                    extQuantity = "1"
+                    extQuantityText = "1"
                   } else {
                     extDrugName = p
                     val pattern = Regex("\\b\\d+(\\.\\d+)?\\s*(mg|g|mcg|ml|iu|IU|%)\\b", RegexOption.IGNORE_CASE)
