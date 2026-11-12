@@ -128,13 +128,15 @@ fun LabInvoice.toClinicInvoice(): Invoice {
         isProcedure = true
       )
     },
-    subTotal = this.totalAmount,
+    consultationFee = 0.0,
+    serviceFee = 0.0,
     discount = this.discount,
     totalAmount = this.netTotal,
     paidAmount = this.paidAmount,
+    changeAmount = this.changeAmount,
     paymentMethod = this.paymentMethod,
-    isPaid = this.paidAmount >= this.netTotal,
-    createdAt = this.timestamp,
+    paymentStatus = if (this.paidAmount >= this.netTotal) "Paid" else "Unpaid",
+    timestamp = this.timestamp,
     cashierName = this.cashierName
   )
 }

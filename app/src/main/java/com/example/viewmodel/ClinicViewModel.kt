@@ -4378,12 +4378,12 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     _labOrders.value = updated
     ClinicDataPersistence.saveLabOrders(ctx, updated)
     if (pathologistName.isNotBlank()) {
-      val s = _clinicSettings.value.copy(
+      val s = clinicSettings.value.copy(
         defaultPathologistName = pathologistName,
         defaultPathologistDegree = pathologistDegree,
         defaultPathologistSama = pathologistSama
       )
-      _clinicSettings.value = s
+      clinicSettings.value = s
       ClinicDataPersistence.saveClinicSettings(ctx, s)
     }
     viewModelScope.launch(Dispatchers.IO) {
