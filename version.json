@@ -1,9 +1,9 @@
 {
-  "versionCode": 47,
-  "versionName": "1.5.23",
+  "versionCode": 48,
+  "versionName": "1.5.24",
   "minSupportedVersion": 1,
-  "releaseNotes": "• Prescription CST Chip: Added dedicated 'CST' chip to seamlessly input 'သောက်လက်စသောက်ဆေးများ ပုံမှန်အတိုင်းဆက်သောက်ရန်' (Continue Same Treatment) across the prescription card (+ CST button), medication directions (Meal Direction), external Rx presets, and quick patient advice.\n• Clean workflow for chronic maintenance medications on prescription sheets.",
-  "releaseNotesMm": "• Prescription တွင် CST Chip ထည့်သွင်းခြင်း - 'သောက်လက်စသောက်ဆေးများ ပုံမှန်အတိုင်းဆက်သောက်ရန်' (Continue Same Treatment) ညွှန်ကြားချက်အား Prescription (Rx) ကတ်ပေါ်တွင် [+ CST] ခလုတ်ဖြင့် ၁ ချက်နှိပ်ရုံဖြင့် တိုက်ရိုက်ထည့်သွင်းနိုင်သည့်အပြင် ဆေးဝါးသောက်သုံးရန် ညွှန်ကြားချက်များ (Meal Direction)၊ ပြင်ပဆေး Presets နှင့် Quick ညွှန်ကြားချက်များတွင် 'CST' chip ဖြင့် လွယ်ကူလျင်မြန်စွာ ထည့်သွင်းအသုံးပြုနိုင်ခြင်း။",
+  "releaseNotes": "• Drug Picker Price Display: Real-time unit price display and total price calculation banner when prescribing medicines in Doctor Consultation.\n• Synchronized 2-Row Financial & Discount Breakdown: Clear split of Doctor/Service income vs Pharmacy income with exact matching discounts in Clinic Ledger and Inventory Valuation.\n• Add Items to Paid Invoices: Easily add extra consumables, medicines, or procedures to already-paid invoices with automatic balance due calculation and settlement.",
+  "releaseNotesMm": "• Consultation ဆေးဝါးရွေးချယ်ရာတွင် ဈေးနှုန်းမြင်ရခြင်း - ဆရာဝန်လူနာကြည့်ရာတွင် ဆေးဝါးရှာဖွေရွေးချယ်သည့် စာရင်း၌ တစ်ခုချင်းရောင်းဈေး (Unit Price) နှင့် ရွေးချယ်ချိန်တွင် ကျသင့်ငွေစုစုပေါင်းကို ချက်ချင်းတွက်ချက်ပြသပေးခြင်း။\n• ဝင်ငွေနှင့် လျှော့ငွေ စာရင်းချုပ် ၂ ကြောင်းခွဲပြသမှု (Ledger & Inventory) - ဆရာကြည့်ခ+ဝန်ဆောင်ခ နှင့် ဆေးအသုံးရငွေတို့ကို သီးသန့်ခွဲထုတ်ပြီး လျှော့ငွေ/FOC များကို အောက်တစ်ကြောင်းတွင် အတိအကျ ပြန်လည်တွက်ချက်ပြသပေးခြင်း။\n• ငွေရှင်းပြီး ဘောင်ချာတွင် အသုံး/ပစ္စည်း ထပ်ပေါင်းထည့်ခြင်း (Add Items to Paid Invoice) - ငွေရှင်းပြီးသော ဘောင်ချာထဲသို့ သူနာပြု/ဝန်ထမ်းမှ အပိုသုံးစွဲမိသော ဆေးဝါး/ပစ္စည်းများကို [+ အသုံး/ပစ္စည်း ထပ်တိုးရန်] ဖြင့် တိုက်ရိုက်ထပ်ပေါင်းထည့်နိုင်ပြီး ထပ်တိုးကျသင့်ငွေ (Balance Due) အား ကောက်ခံ၍ အသစ်ပြင်ဆင်ထားသော Slip ထုတ်ယူနိုင်ခြင်း။",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-12",
   "apkSizeBytes": 14769663

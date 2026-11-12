@@ -30,7 +30,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.Invoice
+import com.example.model.Medicine
 import com.example.model.PaymentMethod
+import com.example.ui.components.AddItemsToInvoiceDialog
 import com.example.ui.components.WalkInSaleDialog
 import com.example.ui.theme.*
 import com.example.viewmodel.ClinicViewModel
@@ -445,6 +447,13 @@ fun CashierBillingScreen(
                 viewModel.updateInvoiceDocumentationFee(inv.id, includeFee, feeAmount)
               },
               onBackToQueue = null,
+              medicines = medicines,
+              onAddItemsToInvoice = { inv, items ->
+                viewModel.addItemsToExistingInvoice(inv.id, items)
+              },
+              onSettleAmendedBalance = { inv, method ->
+                viewModel.settleAmendedInvoicePayment(inv.id, method)
+              },
               onDeleteInvoiceAndReturnStock = { inv, returnedNames, voidAll ->
                 val (success, restoredList) = viewModel.returnSelectedInvoiceItemsAndAdjust(inv.id, returnedNames, voidAll)
                 if (success && voidAll) {
@@ -600,6 +609,13 @@ fun CashierBillingScreen(
               },
               onBackToQueue = {
                 mobileActiveTab = 0
+              },
+              medicines = medicines,
+              onAddItemsToInvoice = { inv, items ->
+                viewModel.addItemsToExistingInvoice(inv.id, items)
+              },
+              onSettleAmendedBalance = { inv, method ->
+                viewModel.settleAmendedInvoicePayment(inv.id, method)
               },
               onDeleteInvoiceAndReturnStock = { inv, returnedNames, voidAll ->
                 val (success, restoredList) = viewModel.returnSelectedInvoiceItemsAndAdjust(inv.id, returnedNames, voidAll)
@@ -926,6 +942,9 @@ private fun BillingCheckoutPane(
   onPrintA4: (com.example.model.ConsultationRecord) -> Unit,
   onToggleDocFee: (Invoice, Boolean, Double) -> Unit = { _, _, _ -> },
   onBackToQueue: (() -> Unit)?,
+  medicines: List<Medicine> = emptyList(),
+  onAddItemsToInvoice: ((Invoice, List<com.example.model.InvoiceItem>) -> Unit)? = null,
+  onSettleAmendedBalance: ((Invoice, PaymentMethod) -> Unit)? = null,
   onDeleteInvoiceAndReturnStock: ((Invoice, Set<String>, Boolean) -> Unit)? = null,
   onApplyDoctorFeeFoc: (Invoice) -> Unit = {},
   onApplyAllFoc: (Invoice) -> Unit = {},
@@ -935,6 +954,7 @@ private fun BillingCheckoutPane(
   isReadOnly: Boolean = false
 ) {
   var showDeleteDialog by remember { mutableStateOf(false) }
+  var showAddItemsDialog by remember { mutableStateOf(false) }
 
   if (activeInvoice == null) {
     Box(
@@ -1053,7 +1073,9 @@ private fun BillingCheckoutPane(
     // 2. Itemized Table Section
     BillingItemizedTable(
       activeInvoice = activeInvoice,
-      currencyFmt = currencyFmt
+      currencyFmt = currencyFmt,
+      onOpenAddItems = { showAddItemsDialog = true },
+      canAddItems = !isReadOnly
     )
 
     HorizontalDivider(color = BorderSubtleRedBrown, thickness = 1.dp)
@@ -1090,6 +1112,7 @@ private fun BillingCheckoutPane(
 
     // 4. Final Grand Total Banner
     BillingNetTotalBanner(
+      activeInvoice = activeInvoice,
       finalGrandTotal = finalGrandTotal,
       currencyFmt = currencyFmt
     )
@@ -1117,6 +1140,7 @@ private fun BillingCheckoutPane(
       onPrintA4 = onPrintA4,
       onConfirmPayment = onConfirmPayment,
       onConfirmPaymentWithGranular = onConfirmPaymentWithGranular,
+      onSettleAmendedBalance = onSettleAmendedBalance,
       onRequestDelete = { showDeleteDialog = true },
       canDelete = onDeleteInvoiceAndReturnStock != null && !isReadOnly,
       isReadOnly = isReadOnly
@@ -1131,6 +1155,19 @@ private fun BillingCheckoutPane(
         onConfirmReturn = { invoice, returnedNames, voidAll ->
           onDeleteInvoiceAndReturnStock(invoice, returnedNames, voidAll)
           showDeleteDialog = false
+        }
+      )
+    }
+
+    // 8. Add Items / Consumables Modal
+    if (showAddItemsDialog && onAddItemsToInvoice != null) {
+      AddItemsToInvoiceDialog(
+        invoice = activeInvoice,
+        medicines = medicines,
+        onDismiss = { showAddItemsDialog = false },
+        onConfirmAddItems = { newItems ->
+          onAddItemsToInvoice(activeInvoice, newItems)
+          showAddItemsDialog = false
         }
       )
     }
@@ -1358,8 +1395,39 @@ private fun BillingDocumentationBanner(
 @Composable
 private fun BillingItemizedTable(
   activeInvoice: Invoice,
-  currencyFmt: NumberFormat
+  currencyFmt: NumberFormat,
+  onOpenAddItems: (() -> Unit)? = null,
+  canAddItems: Boolean = false
 ) {
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      .padding(bottom = 4.dp),
+    horizontalArrangement = Arrangement.SpaceBetween,
+    verticalAlignment = Alignment.CenterVertically
+  ) {
+    Text(
+      "ကုန်ကျစရိတ်နှင့် ဆေးဝါးစာရင်း (Itemized Bill):",
+      fontSize = 11.sp,
+      fontWeight = FontWeight.Bold,
+      color = SlateDark
+    )
+    if (canAddItems && onOpenAddItems != null) {
+      Button(
+        onClick = onOpenAddItems,
+        colors = ButtonDefaults.buttonColors(containerColor = SoftGreenContainer, contentColor = MedicalGreenDark),
+        border = BorderStroke(1.dp, MedicalGreen),
+        shape = RoundedCornerShape(4.dp),
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+        modifier = Modifier.height(28.dp)
+      ) {
+        Icon(Icons.Default.AddCircleOutline, contentDescription = null, modifier = Modifier.size(13.dp), tint = MedicalGreenDark)
+        Spacer(modifier = Modifier.width(4.dp))
+        Text("+ အသုံး/ပစ္စည်း ထပ်တိုးရန်", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+      }
+    }
+  }
+
   Row(
     modifier = Modifier
       .fillMaxWidth()
@@ -1494,14 +1562,32 @@ private fun BillingItemizedTable(
           verticalAlignment = Alignment.CenterVertically
         ) {
           Column(modifier = Modifier.weight(3.2f)) {
-            Text(
-              item.description,
-              fontSize = 10.sp,
-              fontWeight = FontWeight.Medium,
-              color = DarkGrayText,
-              maxLines = 1,
-              overflow = TextOverflow.Ellipsis
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              if (item.isAddOn) {
+                Surface(
+                  shape = RoundedCornerShape(2.dp),
+                  color = Color(0xFFFEF3C7),
+                  border = BorderStroke(0.5.dp, Color(0xFFD97706)),
+                  modifier = Modifier.padding(end = 4.dp)
+                ) {
+                  Text(
+                    "ထပ်တိုး",
+                    fontSize = 7.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFB45309),
+                    modifier = Modifier.padding(horizontal = 2.dp, vertical = 0.5.dp)
+                  )
+                }
+              }
+              Text(
+                item.description,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Medium,
+                color = DarkGrayText,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+              )
+            }
             Text(
               item.category,
               fontSize = 8.sp,
@@ -1865,32 +1951,73 @@ private fun BillingCostsAndDiscountsCard(
 
 @Composable
 private fun BillingNetTotalBanner(
+  activeInvoice: Invoice,
   finalGrandTotal: Double,
   currencyFmt: NumberFormat
 ) {
+  val hasBalanceDue = activeInvoice.isPaid && activeInvoice.balanceDue > 0
+
   Surface(
     modifier = Modifier.fillMaxWidth(),
     shape = RoundedCornerShape(6.dp),
-    color = SoftGreenContainer,
-    border = BorderStroke(1.2.dp, MedicalGreen)
+    color = if (hasBalanceDue) Color(0xFFFFFBEB) else SoftGreenContainer,
+    border = BorderStroke(1.2.dp, if (hasBalanceDue) Color(0xFFD97706) else MedicalGreen)
   ) {
-    Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(horizontal = 12.dp, vertical = 8.dp),
-      horizontalArrangement = Arrangement.SpaceBetween,
-      verticalAlignment = Alignment.CenterVertically
-    ) {
-      Column {
-        Text("ကျသင့်ငွေ စုစုပေါင်း", fontSize = 10.sp, color = MedicalGreenDark)
-        Text("NET TOTAL PAYABLE", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Column {
+          Text(
+            if (hasBalanceDue) "စုစုပေါင်း ကျသင့်ငွေ (Total Payable)" else "ကျသင့်ငွေ စုစုပေါင်း",
+            fontSize = 10.sp,
+            color = if (hasBalanceDue) Color(0xFFB45309) else MedicalGreenDark
+          )
+          Text("NET TOTAL PAYABLE", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+        }
+        Text(
+          "${currencyFmt.format(finalGrandTotal.toInt())} Ks",
+          fontWeight = FontWeight.ExtraBold,
+          fontSize = 17.sp,
+          color = if (hasBalanceDue) Color(0xFFB45309) else MedicalGreenDark
+        )
       }
-      Text(
-        "${currencyFmt.format(finalGrandTotal.toInt())} Ks",
-        fontWeight = FontWeight.ExtraBold,
-        fontSize = 17.sp,
-        color = MedicalGreenDark
-      )
+
+      if (hasBalanceDue) {
+        HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = Color(0xFFFDE68A), thickness = 0.8.dp)
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MedicalGreenDark, modifier = Modifier.size(13.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("ယခင် ပေးချေပြီးငွေ (Paid Earlier):", fontSize = 10.sp, color = DarkGrayText)
+          }
+          Text("${currencyFmt.format(activeInvoice.paidAmount.toInt())} Ks", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+        }
+        Spacer(modifier = Modifier.height(2.dp))
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFDC2626), modifier = Modifier.size(13.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("ထပ်တိုးငွေ ကျန်ရှိ (Balance Due):", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC2626))
+          }
+          Text(
+            "${currencyFmt.format(activeInvoice.balanceDue.toInt())} Ks",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFFDC2626)
+          )
+        }
+      }
     }
   }
 }
@@ -1957,6 +2084,7 @@ private fun BillingActionButtonsRow(
   onPrintA4: (com.example.model.ConsultationRecord) -> Unit,
   onConfirmPayment: (Invoice, PaymentMethod, Double) -> Unit,
   onConfirmPaymentWithGranular: ((Invoice, PaymentMethod, Double, Double, Double, Double) -> Unit)?,
+  onSettleAmendedBalance: ((Invoice, PaymentMethod) -> Unit)? = null,
   onRequestDelete: () -> Unit,
   canDelete: Boolean,
   isReadOnly: Boolean = false
@@ -2022,7 +2150,7 @@ private fun BillingActionButtonsRow(
       )
     }
 
-    // Thermal Receipt Button
+    // Thermal Receipt / Settlement Button
     if (!activeInvoice.isPaid && !isReadOnly) {
       Button(
         onClick = {
@@ -2053,6 +2181,58 @@ private fun BillingActionButtonsRow(
           fontSize = 11.5.sp,
           fontWeight = FontWeight.Bold,
           color = PureWhite,
+          maxLines = 1
+        )
+      }
+    } else if (activeInvoice.isPaid && activeInvoice.balanceDue > 0 && !isReadOnly) {
+      // Amended invoice has balance due!
+      Button(
+        onClick = {
+          onSettleAmendedBalance?.invoke(activeInvoice, selectedPaymentMethod)
+          val settledInvoice = activeInvoice.copy(
+            isPaid = true,
+            paidAmount = activeInvoice.totalAmount,
+            paymentStatus = "Paid",
+            paymentMethod = selectedPaymentMethod
+          )
+          onPrintThermal(settledInvoice)
+        },
+        modifier = Modifier
+          .weight(1.3f)
+          .height(40.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+        shape = RoundedCornerShape(6.dp),
+        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)
+      ) {
+        Icon(Icons.Default.Payments, contentDescription = null, tint = PureWhite, modifier = Modifier.size(15.dp))
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+          "ထပ်တိုးငွေ ကောက်ခံ & Slip",
+          fontSize = 10.5.sp,
+          fontWeight = FontWeight.Bold,
+          color = PureWhite,
+          maxLines = 1
+        )
+      }
+
+      OutlinedButton(
+        onClick = {
+          onPrintThermal(activeInvoice)
+        },
+        modifier = Modifier
+          .weight(1f)
+          .height(40.dp),
+        shape = RoundedCornerShape(6.dp),
+        border = BorderStroke(1.dp, SlateDark),
+        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)
+      ) {
+        Icon(Icons.Default.Print, contentDescription = null, tint = SlateDark, modifier = Modifier.size(14.dp))
+        Spacer(modifier = Modifier.width(3.dp))
+        Text(
+          "Slip (Reprint)",
+          fontSize = 10.5.sp,
+          fontWeight = FontWeight.Bold,
+          color = SlateDark,
           maxLines = 1
         )
       }

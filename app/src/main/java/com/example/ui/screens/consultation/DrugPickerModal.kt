@@ -37,6 +37,7 @@ fun DrugPickerModal(
   var activeTab by remember { mutableIntStateOf(0) } // 0 = Clinic Stock, 1 = Non-Store External Rx
 
   // State for Clinic Stock Tab
+  val currencyFmt = remember { java.text.NumberFormat.getNumberInstance(java.util.Locale.US) }
   var searchQuery by remember { mutableStateOf("") }
   var selectedMedicine by remember { mutableStateOf<Medicine?>(medicines.firstOrNull()) }
   var dosage by remember { mutableStateOf(medicines.firstOrNull()?.standardDosage ?: "500 mg") }
@@ -326,9 +327,15 @@ fun DrugPickerModal(
                     }
                     Column(horizontalAlignment = Alignment.End) {
                       Text(
-                        if (med.totalStock <= 0) "Stock: 0 (ပြတ်လပ်)" else "Stock: ${med.totalStock}",
-                        fontSize = 10.sp,
+                        "${currencyFmt.format(med.calculatedSellingPrice.toInt())} Ks",
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
+                        color = SkyBluePrimary
+                      )
+                      Text(
+                        if (med.totalStock <= 0) "Stock: 0 (ပြတ်လပ်)" else "Stock: ${med.totalStock}",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Medium,
                         color = if (med.totalStock <= 0) StatusCritical else if (med.totalStock < med.minStockThreshold) Color(0xFFD97706) else MedicalGreenDark
                       )
                       Text("Exp: ${earliestBatch?.expiryDate ?: "N/A"}", fontSize = 8.sp, color = SlateLight)
@@ -383,6 +390,38 @@ fun DrugPickerModal(
                 )
               }
               Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // Price & Total Estimation Banner
+            Surface(
+              shape = RoundedCornerShape(6.dp),
+              color = Color(0xFFF0FDF4),
+              border = BorderStroke(0.8.dp, MedicalGreen.copy(alpha = 0.5f)),
+              modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
+            ) {
+              Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                  Icon(Icons.Default.Sell, contentDescription = null, tint = MedicalGreenDark, modifier = Modifier.size(13.dp))
+                  Spacer(modifier = Modifier.width(4.dp))
+                  Text(
+                    "ဈေးနှုန်း: ${currencyFmt.format(med.calculatedSellingPrice.toInt())} Ks / unit",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MedicalGreenDark
+                  )
+                }
+                val curQty = quantityText.toIntOrNull() ?: 1
+                Text(
+                  "ကျသင့်ငွေ: ${currencyFmt.format((med.calculatedSellingPrice * curQty).toInt())} Ks",
+                  fontSize = 11.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = SkyBluePrimary
+                )
+              }
             }
 
             // Dose per time (½, 1, 2)

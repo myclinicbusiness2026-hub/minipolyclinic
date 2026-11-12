@@ -2075,7 +2075,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
     // 3. Deduct direct invoice items (e.g. OTC walk-in pharmacy, direct items, or any item not yet deducted above)
     for (item in inv.items) {
-      val med = findMatchingMedicine(null, item.name, medMap)
+      val med = findMatchingMedicine(item.medicineId.ifBlank { null }, item.name, medMap)
       if (med != null && item.quantity > 0) {
         if (!deductedMedIds.contains(med.id)) {
           deductMed(med, item.quantity)
@@ -2150,6 +2150,93 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       updatePatientStatus(inv.patientId, QueueStatus.COMPLETED)
       deductInventoryForInvoice(inv)
     }
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
+  }
+
+  fun addItemsToExistingInvoice(invoiceId: String, newItems: List<InvoiceItem>) {
+    if (newItems.isEmpty()) return
+    val ctx = getApplication<Application>()
+    val updated = _invoices.value.map { inv ->
+      if (inv.id == invoiceId) {
+        val taggedItems = newItems.map { it.copy(isAddOn = true) }
+        val allItems = inv.items + taggedItems
+        val newSubTotal = allItems.sumOf { it.totalPrice } + inv.consultationFee + inv.serviceFee
+        val totalGranular = inv.doctorFeeDiscount + inv.pharmacyDiscount + inv.procedureDiscount
+        val pctDiscount = if (inv.discountPercent > 0.0) {
+          (newSubTotal - totalGranular).coerceAtLeast(0.0) * (inv.discountPercent / 100.0)
+        } else {
+          (inv.discount - totalGranular).coerceAtLeast(0.0)
+        }
+        val finalDiscount = totalGranular + pctDiscount
+        val finalTotal = (newSubTotal - finalDiscount).coerceAtLeast(0.0)
+        inv.copy(
+          items = allItems,
+          discount = finalDiscount,
+          totalAmount = finalTotal
+        )
+      } else inv
+    }
+    _invoices.value = updated
+    ClinicDataPersistence.saveInvoices(ctx, updated)
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
+  }
+
+  fun settleAmendedInvoicePayment(invoiceId: String, paymentMethod: PaymentMethod) {
+    val ctx = getApplication<Application>()
+    val inv = _invoices.value.find { it.id == invoiceId } ?: return
+    val addOnItems = inv.items.filter { it.isAddOn }
+
+    val medMap = _medicines.value.associateBy { it.id }.toMutableMap()
+    var modified = false
+    val now = System.currentTimeMillis()
+    val newlyDeducted = inv.deductedDrugQuantities.toMutableMap()
+
+    for (item in addOnItems) {
+      val med = findMatchingMedicine(item.medicineId.ifBlank { null }, item.name, medMap)
+      if (med != null && item.quantity > 0) {
+        var remaining = item.quantity.toDouble()
+        val updatedBatches = med.allBatches.map { b ->
+          if (remaining > 0.0 && b.quantity > 0.0) {
+            val deduct = minOf(b.quantity, remaining)
+            remaining -= deduct
+            b.copy(quantity = b.quantity - deduct, lastUpdated = now)
+          } else b
+        }
+        medMap[med.id] = med.copy(batches = updatedBatches)
+        val deducted = item.quantity.toDouble() - remaining
+        if (deducted > 0.0) {
+          newlyDeducted[med.id] = (newlyDeducted[med.id] ?: 0.0) + deducted
+          modified = true
+        }
+      }
+    }
+
+    if (modified) {
+      val updatedList = _medicines.value.map { medMap[it.id] ?: it }
+      _medicines.value = updatedList
+      ClinicDataPersistence.saveMedicines(ctx, updatedList)
+    }
+
+    val updatedInvoices = _invoices.value.map { currentInv ->
+      if (currentInv.id == invoiceId) {
+        currentInv.copy(
+          isPaid = true,
+          paymentStatus = "Paid",
+          paidAmount = currentInv.totalAmount,
+          changeAmount = 0.0,
+          paymentMethod = paymentMethod,
+          deductedDrugQuantities = newlyDeducted,
+          isInventoryDeducted = true,
+          cashierName = _currentUser.value?.fullName ?: currentInv.cashierName
+        )
+      } else currentInv
+    }
+    _invoices.value = updatedInvoices
+    ClinicDataPersistence.saveInvoices(ctx, updatedInvoices)
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
     }

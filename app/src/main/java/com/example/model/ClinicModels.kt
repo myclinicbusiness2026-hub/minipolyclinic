@@ -345,7 +345,9 @@ data class InvoiceItem(
   val unitPrice: Double,
   val totalPrice: Double,
   val isProcedure: Boolean = false,
-  val category: String = if (isProcedure) "Procedure" else "Pharmacy"
+  val category: String = if (isProcedure) "Procedure" else "Pharmacy",
+  val isAddOn: Boolean = false,
+  val medicineId: String = ""
 ) {
   val description: String get() = name
   val total: Double get() = totalPrice
@@ -408,6 +410,7 @@ data class Invoice(
   val discountAmount: Double get() = if (discount > 0.0) discount else if (totalGranularDiscount > 0.0) totalGranularDiscount else (subTotal * (discountPercent / 100.0))
   val taxAmount: Double get() = tax
   val taxPercent: Double get() = if (subTotal > 0 && tax > 0) (tax / subTotal) * 100.0 else 0.0
+  val balanceDue: Double get() = (totalAmount - paidAmount).coerceAtLeast(0.0)
 }
 
 enum class UserRole(val displayName: String, val myanmarName: String = displayName) {

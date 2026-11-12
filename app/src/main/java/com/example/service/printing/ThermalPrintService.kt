@@ -412,7 +412,8 @@ object ThermalPrintService {
 
     invoice.items.forEach { item ->
       // Line 1: Item description (wraps cleanly)
-      val itemLayout = createStaticLayout(item.description, itemTitlePaint, contentWidth.toInt())
+      val itemTitle = if (item.isAddOn) "[ထပ်တိုး] ${item.description}" else item.description
+      val itemLayout = createStaticLayout(itemTitle, itemTitlePaint, contentWidth.toInt())
       canvas.save()
       canvas.translate(leftMargin, curY)
       itemLayout.draw(canvas)
@@ -528,7 +529,26 @@ object ThermalPrintService {
     canvas.drawText("GRAND TOTAL:", leftMargin + 10f, curY + grandTotalBoxH * 0.65f, paint)
     paint.textAlign = Paint.Align.RIGHT
     canvas.drawText("${currencyFmt.format(invoice.grandTotal.toInt())} Ks", rightMargin - 10f, curY + grandTotalBoxH * 0.65f, paint)
-    curY += grandTotalBoxH + 14f
+    curY += grandTotalBoxH + 10f
+
+    if (invoice.balanceDue > 0) {
+      paint.textAlign = Paint.Align.LEFT
+      paint.textSize = if (is80mm) 14f else 11.5f
+      paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+      canvas.drawText("Paid (ပေးချေပြီး):", leftMargin + 10f, curY + paint.textSize * 0.8f, paint)
+      paint.textAlign = Paint.Align.RIGHT
+      canvas.drawText("${currencyFmt.format(invoice.paidAmount.toInt())} Ks", rightMargin - 10f, curY + paint.textSize * 0.8f, paint)
+      curY += paint.textSize + 6f
+
+      paint.textAlign = Paint.Align.LEFT
+      paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+      canvas.drawText("Balance Due (ကျန်ငွေ):", leftMargin + 10f, curY + paint.textSize * 0.8f, paint)
+      paint.textAlign = Paint.Align.RIGHT
+      canvas.drawText("${currencyFmt.format(invoice.balanceDue.toInt())} Ks", rightMargin - 10f, curY + paint.textSize * 0.8f, paint)
+      curY += paint.textSize + 6f
+    }
+
+    curY += 4f
 
     // Double Divider Line before Footer
     paint.style = Paint.Style.STROKE

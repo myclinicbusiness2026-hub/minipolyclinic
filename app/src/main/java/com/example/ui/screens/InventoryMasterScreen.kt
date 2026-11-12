@@ -184,28 +184,49 @@ fun InventoryMasterScreen(
 
   val totalSkus = medicines.size
   val paidInvoices = remember(invoices) { invoices.filter { it.isPaid } }
-  val totalDocServiceRevenue = remember(paidInvoices) {
-    paidInvoices.sumOf { inv ->
-      val docFee = (inv.consultationFee - inv.doctorFeeDiscount).coerceAtLeast(0.0)
-      val svcDocFee = inv.serviceFee
-      val procedureFee = inv.items.filter { it.isProcedure }.sumOf { it.totalPrice }
-      docFee + svcDocFee + procedureFee
+  val docServiceFinancials = remember(paidInvoices) {
+    var grossDoc = 0.0
+    var discDoc = 0.0
+    var grossPharm = 0.0
+    var discPharm = 0.0
+
+    paidInvoices.forEach { inv ->
+      val gD = inv.consultationFee + inv.serviceFee + inv.items.filter { it.isProcedure }.sumOf { it.totalPrice }
+      val gP = inv.items.filter { !it.isProcedure }.sumOf { it.totalPrice }
+      val gSub = gD + gP
+
+      val dD = inv.doctorFeeDiscount + inv.procedureDiscount
+      val dP = inv.pharmacyDiscount
+      val remDisc = (inv.discountAmount - (dD + dP)).coerceAtLeast(0.0)
+
+      val splitD = if (gSub > 0 && remDisc > 0) dD + (remDisc * (gD / gSub)) else dD
+      val splitP = if (gSub > 0 && remDisc > 0) dP + (remDisc * (gP / gSub)) else dP
+
+      grossDoc += gD
+      discDoc += splitD
+      grossPharm += gP
+      discPharm += splitP
+    }
+
+    val netD = (grossDoc - discDoc).coerceAtLeast(0.0)
+    val netP = (grossPharm - discPharm).coerceAtLeast(0.0)
+    val totalD = discDoc + discPharm
+    val totalN = netD + netP
+
+    object {
+      val netDoctorService = netD
+      val doctorServiceDiscount = discDoc
+      val netPharmacy = netP
+      val pharmacyDiscount = discPharm
+      val totalDiscount = totalD
+      val totalNetIncome = totalN
     }
   }
-  val totalDocServiceDiscount = remember(paidInvoices) {
-    paidInvoices.sumOf { it.doctorFeeDiscount }
-  }
-  val totalPharmacyRevenue = remember(paidInvoices) {
-    paidInvoices.sumOf { inv ->
-      inv.items.filter { !it.isProcedure }.sumOf { it.totalPrice }
-    }
-  }
-  val totalDiscountsGiven = remember(paidInvoices) {
-    paidInvoices.sumOf { it.discountAmount }
-  }
-  val totalClinicRevenue = remember(paidInvoices) {
-    paidInvoices.sumOf { it.totalAmount }
-  }
+  val totalDocServiceRevenue = docServiceFinancials.netDoctorService
+  val totalDocServiceDiscount = docServiceFinancials.doctorServiceDiscount
+  val totalPharmacyRevenue = docServiceFinancials.netPharmacy
+  val totalDiscountsGiven = docServiceFinancials.totalDiscount
+  val totalClinicRevenue = docServiceFinancials.totalNetIncome
   val totalUnitsCount = remember(medicines) { medicines.sumOf { it.totalStock } }
 
   // Stock Risk Counters
@@ -597,97 +618,119 @@ fun InventoryMasterScreen(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Revenue Breakdown Strip
+            // Doctor & Service vs Pharmacy Revenue & Discount Breakdown Strip (Synchronized 2-Row Layout)
             Surface(
               shape = RoundedCornerShape(8.dp),
               color = PureWhite,
-              border = BorderStroke(1.dp, MedicalGreen.copy(alpha = 0.4f)),
+              border = BorderStroke(0.8.dp, MedicalGreen.copy(alpha = 0.5f)),
               modifier = Modifier.fillMaxWidth()
             ) {
-              Row(
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .padding(horizontal = 6.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-              ) {
-                // Col 1: Doctor & Service Fee (Net)
-                Column(
-                  modifier = Modifier.weight(1f),
-                  horizontalAlignment = Alignment.CenterHorizontally
+              Column(modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp)) {
+                // Row 1: Net Incomes
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.SpaceBetween,
+                  verticalAlignment = Alignment.CenterVertically
                 ) {
-                  Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.MedicalServices, contentDescription = null, tint = MedicalGreenDark, modifier = Modifier.size(11.dp))
-                    Spacer(modifier = Modifier.width(3.dp))
-                    Text("ဆရာကြည့်ခ+ဝန်ဆောင်ခ", fontSize = 9.sp, color = DarkGrayText, maxLines = 1)
+                  // Col 1: Doctor & Service Fee (Net)
+                  Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                  ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                      Icon(Icons.Default.MedicalServices, contentDescription = null, tint = MedicalGreenDark, modifier = Modifier.size(11.dp))
+                      Spacer(modifier = Modifier.width(3.dp))
+                      Text("ဆရာကြည့်ခ+ဝန်ဆောင်ခ", fontSize = 9.sp, color = DarkGrayText, maxLines = 1)
+                    }
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text("${currencyFmt.format(docServiceFinancials.netDoctorService.toInt())} Ks", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
                   }
-                  Spacer(modifier = Modifier.height(2.dp))
-                  Text("${currencyFmt.format(totalDocServiceRevenue.toInt())} Ks", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
-                  if (totalDocServiceDiscount > 0) {
-                    Text("FOC: -${currencyFmt.format(totalDocServiceDiscount.toInt())} Ks", fontSize = 8.sp, color = Color(0xFFD97706), fontWeight = FontWeight.SemiBold)
-                  }
-                }
 
-                VerticalDivider(
-                  modifier = Modifier.height(22.dp),
-                  color = BorderGrey,
-                  thickness = 0.8.dp
-                )
-
-                // Col 2: Pharmacy Income
-                Column(
-                  modifier = Modifier.weight(1f),
-                  horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                  Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Medication, contentDescription = null, tint = Color(0xFF1565C0), modifier = Modifier.size(11.dp))
-                    Spacer(modifier = Modifier.width(3.dp))
-                    Text("ဆေးအသုံးရငွေ", fontSize = 9.sp, color = DarkGrayText, maxLines = 1)
-                  }
-                  Spacer(modifier = Modifier.height(2.dp))
-                  Text("${currencyFmt.format(totalPharmacyRevenue.toInt())} Ks", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
-                }
-
-                if (totalDiscountsGiven > 0) {
                   VerticalDivider(
                     modifier = Modifier.height(22.dp),
                     color = BorderGrey,
                     thickness = 0.8.dp
                   )
 
-                  // Col 3: Total Discounts & FOC
+                  // Col 2: Pharmacy Income (Net)
                   Column(
                     modifier = Modifier.weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally
                   ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                      Icon(Icons.Default.Percent, contentDescription = null, tint = Color(0xFFDC2626), modifier = Modifier.size(11.dp))
+                      Icon(Icons.Default.Medication, contentDescription = null, tint = Color(0xFF1565C0), modifier = Modifier.size(11.dp))
                       Spacer(modifier = Modifier.width(3.dp))
-                      Text("လျှော့ငွေ/FOC", fontSize = 9.sp, color = DarkGrayText, maxLines = 1)
+                      Text("ဆေးအသုံးရငွေ", fontSize = 9.sp, color = DarkGrayText, maxLines = 1)
                     }
                     Spacer(modifier = Modifier.height(2.dp))
-                    Text("-${currencyFmt.format(totalDiscountsGiven.toInt())} Ks", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC2626))
+                    Text("${currencyFmt.format(docServiceFinancials.netPharmacy.toInt())} Ks", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
+                  }
+
+                  VerticalDivider(
+                    modifier = Modifier.height(22.dp),
+                    color = BorderGrey,
+                    thickness = 0.8.dp
+                  )
+
+                  // Col 3: Total Net Income
+                  Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                  ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                      Icon(Icons.Default.MonetizationOn, contentDescription = null, tint = OceanGreenPrimary, modifier = Modifier.size(11.dp))
+                      Spacer(modifier = Modifier.width(3.dp))
+                      Text("တကယ်ရငွေ (Net)", fontSize = 9.sp, color = DarkGrayText, maxLines = 1)
+                    }
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text("${currencyFmt.format(docServiceFinancials.totalNetIncome.toInt())} Ks", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OceanGreenPrimary)
                   }
                 }
 
-                VerticalDivider(
-                  modifier = Modifier.height(22.dp),
-                  color = BorderGrey,
-                  thickness = 0.8.dp
-                )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 5.dp), color = Color(0xFFE2E8F0), thickness = 0.6.dp)
 
-                // Col 4: Total Net Cash Income
-                Column(
-                  modifier = Modifier.weight(1f),
-                  horizontalAlignment = Alignment.CenterHorizontally
+                // Row 2: Discount Breakdown (အောက်တစ်ကြောင်းမှ Discount ခွဲတွက်ပြသမှု)
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.SpaceBetween,
+                  verticalAlignment = Alignment.CenterVertically
                 ) {
-                  Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.MonetizationOn, contentDescription = null, tint = OceanGreenPrimary, modifier = Modifier.size(11.dp))
-                    Spacer(modifier = Modifier.width(3.dp))
-                    Text("တကယ်ရငွေ (Net)", fontSize = 9.sp, color = DarkGrayText, maxLines = 1)
+                  // Col 1: Dr & Service Discount / FOC
+                  Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("ဆရာကြည့် လျှော့ငွေ/FOC", fontSize = 8.5.sp, color = SlateMedium, maxLines = 1)
+                    Text(
+                      if (docServiceFinancials.doctorServiceDiscount > 0) "-${currencyFmt.format(docServiceFinancials.doctorServiceDiscount.toInt())} Ks" else "0 Ks",
+                      fontSize = 9.5.sp,
+                      fontWeight = FontWeight.SemiBold,
+                      color = if (docServiceFinancials.doctorServiceDiscount > 0) Color(0xFFD97706) else SlateMuted
+                    )
                   }
-                  Spacer(modifier = Modifier.height(2.dp))
-                  Text("${currencyFmt.format(totalClinicRevenue.toInt())} Ks", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OceanGreenPrimary)
+
+                  VerticalDivider(modifier = Modifier.height(18.dp), color = BorderGrey, thickness = 0.6.dp)
+
+                  // Col 2: Pharmacy Discount
+                  Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("ဆေးအသုံး လျှော့ငွေ", fontSize = 8.5.sp, color = SlateMedium, maxLines = 1)
+                    Text(
+                      if (docServiceFinancials.pharmacyDiscount > 0) "-${currencyFmt.format(docServiceFinancials.pharmacyDiscount.toInt())} Ks" else "0 Ks",
+                      fontSize = 9.5.sp,
+                      fontWeight = FontWeight.SemiBold,
+                      color = if (docServiceFinancials.pharmacyDiscount > 0) Color(0xFFDC2626) else SlateMuted
+                    )
+                  }
+
+                  VerticalDivider(modifier = Modifier.height(18.dp), color = BorderGrey, thickness = 0.6.dp)
+
+                  // Col 3: Total Discounts Given
+                  Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("စုစုပေါင်း Discount", fontSize = 8.5.sp, color = SlateMedium, maxLines = 1)
+                    Text(
+                      if (docServiceFinancials.totalDiscount > 0) "-${currencyFmt.format(docServiceFinancials.totalDiscount.toInt())} Ks" else "0 Ks",
+                      fontSize = 9.5.sp,
+                      fontWeight = FontWeight.SemiBold,
+                      color = if (docServiceFinancials.totalDiscount > 0) Color(0xFFDC2626) else SlateMuted
+                    )
+                  }
                 }
               }
             }

@@ -28,7 +28,9 @@ object ThermalInvoiceRenderer {
     }
 
     invoice.items.forEach { item ->
-      val truncatedName = if (item.name.length > 22) item.name.take(20) + ".." else item.name
+      val prefix = if (item.isAddOn) "[ထပ်တိုး] " else ""
+      val fullName = "$prefix${item.name}"
+      val truncatedName = if (fullName.length > 22) fullName.take(20) + ".." else fullName
       val qtyStr = item.quantity.toString()
       sb.appendLine(String.format("%-22s %4s %12.0f", truncatedName, qtyStr, item.totalPrice))
     }
@@ -57,6 +59,9 @@ object ThermalInvoiceRenderer {
 
     sb.appendLine(String.format("%-28s %12s", "ပေးချေမှုပုံစံ (Method):", invoice.paymentMethod))
     sb.appendLine(String.format("%-28s %12.0f", "ပေးငွေ (Paid Amount):", invoice.paidAmount))
+    if (invoice.balanceDue > 0) {
+      sb.appendLine(String.format("%-28s %12.0f", "ကျန်ရှိငွေ (Balance Due):", invoice.balanceDue))
+    }
     if (invoice.changeAmount > 0) {
       sb.appendLine(String.format("%-28s %12.0f", "ပြန်အမ်းငွေ (Change):", invoice.changeAmount))
     }

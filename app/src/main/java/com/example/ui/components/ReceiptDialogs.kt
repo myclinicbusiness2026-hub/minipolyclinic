@@ -535,13 +535,31 @@ fun PosThermalSlipDialog(
                     .fillMaxWidth()
                     .padding(vertical = 2.5.dp)
                 ) {
-                  Text(
-                    item.description,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = DarkGrayText,
-                    lineHeight = 14.5.sp
-                  )
+                  Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (item.isAddOn) {
+                      Surface(
+                        shape = RoundedCornerShape(2.dp),
+                        color = Color(0xFFFEF3C7),
+                        border = androidx.compose.foundation.BorderStroke(0.5.dp, Color(0xFFD97706)),
+                        modifier = Modifier.padding(end = 4.dp)
+                      ) {
+                        Text(
+                          "ထပ်တိုး",
+                          fontSize = 8.sp,
+                          fontWeight = FontWeight.Bold,
+                          color = Color(0xFFB45309),
+                          modifier = Modifier.padding(horizontal = 2.dp, vertical = 0.5.dp)
+                        )
+                      }
+                    }
+                    Text(
+                      item.description,
+                      fontSize = 11.sp,
+                      fontWeight = FontWeight.Bold,
+                      color = DarkGrayText,
+                      lineHeight = 14.5.sp
+                    )
+                  }
                   Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 1.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -583,6 +601,22 @@ fun PosThermalSlipDialog(
               Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("GRAND TOTAL:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
                 Text("${currencyFmt.format(invoice.grandTotal.toInt())} Ks", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+              }
+
+              if (invoice.paidAmount > 0) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                  Text("Paid Amount (ပေးငွေ):", fontSize = 10.5.sp, color = DarkGrayText)
+                  Text("${currencyFmt.format(invoice.paidAmount.toInt())} Ks", fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold, color = DarkGrayText)
+                }
+              }
+
+              if (invoice.balanceDue > 0) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                  Text("Balance Due (ကျန်ငွေ):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC2626))
+                  Text("${currencyFmt.format(invoice.balanceDue.toInt())} Ks", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC2626))
+                }
               }
 
               HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 1.dp, color = Color(0xFF94A3B8))
