@@ -1686,7 +1686,7 @@ private fun ConsultationLabResultsCard(
                 Text("Date: ${order.orderDate} • Status: ${order.status.name}", fontSize = 9.sp, color = SlateMuted)
               }
               IconButton(
-                onClick = { LabPrintHelper.printLabReportA4(context, order, clinicSettings) },
+                onClick = { LabPrintHelper.printLabReportA4(context, order, null, clinicSettings) },
                 modifier = Modifier.size(24.dp)
               ) {
                 Icon(Icons.Default.Print, contentDescription = "Print Lab", tint = OceanGreenPrimary, modifier = Modifier.size(14.dp))

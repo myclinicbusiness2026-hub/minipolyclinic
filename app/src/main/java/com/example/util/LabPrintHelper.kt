@@ -52,6 +52,12 @@ object LabPrintHelper {
   fun printLabReportA4(
     context: Context,
     order: LabOrder,
+    clinicSettings: ClinicSettings
+  ) = printLabReportA4(context, order, null, clinicSettings, false)
+
+  fun printLabReportA4(
+    context: Context,
+    order: LabOrder,
     item: LabOrderItem? = null,
     clinicSettings: ClinicSettings,
     isBlankLetterhead: Boolean = false

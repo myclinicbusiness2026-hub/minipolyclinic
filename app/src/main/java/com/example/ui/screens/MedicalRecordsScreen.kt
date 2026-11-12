@@ -1266,7 +1266,7 @@ private fun PatientDetailedEmrPane(
                 Text("Order Date: ${order.orderDate} • Status: ${order.status.name} • Ref: ${order.doctorName.ifBlank { "-" }}", fontSize = 9.5.sp, color = SlateMuted)
               }
               IconButton(
-                onClick = { LabPrintHelper.printLabReportA4(emrContext, order, clinicSettings) },
+                onClick = { LabPrintHelper.printLabReportA4(emrContext, order, null, clinicSettings) },
                 modifier = Modifier.size(28.dp)
               ) {
                 Icon(Icons.Default.Print, contentDescription = "Print Lab A4", tint = OceanGreenPrimary, modifier = Modifier.size(16.dp))
