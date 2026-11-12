@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS clinic_cloud_sync (
     procedures JSONB DEFAULT '[]'::jsonb,
     suppliers JSONB DEFAULT '[]'::jsonb,
     treatment_cards JSONB DEFAULT '[]'::jsonb,
+    lab_orders JSONB DEFAULT '[]'::jsonb,
+    lab_invoices JSONB DEFAULT '[]'::jsonb,
     settings JSONB DEFAULT '{}'::jsonb,
     deleted_patient_ids JSONB DEFAULT '[]'::jsonb,
     deleted_consultation_ids JSONB DEFAULT '[]'::jsonb,
@@ -546,6 +548,65 @@ END $$;
       }
       userMap.values.forEach { mergedUserArr.put(it) }
 
+      // --- Merge Lab Orders ---
+      val mergedLabOrdersArr = JSONArray()
+      val labOrdersMap = mutableMapOf<String, JSONObject>()
+      if (remoteDoc != null && (remoteDoc.has("lab_orders") || remoteDoc.has("labOrders"))) {
+        val rArr = remoteDoc.optJSONArray("lab_orders") ?: remoteDoc.optJSONArray("labOrders")
+        if (rArr != null) {
+          for (i in 0 until rArr.length()) {
+            val o = rArr.getJSONObject(i)
+            val lid = o.optString("id")
+            if (lid.isNotBlank()) labOrdersMap[lid] = o
+          }
+        }
+      }
+      if (root.has("labOrders") || root.has("lab_orders")) {
+        val lArr = root.optJSONArray("labOrders") ?: root.optJSONArray("lab_orders")
+        if (lArr != null) {
+          for (i in 0 until lArr.length()) {
+            val o = lArr.getJSONObject(i)
+            val lid = o.optString("id")
+            if (lid.isNotBlank()) {
+              val ex = labOrdersMap[lid]
+              if (ex == null) {
+                labOrdersMap[lid] = o
+              } else {
+                if (o.optString("status") == "COMPLETED" || ex.optString("status") != "COMPLETED") {
+                  labOrdersMap[lid] = o
+                }
+              }
+            }
+          }
+        }
+      }
+      labOrdersMap.values.forEach { mergedLabOrdersArr.put(it) }
+
+      // --- Merge Lab Invoices ---
+      val mergedLabInvoicesArr = JSONArray()
+      val labInvoicesMap = mutableMapOf<String, JSONObject>()
+      if (remoteDoc != null && (remoteDoc.has("lab_invoices") || remoteDoc.has("labInvoices"))) {
+        val rArr = remoteDoc.optJSONArray("lab_invoices") ?: remoteDoc.optJSONArray("labInvoices")
+        if (rArr != null) {
+          for (i in 0 until rArr.length()) {
+            val o = rArr.getJSONObject(i)
+            val liid = o.optString("id")
+            if (liid.isNotBlank()) labInvoicesMap[liid] = o
+          }
+        }
+      }
+      if (root.has("labInvoices") || root.has("lab_invoices")) {
+        val lArr = root.optJSONArray("labInvoices") ?: root.optJSONArray("lab_invoices")
+        if (lArr != null) {
+          for (i in 0 until lArr.length()) {
+            val o = lArr.getJSONObject(i)
+            val liid = o.optString("id")
+            if (liid.isNotBlank()) labInvoicesMap[liid] = o
+          }
+        }
+      }
+      labInvoicesMap.values.forEach { mergedLabInvoicesArr.put(it) }
+
       // Resolve Clinic Settings merge
       val localSettingsObj = root.optJSONObject("clinicSettings") ?: root.optJSONObject("settings")
       val remoteSettingsObj = remoteDoc?.optJSONObject("settings") ?: remoteDoc?.optJSONObject("clinicSettings")
@@ -570,6 +631,8 @@ END $$;
         put("suppliers", mergedSupArr)
         put("vaccines", mergedVacArr)
         put("users", mergedUserArr)
+        put("labOrders", mergedLabOrdersArr)
+        put("labInvoices", mergedLabInvoicesArr)
         if (mergedSettingsObj != null) {
           put("clinicSettings", mergedSettingsObj)
           put("settings", mergedSettingsObj)
@@ -606,6 +669,14 @@ END $$;
         if (remoteDoc != null && (remoteDoc.has("treatment_cards") || remoteDoc.has("treatmentCards"))) {
           val colName = if (remoteDoc.has("treatment_cards")) "treatment_cards" else "treatmentCards"
           put(colName, mergedTcArr)
+        }
+        if (remoteDoc != null && (remoteDoc.has("lab_orders") || remoteDoc.has("labOrders"))) {
+          val colName = if (remoteDoc.has("lab_orders")) "lab_orders" else "labOrders"
+          put(colName, mergedLabOrdersArr)
+        }
+        if (remoteDoc != null && (remoteDoc.has("lab_invoices") || remoteDoc.has("labInvoices"))) {
+          val colName = if (remoteDoc.has("lab_invoices")) "lab_invoices" else "labInvoices"
+          put(colName, mergedLabInvoicesArr)
         }
         if (mergedSettingsObj != null && (remoteDoc == null || remoteDoc.has("settings") || remoteDoc.has("clinicSettings"))) {
           put("settings", mergedSettingsObj)

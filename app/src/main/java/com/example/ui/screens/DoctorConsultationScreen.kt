@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.model.*
+import com.example.util.LabPrintHelper
 import com.example.ui.components.A4AnatomyCanvasDialog
 import com.example.ui.components.A4HandwritingNotesCanvasView
 import com.example.ui.components.AllergyWarningBadge
@@ -132,6 +133,7 @@ fun DoctorConsultationScreen(
   val users by viewModel.users.collectAsState()
   val currentUser by viewModel.currentUser.collectAsState()
   val selectedAttendingDoctor by viewModel.selectedAttendingDoctor.collectAsState()
+  val labOrders by viewModel.labOrders.collectAsState()
   val customAttendingDoctor by viewModel.customAttendingDoctor.collectAsState()
   var showAttendingDoctorDialog by remember { mutableStateOf(false) }
 
@@ -268,7 +270,10 @@ fun DoctorConsultationScreen(
   LaunchedEffect(patientId) {
     if (activePatient != null) {
       val draft = viewModel.getDraftConsultation(activePatient.id)
-      if (draft != null) {
+      val lastCompleted = consultations.filter { it.patientId == activePatient.id }.maxByOrNull { it.timestamp }
+      val targetRecord = draft ?: lastCompleted
+      if (targetRecord != null) {
+        val draft = targetRecord
         if (draft.subjective.isNotBlank()) subjective = draft.subjective
         val restoredNotes = draft.objective.ifBlank { draft.canvasNotes }
         if (restoredNotes.isNotBlank()) {
@@ -704,6 +709,71 @@ fun DoctorConsultationScreen(
 
             Spacer(modifier = Modifier.width(4.dp))
 
+            // Recall Completed Patient Button
+            var showRecallMenu by remember { mutableStateOf(false) }
+            val completedPatientsToday = remember(patients, consultations) {
+              val todayKey = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+              patients.filter { p ->
+                p.status != QueueStatus.IN_CONSULTATION && p.status != QueueStatus.WAITING &&
+                (p.registrationDate == todayKey || consultations.any { c -> c.patientId == p.id && c.timestamp.startsWith(todayKey) })
+              }.take(8)
+            }
+
+            Box {
+              Surface(
+                modifier = Modifier
+                  .clip(RoundedCornerShape(4.dp))
+                  .clickable { showRecallMenu = true },
+                color = Color(0xFFFEF3C7),
+                border = BorderStroke(0.8.dp, Color(0xFFF59E0B))
+              ) {
+                Row(
+                  modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Icon(Icons.Default.History, contentDescription = "Recall", modifier = Modifier.size(12.dp), tint = Color(0xFFD97706))
+                  Spacer(modifier = Modifier.width(3.dp))
+                  Text("ပြန်ခေါ်", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF92400E))
+                }
+              }
+              DropdownMenu(
+                expanded = showRecallMenu,
+                onDismissRequest = { showRecallMenu = false }
+              ) {
+                Text(
+                  "မကြာသေးမီကလူနာ ပြန်ခေါ်ရန် (Recall)",
+                  fontSize = 11.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = SlateDark,
+                  modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+                HorizontalDivider()
+                if (completedPatientsToday.isEmpty()) {
+                  DropdownMenuItem(
+                    text = { Text("ယနေ့ ပြီးဆုံးလူနာ မရှိသေးပါ", fontSize = 11.sp, color = SlateMuted) },
+                    onClick = { showRecallMenu = false }
+                  )
+                } else {
+                  completedPatientsToday.forEach { p ->
+                    DropdownMenuItem(
+                      text = {
+                        Column {
+                          Text("${p.name} (${p.hn})", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = DarkGrayText)
+                          Text("အခြေအနေ: ${p.status.labelMm}", fontSize = 9.5.sp, color = SlateMuted)
+                        }
+                      },
+                      onClick = {
+                        showRecallMenu = false
+                        viewModel.recallPatientToConsultation(p.id)
+                      }
+                    )
+                  }
+                }
+              }
+            }
+
+            Spacer(modifier = Modifier.width(4.dp))
+
             // Attending Doctor Selector Chip
             Surface(
               modifier = Modifier
@@ -943,6 +1013,12 @@ fun DoctorConsultationScreen(
                 onEditRecord = { record -> if (!isReadOnly) editingConsultation = record },
                 isReadOnly = isReadOnly
               )
+
+              val patientLabOrders = remember(activePatient, labOrders) {
+                if (activePatient == null) emptyList()
+                else labOrders.filter { it.patientId == activePatient.id || (activePatient.hn.isNotBlank() && it.patientHn == activePatient.hn) }
+              }
+              ConsultationLabResultsCard(patientLabOrders, clinicSettings, context)
             }
 
             Column(
@@ -1034,6 +1110,12 @@ fun DoctorConsultationScreen(
               onEditRecord = { record -> if (!isReadOnly) editingConsultation = record },
               isReadOnly = isReadOnly
             )
+
+            val mobilePatientLabOrders = remember(activePatient, labOrders) {
+              if (activePatient == null) emptyList()
+              else labOrders.filter { it.patientId == activePatient.id || (activePatient.hn.isNotBlank() && it.patientHn == activePatient.hn) }
+            }
+            ConsultationLabResultsCard(mobilePatientLabOrders, clinicSettings, context)
 
             ConsultationPrescriptionAndBillingPane(
               prescribedDrugs = prescribedDrugs,
@@ -1552,4 +1634,104 @@ fun EditConsultationDialog(
   onSave: (ConsultationRecord) -> Unit
 ) {
   StructuredClinicalEditDialog(record = record, onDismiss = onDismiss, onSave = onSave)
+}
+
+@Composable
+private fun ConsultationLabResultsCard(
+  patientLabOrders: List<LabOrder>,
+  clinicSettings: ClinicSettings,
+  context: android.content.Context
+) {
+  if (patientLabOrders.isEmpty()) return
+  Surface(
+    modifier = Modifier.fillMaxWidth(),
+    shape = RoundedCornerShape(8.dp),
+    color = PureWhite,
+    border = BorderStroke(1.dp, Color(0xFFCBD5E1))
+  ) {
+    Column(modifier = Modifier.padding(10.dp)) {
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          Icon(Icons.Default.Science, contentDescription = null, tint = OceanGreenPrimary, modifier = Modifier.size(16.dp))
+          Spacer(modifier = Modifier.width(6.dp))
+          Text(
+            "ဓာတ်ခွဲစစ်ဆေးချက် အဖြေများ / Lab Results (${patientLabOrders.size})",
+            fontWeight = FontWeight.Bold,
+            fontSize = 11.5.sp,
+            color = DarkGrayText
+          )
+        }
+      }
+      Spacer(modifier = Modifier.height(6.dp))
+      patientLabOrders.forEach { order ->
+        Surface(
+          modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+          shape = RoundedCornerShape(6.dp),
+          color = Color(0xFFF8FAFC),
+          border = BorderStroke(0.6.dp, Color(0xFFE2E8F0))
+        ) {
+          Column(modifier = Modifier.padding(8.dp)) {
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Column {
+                Text(order.testName, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = OceanGreenPrimary)
+                Text("Date: ${order.orderDate} • Status: ${order.status.labelMm}", fontSize = 9.sp, color = SlateMuted)
+              }
+              IconButton(
+                onClick = { LabPrintHelper.printLabReport(context, order, clinicSettings) },
+                modifier = Modifier.size(24.dp)
+              ) {
+                Icon(Icons.Default.Print, contentDescription = "Print Lab", tint = OceanGreenPrimary, modifier = Modifier.size(14.dp))
+              }
+            }
+            if (order.results.isNotEmpty()) {
+              Spacer(modifier = Modifier.height(4.dp))
+              order.results.forEach { res ->
+                Row(
+                  modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp),
+                  horizontalArrangement = Arrangement.SpaceBetween,
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Text(res.parameterName, fontSize = 9.5.sp, color = DarkGrayText, modifier = Modifier.weight(1.2f))
+                  Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                      res.resultValue,
+                      fontSize = 10.sp,
+                      fontWeight = FontWeight.Bold,
+                      color = if (res.flag == ResultFlag.HIGH) Color(0xFFDC2626) else if (res.flag == ResultFlag.LOW) Color(0xFF2563EB) else DarkGrayText
+                    )
+                    if (res.flag == ResultFlag.HIGH) {
+                      Text(" ▲", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC2626))
+                    } else if (res.flag == ResultFlag.LOW) {
+                      Text(" ▼", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB))
+                    }
+                    if (res.unit.isNotBlank()) {
+                      Text(" ${res.unit}", fontSize = 8.5.sp, color = SlateMuted)
+                    }
+                  }
+                  Text(
+                    if (res.referenceRange.isNotBlank()) "(${res.referenceRange})" else "",
+                    fontSize = 8.5.sp,
+                    color = SlateMuted,
+                    modifier = Modifier.weight(0.8f)
+                  )
+                }
+              }
+            }
+            if (order.clinicalNotes.isNotBlank()) {
+              Spacer(modifier = Modifier.height(3.dp))
+              Text("Note: ${order.clinicalNotes}", fontSize = 9.sp, color = SlateDark)
+            }
+          }
+        }
+      }
+    }
+  }
 }

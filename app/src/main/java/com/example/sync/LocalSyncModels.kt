@@ -68,7 +68,11 @@ data class SyncDataPayload(
   val deletedInvoiceIds: List<String> = emptyList(),
   val deletedMedicineIds: List<String> = emptyList(),
   val deletedUserIds: List<String> = emptyList(),
-  val deletedTreatmentCardIds: List<String> = emptyList()
+  val deletedTreatmentCardIds: List<String> = emptyList(),
+  val labOrders: List<LabOrder> = emptyList(),
+  val labInvoices: List<LabInvoice> = emptyList(),
+  val labTemplates: List<LabTestTemplate> = emptyList(),
+  val deletedLabOrderIds: List<String> = emptyList()
 ) {
   fun toJsonString(context: Context? = null): String {
     val root = JSONObject()
@@ -538,6 +542,24 @@ data class SyncDataPayload(
       val so = com.example.data.ClinicDataPersistence.settingsToJson(clinicSettings)
       root.put("clinicSettings", so)
       root.put("settings", so)
+    }
+
+    if (context != null) {
+      val labOrdersJson = com.example.data.ClinicDataPersistence.getLabOrdersJson(context)
+      if (!labOrdersJson.isNullOrBlank()) {
+        root.put("labOrders", JSONArray(labOrdersJson))
+      }
+      val labTemplatesJson = com.example.data.ClinicDataPersistence.getLabTemplatesJson(context)
+      if (!labTemplatesJson.isNullOrBlank()) {
+        root.put("labTemplates", JSONArray(labTemplatesJson))
+      }
+      val labInvoicesJson = com.example.data.ClinicDataPersistence.getLabInvoicesJson(context)
+      if (!labInvoicesJson.isNullOrBlank()) {
+        root.put("labInvoices", JSONArray(labInvoicesJson))
+      }
+      val delLabArr = JSONArray()
+      com.example.data.ClinicDataPersistence.loadDeletedLabOrderIds(context).forEach { delLabArr.put(it) }
+      root.put("deletedLabOrderIds", delLabArr)
     }
 
     return root.toString()

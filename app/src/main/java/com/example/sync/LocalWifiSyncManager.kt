@@ -621,6 +621,51 @@ class LocalWifiSyncManager(
         ClinicDataPersistence.saveClinicSettings(context, finalSettings)
       }
 
+      // Merge Lab Orders & Templates & Invoices
+      val remoteDelLab = SyncPayloadParser.parseStringList(root.optJSONArray("deletedLabOrderIds"))
+      val localDelLab = ClinicDataPersistence.loadDeletedLabOrderIds(context)
+      val allDeletedLabIds = (localDelLab + remoteDelLab).toMutableSet()
+      ClinicDataPersistence.saveDeletedLabOrderIds(context, allDeletedLabIds)
+
+      if (root.has("labOrders")) {
+        val incomingLabOrders = ClinicDataPersistence.parseLabOrders(root.getJSONArray("labOrders").toString())
+        val localLabOrders = ClinicDataPersistence.loadLabOrders(context) ?: emptyList()
+        val labMap = localLabOrders
+          .filterNot { allDeletedLabIds.contains(it.id) }
+          .associateBy { it.id }
+          .toMutableMap()
+
+        incomingLabOrders.forEach { inc ->
+          if (!allDeletedLabIds.contains(inc.id)) {
+            val ex = labMap[inc.id]
+            if (ex == null) {
+              labMap[inc.id] = inc
+            } else {
+              if (inc.status == LabOrderStatus.COMPLETED || ex.status != LabOrderStatus.COMPLETED) {
+                labMap[inc.id] = inc
+              }
+            }
+          }
+        }
+        ClinicDataPersistence.saveLabOrders(context, labMap.values.toList())
+      }
+
+      if (root.has("labTemplates")) {
+        val incomingTemplates = ClinicDataPersistence.parseLabTemplates(root.getJSONArray("labTemplates").toString())
+        val localTemplates = ClinicDataPersistence.loadLabTemplates(context) ?: emptyList()
+        val tMap = localTemplates.associateBy { it.id }.toMutableMap()
+        incomingTemplates.forEach { tMap[it.id] = it }
+        ClinicDataPersistence.saveLabTemplates(context, tMap.values.toList())
+      }
+
+      if (root.has("labInvoices")) {
+        val incomingInvoices = ClinicDataPersistence.parseLabInvoices(root.getJSONArray("labInvoices").toString())
+        val localInvoices = ClinicDataPersistence.loadLabInvoices(context) ?: emptyList()
+        val invMap = localInvoices.associateBy { it.id }.toMutableMap()
+        incomingInvoices.forEach { invMap[it.id] = it }
+        ClinicDataPersistence.saveLabInvoices(context, invMap.values.toList())
+      }
+
       scope.launch(Dispatchers.Main) {
         onDataUpdated()
         if (newPatCount > 0) {

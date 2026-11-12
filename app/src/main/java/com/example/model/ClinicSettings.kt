@@ -22,6 +22,7 @@ data class ClinicSettings(
   val defaultPathologistName: String = "",
   val defaultPathologistDegree: String = "",
   val defaultPathologistSama: String = "",
+  val defaultPathologistTitle: String = "Consultant Pathologist",
   val defaultConsultationFee: Double = 8000.0,
   val defaultImInjectionFee: Double = 2000.0,
   val defaultIvPushFee: Double = 3000.0,

@@ -79,7 +79,8 @@ data class LabOrder(
   val notes: String = "",
   val pathologistName: String = "",
   val pathologistDegree: String = "",
-  val pathologistSama: String = ""
+  val pathologistSama: String = "",
+  val pathologistTitle: String = "Consultant Pathologist"
 ) {
   val isPaid: Boolean get() = paidAmount >= totalAmount && totalAmount > 0.0 || paymentStatus.equals("Paid", ignoreCase = true)
   val isFullyPaid: Boolean get() = isPaid

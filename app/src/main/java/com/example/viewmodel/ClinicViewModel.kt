@@ -96,6 +96,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   private val _activePreviewRecord = MutableStateFlow<ConsultationRecord?>(null)
   val activePreviewRecord: StateFlow<ConsultationRecord?> = _activePreviewRecord.asStateFlow()
 
+  private val _lastConsultedPatientId = MutableStateFlow<String?>(null)
+  val lastConsultedPatientId: StateFlow<String?> = _lastConsultedPatientId.asStateFlow()
+
   val previewThermalSlip = MutableStateFlow<Invoice?>(null)
   val previewA4ClinicalDoc = MutableStateFlow<ConsultationRecord?>(null)
 
@@ -1487,37 +1490,72 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       card.orderSummaryText
     }
 
-    val consultation = ConsultationRecord(
-      id = "CONS-${UUID.randomUUID().toString().take(8)}",
-      patientId = patientId,
-      patientName = patient.name,
-      doctorName = doctorNameOverride.ifBlank { _currentUser.value?.fullName ?: clinicSettings.value.doctorName },
-      doctorDegree = doctorDegreeOverride.ifBlank { clinicSettings.value.doctorDegree },
-      doctorSama = doctorSamaOverride.ifBlank { clinicSettings.value.doctorSama },
-      subjective = subjective,
-      objective = objective,
-      assessment = assessment,
-      plan = plan,
-      diagnosisList = diagnosisList,
-      prescriptions = prescriptions,
-      selectedProcedures = selectedProcedures,
-      suggestedInvestigations = suggestedInvestigations,
-      treatmentOrderDetails = treatmentOrderDetails,
-      consultationFee = consultationFee,
-      drawingPages = drawingPages,
-      canvasNotes = canvasNotes,
-      followUpAppointment = followUpAppointment,
-      followUpDueDate = followUpDueDate,
-      nextVaccineSchedule = nextVaccineSchedule,
-      patientInstructions = patientInstructions,
-      medicalLeave = medicalLeave,
-      referralRecord = referralRecord,
-      attachments = attachments,
-      vitals = vitals,
-      timestamp = BurmeseDateUtils.getNowFormatted()
-    )
+    val todayKey = BurmeseDateUtils.getNowFormatted().take(10)
+    val existingConsultation = _consultations.value.find { it.patientId == patientId && it.timestamp.take(10) == todayKey }
 
-    val updatedConsultations = _consultations.value + consultation
+    val consultation = if (existingConsultation != null) {
+      existingConsultation.copy(
+        doctorName = doctorNameOverride.ifBlank { _currentUser.value?.fullName ?: clinicSettings.value.doctorName },
+        doctorDegree = doctorDegreeOverride.ifBlank { clinicSettings.value.doctorDegree },
+        doctorSama = doctorSamaOverride.ifBlank { clinicSettings.value.doctorSama },
+        subjective = subjective,
+        objective = objective,
+        assessment = assessment,
+        plan = plan,
+        diagnosisList = diagnosisList,
+        prescriptions = prescriptions,
+        selectedProcedures = selectedProcedures,
+        suggestedInvestigations = suggestedInvestigations,
+        treatmentOrderDetails = treatmentOrderDetails,
+        consultationFee = consultationFee,
+        drawingPages = drawingPages,
+        canvasNotes = canvasNotes,
+        followUpAppointment = followUpAppointment,
+        followUpDueDate = followUpDueDate,
+        nextVaccineSchedule = nextVaccineSchedule,
+        patientInstructions = patientInstructions,
+        medicalLeave = medicalLeave,
+        referralRecord = referralRecord,
+        attachments = attachments,
+        vitals = vitals
+      )
+    } else {
+      ConsultationRecord(
+        id = "CONS-${UUID.randomUUID().toString().take(8)}",
+        patientId = patientId,
+        patientName = patient.name,
+        doctorName = doctorNameOverride.ifBlank { _currentUser.value?.fullName ?: clinicSettings.value.doctorName },
+        doctorDegree = doctorDegreeOverride.ifBlank { clinicSettings.value.doctorDegree },
+        doctorSama = doctorSamaOverride.ifBlank { clinicSettings.value.doctorSama },
+        subjective = subjective,
+        objective = objective,
+        assessment = assessment,
+        plan = plan,
+        diagnosisList = diagnosisList,
+        prescriptions = prescriptions,
+        selectedProcedures = selectedProcedures,
+        suggestedInvestigations = suggestedInvestigations,
+        treatmentOrderDetails = treatmentOrderDetails,
+        consultationFee = consultationFee,
+        drawingPages = drawingPages,
+        canvasNotes = canvasNotes,
+        followUpAppointment = followUpAppointment,
+        followUpDueDate = followUpDueDate,
+        nextVaccineSchedule = nextVaccineSchedule,
+        patientInstructions = patientInstructions,
+        medicalLeave = medicalLeave,
+        referralRecord = referralRecord,
+        attachments = attachments,
+        vitals = vitals,
+        timestamp = BurmeseDateUtils.getNowFormatted()
+      )
+    }
+
+    val updatedConsultations = if (existingConsultation != null) {
+      _consultations.value.map { if (it.id == existingConsultation.id) consultation else it }
+    } else {
+      _consultations.value + consultation
+    }
     _consultations.value = updatedConsultations
     ClinicDataPersistence.saveConsultations(getApplication(), updatedConsultations)
 
@@ -1647,23 +1685,37 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val totalItemsPrice = invoiceItems.sumOf { it.totalPrice }
     val calculatedTotal = consultationFee + serviceFee + totalItemsPrice
 
-    val invoice = Invoice(
-      id = "INV-${UUID.randomUUID().toString().take(8)}",
-      invoiceNumber = "INV-${(1000 + _invoices.value.size + 1)}",
-      consultationId = consultation.id,
-      patientId = patientId,
-      patientName = patient.name,
-      items = invoiceItems,
-      consultationFee = consultationFee,
-      serviceFee = serviceFee,
-      totalAmount = calculatedTotal,
-      paidAmount = 0.0,
-      paymentStatus = "Unpaid",
-      cashierName = _currentUser.value?.fullName ?: "Counter Cashier",
-      timestamp = BurmeseDateUtils.getNowFormatted()
-    )
+    val existingInvoice = _invoices.value.find { it.consultationId == consultation.id }
+    val invoice = if (existingInvoice != null) {
+      existingInvoice.copy(
+        items = invoiceItems,
+        consultationFee = consultationFee,
+        serviceFee = serviceFee,
+        totalAmount = calculatedTotal
+      )
+    } else {
+      Invoice(
+        id = "INV-${UUID.randomUUID().toString().take(8)}",
+        invoiceNumber = "INV-${(1000 + _invoices.value.size + 1)}",
+        consultationId = consultation.id,
+        patientId = patientId,
+        patientName = patient.name,
+        items = invoiceItems,
+        consultationFee = consultationFee,
+        serviceFee = serviceFee,
+        totalAmount = calculatedTotal,
+        paidAmount = 0.0,
+        paymentStatus = "Unpaid",
+        cashierName = _currentUser.value?.fullName ?: "Counter Cashier",
+        timestamp = BurmeseDateUtils.getNowFormatted()
+      )
+    }
 
-    val updatedInvoices = _invoices.value + invoice
+    val updatedInvoices = if (existingInvoice != null) {
+      _invoices.value.map { if (it.id == existingInvoice.id) invoice else it }
+    } else {
+      _invoices.value + invoice
+    }
     _invoices.value = updatedInvoices
     ClinicDataPersistence.saveInvoices(getApplication(), updatedInvoices)
 
@@ -1696,10 +1748,16 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     // Route patient status
     val nextStatus = QueueStatus.AT_BILLING
     updatePatientStatus(patientId, nextStatus)
+    _lastConsultedPatientId.value = patientId
 
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
     }
+  }
+
+  fun recallPatientToConsultation(patientId: String) {
+    _selectedPatientId.value = patientId
+    updatePatientStatus(patientId, QueueStatus.IN_CONSULTATION)
   }
 
   fun updateConsultation(updatedRecord: ConsultationRecord) {
@@ -4356,7 +4414,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     notes: String,
     pathologistName: String = "",
     pathologistDegree: String = "",
-    pathologistSama: String = ""
+    pathologistSama: String = "",
+    pathologistTitle: String = ""
   ) {
     val ctx = getApplication<Application>()
     val isAllCompleted = updatedItems.all { it.isCompleted }
@@ -4370,6 +4429,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           pathologistName = pathologistName.ifBlank { ord.pathologistName },
           pathologistDegree = pathologistDegree.ifBlank { ord.pathologistDegree },
           pathologistSama = pathologistSama.ifBlank { ord.pathologistSama },
+          pathologistTitle = pathologistTitle.ifBlank { ord.pathologistTitle },
           status = if (isAllCompleted) LabOrderStatus.COMPLETED else ord.status,
           completedAt = completedAtStr ?: ord.completedAt
         )
@@ -4381,7 +4441,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       val s = clinicSettings.value.copy(
         defaultPathologistName = pathologistName,
         defaultPathologistDegree = pathologistDegree,
-        defaultPathologistSama = pathologistSama
+        defaultPathologistSama = pathologistSama,
+        defaultPathologistTitle = pathologistTitle.ifBlank { clinicSettings.value.defaultPathologistTitle }
       )
       clinicSettings.value = s
       ClinicDataPersistence.saveClinicSettings(ctx, s)
@@ -4393,9 +4454,32 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
   fun deleteLabOrder(orderId: String) {
     val ctx = getApplication<Application>()
+    ClinicDataPersistence.addDeletedLabOrderId(ctx, orderId)
     val updated = _labOrders.value.filter { it.id != orderId }
     _labOrders.value = updated
     ClinicDataPersistence.saveLabOrders(ctx, updated)
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
+  }
+
+  /**
+   * 2021 CKD-EPI Creatinine Equation (KDIGO Standard without race)
+   * Calculates estimated Glomerular Filtration Rate (eGFR) in mL/min/1.73 m²
+   */
+  fun calculateEgfr(creatinineMgDl: Double, ageYears: Int, isFemale: Boolean): Double {
+    if (creatinineMgDl <= 0.0 || ageYears <= 0) return 0.0
+    val k = if (isFemale) 0.7 else 0.9
+    val alpha = if (isFemale) -0.241 else -0.302
+    val femaleFactor = if (isFemale) 1.012 else 1.0
+
+    val crRatio = creatinineMgDl / k
+    val term1 = Math.pow(Math.min(crRatio, 1.0), alpha)
+    val term2 = Math.pow(Math.max(crRatio, 1.0), -1.200)
+    val term3 = Math.pow(0.9938, ageYears.toDouble())
+
+    val egfr = 142.0 * term1 * term2 * term3 * femaleFactor
+    return Math.round(egfr * 10.0) / 10.0
   }
 
   fun saveLabTemplate(template: LabTestTemplate) {

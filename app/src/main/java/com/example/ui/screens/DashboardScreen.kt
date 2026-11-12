@@ -61,6 +61,7 @@ fun DashboardScreen(
   val invoices by viewModel.invoices.collectAsState()
   val expenses by viewModel.expenses.collectAsState()
   val consultations by viewModel.consultations.collectAsState()
+  val labOrders by viewModel.labOrders.collectAsState()
   val clinicSettings by viewModel.clinicSettings.collectAsState()
 
   var showExportDialog by remember { mutableStateOf(false) }
@@ -100,13 +101,13 @@ fun DashboardScreen(
       val dayEng = sdfDisplay.format(dayCal.time)
       val dayMm = dayNamesMm[dayEng] ?: dayEng
 
-      // Count actual patient encounters on this date
+      // Count actual patient encounters on this date across 3 categories:
       val consCount = consultations.count { it.timestamp.startsWith(dateKey) }
-      val invCount = invoices.count { it.dateString == dateKey }
-      val patCount = patients.count { it.registrationDate == dateKey }
+      val pharmacyWalkInCount = invoices.count { it.dateString == dateKey && it.consultationId.isNullOrBlank() && !it.invoiceNumber.startsWith("LAB-") }
+      val labOnlyCount = labOrders.count { it.orderDate == dateKey && !consultations.any { c -> (c.patientId == it.patientId || c.patientName.equals(it.patientName, ignoreCase = true)) && c.timestamp.startsWith(dateKey) } }
 
-      // Total distinct visits or encounters recorded on this date
-      val totalCount = maxOf(consCount, invCount, patCount)
+      // Distinct total encounters: Consultation + Pharmacy OTC + Direct Lab
+      val totalCount = consCount + pharmacyWalkInCount + labOnlyCount
 
       list.add(
         DailyPatientStat(
@@ -114,7 +115,10 @@ fun DashboardScreen(
           label = if (i == 0) "ယနေ့" else dayMm,
           subLabel = dayEng,
           count = totalCount,
-          isToday = (i == 0)
+          isToday = (i == 0),
+          consultationCount = consCount,
+          pharmacyCount = pharmacyWalkInCount,
+          labCount = labOnlyCount
         )
       )
     }
@@ -140,9 +144,9 @@ fun DashboardScreen(
       val (mmName, enName) = monthNamesMm.getOrElse(5 - i) { "လ" to "M" }
 
       val consCount = consultations.count { it.timestamp.startsWith(mKey) }
-      val invCount = invoices.count { it.dateString.startsWith(mKey) }
-      val patCount = patients.count { it.registrationDate.startsWith(mKey) }
-      val total = maxOf(consCount, invCount, patCount)
+      val pharmacyWalkInCount = invoices.count { it.dateString.startsWith(mKey) && it.consultationId.isNullOrBlank() && !it.invoiceNumber.startsWith("LAB-") }
+      val labOnlyCount = labOrders.count { it.orderDate.startsWith(mKey) && !consultations.any { c -> (c.patientId == it.patientId || c.patientName.equals(it.patientName, ignoreCase = true)) && c.timestamp.startsWith(mKey) } }
+      val total = consCount + pharmacyWalkInCount + labOnlyCount
 
       list.add(
         MonthlyPatientStat(
@@ -150,7 +154,10 @@ fun DashboardScreen(
           labelMm = mmName,
           labelEn = enName,
           count = total,
-          isCurrent = (i == 0)
+          isCurrent = (i == 0),
+          consultationCount = consCount,
+          pharmacyCount = pharmacyWalkInCount,
+          labCount = labOnlyCount
         )
       )
     }
@@ -356,6 +363,149 @@ fun DashboardScreen(
           modifier = Modifier.weight(1.3f),
           onClick = { onNavigateToTab(7) }
         )
+      }
+    }
+
+
+    // Dedicated 3-Category Patient Breakdown (ဆရာဝန်နှင့်ပြသူ၊ ဆေးလာဝယ်သူ၊ ဓာတ်ခွဲခန်းသီးသန့်စစ်ဆေးသူ)
+    item {
+      val todayKey = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
+      val todayConsCount = remember(consultations, todayKey) { consultations.count { it.timestamp.startsWith(todayKey) } }
+      val todayOtcCount = remember(invoices, todayKey) { invoices.count { it.dateString == todayKey && it.consultationId.isNullOrBlank() && !it.invoiceNumber.startsWith("LAB-") } }
+      val todayLabCount = remember(labOrders, consultations, todayKey) {
+        labOrders.count { it.orderDate == todayKey && !consultations.any { c -> (c.patientId == it.patientId || c.patientName.equals(it.patientName, ignoreCase = true)) && c.timestamp.startsWith(todayKey) } }
+      }
+      val todayTotalEncounters = todayConsCount + todayOtcCount + todayLabCount
+
+      Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = PureWhite),
+        border = BorderStroke(1.dp, Color(0xFFCBD5E1))
+      ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Box(
+                modifier = Modifier
+                  .size(28.dp)
+                  .clip(RoundedCornerShape(6.dp))
+                  .background(Color(0xFFEFF6FF)),
+                contentAlignment = Alignment.Center
+              ) {
+                Icon(Icons.Default.PieChart, contentDescription = null, tint = Color(0xFF2563EB), modifier = Modifier.size(16.dp))
+              }
+              Spacer(modifier = Modifier.width(8.dp))
+              Column {
+                Text(
+                  "ယနေ့ လူနာလာရောက်မှု အမျိုးအစားခွဲ (Patient Category Breakdown)",
+                  fontWeight = FontWeight.Bold,
+                  fontSize = 12.5.sp,
+                  color = DarkGrayText
+                )
+                Text("ဆရာဝန်ပြသမှု၊ ဆေးဝယ်ယူမှု နှင့် ဓာတ်ခွဲစစ်ဆေးမှု သီးသန့်", fontSize = 9.5.sp, color = SlateMedium)
+              }
+            }
+            Surface(
+              shape = RoundedCornerShape(12.dp),
+              color = SoftGreenContainer
+            ) {
+              Text(
+                "စုစုပေါင်း: $todayTotalEncounters ဉီး",
+                fontSize = 10.5.sp,
+                fontWeight = FontWeight.Bold,
+                color = MedicalGreenDark,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+              )
+            }
+          }
+
+          Spacer(modifier = Modifier.height(10.dp))
+
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+          ) {
+            // Category 1: Doctor Consultation
+            Surface(
+              modifier = Modifier.weight(1f),
+              shape = RoundedCornerShape(8.dp),
+              color = Color(0xFFF0FDF4),
+              border = BorderStroke(1.dp, Color(0xFFBBF7D0))
+            ) {
+              Column(
+                modifier = Modifier.padding(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+              ) {
+                Icon(Icons.Default.MedicalServices, contentDescription = null, tint = OceanGreenPrimary, modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("ဆရာဝန်နှင့်ပြသူ", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+                Text("Consultation", fontSize = 8.5.sp, color = SlateMuted)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                  "$todayConsCount ဉီး",
+                  fontSize = 15.sp,
+                  fontWeight = FontWeight.ExtraBold,
+                  color = OceanGreenPrimary
+                )
+              }
+            }
+
+            // Category 2: Pharmacy Walk-in / Direct OTC
+            Surface(
+              modifier = Modifier.weight(1f),
+              shape = RoundedCornerShape(8.dp),
+              color = Color(0xFFF0FDFA),
+              border = BorderStroke(1.dp, Color(0xFF99F6E4))
+            ) {
+              Column(
+                modifier = Modifier.padding(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+              ) {
+                Icon(Icons.Default.Medication, contentDescription = null, tint = Color(0xFF0D9488), modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("ဆေးလာဝယ်သူ", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+                Text("Pharmacy OTC", fontSize = 8.5.sp, color = SlateMuted)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                  "$todayOtcCount ဉီး",
+                  fontSize = 15.sp,
+                  fontWeight = FontWeight.ExtraBold,
+                  color = Color(0xFF0D9488)
+                )
+              }
+            }
+
+            // Category 3: Direct Lab Only
+            Surface(
+              modifier = Modifier.weight(1f),
+              shape = RoundedCornerShape(8.dp),
+              color = Color(0xFFFAF5FF),
+              border = BorderStroke(1.dp, Color(0xFFE9D5FF))
+            ) {
+              Column(
+                modifier = Modifier.padding(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+              ) {
+                Icon(Icons.Default.Science, contentDescription = null, tint = Color(0xFF7E22CE), modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("ဓာတ်ခွဲခန်းသီးသန့်", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+                Text("Lab Direct", fontSize = 8.5.sp, color = SlateMuted)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                  "$todayLabCount ဉီး",
+                  fontSize = 15.sp,
+                  fontWeight = FontWeight.ExtraBold,
+                  color = Color(0xFF7E22CE)
+                )
+              }
+            }
+          }
+        }
       }
     }
 
@@ -767,7 +917,10 @@ data class DailyPatientStat(
   val label: String,
   val subLabel: String,
   val count: Int,
-  val isToday: Boolean
+  val isToday: Boolean,
+  val consultationCount: Int = 0,
+  val pharmacyCount: Int = 0,
+  val labCount: Int = 0
 )
 
 data class MonthlyPatientStat(
@@ -775,7 +928,10 @@ data class MonthlyPatientStat(
   val labelMm: String,
   val labelEn: String,
   val count: Int,
-  val isCurrent: Boolean
+  val isCurrent: Boolean,
+  val consultationCount: Int = 0,
+  val pharmacyCount: Int = 0,
+  val labCount: Int = 0
 )
 
 data class MedicineUsageItem(

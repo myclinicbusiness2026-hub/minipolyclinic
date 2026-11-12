@@ -139,33 +139,34 @@ object LabPrintHelper {
             object-fit: contain;
           }
           .clinic-name-mm {
-            font-size: 19px;
+            font-size: 18px;
             font-weight: bold;
-            color: #0b3954;
+            color: #1b5e20;
             margin: 0 0 2px 0;
           }
           .clinic-name-en {
-            font-size: 14px;
-            font-weight: 600;
-            color: #333333;
+            font-size: 13.5px;
+            font-weight: bold;
+            color: #2e7d32;
             margin: 0 0 3px 0;
           }
           .clinic-contact {
-            font-size: 11px;
-            color: #555555;
+            font-size: 10.5px;
+            color: #4b5563;
             margin: 1px 0;
           }
           .report-banner {
             text-align: center;
-            background: #e9f2fb;
-            border: 1px solid #b8daff;
-            color: #004085;
+            background: #f8fafc;
+            border-top: 1.5px solid #cbd5e1;
+            border-bottom: 1.5px solid #cbd5e1;
+            color: #1b5e20;
             padding: 5px;
             font-weight: bold;
-            font-size: 14px;
-            letter-spacing: 0.5px;
-            border-radius: 4px;
-            margin-bottom: 12px;
+            font-size: 13px;
+            letter-spacing: 0.8px;
+            border-radius: 2px;
+            margin-bottom: 10px;
           }
           .patient-box {
             width: 100%;
@@ -197,13 +198,16 @@ object LabPrintHelper {
             margin-bottom: 15px;
           }
           .param-table th {
-            background-color: #0b3954;
-            color: #ffffff;
-            font-weight: 600;
+            background-color: #f1f5f9;
+            color: #1e293b;
+            font-weight: bold;
             text-align: left;
-            padding: 7px 10px;
-            font-size: 11.5px;
-            border: 1px solid #0b3954;
+            padding: 6px 10px;
+            font-size: 11px;
+            border-top: 1.5px solid #94a3b8;
+            border-bottom: 1.5px solid #94a3b8;
+            border-left: none;
+            border-right: none;
           }
           .param-table td {
             padding: 6px 10px;
@@ -317,18 +321,18 @@ object LabPrintHelper {
         </style>
       </head>
       <body>
-        <!-- Header -->
+        <!-- Header (Identical to Consultation A4 Letterhead) -->
         <table class="header-table">
           <tr>
-            <td style="width: 70%; vertical-align: top;">
-              <div class="clinic-name-mm">${clinic.clinicNameMm.ifBlank { "“ရွှေခေတ်” ဆေးခန်း" }}</div>
-              <div class="clinic-name-en">${clinic.clinicNameEn.ifBlank { "Shwe Khit General Clinic" }}</div>
-              <div class="clinic-contact">${clinic.clinicAddress}</div>
-              <div class="clinic-contact">Tel: ${clinic.clinicPhone} | Reg: ${clinic.clinicRegNo}</div>
-              <div class="clinic-contact">Doctor: ${clinic.doctorName} (${clinic.doctorDegree}) • S.A.M.A: ${clinic.doctorSama}</div>
+            <td style="width: 72%; vertical-align: top;">
+              <div class="clinic-name-mm">“${clinic.clinicNameMm.replace("“", "").replace("”", "").ifBlank { "ရွှေခေတ်" }}” ${clinic.clinicSubtitleMm.ifBlank { "အထွေထွေရောဂါကုဆေးခန်း" }}</div>
+              <div class="clinic-name-en">${clinic.clinicNameEn.ifBlank { "Shwe Khit General Clinic & Diagnostic Lab" }}</div>
+              <div class="clinic-contact">${clinic.clinicAddress.ifBlank { "အမှတ်(၁၂)၊ လမ်းမတော်လမ်း၊ မန္တလေးမြို့" }} • Ph: ${clinic.clinicPhone.ifBlank { "09-421001122, 09-790112233" }}</div>
             </td>
-            <td style="width: 30%; text-align: right; vertical-align: middle;">
+            <td style="width: 28%; text-align: right; vertical-align: top;">
               ${if (clinic.clinicLogoBase64.isNotBlank()) "<img src='data:image/png;base64,${clinic.clinicLogoBase64}' class='clinic-logo'/>" else ""}
+              <div style="font-size: 10px; font-weight: bold; color: #1b5e20; margin-top: 2px;">DIAGNOSTIC LABORATORY</div>
+              <div style="font-size: 9px; color: #64748b;">Reg No: ${clinic.clinicRegNo.ifBlank { "MOHS-MDY-2024" }}</div>
             </td>
           </tr>
         </table>
@@ -336,7 +340,7 @@ object LabPrintHelper {
         <!-- Report Banner -->
         <div class="report-banner">$title</div>
 
-        <!-- Patient Demographics -->
+        <!-- Patient Demographics (Clean layout without bulky Inx request row) -->
         <div class="patient-box">
           <div class="patient-grid">
             <div class="patient-row">
@@ -344,15 +348,12 @@ object LabPrintHelper {
               <div class="patient-cell" style="width: 50%;"><strong>Lab Order No:</strong> ${order.orderNumber}</div>
             </div>
             <div class="patient-row">
-              <div class="patient-cell"><strong>Hospital No (HN):</strong> ${order.patientHn}</div>
-              <div class="patient-cell"><strong>Date & Time:</strong> ${order.orderDate}</div>
+              <div class="patient-cell"><strong>Patient ID / Reg No:</strong> ${order.patientHn}</div>
+              <div class="patient-cell"><strong>Date & Time:</strong> ${order.orderDate} ${order.orderTime}</div>
             </div>
             <div class="patient-row">
               <div class="patient-cell"><strong>Age / Gender:</strong> ${order.patientAge} / ${order.patientGender}</div>
               <div class="patient-cell"><strong>Referring Doctor:</strong> ${order.referringDoctorName.ifBlank { clinic.doctorName }}</div>
-            </div>
-            <div class="patient-row">
-              <div class="patient-cell" colspan="2"><strong>Investigation(s) Ordered:</strong> $testNames</div>
             </div>
           </div>
         </div>
@@ -367,11 +368,10 @@ object LabPrintHelper {
         <table class="param-table">
           <thead>
             <tr>
-              <th style="width: 36%;">Investigation / Test Parameter</th>
-              <th style="width: 20%;">Result</th>
+              <th style="width: 44%;">Investigation / Test Parameter</th>
+              <th style="width: 22%;">Result</th>
               <th style="width: 14%;">Unit</th>
               <th style="width: 20%;">Reference Interval</th>
-              <th style="width: 10%; text-align: center;">Flag</th>
             </tr>
           </thead>
           <tbody>
@@ -381,36 +381,34 @@ object LabPrintHelper {
         if (testItem.isAnalyzerSlipOnly && testItem.parameters.isEmpty()) {
           sb.append("""
             <tr class="panel-section-row">
-              <td colspan="5"><strong>${testItem.templateName}</strong> — <em>Automated Analyzer Direct Print Slip Recorded</em></td>
+              <td colspan="4"><strong>${testItem.templateName}</strong> — <em>Automated Analyzer Direct Print Slip Recorded</em></td>
             </tr>
           """.trimIndent())
         } else if (testItem.parameters.size > 1) {
-          // Multi-parameter panel (e.g. Serum Electrolytes, CBC, Lipid Profile): Show clean section header row
+          // Multi-parameter panel: Show clean subtle section header row
           sb.append("""
             <tr class="panel-section-row">
-              <td colspan="5"><strong>${testItem.templateName}</strong></td>
+              <td colspan="4"><strong>${testItem.templateName}</strong></td>
             </tr>
           """.trimIndent())
 
           for (param in testItem.parameters) {
-            val flagBadge = when (param.flag.uppercase()) {
-              "HIGH" -> "<span class='badge-high'>HIGH</span>"
-              "LOW" -> "<span class='badge-low'>LOW</span>"
-              "NORMAL" -> "<span class='badge-normal'>NORMAL</span>"
-              else -> if (param.flag.isNotBlank()) "<span>${param.flag}</span>" else "-"
+            val arrowBadge = when (param.flag.uppercase()) {
+              "HIGH" -> "<span style='color: #dc2626; font-weight: bold; font-size: 11px; margin-left: 4px;'>▲</span>"
+              "LOW" -> "<span style='color: #0284c7; font-weight: bold; font-size: 11px; margin-left: 4px;'>▼</span>"
+              else -> ""
             }
             sb.append("""
               <tr>
                 <td style="padding-left: 18px;">${param.name}</td>
-                <td><strong style="color: #0b3954;">${param.result.ifBlank { "-" }}</strong></td>
+                <td><strong style="color: #0f172a;">${param.result.ifBlank { "-" }}</strong>$arrowBadge</td>
                 <td>${param.unit.ifBlank { "-" }}</td>
                 <td>${param.referenceRange.ifBlank { "-" }}</td>
-                <td style="text-align: center;">$flagBadge</td>
               </tr>
             """.trimIndent())
           }
         } else {
-          // Single parameter test (e.g. Urea, Creatinine, RBS): Render directly without redundant section header
+          // Single parameter test: Render directly without redundant section header
           val singleParam = testItem.parameters.firstOrNull()
           val paramName = singleParam?.name ?: ""
           val displayName = if (paramName.isBlank() || paramName.equals("Result", ignoreCase = true) || paramName.equals(testItem.templateName, ignoreCase = true)) {
@@ -418,19 +416,17 @@ object LabPrintHelper {
           } else {
             "${testItem.templateName} ($paramName)"
           }
-          val flagBadge = when ((singleParam?.flag ?: "").uppercase()) {
-            "HIGH" -> "<span class='badge-high'>HIGH</span>"
-            "LOW" -> "<span class='badge-low'>LOW</span>"
-            "NORMAL" -> "<span class='badge-normal'>NORMAL</span>"
-            else -> if (!singleParam?.flag.isNullOrBlank()) "<span>${singleParam?.flag}</span>" else "-"
+          val arrowBadge = when ((singleParam?.flag ?: "").uppercase()) {
+            "HIGH" -> "<span style='color: #dc2626; font-weight: bold; font-size: 11px; margin-left: 4px;'>▲</span>"
+            "LOW" -> "<span style='color: #0284c7; font-weight: bold; font-size: 11px; margin-left: 4px;'>▼</span>"
+            else -> ""
           }
           sb.append("""
             <tr>
               <td><strong>$displayName</strong></td>
-              <td><strong style="color: #0b3954;">${singleParam?.result?.ifBlank { "-" } ?: "-"}</strong></td>
+              <td><strong style="color: #0f172a;">${singleParam?.result?.ifBlank { "-" } ?: "-"}</strong>$arrowBadge</td>
               <td>${singleParam?.unit?.ifBlank { "-" } ?: "-"}</td>
               <td>${singleParam?.referenceRange?.ifBlank { "-" } ?: "-"}</td>
-              <td style="text-align: center;">$flagBadge</td>
             </tr>
           """.trimIndent())
         }
@@ -472,8 +468,9 @@ object LabPrintHelper {
       }
     }
 
-    // Signatures footer (only when printing full clinical report; blank letterhead leaves bottom completely clean)
+    // Signatures footer & bottom clinical notes (only when printing full clinical report)
     if (!isBlankLetterhead) {
+      val hasTechnician = order.technicianName.isNotBlank()
       val effectivePathologistName = order.pathologistName.ifBlank {
         clinic.defaultPathologistName.ifBlank { clinic.doctorName }
       }
@@ -483,26 +480,34 @@ object LabPrintHelper {
       val effectivePathologistSama = order.pathologistSama.ifBlank {
         clinic.defaultPathologistSama.ifBlank { clinic.doctorSama }
       }
+      val effectivePathologistTitle = order.pathologistTitle.ifBlank {
+        clinic.defaultPathologistTitle
+      }
 
       sb.append("""
         <div class="footer-section">
           <table class="sign-table">
             <tr>
+              ${if (hasTechnician) """
               <td class="sign-cell">
                 <div class="sign-line"></div>
-                <strong>${order.performedBy.ifBlank { "Medical Laboratory Technologist" }}</strong><br/>
-                <span style="color: #666; font-size: 10.5px;">Performed & Verified By</span>
+                <strong>${order.technicianName}</strong><br/>
+                <span style="color: #64748b; font-size: 10px;">Medical Laboratory Technologist</span>
               </td>
-              <td class="sign-cell">
+              """ else """
+              <td class="sign-cell" style="width: 50%;"></td>
+              """}
+              <td class="sign-cell" style="${if (!hasTechnician) "width: 50%; float: right;" else ""}">
                 <div class="sign-line"></div>
-                <strong>$effectivePathologistName</strong><br/>
-                <span style="font-size: 11px; color: #444;">$effectivePathologistDegree</span><br/>
-                <span style="color: #666; font-size: 10px;">Consultant Pathologist (S.A.M.A: $effectivePathologistSama)</span>
+                <strong style="color: #0f172a;">$effectivePathologistName</strong><br/>
+                <span style="font-size: 10.5px; color: #334155;">$effectivePathologistDegree</span><br/>
+                <span style="color: #475569; font-size: 10px;">(S.A.M.A: $effectivePathologistSama)</span><br/>
+                ${if (effectivePathologistTitle.isNotBlank()) "<span style='color: #0f172a; font-size: 10px; font-weight: 500;'>$effectivePathologistTitle</span>" else ""}
               </td>
             </tr>
           </table>
-          <div style="text-align: center; margin-top: 20px; font-size: 10px; color: #888;">
-            This investigation is processed by the Independent Laboratory Services at ${clinic.clinicNameMm}.
+          <div style="text-align: center; margin-top: 18px; font-size: 9.5px; color: #94a3b8;">
+            This investigation is processed by the Laboratory Services at ${clinic.clinicNameMm}.
           </div>
         </div>
       """.trimIndent())

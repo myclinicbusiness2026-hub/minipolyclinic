@@ -254,13 +254,12 @@ class A4LedgerClosePrintAdapter(
 
     if (!isSummaryOnlyPage && pageChunk.isNotEmpty()) {
       // Table Header Row
-      val colW_No = 22f
-      val colW_Time = 42f
-      val colW_Name = 115f
-      val colW_Diag = 160f
-      val colW_Amt = 65f
-      val colW_Method = 55f
-      val colW_Status = contentW - (colW_No + colW_Time + colW_Name + colW_Diag + colW_Amt + colW_Method)
+      val colW_No = 24f
+      val colW_Time = 50f
+      val colW_Name = 275f // Expanded full width (Diagnosis column removed to prevent truncation and show full patient name)
+      val colW_Amt = 75f
+      val colW_Method = 60f
+      val colW_Status = contentW - (colW_No + colW_Time + colW_Name + colW_Amt + colW_Method)
 
       val headerH = 18f
       paint.color = Color.rgb(241, 245, 249) // Slate-100
@@ -279,9 +278,8 @@ class A4LedgerClosePrintAdapter(
       var cX = mLeft + 3f
       canvas.drawText("စဉ်", cX, curY + 12f, paint); cX += colW_No
       canvas.drawText("ချိန်/ဘောက်ချာ", cX, curY + 12f, paint); cX += colW_Time
-      canvas.drawText("လူနာအမည် / HN", cX, curY + 12f, paint); cX += colW_Name
-      canvas.drawText("ရောဂါရာဇဝင် / ကုသမှုအသုံးစာရင်း", cX, curY + 12f, paint); cX += colW_Diag
-      canvas.drawText("ကျသင့်ငွေ (Ks)", cX, curY + 12f, paint); cX += colW_Amt
+      canvas.drawText("လူနာအမည် / ဆေးခန်းအမှတ် (Patient Name & HN)", cX, curY + 12f, paint); cX += colW_Name
+      canvas.drawText("ကျသင့်ငွေ (Ks)", cX + 10f, curY + 12f, paint); cX += colW_Amt
       canvas.drawText("ငွေချေပုံစံ", cX, curY + 12f, paint); cX += colW_Method
       canvas.drawText("အခြေအနေ", cX, curY + 12f, paint)
 
@@ -319,26 +317,15 @@ class A4LedgerClosePrintAdapter(
         val timeDisplay = if (inv.createdAt.length >= 16) inv.createdAt.substring(11, 16) else inv.invoiceNo.takeLast(6)
         canvas.drawText(timeDisplay, rX, curY + 13f, paint); rX += colW_Time
 
-        // 3. Patient Name & HN
+        // 3. Patient Name & HN (Full display without .take(13) truncation)
         val patient = patients.find { it.id == inv.patientId }
         val hnStr = patient?.hn?.takeLast(7) ?: ""
-        val nameHn = "${inv.patientName.take(13)}${if (hnStr.isNotBlank()) " ($hnStr)" else ""}"
+        val nameHn = "${inv.patientName}${if (hnStr.isNotBlank()) " ($hnStr)" else ""}"
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         canvas.drawText(nameHn, rX, curY + 13f, paint); rX += colW_Name
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
 
-        // 4. Diagnosis / Clinical items
-        val consult = consultations.find { it.patientId == inv.patientId && it.timestamp.take(10) == inv.dateString }
-        val diag = when {
-          !consult?.diagnosisList.isNullOrEmpty() -> consult?.diagnosisList!!.joinToString(", ")
-          !consult?.assessment.isNullOrBlank() -> consult?.assessment!!
-          !consult?.subjective.isNullOrBlank() -> consult?.subjective!!
-          inv.items.isNotEmpty() -> inv.items.joinToString(", ") { it.name }.take(32)
-          else -> "General OPD Consultation"
-        }
-        canvas.drawText(diag.take(30), rX, curY + 13f, paint); rX += colW_Diag
-
-        // 5. Total Amount (Right aligned in its column)
+        // 4. Total Amount (Right aligned in its column)
         val amtStr = currencyFmt.format(inv.grandTotal.toInt())
         val amtW = paint.measureText(amtStr)
         canvas.drawText(amtStr, rX + colW_Amt - amtW - 6f, curY + 13f, paint); rX += colW_Amt

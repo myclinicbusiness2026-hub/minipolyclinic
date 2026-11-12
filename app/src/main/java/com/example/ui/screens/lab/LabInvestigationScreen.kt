@@ -509,13 +509,14 @@ fun LabInvestigationScreen(
   orderToEnterResults?.let { order ->
     MobileLabResultEntryDialog(
       order = order,
-      technicianName = viewModel.currentUser.value?.displayName ?: "Lab Technologist",
+      technicianName = viewModel.currentUser.value?.displayName ?: "",
       defaultPathologistName = clinicSettings.defaultPathologistName,
       defaultPathologistDegree = clinicSettings.defaultPathologistDegree,
       defaultPathologistSama = clinicSettings.defaultPathologistSama,
+      defaultPathologistTitle = clinicSettings.defaultPathologistTitle,
       onDismiss = { orderToEnterResults = null },
-      onSave = { updatedItems, tech, notes, pName, pDegree, pSama ->
-        viewModel.saveLabOrderResults(order.id, updatedItems, tech, notes, pName, pDegree, pSama)
+      onSave = { updatedItems, tech, notes, pName, pDegree, pSama, pTitle ->
+        viewModel.saveLabOrderResults(order.id, updatedItems, tech, notes, pName, pDegree, pSama, pTitle)
         orderToEnterResults = null
         Toast.makeText(context, "ဓာတ်ခွဲအဖြေများ မှတ်တမ်းတင်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
       }
@@ -1756,13 +1757,15 @@ fun MobileLabResultEntryDialog(
   defaultPathologistName: String = "",
   defaultPathologistDegree: String = "",
   defaultPathologistSama: String = "",
+  defaultPathologistTitle: String = "Consultant Pathologist",
   onDismiss: () -> Unit,
-  onSave: (List<LabOrderItem>, String, String, String, String, String) -> Unit
+  onSave: (List<LabOrderItem>, String, String, String, String, String, String) -> Unit
 ) {
-  var techName by remember { mutableStateOf(order.technicianName.ifBlank { technicianName }) }
+  var techName by remember { mutableStateOf(order.technicianName) }
   var pathologistName by remember { mutableStateOf(order.pathologistName.ifBlank { defaultPathologistName }) }
   var pathologistDegree by remember { mutableStateOf(order.pathologistDegree.ifBlank { defaultPathologistDegree }) }
   var pathologistSama by remember { mutableStateOf(order.pathologistSama.ifBlank { defaultPathologistSama }) }
+  var pathologistTitle by remember { mutableStateOf(order.pathologistTitle.ifBlank { defaultPathologistTitle }) }
   var generalNotes by remember { mutableStateOf(order.notes) }
 
   // Working state for items and parameters
@@ -1869,6 +1872,42 @@ fun MobileLabResultEntryDialog(
                             onValueChange = { newVal ->
                               val updatedParams = item.parameters.toMutableList()
                               updatedParams[pIdx] = p.copy(result = newVal)
+
+                              // Auto-calculate eGFR (CKD-EPI 2021) when Creatinine is entered
+                              val pNameClean = p.name.trim().lowercase()
+                              if (pNameClean.contains("creatinine") || pNameClean == "cr") {
+                                val crVal = newVal.toDoubleOrNull()
+                                val ageYears = order.patientAge.filter { it.isDigit() }.toIntOrNull() ?: 35
+                                val isFemale = order.patientGender.name.contains("FEMALE", ignoreCase = true)
+                                if (crVal != null && crVal > 0.0) {
+                                  val k = if (isFemale) 0.7 else 0.9
+                                  val alpha = if (isFemale) -0.241 else -0.302
+                                  val femaleFactor = if (isFemale) 1.012 else 1.0
+                                  val crRatio = crVal / k
+                                  val term1 = Math.pow(Math.min(crRatio, 1.0), alpha)
+                                  val term2 = Math.pow(Math.max(crRatio, 1.0), -1.200)
+                                  val term3 = Math.pow(0.9938, ageYears.toDouble())
+                                  val egfr = Math.round(142.0 * term1 * term2 * term3 * femaleFactor * 10.0) / 10.0
+
+                                  val egfrIdx = updatedParams.indexOfFirst { it.name.contains("egfr", ignoreCase = true) }
+                                  if (egfrIdx >= 0) {
+                                    updatedParams[egfrIdx] = updatedParams[egfrIdx].copy(
+                                      result = "$egfr",
+                                      flag = if (egfr < 60.0) "LOW" else "NORMAL"
+                                    )
+                                  } else {
+                                    updatedParams.add(
+                                      LabTestParameter(
+                                        name = "eGFR (CKD-EPI 2021)",
+                                        result = "$egfr",
+                                        unit = "mL/min/1.73m²",
+                                        referenceRange = "≥ 90",
+                                        flag = if (egfr < 60.0) "LOW" else "NORMAL"
+                                      )
+                                    )
+                                  }
+                                }
+                              }
                               itemsState[itemIdx] = item.copy(parameters = updatedParams)
                             },
                             placeholder = { Text("အဖြေ Result (${p.unit})", fontSize = 11.sp, color = SlateMuted) },
@@ -1982,8 +2021,19 @@ fun MobileLabResultEntryDialog(
               OutlinedTextField(
                 value = pathologistDegree,
                 onValueChange = { pathologistDegree = it },
-                label = { Text("ဘွဲ့ / တာဝန် (Degree / Title)", fontSize = 10.sp) },
+                label = { Text("ဘွဲ့ (Medical Degree)", fontSize = 10.sp) },
                 placeholder = { Text("M.B.,B.S, M.Med.Sc (Pathology)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(6.dp),
+                textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
+              )
+              Spacer(modifier = Modifier.height(6.dp))
+              OutlinedTextField(
+                value = pathologistTitle,
+                onValueChange = { pathologistTitle = it },
+                label = { Text("ရာထူး (Title / Position - e.g. Consultant Pathologist)", fontSize = 10.sp) },
+                placeholder = { Text("မလိုပါက ကွက်လပ်ထားနိုင်ပါသည်") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 shape = RoundedCornerShape(6.dp),
@@ -2050,7 +2100,7 @@ fun MobileLabResultEntryDialog(
           Button(
             onClick = {
               val finalizedItems = itemsState.map { it.copy(isCompleted = true) }
-              onSave(finalizedItems, techName, generalNotes, pathologistName, pathologistDegree, pathologistSama)
+              onSave(finalizedItems, techName, generalNotes, pathologistName, pathologistDegree, pathologistSama, pathologistTitle)
             },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
             shape = RoundedCornerShape(6.dp),

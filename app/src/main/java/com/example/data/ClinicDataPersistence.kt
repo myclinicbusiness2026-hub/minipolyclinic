@@ -24,6 +24,7 @@ object ClinicDataPersistence {
   private const val KEY_DELETED_MEDICINE_IDS = "deleted_medicine_ids"
   private const val KEY_DELETED_USER_IDS = "deleted_user_ids"
   private const val KEY_DELETED_TREATMENT_CARD_IDS = "deleted_treatment_card_ids"
+  private const val KEY_DELETED_LAB_ORDER_IDS = "deleted_lab_order_ids"
   private const val KEY_TREATMENT_CARDS = "treatment_cards"
   private const val KEY_CLINIC_SETTINGS = "clinic_settings"
   private const val KEY_DRAFT_CONSULTATIONS = "draft_consultations"
@@ -228,6 +229,34 @@ object ClinicDataPersistence {
     val current = loadDeletedTreatmentCardIds(context)
     current.add(id)
     saveDeletedTreatmentCardIds(context, current)
+  }
+
+  fun saveDeletedLabOrderIds(context: Context, ids: Set<String>) {
+    val arr = JSONArray()
+    ids.forEach { arr.put(it) }
+    getPrefs(context).edit().putString(KEY_DELETED_LAB_ORDER_IDS, arr.toString()).apply()
+  }
+
+  fun loadDeletedLabOrderIds(context: Context): MutableSet<String> {
+    val str = getPrefs(context).getString(KEY_DELETED_LAB_ORDER_IDS, null) ?: return mutableSetOf()
+    return try {
+      val arr = JSONArray(str)
+      val set = mutableSetOf<String>()
+      for (i in 0 until arr.length()) {
+        val id = arr.getString(i)
+        if (id.isNotBlank()) set.add(id)
+      }
+      set
+    } catch (_: Exception) {
+      mutableSetOf()
+    }
+  }
+
+  fun addDeletedLabOrderId(context: Context, id: String) {
+    if (id.isBlank()) return
+    val current = loadDeletedLabOrderIds(context)
+    current.add(id)
+    saveDeletedLabOrderIds(context, current)
   }
 
   fun removeDeletedTreatmentCardId(context: Context, id: String) {
@@ -1687,6 +1716,7 @@ object ClinicDataPersistence {
       put("defaultPathologistName", s.defaultPathologistName)
       put("defaultPathologistDegree", s.defaultPathologistDegree)
       put("defaultPathologistSama", s.defaultPathologistSama)
+      put("defaultPathologistTitle", s.defaultPathologistTitle)
       put("defaultConsultationFee", s.defaultConsultationFee)
       put("defaultImInjectionFee", s.defaultImInjectionFee)
       put("defaultIvPushFee", s.defaultIvPushFee)
@@ -1731,6 +1761,7 @@ object ClinicDataPersistence {
       defaultPathologistName = o.optString("defaultPathologistName", fallback.defaultPathologistName),
       defaultPathologistDegree = o.optString("defaultPathologistDegree", fallback.defaultPathologistDegree),
       defaultPathologistSama = o.optString("defaultPathologistSama", fallback.defaultPathologistSama),
+      defaultPathologistTitle = o.optString("defaultPathologistTitle", fallback.defaultPathologistTitle),
       defaultConsultationFee = if (o.has("defaultConsultationFee")) o.optDouble("defaultConsultationFee", fallback.defaultConsultationFee) else fallback.defaultConsultationFee,
       defaultImInjectionFee = if (o.has("defaultImInjectionFee")) o.optDouble("defaultImInjectionFee", fallback.defaultImInjectionFee) else fallback.defaultImInjectionFee,
       defaultIvPushFee = if (o.has("defaultIvPushFee")) o.optDouble("defaultIvPushFee", fallback.defaultIvPushFee) else fallback.defaultIvPushFee,
@@ -2006,6 +2037,7 @@ object ClinicDataPersistence {
       oo.put("pathologistName", ord.pathologistName)
       oo.put("pathologistDegree", ord.pathologistDegree)
       oo.put("pathologistSama", ord.pathologistSama)
+      oo.put("pathologistTitle", ord.pathologistTitle)
 
       val iArr = JSONArray()
       ord.items.forEach { item ->
@@ -2114,6 +2146,7 @@ object ClinicDataPersistence {
             pathologistName = o.optString("pathologistName", ""),
             pathologistDegree = o.optString("pathologistDegree", ""),
             pathologistSama = o.optString("pathologistSama", ""),
+            pathologistTitle = o.optString("pathologistTitle", "Consultant Pathologist"),
             items = items
           )
         )
@@ -2306,6 +2339,7 @@ object ClinicDataPersistence {
             pathologistName = o.optString("pathologistName", ""),
             pathologistDegree = o.optString("pathologistDegree", ""),
             pathologistSama = o.optString("pathologistSama", ""),
+            pathologistTitle = o.optString("pathologistTitle", "Consultant Pathologist"),
             items = items
           )
         )

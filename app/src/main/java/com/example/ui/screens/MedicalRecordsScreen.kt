@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.model.*
+import com.example.util.LabPrintHelper
 import com.example.ui.components.ChronicDiseaseTrendsDialog
 import com.example.ui.components.EditPatientDialog
 import com.example.ui.components.FollowUpPatientDialog
@@ -62,6 +63,8 @@ fun MedicalRecordsScreen(
   val consultations by viewModel.consultations.collectAsState()
   val invoices by viewModel.invoices.collectAsState()
   val vaccineRecords by viewModel.vaccineRecords.collectAsState()
+  val labOrders by viewModel.labOrders.collectAsState()
+  val clinicSettings by viewModel.clinicSettings.collectAsState()
 
   var searchQuery by remember { mutableStateOf("") }
   var selectedPatientId by remember { mutableStateOf<String?>(null) }
@@ -415,6 +418,8 @@ fun MedicalRecordsScreen(
                 patient = activePatient,
                 consultations = patientConsultations,
                 invoices = patientInvoices,
+                labOrders = labOrders,
+                clinicSettings = clinicSettings,
                 isReadOnly = isReadOnly,
                 onPrintA4 = { consult -> viewModel.showA4DocPreview(consult) },
                 onPrintThermal = { inv -> viewModel.showThermalPreview(inv) },
@@ -471,6 +476,8 @@ fun MedicalRecordsScreen(
                 patient = activePatient,
                 consultations = patientConsultations,
                 invoices = patientInvoices,
+                labOrders = labOrders,
+                clinicSettings = clinicSettings,
                 isReadOnly = isReadOnly,
                 onPrintA4 = { consult -> viewModel.showA4DocPreview(consult) },
                 onPrintThermal = { inv -> viewModel.showThermalPreview(inv) },
@@ -882,6 +889,8 @@ private fun PatientDetailedEmrPane(
   patient: Patient,
   consultations: List<ConsultationRecord>,
   invoices: List<Invoice>,
+  labOrders: List<LabOrder> = emptyList(),
+  clinicSettings: ClinicSettings = ClinicSettings(),
   isReadOnly: Boolean = false,
   onPrintA4: (ConsultationRecord) -> Unit,
   onPrintThermal: (Invoice) -> Unit,
@@ -1213,6 +1222,95 @@ private fun PatientDetailedEmrPane(
           onEditRecord = { onEditRecord(consult) },
           onDeleteRecord = { onDeleteRecord(consult) }
         )
+      }
+    }
+
+    // Lab Investigation History Section
+    val patientLabOrders = remember(patient.id, patient.hn, labOrders) {
+      labOrders.filter { it.patientId == patient.id || (patient.hn.isNotBlank() && it.patientHn == patient.hn) }
+    }
+    if (patientLabOrders.isNotEmpty()) {
+      Spacer(modifier = Modifier.height(4.dp))
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          Icon(Icons.Default.Science, contentDescription = null, tint = OceanGreenPrimary, modifier = Modifier.size(16.dp))
+          Spacer(modifier = Modifier.width(6.dp))
+          Text(
+            "ဓာတ်ခွဲစစ်ဆေးချက် မှတ်တမ်းများ / Lab History (${patientLabOrders.size} Orders)",
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.5.sp,
+            color = DarkGrayText
+          )
+        }
+      }
+      patientLabOrders.forEach { order ->
+        Surface(
+          modifier = Modifier.fillMaxWidth(),
+          shape = RoundedCornerShape(8.dp),
+          color = PureWhite,
+          border = BorderStroke(0.8.dp, BorderGrey)
+        ) {
+          Column(modifier = Modifier.padding(10.dp)) {
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Column {
+                Text(order.testName, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = OceanGreenPrimary)
+                Text("Order Date: ${order.orderDate} • Status: ${order.status.labelMm} • Ref: ${order.referringDoctor.ifBlank { "-" }}", fontSize = 9.5.sp, color = SlateMuted)
+              }
+              IconButton(
+                onClick = { LabPrintHelper.printLabReport(context, order, clinicSettings) },
+                modifier = Modifier.size(28.dp)
+              ) {
+                Icon(Icons.Default.Print, contentDescription = "Print Lab A4", tint = OceanGreenPrimary, modifier = Modifier.size(16.dp))
+              }
+            }
+            if (order.results.isNotEmpty()) {
+              Spacer(modifier = Modifier.height(6.dp))
+              order.results.forEach { res ->
+                Row(
+                  modifier = Modifier.fillMaxWidth().padding(vertical = 1.5.dp),
+                  horizontalArrangement = Arrangement.SpaceBetween,
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Text(res.parameterName, fontSize = 10.sp, color = DarkGrayText, modifier = Modifier.weight(1.3f))
+                  Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                      res.resultValue,
+                      fontSize = 10.5.sp,
+                      fontWeight = FontWeight.Bold,
+                      color = if (res.flag == ResultFlag.HIGH) Color(0xFFDC2626) else if (res.flag == ResultFlag.LOW) Color(0xFF2563EB) else DarkGrayText
+                    )
+                    if (res.flag == ResultFlag.HIGH) {
+                      Text(" ▲", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC2626))
+                    } else if (res.flag == ResultFlag.LOW) {
+                      Text(" ▼", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB))
+                    }
+                    if (res.unit.isNotBlank()) {
+                      Text(" ${res.unit}", fontSize = 9.sp, color = SlateMuted)
+                    }
+                  }
+                  Text(
+                    if (res.referenceRange.isNotBlank()) "(${res.referenceRange})" else "",
+                    fontSize = 9.sp,
+                    color = SlateMuted,
+                    modifier = Modifier.weight(0.9f)
+                  )
+                }
+              }
+            }
+            if (order.clinicalNotes.isNotBlank()) {
+              Spacer(modifier = Modifier.height(4.dp))
+              Text("Note: ${order.clinicalNotes}", fontSize = 9.5.sp, color = SlateDark)
+            }
+          }
+        }
       }
     }
   }
