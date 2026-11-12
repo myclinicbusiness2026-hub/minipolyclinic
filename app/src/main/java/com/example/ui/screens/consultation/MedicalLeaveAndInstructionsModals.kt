@@ -290,6 +290,13 @@ data class InstructionPresetItem(
 
 val DEFAULT_INSTRUCTION_PRESETS = listOf(
   InstructionPresetItem(
+    id = "inst-cst",
+    code = "CST",
+    name = "CST (ဆက်သောက်ရန်)",
+    category = "Chronic & Maintenance Care",
+    text = "• သောက်လက်စသောက်ဆေးများ ပုံမှန်အတိုင်းဆက်သောက်ရန်"
+  ),
+  InstructionPresetItem(
     id = "inst-1",
     code = "1",
     name = "ဖျားနာ/ပိုးဝင်ခြင်း",

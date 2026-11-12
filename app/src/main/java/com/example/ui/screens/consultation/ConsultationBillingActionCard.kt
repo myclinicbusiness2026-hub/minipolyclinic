@@ -365,6 +365,7 @@ fun ConsultationBillingActionCard(
       ) {
         Text("Quick ညွှန်ကြားချက်:", fontSize = 8.5.sp, color = SlateMuted, fontWeight = FontWeight.SemiBold)
         listOf(
+          "CST" to "CST",
           "1" to "ဖျားနာ",
           "2" to "သွေးတိုး",
           "3" to "ဆီးချို",
@@ -372,18 +373,38 @@ fun ConsultationBillingActionCard(
           "5" to "ချောင်းဆိုး",
           "6" to "ဒဏ်ရာ"
         ).forEach { (code, lbl) ->
+          val isCst = code == "CST"
+          val isCstSelected = isCst && patientInstructionsState.contains("သောက်လက်စသောက်ဆေးများ")
           Surface(
             shape = RoundedCornerShape(4.dp),
-            color = Color(0xFFF1F5F9),
-            border = BorderStroke(0.5.dp, Color(0xFFCBD5E1)),
+            color = if (isCstSelected) Color(0xFFDBEAFE) else if (isCst) Color(0xFFEFF6FF) else Color(0xFFF1F5F9),
+            border = BorderStroke(0.6.dp, if (isCstSelected) Color(0xFF2563EB) else if (isCst) Color(0xFF93C5FD) else Color(0xFFCBD5E1)),
             modifier = Modifier.clickable {
-              val preset = DEFAULT_INSTRUCTION_PRESETS.find { it.code == code }
-              if (preset != null) {
-                onPatientInstructionsChange(preset.text)
+              if (isCst) {
+                val cstLine = "• သောက်လက်စသောက်ဆေးများ ပုံမှန်အတိုင်းဆက်သောက်ရန်"
+                val newText = if (patientInstructionsState.isBlank()) {
+                  cstLine
+                } else if (!patientInstructionsState.contains("သောက်လက်စသောက်ဆေးများ")) {
+                  "$patientInstructionsState\n$cstLine"
+                } else {
+                  patientInstructionsState.lines().filter { !it.contains("သောက်လက်စသောက်ဆေးများ") }.joinToString("\n").trim()
+                }
+                onPatientInstructionsChange(newText)
+              } else {
+                val preset = DEFAULT_INSTRUCTION_PRESETS.find { it.code == code }
+                if (preset != null) {
+                  onPatientInstructionsChange(preset.text)
+                }
               }
             }
           ) {
-            Text("$code.$lbl", fontSize = 8.5.sp, color = DarkGrayText, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
+            Text(
+              if (isCst) "CST (ဆက်သောက်ရန်)" else "$code.$lbl",
+              fontSize = 8.5.sp,
+              fontWeight = if (isCst) FontWeight.Bold else FontWeight.Normal,
+              color = if (isCst) Color(0xFF1D4ED8) else DarkGrayText,
+              modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+            )
           }
         }
       }

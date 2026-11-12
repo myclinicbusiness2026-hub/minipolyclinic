@@ -283,7 +283,33 @@ fun ConsultationPrescriptionAndBillingPane(
       prescribedDrugs = prescribedDrugs,
       onOpenAddDrug = { if (!isReadOnly) onOpenAddDrug() },
       onRemoveDrug = { index -> if (!isReadOnly) prescribedDrugs.removeAt(index) },
-      currencyFmt = currencyFmt
+      currencyFmt = currencyFmt,
+      onAddCstDrug = if (!isReadOnly) {
+        {
+          val existingIdx = prescribedDrugs.indexOfFirst {
+            it.name.startsWith("CST") || it.instructions.contains("သောက်လက်စသောက်ဆေးများ")
+          }
+          if (existingIdx >= 0) {
+            prescribedDrugs.removeAt(existingIdx)
+          } else {
+            prescribedDrugs.add(
+              com.example.model.PrescribedDrug(
+                medicineId = "EXT-CST",
+                medicineName = "CST (Continue Same Treatment)",
+                name = "CST (Continue Same Treatment)",
+                genericName = "သောက်လက်စသောက်ဆေးများ",
+                dosage = "-",
+                frequency = "ပုံမှန်အတိုင်း",
+                duration = "ပုံမှန်သောက်ရန်",
+                quantity = 1,
+                unitPrice = 0.0,
+                instructions = "သောက်လက်စသောက်ဆေးများ ပုံမှန်အတိုင်းဆက်သောက်ရန်",
+                isExternal = true
+              )
+            )
+          }
+        }
+      } else null
     )
 
     // 3. 1-Tap Procedure Presets & Custom Procedure Builder

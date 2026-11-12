@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.unit.sp
 import com.example.model.PrescribedDrug
 import com.example.ui.theme.*
@@ -27,7 +28,8 @@ fun PrescriptionBuilderCard(
   prescribedDrugs: List<PrescribedDrug>,
   onOpenAddDrug: () -> Unit,
   onRemoveDrug: (Int) -> Unit,
-  currencyFmt: NumberFormat
+  currencyFmt: NumberFormat,
+  onAddCstDrug: (() -> Unit)? = null
 ) {
   Card(
     modifier = Modifier.fillMaxWidth(),
@@ -46,16 +48,48 @@ fun PrescriptionBuilderCard(
           Text("${prescribedDrugs.size} items prescribed", fontSize = 10.sp, color = SlateMuted)
         }
 
-        Button(
-          onClick = onOpenAddDrug,
-          colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary),
-          shape = RoundedCornerShape(6.dp),
-          contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-          modifier = Modifier.height(30.dp)
-        ) {
-          Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
-          Spacer(modifier = Modifier.width(4.dp))
-          Text("Add Rx", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+          if (onAddCstDrug != null) {
+            val hasCst = prescribedDrugs.any { it.instructions.contains("သောက်လက်စသောက်ဆေးများ") || it.name.startsWith("CST") }
+            Surface(
+              shape = RoundedCornerShape(6.dp),
+              color = if (hasCst) Color(0xFFDBEAFE) else Color(0xFFEFF6FF),
+              border = BorderStroke(1.dp, if (hasCst) Color(0xFF2563EB) else Color(0xFF93C5FD)),
+              modifier = Modifier
+                .height(30.dp)
+                .clickable { onAddCstDrug() }
+            ) {
+              Row(
+                modifier = Modifier.padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+              ) {
+                Text(
+                  if (hasCst) "✓ CST" else "+ CST",
+                  fontSize = 11.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = if (hasCst) Color(0xFF1D4ED8) else Color(0xFF2563EB)
+                )
+                Text(
+                  "(ဆက်သောက်ရန်)",
+                  fontSize = 9.sp,
+                  color = if (hasCst) Color(0xFF1E40AF) else Color(0xFF3B82F6)
+                )
+              }
+            }
+          }
+
+          Button(
+            onClick = onOpenAddDrug,
+            colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary),
+            shape = RoundedCornerShape(6.dp),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+            modifier = Modifier.height(30.dp)
+          ) {
+            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("Add Rx", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+          }
         }
       }
 

@@ -148,15 +148,17 @@ fun DrugPickerModal(
   )
   val quantityQuickNums = listOf(5, 10, 14, 20, 30, 60)
 
-  val instructionPresets = listOf(
-    "စားပြီး",
-    "မစားမီ",
-    "အစာနှင့်တွဲ၍",
-    "အိပ်ရာဝင်",
-    "ကိုက်ခဲ/ဖျားပါက"
+  val instructionPresetPairs = listOf(
+    Pair("စားပြီး", "စားပြီး"),
+    Pair("မစားမီ", "မစားမီ"),
+    Pair("အစာနှင့်တွဲ၍", "အစာနှင့်တွဲ၍"),
+    Pair("အိပ်ရာဝင်", "အိပ်ရာဝင်"),
+    Pair("ကိုက်ခဲ/ဖျားပါက", "ကိုက်ခဲ/ဖျားပါက"),
+    Pair("CST", "သောက်လက်စသောက်ဆေးများ ပုံမှန်အတိုင်းဆက်သောက်ရန်")
   )
 
   val commonExternalPresets = listOf(
+    "CST (သောက်လက်စသောက်ဆေးများ ပုံမှန်အတိုင်းဆက်သောက်ရန်)",
     "Tab. Telmisartan 40mg",
     "Tab. Rosuvastatin 10mg",
     "Inj. Ceftriaxone 1g",
@@ -473,13 +475,36 @@ fun DrugPickerModal(
             Text("Meal Direction (သောက်သုံးရန်):", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
             Spacer(modifier = Modifier.height(4.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-              instructionPresets.forEach { inst ->
+              instructionPresetPairs.forEach { (chipLabel, instText) ->
+                val isSelected = if (chipLabel == "CST") {
+                  instructions.contains("သောက်လက်စသောက်ဆေးများ") || instructions.contains("CST", ignoreCase = true)
+                } else {
+                  instructions.contains(instText)
+                }
                 FilterChip(
-                  selected = instructions == inst,
-                  onClick = { instructions = if (instructions == inst) "" else inst },
-                  label = { Text(inst, fontSize = 9.5.sp, fontWeight = if (instructions == inst) FontWeight.Bold else FontWeight.Normal) },
+                  selected = isSelected,
+                  onClick = {
+                    instructions = if (isSelected) {
+                      instructions.replace(instText, "").replace("•", "").trim().trim(',', ' ')
+                    } else {
+                      if (instructions.isBlank()) instText else "$instructions • $instText"
+                    }
+                  },
+                  label = {
+                    Text(
+                      if (chipLabel == "CST") "CST (ဆက်သောက်ရန်)" else chipLabel,
+                      fontSize = 9.5.sp,
+                      fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                    )
+                  },
                   shape = RoundedCornerShape(4.dp),
-                  modifier = Modifier.height(26.dp)
+                  modifier = Modifier.height(26.dp),
+                  colors = if (chipLabel == "CST") FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Color(0xFFDBEAFE),
+                    selectedLabelColor = Color(0xFF1E40AF),
+                    containerColor = Color(0xFFEFF6FF),
+                    labelColor = Color(0xFF2563EB)
+                  ) else FilterChipDefaults.filterChipColors()
                 )
               }
             }
@@ -752,21 +777,32 @@ fun DrugPickerModal(
           Spacer(modifier = Modifier.height(4.dp))
           FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             commonExternalPresets.forEach { p ->
+              val isCstPreset = p.startsWith("CST")
               Surface(
                 shape = RoundedCornerShape(4.dp),
-                color = PureWhite,
-                border = BorderStroke(0.8.dp, BorderGray),
+                color = if (isCstPreset) Color(0xFFEFF6FF) else PureWhite,
+                border = BorderStroke(0.8.dp, if (isCstPreset) Color(0xFF93C5FD) else BorderGray),
                 modifier = Modifier.clickable {
-                  extDrugName = p
-                  val pattern = Regex("\\b\\d+(\\.\\d+)?\\s*(mg|g|mcg|ml|iu|IU|%)\\b", RegexOption.IGNORE_CASE)
-                  val match = pattern.find(p)?.value
-                  if (match != null) extDosage = match
+                  if (isCstPreset) {
+                    extDrugName = "CST (Continue Same Treatment)"
+                    extDosage = "-"
+                    extFrequency = "ပုံမှန်အတိုင်း"
+                    extDuration = "ပုံမှန်သောက်ရန်"
+                    extInstructions = "သောက်လက်စသောက်ဆေးများ ပုံမှန်အတိုင်းဆက်သောက်ရန်"
+                    extQuantity = "1"
+                  } else {
+                    extDrugName = p
+                    val pattern = Regex("\\b\\d+(\\.\\d+)?\\s*(mg|g|mcg|ml|iu|IU|%)\\b", RegexOption.IGNORE_CASE)
+                    val match = pattern.find(p)?.value
+                    if (match != null) extDosage = match
+                  }
                 }
               ) {
                 Text(
-                  "+ $p",
+                  if (isCstPreset) "✓ $p" else "+ $p",
                   fontSize = 8.5.sp,
-                  color = SlateDark,
+                  fontWeight = if (isCstPreset) FontWeight.Bold else FontWeight.Normal,
+                  color = if (isCstPreset) Color(0xFF1D4ED8) else SlateDark,
                   modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                 )
               }
@@ -879,13 +915,36 @@ fun DrugPickerModal(
           Text("Meal Direction (သောက်သုံးရန်):", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
           Spacer(modifier = Modifier.height(4.dp))
           FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            instructionPresets.forEach { inst ->
+            instructionPresetPairs.forEach { (chipLabel, instText) ->
+              val isSelected = if (chipLabel == "CST") {
+                extInstructions.contains("သောက်လက်စသောက်ဆေးများ") || extInstructions.contains("CST", ignoreCase = true)
+              } else {
+                extInstructions.contains(instText)
+              }
               FilterChip(
-                selected = extInstructions == inst,
-                onClick = { extInstructions = if (extInstructions == inst) "" else inst },
-                label = { Text(inst, fontSize = 9.5.sp, fontWeight = if (extInstructions == inst) FontWeight.Bold else FontWeight.Normal) },
+                selected = isSelected,
+                onClick = {
+                  extInstructions = if (isSelected) {
+                    extInstructions.replace(instText, "").replace("•", "").trim().trim(',', ' ')
+                  } else {
+                    if (extInstructions.isBlank()) instText else "$extInstructions • $instText"
+                  }
+                },
+                label = {
+                  Text(
+                    if (chipLabel == "CST") "CST (ဆက်သောက်ရန်)" else chipLabel,
+                    fontSize = 9.5.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                  )
+                },
                 shape = RoundedCornerShape(4.dp),
-                modifier = Modifier.height(26.dp)
+                modifier = Modifier.height(26.dp),
+                colors = if (chipLabel == "CST") FilterChipDefaults.filterChipColors(
+                  selectedContainerColor = Color(0xFFDBEAFE),
+                  selectedLabelColor = Color(0xFF1E40AF),
+                  containerColor = Color(0xFFEFF6FF),
+                  labelColor = Color(0xFF2563EB)
+                ) else FilterChipDefaults.filterChipColors()
               )
             }
           }
