@@ -171,7 +171,8 @@ data class PrescribedDrug(
   val quantity: Int = 1,
   val unitPrice: Double = 0.0,
   val instructions: String = "",
-  val isExternal: Boolean = false
+  val isExternal: Boolean = false,
+  val isCst: Boolean = false
 ) {
   val effectiveName: String get() = if (name.isNotBlank()) name else medicineName
   val fullDisplayName: String get() {
@@ -183,7 +184,7 @@ data class PrescribedDrug(
       trade
     }
   }
-  val totalPrice: Double get() = quantity * unitPrice
+  val totalPrice: Double get() = if (isCst) 0.0 else (quantity * unitPrice)
 
   constructor(
     medicineId: String,
@@ -194,7 +195,8 @@ data class PrescribedDrug(
     quantity: Int,
     unitPrice: Double,
     instructions: String,
-    isExternal: Boolean = false
+    isExternal: Boolean = false,
+    isCst: Boolean = false
   ) : this(
     medicineId = medicineId,
     medicineName = medicineName,
@@ -206,7 +208,8 @@ data class PrescribedDrug(
     quantity = quantity,
     unitPrice = unitPrice,
     instructions = instructions,
-    isExternal = isExternal
+    isExternal = isExternal,
+    isCst = isCst
   )
 }
 
@@ -419,7 +422,8 @@ enum class UserRole(val displayName: String, val myanmarName: String = displayNa
   PHARMACIST("Pharmacist", "ဆေးဝါးကျွမ်းကျင်"),
   CASHIER("Cashier / Pharmacy", "ငွေကိုင် / ဆေးပေး"),
   NURSE("Nurse", "သူနာပြု"),
-  RECEPTIONIST("Receptionist", "ဧည့်ကြို / စာရင်းသွင်း");
+  RECEPTIONIST("Receptionist", "ဧည့်ကြို / စာရင်းသွင်း"),
+  LAB_TECHNICIAN("Lab Technician", "ဓာတ်ခွဲကျွမ်းကျင်");
 
   val description: String get() = "$displayName ($myanmarName)"
 }
@@ -451,7 +455,8 @@ data class UserRolePermissions(
   val inventoryAccess: TabAccessLevel = TabAccessLevel.ALLOW_EDIT,
   val financialLedgerAccess: TabAccessLevel = TabAccessLevel.ALLOW_EDIT,
   val medicalRecordsAccess: TabAccessLevel = TabAccessLevel.ALLOW_EDIT,
-  val userManagementAccess: TabAccessLevel = TabAccessLevel.SEALED
+  val userManagementAccess: TabAccessLevel = TabAccessLevel.SEALED,
+  val labAccess: TabAccessLevel = TabAccessLevel.ALLOW_EDIT
 ) {
   // Navigation / View access checks (backward compatibility)
   val canAccessDoctorEmr: Boolean get() = doctorEmrAccess.canView
@@ -464,6 +469,7 @@ data class UserRolePermissions(
   val canAccessFinancialLedger: Boolean get() = financialLedgerAccess.canView
   val canAccessTreatment: Boolean get() = treatmentAccess.canView
   val canAccessMedicalRecords: Boolean get() = medicalRecordsAccess.canView
+  val canAccessLab: Boolean get() = labAccess.canView
   val canManageUsers: Boolean get() = userManagementAccess.canView
   val canExportData: Boolean get() = financialLedgerAccess.canView
 
@@ -478,6 +484,7 @@ data class UserRolePermissions(
   val canEditFinancialLedger: Boolean get() = financialLedgerAccess.canEdit
   val canEditMedicalRecords: Boolean get() = medicalRecordsAccess.canEdit
   val canEditUserManagement: Boolean get() = userManagementAccess.canEdit
+  val canEditLab: Boolean get() = labAccess.canEdit
 
   companion object {
     fun defaultFor(role: UserRole): UserRolePermissions {
@@ -492,7 +499,8 @@ data class UserRolePermissions(
           inventoryAccess = TabAccessLevel.ALLOW_EDIT,
           financialLedgerAccess = TabAccessLevel.ALLOW_EDIT,
           medicalRecordsAccess = TabAccessLevel.ALLOW_EDIT,
-          userManagementAccess = TabAccessLevel.ALLOW_EDIT
+          userManagementAccess = TabAccessLevel.ALLOW_EDIT,
+          labAccess = TabAccessLevel.ALLOW_EDIT
         )
         UserRole.DOCTOR -> UserRolePermissions(
           queueAccess = TabAccessLevel.ALLOW_EDIT,
@@ -504,7 +512,8 @@ data class UserRolePermissions(
           inventoryAccess = TabAccessLevel.VIEW_ONLY,
           financialLedgerAccess = TabAccessLevel.VIEW_ONLY,
           medicalRecordsAccess = TabAccessLevel.ALLOW_EDIT,
-          userManagementAccess = TabAccessLevel.SEALED
+          userManagementAccess = TabAccessLevel.SEALED,
+          labAccess = TabAccessLevel.ALLOW_EDIT
         )
         UserRole.PHARMACIST -> UserRolePermissions(
           queueAccess = TabAccessLevel.VIEW_ONLY,
@@ -516,7 +525,8 @@ data class UserRolePermissions(
           inventoryAccess = TabAccessLevel.ALLOW_EDIT,
           financialLedgerAccess = TabAccessLevel.SEALED,
           medicalRecordsAccess = TabAccessLevel.SEALED,
-          userManagementAccess = TabAccessLevel.SEALED
+          userManagementAccess = TabAccessLevel.SEALED,
+          labAccess = TabAccessLevel.SEALED
         )
         UserRole.CASHIER -> UserRolePermissions(
           queueAccess = TabAccessLevel.VIEW_ONLY,
@@ -528,7 +538,8 @@ data class UserRolePermissions(
           inventoryAccess = TabAccessLevel.SEALED,
           financialLedgerAccess = TabAccessLevel.ALLOW_EDIT,
           medicalRecordsAccess = TabAccessLevel.SEALED,
-          userManagementAccess = TabAccessLevel.SEALED
+          userManagementAccess = TabAccessLevel.SEALED,
+          labAccess = TabAccessLevel.VIEW_ONLY
         )
         UserRole.NURSE -> UserRolePermissions(
           queueAccess = TabAccessLevel.ALLOW_EDIT,
@@ -540,7 +551,8 @@ data class UserRolePermissions(
           inventoryAccess = TabAccessLevel.VIEW_ONLY,
           financialLedgerAccess = TabAccessLevel.SEALED,
           medicalRecordsAccess = TabAccessLevel.VIEW_ONLY,
-          userManagementAccess = TabAccessLevel.SEALED
+          userManagementAccess = TabAccessLevel.SEALED,
+          labAccess = TabAccessLevel.VIEW_ONLY
         )
         UserRole.RECEPTIONIST -> UserRolePermissions(
           queueAccess = TabAccessLevel.ALLOW_EDIT,
@@ -552,7 +564,21 @@ data class UserRolePermissions(
           inventoryAccess = TabAccessLevel.SEALED,
           financialLedgerAccess = TabAccessLevel.SEALED,
           medicalRecordsAccess = TabAccessLevel.VIEW_ONLY,
-          userManagementAccess = TabAccessLevel.SEALED
+          userManagementAccess = TabAccessLevel.SEALED,
+          labAccess = TabAccessLevel.SEALED
+        )
+        UserRole.LAB_TECHNICIAN -> UserRolePermissions(
+          queueAccess = TabAccessLevel.ALLOW_EDIT,
+          doctorEmrAccess = TabAccessLevel.SEALED,
+          pharmacyAccess = TabAccessLevel.SEALED,
+          billingAccess = TabAccessLevel.SEALED,
+          treatmentAccess = TabAccessLevel.SEALED,
+          proceduresAccess = TabAccessLevel.SEALED,
+          inventoryAccess = TabAccessLevel.SEALED,
+          financialLedgerAccess = TabAccessLevel.SEALED,
+          medicalRecordsAccess = TabAccessLevel.SEALED,
+          userManagementAccess = TabAccessLevel.SEALED,
+          labAccess = TabAccessLevel.ALLOW_EDIT
         )
       }
     }

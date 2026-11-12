@@ -711,6 +711,7 @@ object ClinicDataPersistence {
           put("unitPrice", rx.unitPrice)
           put("instructions", rx.instructions)
           put("isExternal", rx.isExternal)
+          put("isCst", rx.isCst)
         }
         rxArr.put(rObj)
       }
@@ -818,7 +819,8 @@ object ClinicDataPersistence {
             quantity = ro.optInt("quantity", 1),
             unitPrice = ro.optDouble("unitPrice", 0.0),
             instructions = ro.optString("instructions"),
-            isExternal = ro.optBoolean("isExternal", false)
+            isExternal = ro.optBoolean("isExternal", false),
+            isCst = ro.optBoolean("isCst", false)
           )
         )
       }
@@ -1682,6 +1684,9 @@ object ClinicDataPersistence {
       put("doctorName", s.doctorName)
       put("doctorDegree", s.doctorDegree)
       put("doctorSama", s.doctorSama)
+      put("defaultPathologistName", s.defaultPathologistName)
+      put("defaultPathologistDegree", s.defaultPathologistDegree)
+      put("defaultPathologistSama", s.defaultPathologistSama)
       put("defaultConsultationFee", s.defaultConsultationFee)
       put("defaultImInjectionFee", s.defaultImInjectionFee)
       put("defaultIvPushFee", s.defaultIvPushFee)
@@ -1723,6 +1728,9 @@ object ClinicDataPersistence {
       doctorName = o.optString("doctorName", fallback.doctorName),
       doctorDegree = o.optString("doctorDegree", fallback.doctorDegree),
       doctorSama = o.optString("doctorSama", fallback.doctorSama),
+      defaultPathologistName = o.optString("defaultPathologistName", fallback.defaultPathologistName),
+      defaultPathologistDegree = o.optString("defaultPathologistDegree", fallback.defaultPathologistDegree),
+      defaultPathologistSama = o.optString("defaultPathologistSama", fallback.defaultPathologistSama),
       defaultConsultationFee = if (o.has("defaultConsultationFee")) o.optDouble("defaultConsultationFee", fallback.defaultConsultationFee) else fallback.defaultConsultationFee,
       defaultImInjectionFee = if (o.has("defaultImInjectionFee")) o.optDouble("defaultImInjectionFee", fallback.defaultImInjectionFee) else fallback.defaultImInjectionFee,
       defaultIvPushFee = if (o.has("defaultIvPushFee")) o.optDouble("defaultIvPushFee", fallback.defaultIvPushFee) else fallback.defaultIvPushFee,
@@ -1995,6 +2003,9 @@ object ClinicDataPersistence {
       oo.put("technicianName", ord.technicianName)
       oo.put("completedAt", ord.completedAt)
       oo.put("notes", ord.notes)
+      oo.put("pathologistName", ord.pathologistName)
+      oo.put("pathologistDegree", ord.pathologistDegree)
+      oo.put("pathologistSama", ord.pathologistSama)
 
       val iArr = JSONArray()
       ord.items.forEach { item ->
@@ -2100,6 +2111,9 @@ object ClinicDataPersistence {
             technicianName = o.optString("technicianName"),
             completedAt = o.optString("completedAt"),
             notes = o.optString("notes"),
+            pathologistName = o.optString("pathologistName", ""),
+            pathologistDegree = o.optString("pathologistDegree", ""),
+            pathologistSama = o.optString("pathologistSama", ""),
             items = items
           )
         )
@@ -2289,6 +2303,9 @@ object ClinicDataPersistence {
             technicianName = o.optString("technicianName"),
             completedAt = o.optString("completedAt"),
             notes = o.optString("notes"),
+            pathologistName = o.optString("pathologistName", ""),
+            pathologistDegree = o.optString("pathologistDegree", ""),
+            pathologistSama = o.optString("pathologistSama", ""),
             items = items
           )
         )

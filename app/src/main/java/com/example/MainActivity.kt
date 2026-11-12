@@ -73,13 +73,13 @@ data class NavDrawerItem(
 
 val navDrawerItems = listOf(
   // 1. Clinical OPD Workflow (Dashboard -> Patient Queue -> Doctor Consultation -> Treatment & Injections -> Pharmacy Dispense -> Cashier & Invoices)
-  NavDrawerItem("Dashboard", "ပင်မ ဒက်ရှ်ဘုတ်", Icons.Default.Dashboard, 0, "CLINICAL OPD WORKFLOW", { true }),
+  NavDrawerItem("Dashboard", "ပင်မ ဒက်ရှ်ဘုတ်", Icons.Default.Dashboard, 0, "CLINICAL OPD WORKFLOW", { it.canAccessDoctorEmr || it.canAccessBilling || !it.labAccess.canView }),
   NavDrawerItem("Patient Queue", "လူနာမှတ်ပုံတင် & စာရင်း", Icons.Default.People, 1, "CLINICAL OPD WORKFLOW", { it.canAccessPatientQueue }),
   NavDrawerItem("Doctor Consultation", "ဆရာဝန် ဆေးမှတ်တမ်း & Rx", Icons.Default.MedicalServices, 2, "CLINICAL OPD WORKFLOW", { it.canAccessDoctorEmr }),
   NavDrawerItem("Treatment & Injections", "ဆေးထိုး/အကြောပုလင်း ကုသမှု", Icons.Default.Healing, 9, "CLINICAL OPD WORKFLOW", { it.canAccessTreatment }),
   NavDrawerItem("Pharmacy Dispense", "ဆေးထုတ်ပေးခြင်း (FEFO)", Icons.Default.Medication, 3, "CLINICAL OPD WORKFLOW", { it.canAccessPharmacy }),
   NavDrawerItem("Cashier & Invoices", "ငွေကောက်ခံ & ပြေစာထုတ်ပေးခြင်း", Icons.Default.PointOfSale, 4, "CLINICAL OPD WORKFLOW", { it.canAccessBilling }),
-  NavDrawerItem("Lab Investigation", "ဓာတ်ခွဲစစ်ဆေးမှုများ (B2B Lab)", Icons.Default.Science, 10, "CLINICAL OPD WORKFLOW", { true }),
+  NavDrawerItem("Lab Investigation", "ဓာတ်ခွဲစစ်ဆေးမှုများ (B2B Lab)", Icons.Default.Science, 10, "CLINICAL OPD WORKFLOW", { it.canAccessLab }),
 
   // 2. Records, Procedures & Inventory Management
   NavDrawerItem("Medical Records", "လူနာ ဆေးမှတ်တမ်းများ (Archive)", Icons.Default.FolderShared, 8, "RECORDS & OPERATIONS", { it.canAccessMedicalRecords }),
@@ -144,7 +144,7 @@ fun MiniPolyclinicMainApp(
 
   val canAccessTab: (Int, UserRolePermissions) -> Boolean = { tab, p ->
     when (tab) {
-      0 -> true
+      0 -> p.canAccessDoctorEmr || p.canAccessBilling || !p.labAccess.canView
       1 -> p.canAccessPatientQueue
       2 -> p.canAccessDoctorEmr
       3 -> p.canAccessPharmacy
@@ -154,7 +154,8 @@ fun MiniPolyclinicMainApp(
       7 -> p.canAccessFinancialLedger
       8 -> p.canAccessMedicalRecords
       9 -> p.canAccessTreatment
-      else -> true
+      10 -> p.canAccessLab
+      else -> false
     }
   }
 
@@ -262,6 +263,7 @@ fun MiniPolyclinicMainApp(
                         UserRole.CASHIER -> Icons.Default.PointOfSale
                         UserRole.NURSE -> Icons.Default.LocalHospital
                         UserRole.RECEPTIONIST -> Icons.Default.Badge
+                        UserRole.LAB_TECHNICIAN -> Icons.Default.Science
                       },
                       contentDescription = null,
                       tint = PureWhite,

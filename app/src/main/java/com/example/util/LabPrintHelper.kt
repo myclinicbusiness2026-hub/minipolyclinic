@@ -239,6 +239,16 @@ object LabPrintHelper {
             border-radius: 3px;
             font-size: 10px;
           }
+          .panel-section-row td {
+            background-color: #f1f5f9;
+            color: #0b3954;
+            font-weight: bold;
+            font-size: 11.5px;
+            padding: 6px 10px;
+            border-top: 1.5px solid #cbd5e1;
+            border-bottom: 1px solid #cbd5e1;
+            letter-spacing: 0.3px;
+          }
           .test-heading {
             background: #eef4f8;
             padding: 6px 10px;
@@ -352,30 +362,34 @@ object LabPrintHelper {
       // Mode A: Blank Letterhead for Analyzer feed / attachment (100% clean white blank area below header)
       // Nothing appended - leaving the remaining 75% of the page completely blank and pristine.
     } else {
-      // Mode B: Dynamic Parameters Table
-      for (testItem in itemsToPrint) {
-        sb.append("<div class='test-heading'>${testItem.templateName}</div>")
+      // Mode B: Dynamic Parameters Unified Table
+      sb.append("""
+        <table class="param-table">
+          <thead>
+            <tr>
+              <th style="width: 36%;">Investigation / Test Parameter</th>
+              <th style="width: 20%;">Result</th>
+              <th style="width: 14%;">Unit</th>
+              <th style="width: 20%;">Reference Interval</th>
+              <th style="width: 10%; text-align: center;">Flag</th>
+            </tr>
+          </thead>
+          <tbody>
+      """.trimIndent())
 
+      for (testItem in itemsToPrint) {
         if (testItem.isAnalyzerSlipOnly && testItem.parameters.isEmpty()) {
           sb.append("""
-            <div style="padding: 12px; border: 1px dashed #bbb; border-radius: 4px; text-align: center; color: #666; margin-bottom: 10px;">
-              <em>Automated Analyzer Direct Print Test</em><br/>
-              (CBC Analyzer Slip Attached / Recorded)
-            </div>
+            <tr class="panel-section-row">
+              <td colspan="5"><strong>${testItem.templateName}</strong> — <em>Automated Analyzer Direct Print Slip Recorded</em></td>
+            </tr>
           """.trimIndent())
-        } else {
+        } else if (testItem.parameters.size > 1) {
+          // Multi-parameter panel (e.g. Serum Electrolytes, CBC, Lipid Profile): Show clean section header row
           sb.append("""
-            <table class="param-table">
-              <thead>
-                <tr>
-                  <th style="width: 35%;">Investigation / Parameter</th>
-                  <th style="width: 20%;">Result</th>
-                  <th style="width: 15%;">Unit</th>
-                  <th style="width: 20%;">Reference Interval</th>
-                  <th style="width: 10%; text-align: center;">Flag</th>
-                </tr>
-              </thead>
-              <tbody>
+            <tr class="panel-section-row">
+              <td colspan="5"><strong>${testItem.templateName}</strong></td>
+            </tr>
           """.trimIndent())
 
           for (param in testItem.parameters) {
@@ -387,7 +401,7 @@ object LabPrintHelper {
             }
             sb.append("""
               <tr>
-                <td><strong>${param.name}</strong></td>
+                <td style="padding-left: 18px;">${param.name}</td>
                 <td><strong style="color: #0b3954;">${param.result.ifBlank { "-" }}</strong></td>
                 <td>${param.unit.ifBlank { "-" }}</td>
                 <td>${param.referenceRange.ifBlank { "-" }}</td>
@@ -395,19 +409,45 @@ object LabPrintHelper {
               </tr>
             """.trimIndent())
           }
-          sb.append("</tbody></table>")
+        } else {
+          // Single parameter test (e.g. Urea, Creatinine, RBS): Render directly without redundant section header
+          val singleParam = testItem.parameters.firstOrNull()
+          val paramName = singleParam?.name ?: ""
+          val displayName = if (paramName.isBlank() || paramName.equals("Result", ignoreCase = true) || paramName.equals(testItem.templateName, ignoreCase = true)) {
+            testItem.templateName
+          } else {
+            "${testItem.templateName} ($paramName)"
+          }
+          val flagBadge = when ((singleParam?.flag ?: "").uppercase()) {
+            "HIGH" -> "<span class='badge-high'>HIGH</span>"
+            "LOW" -> "<span class='badge-low'>LOW</span>"
+            "NORMAL" -> "<span class='badge-normal'>NORMAL</span>"
+            else -> if (!singleParam?.flag.isNullOrBlank()) "<span>${singleParam?.flag}</span>" else "-"
+          }
+          sb.append("""
+            <tr>
+              <td><strong>$displayName</strong></td>
+              <td><strong style="color: #0b3954;">${singleParam?.result?.ifBlank { "-" } ?: "-"}</strong></td>
+              <td>${singleParam?.unit?.ifBlank { "-" } ?: "-"}</td>
+              <td>${singleParam?.referenceRange?.ifBlank { "-" } ?: "-"}</td>
+              <td style="text-align: center;">$flagBadge</td>
+            </tr>
+          """.trimIndent())
         }
+      }
 
-        // Test remarks
+      sb.append("</tbody></table>")
+
+      // Technician remarks & Analyzer Slips
+      for (testItem in itemsToPrint) {
         if (testItem.remarks.isNotBlank()) {
           sb.append("""
             <div class="remark-box">
-              <strong>Technician Remarks / Interpretation:</strong> ${testItem.remarks}
+              <strong>${testItem.templateName} Remarks:</strong> ${testItem.remarks}
             </div>
           """.trimIndent())
         }
 
-        // Attached analyzer image if present
         if (testItem.slipImageUri.isNotBlank()) {
           val imgSrc = if (testItem.slipImageUri.startsWith("http") || testItem.slipImageUri.startsWith("file://") || testItem.slipImageUri.startsWith("data:")) {
             testItem.slipImageUri
@@ -416,7 +456,7 @@ object LabPrintHelper {
           }
           sb.append("""
             <div class="slip-attachment">
-              <div style="font-weight: bold; font-size: 11.5px; color: #555; margin-bottom: 6px;">Attached Analyzer Result Slip:</div>
+              <div style="font-weight: bold; font-size: 11.5px; color: #555; margin-bottom: 6px;">Attached Analyzer Result Slip (${testItem.templateName}):</div>
               <img src="$imgSrc" class="slip-image" />
             </div>
           """.trimIndent())
@@ -434,6 +474,16 @@ object LabPrintHelper {
 
     // Signatures footer (only when printing full clinical report; blank letterhead leaves bottom completely clean)
     if (!isBlankLetterhead) {
+      val effectivePathologistName = order.pathologistName.ifBlank {
+        clinic.defaultPathologistName.ifBlank { clinic.doctorName }
+      }
+      val effectivePathologistDegree = order.pathologistDegree.ifBlank {
+        clinic.defaultPathologistDegree.ifBlank { clinic.doctorDegree }
+      }
+      val effectivePathologistSama = order.pathologistSama.ifBlank {
+        clinic.defaultPathologistSama.ifBlank { clinic.doctorSama }
+      }
+
       sb.append("""
         <div class="footer-section">
           <table class="sign-table">
@@ -445,8 +495,9 @@ object LabPrintHelper {
               </td>
               <td class="sign-cell">
                 <div class="sign-line"></div>
-                <strong>${clinic.doctorName}</strong><br/>
-                <span style="color: #666; font-size: 10.5px;">Pathologist / Attending Physician (S.A.M.A: ${clinic.doctorSama})</span>
+                <strong>$effectivePathologistName</strong><br/>
+                <span style="font-size: 11px; color: #444;">$effectivePathologistDegree</span><br/>
+                <span style="color: #666; font-size: 10px;">Consultant Pathologist (S.A.M.A: $effectivePathologistSama)</span>
               </td>
             </tr>
           </table>

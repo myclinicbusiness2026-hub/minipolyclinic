@@ -86,6 +86,7 @@ fun LoginScreen(
       } else {
         val loggedInUser = viewModel.currentUser.value
         val tab = when (loggedInUser?.role) {
+          UserRole.LAB_TECHNICIAN -> 10
           UserRole.CASHIER -> 1
           else -> 0
         }
@@ -311,6 +312,7 @@ fun LoginScreen(
                       UserRole.CASHIER -> Icons.Default.PointOfSale
                       UserRole.DOCTOR -> Icons.Default.MedicalServices
                       UserRole.PHARMACIST -> Icons.Default.LocalPharmacy
+                      UserRole.LAB_TECHNICIAN -> Icons.Default.Science
                       else -> Icons.Default.Person
                     },
                     contentDescription = null,

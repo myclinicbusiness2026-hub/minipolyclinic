@@ -1572,9 +1572,10 @@ object A4PdfNativeCanvasRenderer {
       paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
       canvas.drawText("${idx + 1}", 28f, textRowY, paint)
 
-      // Drug Name & Strength (With [External] tag if external)
+      // Drug Name & Strength (With [External] or CST tag)
       val medName = rx.fullDisplayName
-      val externalPrefix = if (rx.isExternal) "[External] " else ""
+      val isCst = rx.isCst || rx.medicineId.startsWith("CST-") || rx.instructions.contains("သောက်လက်စ")
+      val externalPrefix = if (isCst) "(သောက်လက်စ) " else if (rx.isExternal) "[External] " else ""
       val baseDrug = if (rx.dosage.isNotBlank() && !medName.contains(rx.dosage)) "$medName (${rx.dosage})" else medName
       val fullDrug = "$externalPrefix$baseDrug"
       canvas.drawText(fullDrug.take(65), 52f, textRowY, paint)

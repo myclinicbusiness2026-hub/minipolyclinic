@@ -625,8 +625,6 @@ class LocalWifiSyncManager(
         onDataUpdated()
         if (newPatCount > 0) {
           com.example.util.SoundHelper.playNewPatientIncomingSound(context)
-        } else {
-          com.example.util.SoundHelper.playSyncSuccessSound(context)
         }
       }
 

@@ -764,10 +764,12 @@ fun DrugPickerModal(
             Button(
               onClick = {
                 selectedMedicine?.let { med ->
-                  val qty = quantityText.toIntOrNull() ?: 10
+                  val isCst = instructions.contains("သောက်လက်စ") || instructions.contains("CST", ignoreCase = true)
+                  val qty = if (isCst) 0 else (quantityText.toIntOrNull() ?: 10)
+                  val finalUnitPrice = if (isCst) 0.0 else med.calculatedSellingPrice
                   onDrugAdded(
                     PrescribedDrug(
-                      medicineId = med.id,
+                      medicineId = if (isCst) "CST-${med.id}" else med.id,
                       medicineName = med.name,
                       name = med.name,
                       genericName = med.genericName,
@@ -775,9 +777,10 @@ fun DrugPickerModal(
                       frequency = frequency,
                       duration = duration,
                       quantity = qty,
-                      unitPrice = med.calculatedSellingPrice,
+                      unitPrice = finalUnitPrice,
                       instructions = instructions,
-                      isExternal = false
+                      isExternal = isCst,
+                      isCst = isCst
                     )
                   )
                 }
@@ -1222,17 +1225,19 @@ fun DrugPickerModal(
                   } else {
                     extInstructions
                   }
+                  val isCst = extDrugName.contains("သောက်လက်စ") || extDrugName.contains("CST", ignoreCase = true) || fullInstructions.contains("သောက်လက်စ") || fullInstructions.contains("CST", ignoreCase = true)
                   onDrugAdded(
                     PrescribedDrug(
-                      medicineId = "EXT-" + UUID.randomUUID().toString(),
+                      medicineId = if (isCst) "CST-" + UUID.randomUUID().toString() else "EXT-" + UUID.randomUUID().toString(),
                       name = extDrugName.trim(),
                       dosage = extDosage.trim(),
                       frequency = extFrequency,
                       duration = extDuration.trim(),
-                      quantity = qty,
+                      quantity = if (isCst) 0 else qty,
                       unitPrice = 0.0,
                       instructions = fullInstructions,
-                      isExternal = true
+                      isExternal = true,
+                      isCst = isCst
                     )
                   )
                 }

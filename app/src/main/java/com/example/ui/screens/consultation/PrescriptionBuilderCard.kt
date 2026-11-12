@@ -138,8 +138,23 @@ fun PrescriptionBuilderCard(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
+              val isCst = drug.isCst || drug.medicineId.startsWith("CST-")
               val isExt = drug.isExternal || drug.medicineId.startsWith("EXT-")
-              if (isExt) {
+              if (isCst) {
+                Surface(
+                  color = Color(0xFFE0F2FE),
+                  shape = RoundedCornerShape(4.dp),
+                  border = BorderStroke(0.8.dp, Color(0xFF0284C7))
+                ) {
+                  Text(
+                    "CST (သောက်လက်စ)",
+                    fontSize = 9.sp,
+                    color = Color(0xFF0369A1),
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                  )
+                }
+              } else if (isExt) {
                 Surface(
                   color = Color(0xFFFEF3C7),
                   shape = RoundedCornerShape(4.dp),

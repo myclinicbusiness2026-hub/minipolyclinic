@@ -84,8 +84,9 @@ object A4PdfReportService {
       subjectiveNotes = consultation.subjective,
       doctorAdvice = consultation.plan,
       prescriptions = consultation.prescriptions.map { drug ->
+        val isCst = drug.isCst || drug.medicineId.startsWith("CST-") || drug.instructions.contains("သောက်လက်စ")
         val isExt = drug.isExternal || drug.medicineId.startsWith("EXT-")
-        val finalTitle = if (isExt) "${drug.name} [ပြင်ပဝယ်ရန်/External]" else drug.name
+        val finalTitle = if (isCst) "${drug.name} (သောက်လက်စ ဆက်သောက်ရန်)" else if (isExt) "${drug.name} [ပြင်ပဝယ်ရန်/External]" else drug.name
         A4PrescriptionLine(
           tradeName = finalTitle,
           genericName = drug.name.split(" ").firstOrNull() ?: drug.name,

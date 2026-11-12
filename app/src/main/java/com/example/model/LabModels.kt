@@ -76,7 +76,10 @@ data class LabOrder(
   val invoiceNumber: String = "",
   val technicianName: String = "",
   val completedAt: String = "",
-  val notes: String = ""
+  val notes: String = "",
+  val pathologistName: String = "",
+  val pathologistDegree: String = "",
+  val pathologistSama: String = ""
 ) {
   val isPaid: Boolean get() = paidAmount >= totalAmount && totalAmount > 0.0 || paymentStatus.equals("Paid", ignoreCase = true)
   val isFullyPaid: Boolean get() = isPaid
@@ -108,4 +111,30 @@ data class LabInvoice(
 ) {
   val subtotal: Double get() = totalAmount
   val date: String get() = timestamp
+}
+
+fun LabInvoice.toClinicInvoice(): Invoice {
+  return Invoice(
+    id = this.id,
+    invoiceNumber = this.invoiceNumber,
+    patientId = this.patientId,
+    patientName = this.patientName,
+    items = this.items.map {
+      InvoiceItem(
+        name = it.testName,
+        quantity = 1,
+        unitPrice = it.price,
+        totalPrice = it.price,
+        isProcedure = true
+      )
+    },
+    subTotal = this.totalAmount,
+    discount = this.discount,
+    totalAmount = this.netTotal,
+    paidAmount = this.paidAmount,
+    paymentMethod = this.paymentMethod,
+    isPaid = this.paidAmount >= this.netTotal,
+    createdAt = this.timestamp,
+    cashierName = this.cashierName
+  )
 }

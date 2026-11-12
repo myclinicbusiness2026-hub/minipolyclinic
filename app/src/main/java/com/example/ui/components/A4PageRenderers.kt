@@ -603,6 +603,7 @@ fun A4PrescriptionTable(
       }
       HorizontalDivider(thickness = 0.8.dp, color = BorderGray)
       consultation.prescriptions.forEachIndexed { idx, drug ->
+        val isCst = drug.isCst || drug.medicineId.startsWith("CST-") || drug.instructions.contains("သောက်လက်စ")
         val isExt = drug.isExternal || drug.medicineId.startsWith("EXT-")
         val effectiveDrugName = drug.effectiveName.ifBlank { drug.name.ifBlank { drug.medicineName } }
         val baseTitle = if (drug.dosage.isNotBlank() && !effectiveDrugName.contains(drug.dosage, ignoreCase = true)) {
@@ -610,7 +611,7 @@ fun A4PrescriptionTable(
         } else {
           effectiveDrugName
         }
-        val drugTitle = if (isExt) "$baseTitle  [External]" else baseTitle
+        val drugTitle = if (isCst) "$baseTitle  (သောက်လက်စ ဆက်သောက်ရန်)" else if (isExt) "$baseTitle  [External]" else baseTitle
         Row(
           modifier = Modifier
             .fillMaxWidth()

@@ -76,7 +76,8 @@ object SyncPayloadParser {
               quantity = ro.optInt("quantity", 1),
               unitPrice = ro.optDouble("unitPrice", 0.0),
               instructions = ro.optString("instructions", ""),
-              isExternal = ro.optBoolean("isExternal", false)
+              isExternal = ro.optBoolean("isExternal", false),
+              isCst = ro.optBoolean("isCst", false)
             )
           )
         }

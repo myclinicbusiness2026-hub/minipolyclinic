@@ -39,6 +39,7 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.example.data.LabInitialDataSeeder
 import com.example.model.*
+import com.example.ui.components.PosThermalSlipDialog
 import com.example.ui.theme.*
 import com.example.util.AttachmentHelper
 import com.example.util.BurmeseDateUtils
@@ -69,9 +70,23 @@ fun LabInvestigationScreen(
   val labInvoices by viewModel.labInvoices.collectAsState()
   val clinicSettings by viewModel.clinicSettings.collectAsState()
   val allPatients by viewModel.patients.collectAsState()
+  val allExpenses by viewModel.expenses.collectAsState()
+
+  val labExpenses = remember(allExpenses) {
+    allExpenses.filter { it.category.contains("Lab", ignoreCase = true) || it.category.contains("Reagent", ignoreCase = true) }
+  }
 
   var selectedTab by remember { mutableStateOf(0) }
   var searchQuery by remember { mutableStateOf("") }
+  var selectedDateFilter by remember { mutableStateOf("ALL") } // "ALL", "TODAY", "YESTERDAY", "MONTH"
+
+  val todayStr = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
+  val yesterdayStr = remember {
+    val cal = Calendar.getInstance()
+    cal.add(Calendar.DAY_OF_YEAR, -1)
+    SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(cal.time)
+  }
+  val thisMonthStr = remember { SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date()) }
 
   // Modals state
   var showNewOrderDialog by remember { mutableStateOf(false) }
@@ -80,34 +95,60 @@ fun LabInvestigationScreen(
   var templateToEdit by remember { mutableStateOf<LabTestTemplate?>(null) }
   var isCreatingTemplate by remember { mutableStateOf(false) }
   var orderToDelete by remember { mutableStateOf<LabOrder?>(null) }
+  var previewLabThermalSlip by remember { mutableStateOf<LabInvoice?>(null) }
+  var showLabExpenseDialog by remember { mutableStateOf(false) }
 
   // Filtered orders
-  val queueOrders = remember(labOrders, searchQuery) {
+  val queueOrders = remember(labOrders, searchQuery, selectedDateFilter) {
     labOrders.filter { it.status == LabOrderStatus.ORDERED || it.status == LabOrderStatus.SAMPLE_COLLECTED }
-      .filter {
-        searchQuery.isBlank() ||
-          it.patientName.contains(searchQuery, ignoreCase = true) ||
-          it.patientHn.contains(searchQuery, ignoreCase = true) ||
-          it.orderNumber.contains(searchQuery, ignoreCase = true)
+      .filter { ord ->
+        val matchesDate = when (selectedDateFilter) {
+          "TODAY" -> ord.orderDate.startsWith(todayStr)
+          "YESTERDAY" -> ord.orderDate.startsWith(yesterdayStr)
+          "MONTH" -> ord.orderDate.startsWith(thisMonthStr)
+          else -> true
+        }
+        val matchesQuery = searchQuery.isBlank() ||
+          ord.patientName.contains(searchQuery, ignoreCase = true) ||
+          ord.patientHn.contains(searchQuery, ignoreCase = true) ||
+          ord.orderNumber.contains(searchQuery, ignoreCase = true) ||
+          ord.orderDate.contains(searchQuery, ignoreCase = true)
+        matchesDate && matchesQuery
       }
   }
 
-  val completedOrders = remember(labOrders, searchQuery) {
+  val completedOrders = remember(labOrders, searchQuery, selectedDateFilter) {
     labOrders.filter { it.status == LabOrderStatus.COMPLETED }
-      .filter {
-        searchQuery.isBlank() ||
-          it.patientName.contains(searchQuery, ignoreCase = true) ||
-          it.patientHn.contains(searchQuery, ignoreCase = true) ||
-          it.orderNumber.contains(searchQuery, ignoreCase = true)
+      .filter { ord ->
+        val matchesDate = when (selectedDateFilter) {
+          "TODAY" -> ord.orderDate.startsWith(todayStr)
+          "YESTERDAY" -> ord.orderDate.startsWith(yesterdayStr)
+          "MONTH" -> ord.orderDate.startsWith(thisMonthStr)
+          else -> true
+        }
+        val matchesQuery = searchQuery.isBlank() ||
+          ord.patientName.contains(searchQuery, ignoreCase = true) ||
+          ord.patientHn.contains(searchQuery, ignoreCase = true) ||
+          ord.orderNumber.contains(searchQuery, ignoreCase = true) ||
+          ord.orderDate.contains(searchQuery, ignoreCase = true)
+        matchesDate && matchesQuery
       }
   }
 
-  val filteredInvoices = remember(labInvoices, searchQuery) {
-    labInvoices.filter {
-      searchQuery.isBlank() ||
-        it.patientName.contains(searchQuery, ignoreCase = true) ||
-        it.patientHn.contains(searchQuery, ignoreCase = true) ||
-        it.invoiceNumber.contains(searchQuery, ignoreCase = true)
+  val filteredInvoices = remember(labInvoices, searchQuery, selectedDateFilter) {
+    labInvoices.filter { inv ->
+      val matchesDate = when (selectedDateFilter) {
+        "TODAY" -> inv.timestamp.startsWith(todayStr)
+        "YESTERDAY" -> inv.timestamp.startsWith(yesterdayStr)
+        "MONTH" -> inv.timestamp.startsWith(thisMonthStr)
+        else -> true
+      }
+      val matchesQuery = searchQuery.isBlank() ||
+        inv.patientName.contains(searchQuery, ignoreCase = true) ||
+        inv.patientHn.contains(searchQuery, ignoreCase = true) ||
+        inv.invoiceNumber.contains(searchQuery, ignoreCase = true) ||
+        inv.timestamp.contains(searchQuery, ignoreCase = true)
+      matchesDate && matchesQuery
     }
   }
 
@@ -165,17 +206,30 @@ fun LabInvestigationScreen(
               }
             }
 
-            // Mobile New Order Button
-            Button(
-              onClick = { showNewOrderDialog = true },
-              colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
-              shape = RoundedCornerShape(6.dp),
-              contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-              modifier = Modifier.height(34.dp)
-            ) {
-              Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
-              Spacer(modifier = Modifier.width(3.dp))
-              Text("စစ်ဆေးမှုအသစ်", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            // Mobile Action Buttons: Lab Expense & New Order
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+              OutlinedButton(
+                onClick = { showLabExpenseDialog = true },
+                shape = RoundedCornerShape(6.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.height(34.dp),
+                border = BorderStroke(1.dp, Color(0xFFEA580C))
+              ) {
+                Icon(Icons.Default.ReceiptLong, contentDescription = null, tint = Color(0xFFEA580C), modifier = Modifier.size(13.dp))
+                Spacer(modifier = Modifier.width(3.dp))
+                Text("Lab စရိတ်", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFFEA580C))
+              }
+              Button(
+                onClick = { showNewOrderDialog = true },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
+                shape = RoundedCornerShape(6.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.height(34.dp)
+              ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
+                Spacer(modifier = Modifier.width(3.dp))
+                Text("စစ်ဆေးမှုအသစ်", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+              }
             }
           }
 
@@ -236,13 +290,13 @@ fun LabInvestigationScreen(
             )
           }
 
-          // Compact Mobile Search Bar (Only for tabs 0, 1, 2)
+          // Compact Mobile Search Bar & Date Filter Chips (Only for tabs 0, 1, 2)
           if (selectedTab in 0..2) {
             Spacer(modifier = Modifier.height(6.dp))
             OutlinedTextField(
               value = searchQuery,
               onValueChange = { searchQuery = it },
-              placeholder = { Text("ရှာဖွေရန် (လူနာအမည် / HN)...", fontSize = 12.sp, color = SlateMuted) },
+              placeholder = { Text("လူနာအမည်၊ HN၊ ဘောင်ချာ/Order No.၊ ရက်စွဲ ဖြင့်ရှာရန်...", fontSize = 11.5.sp, color = SlateMuted) },
               leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp), tint = SlateMuted) },
               trailingIcon = {
                 if (searchQuery.isNotBlank()) {
@@ -254,7 +308,7 @@ fun LabInvestigationScreen(
               singleLine = true,
               modifier = Modifier.fillMaxWidth(),
               shape = RoundedCornerShape(8.dp),
-              textStyle = LocalTextStyle.current.copy(fontSize = 12.5.sp, color = Color(0xFF0F172A)),
+              textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = Color(0xFF0F172A)),
               colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = Color(0xFF0F172A),
                 unfocusedTextColor = Color(0xFF0F172A),
@@ -264,6 +318,34 @@ fun LabInvestigationScreen(
                 focusedBorderColor = Color(0xFF0284C7)
               )
             )
+
+            // Date Quick Filter Chips
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+              modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+              horizontalArrangement = Arrangement.spacedBy(4.dp),
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              listOf(
+                Pair("ALL", "အားလုံး (All)"),
+                Pair("TODAY", "ယနေ့ (Today)"),
+                Pair("YESTERDAY", "ယမန်နေ့"),
+                Pair("MONTH", "ဒီလ (This Month)")
+              ).forEach { (code, label) ->
+                val isSel = selectedDateFilter == code
+                FilterChip(
+                  selected = isSel,
+                  onClick = { selectedDateFilter = code },
+                  label = { Text(label, fontSize = 10.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
+                  colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Color(0xFF0284C7),
+                    selectedLabelColor = PureWhite
+                  ),
+                  shape = RoundedCornerShape(14.dp),
+                  modifier = Modifier.height(26.dp)
+                )
+              }
+            }
           }
         }
       }
@@ -356,7 +438,7 @@ fun LabInvestigationScreen(
                   onPrintVoucher = {
                     val linkedInv = labInvoices.find { it.orderId == order.id || it.orderId == order.orderNumber || it.invoiceNumber == order.invoiceNumber }
                     if (linkedInv != null) {
-                      LabPrintHelper.printLabVoucherThermal(context, linkedInv, clinicSettings)
+                      previewLabThermalSlip = linkedInv
                     } else {
                       orderToInvoice = order
                     }
@@ -379,7 +461,8 @@ fun LabInvestigationScreen(
           MobileLabInvoicesTabContent(
             invoices = filteredInvoices,
             clinicSettings = clinicSettings,
-            currencyFmt = currencyFmt
+            currencyFmt = currencyFmt,
+            onPrintVoucher = { previewLabThermalSlip = it }
           )
         }
 
@@ -426,9 +509,12 @@ fun LabInvestigationScreen(
     MobileLabResultEntryDialog(
       order = order,
       technicianName = viewModel.currentUser.value?.displayName ?: "Lab Technologist",
+      defaultPathologistName = clinicSettings.defaultPathologistName,
+      defaultPathologistDegree = clinicSettings.defaultPathologistDegree,
+      defaultPathologistSama = clinicSettings.defaultPathologistSama,
       onDismiss = { orderToEnterResults = null },
-      onSave = { updatedItems, tech, notes ->
-        viewModel.saveLabOrderResults(order.id, updatedItems, tech, notes)
+      onSave = { updatedItems, tech, notes, pName, pDegree, pSama ->
+        viewModel.saveLabOrderResults(order.id, updatedItems, tech, notes, pName, pDegree, pSama)
         orderToEnterResults = null
         Toast.makeText(context, "ဓာတ်ခွဲအဖြေများ မှတ်တမ်းတင်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
       }
@@ -445,7 +531,31 @@ fun LabInvestigationScreen(
         viewModel.createLabInvoice(invoice)
         orderToInvoice = null
         Toast.makeText(context, "ဓာတ်ခွဲခန်း ဘောင်ချာ ဖွင့်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
-        LabPrintHelper.printLabVoucherThermal(context, invoice, clinicSettings)
+        previewLabThermalSlip = invoice
+      }
+    )
+  }
+
+  // 3.2 Bluetooth Thermal POS Slip Studio Modal
+  previewLabThermalSlip?.let { labInv ->
+    PosThermalSlipDialog(
+      invoice = labInv.toClinicInvoice(),
+      patientHn = labInv.patientHn,
+      cashierName = labInv.cashierName,
+      clinicSettings = clinicSettings,
+      onDismiss = { previewLabThermalSlip = null },
+      onPrintSuccess = { previewLabThermalSlip = null }
+    )
+  }
+
+  // 3.3 Lab Expense Management Modal
+  if (showLabExpenseDialog) {
+    MobileLabExpenseDialog(
+      onDismiss = { showLabExpenseDialog = false },
+      onSaveExpense = { title, amt, payee, notes ->
+        viewModel.addLabExpense(title = title, amount = amt, payee = payee, notes = notes)
+        showLabExpenseDialog = false
+        Toast.makeText(context, "Lab ကုန်ကျစရိတ် မှတ်တမ်းတင်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
       }
     )
   }
@@ -1025,7 +1135,8 @@ fun MobileLabCompletedResultCard(
 fun MobileLabInvoicesTabContent(
   invoices: List<LabInvoice>,
   clinicSettings: ClinicSettings,
-  currencyFmt: NumberFormat
+  currencyFmt: NumberFormat,
+  onPrintVoucher: (LabInvoice) -> Unit = {}
 ) {
   val context = LocalContext.current
   val todayStr = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
@@ -1108,7 +1219,7 @@ fun MobileLabInvoicesTabContent(
                 Spacer(modifier = Modifier.height(4.dp))
                 Button(
                   onClick = {
-                    LabPrintHelper.printLabVoucherThermal(context, inv, clinicSettings)
+                    onPrintVoucher(inv)
                   },
                   colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
                   shape = RoundedCornerShape(4.dp),
@@ -1641,10 +1752,16 @@ fun MobileNewLabOrderDialog(
 fun MobileLabResultEntryDialog(
   order: LabOrder,
   technicianName: String,
+  defaultPathologistName: String = "",
+  defaultPathologistDegree: String = "",
+  defaultPathologistSama: String = "",
   onDismiss: () -> Unit,
-  onSave: (List<LabOrderItem>, String, String) -> Unit
+  onSave: (List<LabOrderItem>, String, String, String, String, String) -> Unit
 ) {
   var techName by remember { mutableStateOf(order.technicianName.ifBlank { technicianName }) }
+  var pathologistName by remember { mutableStateOf(order.pathologistName.ifBlank { defaultPathologistName }) }
+  var pathologistDegree by remember { mutableStateOf(order.pathologistDegree.ifBlank { defaultPathologistDegree }) }
+  var pathologistSama by remember { mutableStateOf(order.pathologistSama.ifBlank { defaultPathologistSama }) }
   var generalNotes by remember { mutableStateOf(order.notes) }
 
   // Working state for items and parameters
@@ -1829,6 +1946,51 @@ fun MobileLabResultEntryDialog(
             }
           }
 
+          // Pathologist Verification Signature Input Card
+          Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = Color(0xFFF0FDF4),
+            border = BorderStroke(1.dp, Color(0xFFBBF7D0)),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+          ) {
+            Column(modifier = Modifier.padding(10.dp)) {
+              Text("👨‍⚕️ အတည်ပြုသူ Pathologist ဆရာဝန် (Report Signature)", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
+              Spacer(modifier = Modifier.height(6.dp))
+              Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                OutlinedTextField(
+                  value = pathologistName,
+                  onValueChange = { pathologistName = it },
+                  label = { Text("Pathologist အမည်", fontSize = 10.sp) },
+                  placeholder = { Text("Dr. ...") },
+                  modifier = Modifier.weight(1.3f),
+                  singleLine = true,
+                  shape = RoundedCornerShape(6.dp),
+                  textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
+                )
+                OutlinedTextField(
+                  value = pathologistSama,
+                  onValueChange = { pathologistSama = it },
+                  label = { Text("ဆမ (S.A.M.A)", fontSize = 10.sp) },
+                  modifier = Modifier.weight(0.7f),
+                  singleLine = true,
+                  shape = RoundedCornerShape(6.dp),
+                  textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
+                )
+              }
+              Spacer(modifier = Modifier.height(6.dp))
+              OutlinedTextField(
+                value = pathologistDegree,
+                onValueChange = { pathologistDegree = it },
+                label = { Text("ဘွဲ့ / တာဝန် (Degree / Title)", fontSize = 10.sp) },
+                placeholder = { Text("M.B.,B.S, M.Med.Sc (Pathology)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(6.dp),
+                textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
+              )
+            }
+          }
+
           OutlinedTextField(
             value = techName,
             onValueChange = { techName = it },
@@ -1887,7 +2049,7 @@ fun MobileLabResultEntryDialog(
           Button(
             onClick = {
               val finalizedItems = itemsState.map { it.copy(isCompleted = true) }
-              onSave(finalizedItems, techName, generalNotes)
+              onSave(finalizedItems, techName, generalNotes, pathologistName, pathologistDegree, pathologistSama)
             },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
             shape = RoundedCornerShape(6.dp),
@@ -2359,6 +2521,122 @@ fun MobileLabTemplateEditorDialog(
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)
           ) {
             Text("သိမ်းဆည်းမည်", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+          }
+        }
+      }
+    }
+  }
+}
+
+// -------------------------------------------------------------
+// Dialog: Mobile Lab Expense Recording Dialog
+// -------------------------------------------------------------
+@Composable
+fun MobileLabExpenseDialog(
+  onDismiss: () -> Unit,
+  onSaveExpense: (String, Double, String, String) -> Unit
+) {
+  var title by remember { mutableStateOf("") }
+  var amountText by remember { mutableStateOf("") }
+  var payee by remember { mutableStateOf("") }
+  var notes by remember { mutableStateOf("") }
+
+  Dialog(
+    onDismissRequest = onDismiss,
+    properties = DialogProperties(usePlatformDefaultWidth = false)
+  ) {
+    Surface(
+      shape = RoundedCornerShape(12.dp),
+      color = PureWhite,
+      modifier = Modifier.fillMaxWidth(0.92f).padding(8.dp)
+    ) {
+      Column(modifier = Modifier.padding(14.dp)) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Text("🧪 Lab ကုန်ကျစရိတ် မှတ်တမ်းတင်ခြင်း", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+          IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
+            Icon(Icons.Default.Close, contentDescription = "Close", modifier = Modifier.size(18.dp))
+          }
+        }
+        Text("Reagents, Test Kits, Tubes, စက်ပစ္စည်း နှင့် စစ်ဆေးခ ကုန်ကျစရိတ်များ", fontSize = 10.sp, color = SlateMuted)
+        Spacer(modifier = Modifier.height(8.dp))
+        HorizontalDivider(color = Color(0xFFF1F5F9))
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Quick Category / Title chips
+        Row(
+          modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+          horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+          listOf("CBC Reagent Pack", "Electrolyte Reagents", "Biochemistry Test Kits", "Blood Collection Tubes", "Syringes & Needles", "External Reference Lab Fee").forEach { t ->
+            AssistChip(
+              onClick = { title = t },
+              label = { Text(t, fontSize = 9.5.sp) }
+            )
+          }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+
+        OutlinedTextField(
+          value = title,
+          onValueChange = { title = it },
+          label = { Text("အကြောင်းအရာ (Expense Title)", fontSize = 11.sp) },
+          placeholder = { Text("ဥပမာ - CBC Diluent Reagents") },
+          singleLine = true,
+          modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          OutlinedTextField(
+            value = amountText,
+            onValueChange = { amountText = it },
+            label = { Text("ကုန်ကျငွေ (Amount Ks)", fontSize = 11.sp) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            singleLine = true,
+            modifier = Modifier.weight(1.2f)
+          )
+          OutlinedTextField(
+            value = payee,
+            onValueChange = { payee = it },
+            label = { Text("ပေးချေသူ/ဆိုင် (Payee)", fontSize = 11.sp) },
+            singleLine = true,
+            modifier = Modifier.weight(1f)
+          )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+          value = notes,
+          onValueChange = { notes = it },
+          label = { Text("အသေးစိတ် မှတ်ချက် (Notes)", fontSize = 11.sp) },
+          singleLine = true,
+          modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+          OutlinedButton(onClick = onDismiss, modifier = Modifier.height(36.dp)) {
+            Text("မသိမ်းပါ", fontSize = 11.sp)
+          }
+          Spacer(modifier = Modifier.width(8.dp))
+          Button(
+            onClick = {
+              val amt = amountText.toDoubleOrNull() ?: 0.0
+              if (title.isNotBlank() && amt > 0) {
+                onSaveExpense(title.trim(), amt, payee.trim(), notes.trim())
+              }
+            },
+            enabled = title.isNotBlank() && (amountText.toDoubleOrNull() ?: 0.0) > 0,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEA580C)),
+            modifier = Modifier.height(36.dp)
+          ) {
+            Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(14.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("စရိတ် သိမ်းဆည်းမည်", fontSize = 11.sp, fontWeight = FontWeight.Bold)
           }
         }
       }

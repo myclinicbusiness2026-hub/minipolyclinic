@@ -1423,6 +1423,8 @@ fun CreateTreatmentCardModal(
   val cocktailItems = remember { mutableStateListOf<CocktailDrugItem>() }
 
   var dosage by remember { mutableStateOf("") }
+  var singleDrugQuantity by remember { mutableStateOf(1) }
+  var selectedSingleMedicine by remember { mutableStateOf<Medicine?>(null) }
   var selectedRoute by remember { mutableStateOf(TreatmentRoute.IV_PUSH) }
   var customRouteText by remember { mutableStateOf("") }
   var frequency by remember { mutableStateOf("12 hrly") }
@@ -1705,8 +1707,9 @@ fun CreateTreatmentCardModal(
                         .fillMaxWidth()
                         .clickable {
                           medicationName = med.name
+                          selectedSingleMedicine = med
                           if (!isPatientSupplied) {
-                            medFeeText = med.sellingPrice.toInt().toString()
+                            medFeeText = (med.sellingPrice * singleDrugQuantity).toInt().toString()
                           }
                           if (med.standardDosage.isNotBlank()) {
                             dosage = med.standardDosage
@@ -1729,22 +1732,81 @@ fun CreateTreatmentCardModal(
               }
             }
 
-            // Medication Name & Dosage
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Medication Name, Dosage & Qty/Amps Stepper
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.spacedBy(8.dp),
+              verticalAlignment = Alignment.CenterVertically
+            ) {
               OutlinedTextField(
                 value = medicationName,
                 onValueChange = { medicationName = it },
                 label = { Text("ဆေးအမည် (Medication Name)", fontSize = 11.sp) },
                 singleLine = true,
-                modifier = Modifier.weight(1.4f)
+                modifier = Modifier.weight(1.3f)
               )
               OutlinedTextField(
                 value = dosage,
                 onValueChange = { dosage = it },
-                label = { Text("ဆေးပမာဏ (Dosage)", fontSize = 11.sp) },
+                label = { Text("ပမာဏ (Dosage)", fontSize = 11.sp) },
                 singleLine = true,
-                modifier = Modifier.weight(0.8f)
+                modifier = Modifier.weight(0.7f)
               )
+              // Quantity / Amps Stepper
+              Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color(0xFFF1F5F9),
+                border = BorderStroke(1.dp, BorderGrey),
+                modifier = Modifier.weight(0.8f).height(56.dp)
+              ) {
+                Column(
+                  modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 2.dp),
+                  horizontalAlignment = Alignment.CenterHorizontally,
+                  verticalArrangement = Arrangement.Center
+                ) {
+                  Text("အလုံးရေ (Qty/Amps)", fontSize = 8.5.sp, color = SlateMuted)
+                  Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                  ) {
+                    IconButton(
+                      onClick = {
+                        if (singleDrugQuantity > 1) {
+                          singleDrugQuantity--
+                          selectedSingleMedicine?.let { med ->
+                            if (!isPatientSupplied) {
+                              medFeeText = (med.sellingPrice * singleDrugQuantity).toInt().toString()
+                            }
+                          }
+                        }
+                      },
+                      modifier = Modifier.size(24.dp)
+                    ) {
+                      Icon(Icons.Default.Remove, contentDescription = "Minus", modifier = Modifier.size(12.dp), tint = SlateDark)
+                    }
+                    Text(
+                      "$singleDrugQuantity",
+                      fontWeight = FontWeight.Bold,
+                      fontSize = 12.5.sp,
+                      color = MedicalGreenDark,
+                      modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                    IconButton(
+                      onClick = {
+                        singleDrugQuantity++
+                        selectedSingleMedicine?.let { med ->
+                          if (!isPatientSupplied) {
+                            medFeeText = (med.sellingPrice * singleDrugQuantity).toInt().toString()
+                          }
+                        }
+                      },
+                      modifier = Modifier.size(24.dp)
+                    ) {
+                      Icon(Icons.Default.Add, contentDescription = "Add", modifier = Modifier.size(12.dp), tint = MedicalGreenDark)
+                    }
+                  }
+                }
+              }
             }
 
             // Dosage Quick Chips
@@ -2134,7 +2196,23 @@ fun CreateTreatmentCardModal(
               if (itemsSummary.isNotBlank()) "${cocktailItems.size} Drugs ($itemsSummary)"
               else "${cocktailItems.size} Drugs Mixed"
             } else {
-              dosage
+              if (singleDrugQuantity > 1) {
+                if (dosage.isNotBlank()) "$singleDrugQuantity Amps ($dosage)" else "$singleDrugQuantity Amps"
+              } else {
+                dosage
+              }
+            }
+
+            if (!isCocktail && selectedSingleMedicine != null && cocktailItems.isEmpty()) {
+              cocktailItems.add(
+                CocktailDrugItem(
+                  medicineId = selectedSingleMedicine!!.id,
+                  name = selectedSingleMedicine!!.name,
+                  dosage = dosage,
+                  quantity = singleDrugQuantity,
+                  unitPrice = selectedSingleMedicine!!.sellingPrice
+                )
+              )
             }
 
             val sessions = TreatmentCardFactory.generateSessions(

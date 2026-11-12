@@ -160,6 +160,7 @@ data class SyncDataPayload(
         ro.put("unitPrice", rx.unitPrice)
         ro.put("instructions", rx.instructions)
         ro.put("isExternal", rx.isExternal)
+        ro.put("isCst", rx.isCst)
         rxArr.put(ro)
       }
       co.put("prescriptions", rxArr)

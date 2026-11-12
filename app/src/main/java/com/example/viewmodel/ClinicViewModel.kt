@@ -1552,6 +1552,10 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }.filter { it.isNotBlank() }
 
     prescriptions.forEach { drug ->
+      if (drug.isCst || drug.isExternal) {
+        // Home medication continuation (CST) or external prescription - do not bill on invoice
+        return@forEach
+      }
       val drugName = drug.fullDisplayName
       val cleanDrug = drugName
         .replace(Regex("(?i)^inj\\.?\\s*"), "")
@@ -1626,17 +1630,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         card.consumables.joinToString(", ") { "${it.name} x${it.quantity}" }
       } else ""
 
-      // Comprehensive combined line item: [ဆေး + အသုံးစာရင်း + Service Fee]
-      val subDetails = mutableListOf<String>()
-      if (perDoseMedFee > 0) subDetails.add("ဆေး: ${perDoseMedFee.toInt()}Ks")
-      if (consText.isNotBlank()) subDetails.add("အသုံး: $consText (${perDoseConsFee.toInt()}Ks)")
-      if (perDoseSvcFee > 0) subDetails.add("ထိုးခ: ${perDoseSvcFee.toInt()}Ks")
-
-      val itemDisplayName = if (subDetails.isNotEmpty()) {
-        "${card.routeDisplay} ($medTitle)\n  • ${subDetails.joinToString(" | ")}"
-      } else {
-        "${card.routeDisplay} ($medTitle)"
-      }
+      // Consolidated clean doctor order line: e.g. "IV KTR 30mg + Polywin + NS 15cc (stat)"
+      val itemDisplayName = "${card.routeDisplay} $medTitle".trim()
 
       invoiceItems.add(
         InvoiceItem(
@@ -1701,6 +1696,10 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     // Route patient status
     val nextStatus = QueueStatus.AT_BILLING
     updatePatientStatus(patientId, nextStatus)
+
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
   }
 
   fun updateConsultation(updatedRecord: ConsultationRecord) {
@@ -3600,6 +3599,21 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     addExpense(title = desc, category = category, amount = amount, notes = desc)
   }
 
+  fun addLabExpense(
+    title: String,
+    amount: Double,
+    payee: String = "",
+    notes: String = ""
+  ) {
+    addExpense(
+      title = title,
+      category = "Laboratory / Reagents",
+      amount = amount,
+      payee = payee,
+      notes = notes
+    )
+  }
+
   fun deleteExpense(expenseId: String) {
     val updated = _expenses.value.filter { it.id != expenseId }
     _expenses.value = updated
@@ -4339,7 +4353,10 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     orderId: String,
     updatedItems: List<LabOrderItem>,
     technicianName: String,
-    notes: String
+    notes: String,
+    pathologistName: String = "",
+    pathologistDegree: String = "",
+    pathologistSama: String = ""
   ) {
     val ctx = getApplication<Application>()
     val isAllCompleted = updatedItems.all { it.isCompleted }
@@ -4350,6 +4367,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           items = updatedItems,
           technicianName = technicianName.ifBlank { ord.technicianName },
           notes = notes,
+          pathologistName = pathologistName.ifBlank { ord.pathologistName },
+          pathologistDegree = pathologistDegree.ifBlank { ord.pathologistDegree },
+          pathologistSama = pathologistSama.ifBlank { ord.pathologistSama },
           status = if (isAllCompleted) LabOrderStatus.COMPLETED else ord.status,
           completedAt = completedAtStr ?: ord.completedAt
         )
@@ -4357,6 +4377,18 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
     _labOrders.value = updated
     ClinicDataPersistence.saveLabOrders(ctx, updated)
+    if (pathologistName.isNotBlank()) {
+      val s = _clinicSettings.value.copy(
+        defaultPathologistName = pathologistName,
+        defaultPathologistDegree = pathologistDegree,
+        defaultPathologistSama = pathologistSama
+      )
+      _clinicSettings.value = s
+      ClinicDataPersistence.saveClinicSettings(ctx, s)
+    }
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
   }
 
   fun deleteLabOrder(orderId: String) {

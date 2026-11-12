@@ -139,6 +139,7 @@ fun AdminUserManagementDialog(
     UserRole.CASHIER -> Color(0xFFD97706)
     UserRole.NURSE -> Color(0xFF7C3AED)
     UserRole.RECEPTIONIST -> Color(0xFF0D9488)
+    UserRole.LAB_TECHNICIAN -> Color(0xFF0284C7)
   }
 
   fun getRoleBg(role: UserRole): Color = when (role) {
@@ -148,6 +149,7 @@ fun AdminUserManagementDialog(
     UserRole.CASHIER -> StatusWarningContainer
     UserRole.NURSE -> Color(0xFFF3E8FF)
     UserRole.RECEPTIONIST -> Color(0xFFCCFBF1)
+    UserRole.LAB_TECHNICIAN -> Color(0xFFE0F2FE)
   }
 
   fun getRoleIcon(role: UserRole) = when (role) {
@@ -157,6 +159,7 @@ fun AdminUserManagementDialog(
     UserRole.CASHIER -> Icons.Default.PointOfSale
     UserRole.NURSE -> Icons.Default.LocalHospital
     UserRole.RECEPTIONIST -> Icons.Default.Badge
+    UserRole.LAB_TECHNICIAN -> Icons.Default.Science
   }
 
   Dialog(
@@ -835,6 +838,7 @@ fun AdminUserManagementDialog(
                             UserRole.CASHIER -> "Cashier & Billing Desk"
                             UserRole.NURSE -> "Triage & Nursing Station"
                             UserRole.RECEPTIONIST -> "Front Desk Registration"
+                            UserRole.LAB_TECHNICIAN -> "Medical Diagnostic Laboratory"
                           }
                         },
                       shape = RoundedCornerShape(4.dp),
