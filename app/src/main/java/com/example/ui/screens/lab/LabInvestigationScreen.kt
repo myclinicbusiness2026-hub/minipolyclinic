@@ -354,7 +354,7 @@ fun LabInvestigationScreen(
                     )
                   },
                   onPrintVoucher = {
-                    val linkedInv = labInvoices.find { it.orderId == order.id || it.orderNumber == order.orderNumber || it.invoiceNumber == order.invoiceNumber }
+                    val linkedInv = labInvoices.find { it.orderId == order.id || it.orderId == order.orderNumber || it.invoiceNumber == order.invoiceNumber }
                     if (linkedInv != null) {
                       LabPrintHelper.printLabVoucherThermal(context, linkedInv, clinicSettings)
                     } else {
