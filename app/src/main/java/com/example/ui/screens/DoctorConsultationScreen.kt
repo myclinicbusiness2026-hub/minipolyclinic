@@ -759,7 +759,7 @@ fun DoctorConsultationScreen(
                       text = {
                         Column {
                           Text("${p.name} (${p.hn})", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = DarkGrayText)
-                          Text("အခြေအနေ: ${p.status.labelMm}", fontSize = 9.5.sp, color = SlateMuted)
+                          Text("အခြေအနေ: ${p.status.myanmarName}", fontSize = 9.5.sp, color = SlateMuted)
                         }
                       },
                       onClick = {
@@ -1636,6 +1636,7 @@ fun EditConsultationDialog(
   StructuredClinicalEditDialog(record = record, onDismiss = onDismiss, onSave = onSave)
 }
 
+
 @Composable
 private fun ConsultationLabResultsCard(
   patientLabOrders: List<LabOrder>,
@@ -1681,53 +1682,58 @@ private fun ConsultationLabResultsCard(
               verticalAlignment = Alignment.CenterVertically
             ) {
               Column {
-                Text(order.testName, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = OceanGreenPrimary)
-                Text("Date: ${order.orderDate} • Status: ${order.status.labelMm}", fontSize = 9.sp, color = SlateMuted)
+                Text(order.formattedItemNames.ifBlank { order.orderNumber }, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = OceanGreenPrimary)
+                Text("Date: ${order.orderDate} • Status: ${order.status.name}", fontSize = 9.sp, color = SlateMuted)
               }
               IconButton(
-                onClick = { LabPrintHelper.printLabReport(context, order, clinicSettings) },
+                onClick = { LabPrintHelper.printLabReportA4(context, order, clinicSettings) },
                 modifier = Modifier.size(24.dp)
               ) {
                 Icon(Icons.Default.Print, contentDescription = "Print Lab", tint = OceanGreenPrimary, modifier = Modifier.size(14.dp))
               }
             }
-            if (order.results.isNotEmpty()) {
-              Spacer(modifier = Modifier.height(4.dp))
-              order.results.forEach { res ->
-                Row(
-                  modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp),
-                  horizontalArrangement = Arrangement.SpaceBetween,
-                  verticalAlignment = Alignment.CenterVertically
-                ) {
-                  Text(res.parameterName, fontSize = 9.5.sp, color = DarkGrayText, modifier = Modifier.weight(1.2f))
-                  Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            order.items.forEach { testItem ->
+              if (testItem.parameters.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(3.dp))
+                Text(testItem.testName, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = SlateDark)
+                testItem.parameters.forEach { res ->
+                  val isHigh = res.flag.contains("High", ignoreCase = true)
+                  val isLow = res.flag.contains("Low", ignoreCase = true)
+                  Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                  ) {
+                    Text(res.name, fontSize = 9.5.sp, color = DarkGrayText, modifier = Modifier.weight(1.2f))
+                    Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                      Text(
+                        res.result,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isHigh) Color(0xFFDC2626) else if (isLow) Color(0xFF2563EB) else DarkGrayText
+                      )
+                      if (isHigh) {
+                        Text(" ▲", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC2626))
+                      } else if (isLow) {
+                        Text(" ▼", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB))
+                      }
+                      if (res.unit.isNotBlank()) {
+                        Text(" ${res.unit}", fontSize = 8.5.sp, color = SlateMuted)
+                      }
+                    }
                     Text(
-                      res.resultValue,
-                      fontSize = 10.sp,
-                      fontWeight = FontWeight.Bold,
-                      color = if (res.flag == ResultFlag.HIGH) Color(0xFFDC2626) else if (res.flag == ResultFlag.LOW) Color(0xFF2563EB) else DarkGrayText
+                      if (res.referenceRange.isNotBlank()) "(${res.referenceRange})" else "",
+                      fontSize = 8.5.sp,
+                      color = SlateMuted,
+                      modifier = Modifier.weight(0.8f)
                     )
-                    if (res.flag == ResultFlag.HIGH) {
-                      Text(" ▲", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC2626))
-                    } else if (res.flag == ResultFlag.LOW) {
-                      Text(" ▼", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB))
-                    }
-                    if (res.unit.isNotBlank()) {
-                      Text(" ${res.unit}", fontSize = 8.5.sp, color = SlateMuted)
-                    }
                   }
-                  Text(
-                    if (res.referenceRange.isNotBlank()) "(${res.referenceRange})" else "",
-                    fontSize = 8.5.sp,
-                    color = SlateMuted,
-                    modifier = Modifier.weight(0.8f)
-                  )
                 }
               }
             }
-            if (order.clinicalNotes.isNotBlank()) {
+            if (order.notes.isNotBlank()) {
               Spacer(modifier = Modifier.height(3.dp))
-              Text("Note: ${order.clinicalNotes}", fontSize = 9.sp, color = SlateDark)
+              Text("Note: ${order.notes}", fontSize = 9.sp, color = SlateDark)
             }
           }
         }

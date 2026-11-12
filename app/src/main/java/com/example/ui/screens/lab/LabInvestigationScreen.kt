@@ -1877,7 +1877,7 @@ fun MobileLabResultEntryDialog(
                               val pNameClean = p.name.trim().lowercase()
                               if (pNameClean.contains("creatinine") || pNameClean == "cr") {
                                 val crVal = newVal.toDoubleOrNull()
-                                val ageYears = order.patientAge.filter { it.isDigit() }.toIntOrNull() ?: 35
+                                val ageYears = if (order.patientAge > 0) order.patientAge else 35
                                 val isFemale = order.patientGender.name.contains("FEMALE", ignoreCase = true)
                                 if (crVal != null && crVal > 0.0) {
                                   val k = if (isFemale) 0.7 else 0.9

@@ -1247,6 +1247,7 @@ private fun PatientDetailedEmrPane(
           )
         }
       }
+      val emrContext = androidx.compose.ui.platform.LocalContext.current
       patientLabOrders.forEach { order ->
         Surface(
           modifier = Modifier.fillMaxWidth(),
@@ -1261,53 +1262,58 @@ private fun PatientDetailedEmrPane(
               verticalAlignment = Alignment.CenterVertically
             ) {
               Column {
-                Text(order.testName, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = OceanGreenPrimary)
-                Text("Order Date: ${order.orderDate} • Status: ${order.status.labelMm} • Ref: ${order.referringDoctor.ifBlank { "-" }}", fontSize = 9.5.sp, color = SlateMuted)
+                Text(order.formattedItemNames.ifBlank { order.orderNumber }, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = OceanGreenPrimary)
+                Text("Order Date: ${order.orderDate} • Status: ${order.status.name} • Ref: ${order.doctorName.ifBlank { "-" }}", fontSize = 9.5.sp, color = SlateMuted)
               }
               IconButton(
-                onClick = { LabPrintHelper.printLabReport(context, order, clinicSettings) },
+                onClick = { LabPrintHelper.printLabReportA4(emrContext, order, clinicSettings) },
                 modifier = Modifier.size(28.dp)
               ) {
                 Icon(Icons.Default.Print, contentDescription = "Print Lab A4", tint = OceanGreenPrimary, modifier = Modifier.size(16.dp))
               }
             }
-            if (order.results.isNotEmpty()) {
-              Spacer(modifier = Modifier.height(6.dp))
-              order.results.forEach { res ->
-                Row(
-                  modifier = Modifier.fillMaxWidth().padding(vertical = 1.5.dp),
-                  horizontalArrangement = Arrangement.SpaceBetween,
-                  verticalAlignment = Alignment.CenterVertically
-                ) {
-                  Text(res.parameterName, fontSize = 10.sp, color = DarkGrayText, modifier = Modifier.weight(1.3f))
-                  Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            order.items.forEach { testItem ->
+              if (testItem.parameters.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(testItem.testName, fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold, color = SlateDark)
+                testItem.parameters.forEach { res ->
+                  val isHigh = res.flag.contains("High", ignoreCase = true)
+                  val isLow = res.flag.contains("Low", ignoreCase = true)
+                  Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 1.5.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                  ) {
+                    Text(res.name, fontSize = 10.sp, color = DarkGrayText, modifier = Modifier.weight(1.3f))
+                    Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                      Text(
+                        res.result,
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isHigh) Color(0xFFDC2626) else if (isLow) Color(0xFF2563EB) else DarkGrayText
+                      )
+                      if (isHigh) {
+                        Text(" ▲", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC2626))
+                      } else if (isLow) {
+                        Text(" ▼", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB))
+                      }
+                      if (res.unit.isNotBlank()) {
+                        Text(" ${res.unit}", fontSize = 9.sp, color = SlateMuted)
+                      }
+                    }
                     Text(
-                      res.resultValue,
-                      fontSize = 10.5.sp,
-                      fontWeight = FontWeight.Bold,
-                      color = if (res.flag == ResultFlag.HIGH) Color(0xFFDC2626) else if (res.flag == ResultFlag.LOW) Color(0xFF2563EB) else DarkGrayText
+                      if (res.referenceRange.isNotBlank()) "(${res.referenceRange})" else "",
+                      fontSize = 9.sp,
+                      color = SlateMuted,
+                      modifier = Modifier.weight(0.9f)
                     )
-                    if (res.flag == ResultFlag.HIGH) {
-                      Text(" ▲", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC2626))
-                    } else if (res.flag == ResultFlag.LOW) {
-                      Text(" ▼", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB))
-                    }
-                    if (res.unit.isNotBlank()) {
-                      Text(" ${res.unit}", fontSize = 9.sp, color = SlateMuted)
-                    }
                   }
-                  Text(
-                    if (res.referenceRange.isNotBlank()) "(${res.referenceRange})" else "",
-                    fontSize = 9.sp,
-                    color = SlateMuted,
-                    modifier = Modifier.weight(0.9f)
-                  )
                 }
               }
             }
-            if (order.clinicalNotes.isNotBlank()) {
+            if (order.notes.isNotBlank()) {
               Spacer(modifier = Modifier.height(4.dp))
-              Text("Note: ${order.clinicalNotes}", fontSize = 9.5.sp, color = SlateDark)
+              Text("Note: ${order.notes}", fontSize = 9.5.sp, color = SlateDark)
             }
           }
         }
