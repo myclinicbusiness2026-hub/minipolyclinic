@@ -805,10 +805,17 @@ fun MobileLabOrderQueueCard(
               onDismissRequest = { showMenu = false }
             ) {
               DropdownMenuItem(
-                text = { Text("📄 A4 Blank Letterhead ထုတ်ရန်", fontSize = 11.5.sp) },
+                text = { Text("📄 CBC စက်ထည့်ရန် စာရွက်ကြိုထုတ် (Pre-printed Sheet)", fontSize = 11.5.sp) },
                 onClick = {
                   showMenu = false
                   onPrintBlankLetterhead()
+                }
+              )
+              DropdownMenuItem(
+                text = { Text("📷 စက်အဖြေ Slip ပုံတင်ရန် (Attach Slip Photo)", fontSize = 11.5.sp) },
+                onClick = {
+                  showMenu = false
+                  photoLauncher.launch("image/*")
                 }
               )
               if (!order.isPaid) {
@@ -1103,22 +1110,42 @@ fun MobileLabCompletedResultCard(
                     modifier = Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(4.dp))
                   )
                   Spacer(modifier = Modifier.height(4.dp))
-                  Button(
-                    onClick = {
-                      LabPrintHelper.printAttachedImage(
-                        context = context,
-                        imageUri = slipUri,
-                        jobTitle = "Lab_Slip_${order.orderNumber}"
-                      )
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D9488)),
-                    shape = RoundedCornerShape(4.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                    modifier = Modifier.height(30.dp)
+                  Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                   ) {
-                    Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(13.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("စက်အဖြေ Print ထုတ်ရန် (Print Slip)", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                    Button(
+                      onClick = {
+                        LabPrintHelper.printLabReportA4(
+                          context = context,
+                          order = order,
+                          clinicSettings = clinicSettings
+                        )
+                      },
+                      colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D9488)),
+                      shape = RoundedCornerShape(4.dp),
+                      contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                      modifier = Modifier.weight(1f).height(30.dp)
+                    ) {
+                      Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(13.dp))
+                      Spacer(modifier = Modifier.width(4.dp))
+                      Text("စလစ်ပါ A4 Report ထုတ်ရန်", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    OutlinedButton(
+                      onClick = {
+                        LabPrintHelper.printAttachedImage(
+                          context = context,
+                          imageUri = slipUri,
+                          jobTitle = "Lab_Slip_${order.orderNumber}"
+                        )
+                      },
+                      shape = RoundedCornerShape(4.dp),
+                      contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                      modifier = Modifier.height(30.dp)
+                    ) {
+                      Text("စလစ်တည်း", fontSize = 9.5.sp)
+                    }
                   }
                 }
               }
@@ -1757,7 +1784,7 @@ fun MobileLabResultEntryDialog(
   defaultPathologistName: String = "",
   defaultPathologistDegree: String = "",
   defaultPathologistSama: String = "",
-  defaultPathologistTitle: String = "Consultant Pathologist",
+  defaultPathologistTitle: String = "",
   onDismiss: () -> Unit,
   onSave: (List<LabOrderItem>, String, String, String, String, String, String) -> Unit
 ) {

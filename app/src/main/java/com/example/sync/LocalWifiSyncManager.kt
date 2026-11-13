@@ -219,7 +219,7 @@ class LocalWifiSyncManager(
   private fun startAutoSyncLoop() {
     scope.launch {
       while (isActive) {
-        delay(8000)
+        delay(3000)
         _localIp.value = wifiHelper.getLocalIpAddress()
         if (_isAutoSyncEnabled.value && _discoveredPeers.value.isNotEmpty()) {
           syncWithAllPeers()
@@ -229,16 +229,18 @@ class LocalWifiSyncManager(
   }
 
   fun syncWithAllPeers() {
-    scope.launch {
+    scope.launch(Dispatchers.IO) {
       val peers = _discoveredPeers.value.toList()
-      for (peer in peers) {
-        syncWithPeer(peer)
+      peers.forEach { peer ->
+        launch(Dispatchers.IO) {
+          syncWithPeer(peer)
+        }
       }
     }
   }
 
   suspend fun syncWithPeer(peer: PeerDevice) {
-    if (_syncStatus.value == SyncStatus.SYNCING) return
+    if (!activeSyncingPeers.add(peer.ipAddress)) return
     _syncStatus.value = SyncStatus.SYNCING
 
     try {
@@ -271,8 +273,8 @@ class LocalWifiSyncManager(
       _syncStatus.value = SyncStatus.ERROR
       addLog("Sync Error", "Failed to connect to ${peer.ipAddress}: ${e.message}", "FAILED")
     } finally {
-      delay(2000)
-      if (_syncStatus.value == SyncStatus.SUCCESS || _syncStatus.value == SyncStatus.ERROR) {
+      activeSyncingPeers.remove(peer.ipAddress)
+      if (activeSyncingPeers.isEmpty()) {
         _syncStatus.value = SyncStatus.IDLE
       }
     }
@@ -281,8 +283,8 @@ class LocalWifiSyncManager(
   internal fun httpGet(urlStr: String): String? {
     return try {
       val conn = (URL(urlStr).openConnection() as HttpURLConnection).apply {
-        connectTimeout = 4000
-        readTimeout = 6000
+        connectTimeout = 1500
+        readTimeout = 3000
         requestMethod = "GET"
       }
       if (conn.responseCode == 200) {
@@ -307,8 +309,8 @@ class LocalWifiSyncManager(
   private fun httpPost(urlStr: String, bodyJson: String): Boolean {
     return try {
       val conn = (URL(urlStr).openConnection() as HttpURLConnection).apply {
-        connectTimeout = 4000
-        readTimeout = 6000
+        connectTimeout = 1500
+        readTimeout = 3000
         requestMethod = "POST"
         doOutput = true
         setRequestProperty("Content-Type", "application/json; charset=utf-8")

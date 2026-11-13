@@ -443,12 +443,13 @@ fun DoctorConsultationScreen(
               else -> TreatmentRoute.IM
             }
             val days = drug.duration.filter { it.isDigit() }.toIntOrNull() ?: 3
+            val effectiveRouteFee = route.getEffectiveFee(clinicSettings, procedures)
             val sessions = TreatmentCardFactory.generateSessions(
               startDateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
               frequency = drug.frequency.ifBlank { "12 hrly" },
               days = days,
               medicationFee = drug.unitPrice,
-              sessionFee = route.getDefaultFee(clinicSettings)
+              sessionFee = effectiveRouteFee
             )
             val card = TreatmentCard(
               patientId = activePatient.id,
@@ -463,7 +464,7 @@ fun DoctorConsultationScreen(
               totalDays = days,
               totalSessions = sessions.size,
               sessions = sessions,
-              sessionFee = route.getDefaultFee(clinicSettings),
+              sessionFee = effectiveRouteFee,
               medicationFee = drug.unitPrice,
               instructions = drug.instructions,
               isPayPerVisit = true,

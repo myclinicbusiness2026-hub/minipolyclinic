@@ -1647,7 +1647,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     treatmentOrders.forEach { card ->
-      val sFee = if (card.sessionFee > 0) card.sessionFee else card.route.getDefaultFee(clinicSettings.value)
+      val sFee = if (card.sessionFee > 0) card.sessionFee else card.route.getEffectiveFee(clinicSettings.value, _procedures.value)
       val numDoses = if (card.totalSessions > 1 && (card.isPrepaidFullCourse || !card.isPayPerVisit)) card.totalSessions else 1
       val isFullCourse = numDoses > 1
 
@@ -3548,6 +3548,25 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val updatedProcs = _procedures.value.map { if (it.id == updated.id) updated else it }
     _procedures.value = updatedProcs
     ClinicDataPersistence.saveProcedures(getApplication(), updatedProcs)
+
+    // Auto-sync injection procedure fees into ClinicSettings
+    val n = updated.name.lowercase()
+    val mn = updated.myanmarName.lowercase()
+    val curSettings = _clinicSettings.value
+    var newSettings = curSettings
+    if (n.contains("infusion") || n.contains("drip") || mn.contains("အကြောပုလင်း") || mn.contains("သွင်းဆေး")) {
+      newSettings = newSettings.copy(defaultIvInfusionFee = updated.standardFee)
+    } else if (n.contains("iv") || mn.contains("အကြောဆေး")) {
+      newSettings = newSettings.copy(defaultIvPushFee = updated.standardFee)
+    } else if (n.contains("im") || mn.contains("အသားဆေး")) {
+      newSettings = newSettings.copy(defaultImInjectionFee = updated.standardFee)
+    } else if (n.contains("neb") || mn.contains("အငွေ့")) {
+      newSettings = newSettings.copy(defaultNebulizerFee = updated.standardFee)
+    }
+    if (newSettings != curSettings) {
+      _clinicSettings.value = newSettings
+      ClinicDataPersistence.saveClinicSettings(getApplication(), newSettings)
+    }
   }
 
   fun deleteProcedure(procedureId: String) {

@@ -28,6 +28,26 @@ enum class TreatmentRoute(val label: String, val burmeseLabel: String) {
     DRESSING -> 5000.0
     CUSTOM -> settings.defaultImInjectionFee
   }
+
+  fun getEffectiveFee(settings: ClinicSettings, procedures: List<com.example.model.ProcedureItem> = emptyList()): Double {
+    val matched = procedures.find { proc ->
+      val n = proc.name.lowercase()
+      val mn = proc.myanmarName.lowercase()
+      when (this) {
+        IM -> (n.contains("im") || mn.contains("အသားဆေး")) && !n.contains("infusion")
+        IV_PUSH -> (n.contains("iv") || mn.contains("အကြောဆေး")) && !n.contains("infusion") && !n.contains("drip") && !mn.contains("ပုလင်း")
+        IV_INFUSION -> n.contains("infusion") || n.contains("drip") || mn.contains("အကြောပုလင်း") || mn.contains("သွင်းဆေး")
+        NEBULIZATION -> n.contains("neb") || mn.contains("အငွေ့")
+        SC -> n.contains("sc") || n.contains("subcutaneous") || n.contains("depo")
+        DRESSING -> n.contains("dressing") || mn.contains("ဆေးထည့်")
+        CUSTOM -> false
+      }
+    }
+    if (matched != null && matched.standardFee > 0.0) {
+      return matched.standardFee
+    }
+    return getDefaultFee(settings)
+  }
 }
 
 enum class TreatmentStatus(val label: String, val burmeseLabel: String) {

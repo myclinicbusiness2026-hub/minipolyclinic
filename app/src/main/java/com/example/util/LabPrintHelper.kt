@@ -40,6 +40,25 @@ import java.util.Locale
  */
 object LabPrintHelper {
 
+  private fun convertImageToBase64DataUri(context: Context, uriStr: String): String {
+    if (uriStr.isBlank() || uriStr.startsWith("data:")) return uriStr
+    return try {
+      val uri = android.net.Uri.parse(uriStr)
+      val inputStream = if (uriStr.startsWith("content://")) {
+        context.contentResolver.openInputStream(uri)
+      } else {
+        val cleanPath = uriStr.replace("file://", "")
+        java.io.File(cleanPath).inputStream()
+      }
+      val bytes = inputStream?.use { it.readBytes() } ?: return uriStr
+      val b64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+      "data:image/jpeg;base64,$b64"
+    } catch (e: Exception) {
+      uriStr
+    }
+  }
+
+
   /**
    * Print Lab Report on Canon A4 / System Printer via WebView HTML engine.
    *
@@ -64,7 +83,7 @@ object LabPrintHelper {
   ) {
     Handler(Looper.getMainLooper()).post {
       try {
-        val html = generateLabReportHtml(order, item, clinicSettings, isBlankLetterhead)
+        val html = generateLabReportHtml(context, order, item, clinicSettings, isBlankLetterhead)
         val webView = WebView(context)
         webView.webViewClient = object : WebViewClient() {
           override fun onPageFinished(view: WebView?, url: String?) {
@@ -98,6 +117,7 @@ object LabPrintHelper {
    * Generates responsive, high-contrast HTML formatted specifically for ISO A4 Canon & Inkjet Printers.
    */
   private fun generateLabReportHtml(
+    context: Context,
     order: LabOrder,
     item: LabOrderItem?,
     clinic: ClinicSettings,
@@ -286,14 +306,25 @@ object LabPrintHelper {
             font-size: 13px;
             line-height: 1.6;
           }
+          html, body {
+            height: 100%;
+            position: relative;
+            box-sizing: border-box;
+          }
+          .main-content {
+            padding-bottom: 120px;
+          }
           .footer-section {
-            margin-top: 25px;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
             width: 100%;
             page-break-inside: avoid;
           }
           .sign-table {
             width: 100%;
-            margin-top: 40px;
+            margin-top: 15px;
           }
           .sign-cell {
             width: 50%;
@@ -327,6 +358,7 @@ object LabPrintHelper {
         </style>
       </head>
       <body>
+        <div class="main-content">
         <!-- Header (Identical to Consultation A4 Letterhead) -->
         <table class="header-table">
           <tr>
@@ -335,10 +367,8 @@ object LabPrintHelper {
               <div class="clinic-name-en">${clinic.clinicNameEn.ifBlank { "Shwe Khit General Clinic & Diagnostic Lab" }}</div>
               <div class="clinic-contact">${clinic.clinicAddress.ifBlank { "အမှတ်(၁၂)၊ လမ်းမတော်လမ်း၊ မန္တလေးမြို့" }} • Ph: ${clinic.clinicPhone.ifBlank { "09-421001122, 09-790112233" }}</div>
             </td>
-            <td style="width: 28%; text-align: right; vertical-align: top;">
-              ${if (clinic.clinicLogoBase64.isNotBlank()) "<img src='data:image/png;base64,${clinic.clinicLogoBase64}' class='clinic-logo'/>" else ""}
-              <div style="font-size: 10px; font-weight: bold; color: #1b5e20; margin-top: 2px;">DIAGNOSTIC LABORATORY</div>
-              <div style="font-size: 9px; color: #64748b;">Reg No: ${clinic.clinicRegNo.ifBlank { "MOHS-MDY-2024" }}</div>
+            <td style="width: 25%; text-align: right; vertical-align: middle;">
+              ${if (clinic.clinicLogoBase64.isNotBlank()) "<img src='data:image/png;base64,${clinic.clinicLogoBase64}' class='clinic-logo' style='max-height: 48px; max-width: 60px; object-fit: contain;'/>" else ""}
             </td>
           </tr>
         </table>
@@ -366,8 +396,10 @@ object LabPrintHelper {
     """.trimIndent())
 
     if (isBlankLetterhead) {
-      // Mode A: Blank Letterhead for Analyzer feed / attachment (100% clean white blank area below header)
-      // Nothing appended - leaving the remaining 75% of the page completely blank and pristine.
+      // Mode A: Pre-printed Sheet for Analyzer feed (Blank middle area with Pinned Bottom Doctor Seal)
+      sb.append("""
+        <div style="min-height: 480px; width: 100%;"></div>
+      """.trimIndent())
     } else {
       // Mode B: Dynamic Parameters Unified Table
       sb.append("""
@@ -451,15 +483,11 @@ object LabPrintHelper {
         }
 
         if (testItem.slipImageUri.isNotBlank()) {
-          val imgSrc = if (testItem.slipImageUri.startsWith("http") || testItem.slipImageUri.startsWith("file://") || testItem.slipImageUri.startsWith("data:")) {
-            testItem.slipImageUri
-          } else {
-            "file://${testItem.slipImageUri}"
-          }
+          val imgSrc = convertImageToBase64DataUri(context, testItem.slipImageUri)
           sb.append("""
-            <div class="slip-attachment">
-              <div style="font-weight: bold; font-size: 11.5px; color: #555; margin-bottom: 6px;">Attached Analyzer Result Slip (${testItem.templateName}):</div>
-              <img src="$imgSrc" class="slip-image" />
+            <div class="slip-attachment" style="text-align: center; margin: 15px 0;">
+              <div style="font-weight: bold; font-size: 11px; color: #475569; margin-bottom: 6px;">Attached Analyzer Slip (${testItem.templateName}):</div>
+              <img src="$imgSrc" style="max-width: 95%; max-height: 460px; object-fit: contain; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);" />
             </div>
           """.trimIndent())
         }
@@ -474,52 +502,49 @@ object LabPrintHelper {
       }
     }
 
-    // Signatures footer & bottom clinical notes (only when printing full clinical report)
-    if (!isBlankLetterhead) {
-      val hasTechnician = order.technicianName.isNotBlank()
-      val effectivePathologistName = order.pathologistName.ifBlank {
-        clinic.defaultPathologistName.ifBlank { clinic.doctorName }
-      }
-      val effectivePathologistDegree = order.pathologistDegree.ifBlank {
-        clinic.defaultPathologistDegree.ifBlank { clinic.doctorDegree }
-      }
-      val effectivePathologistSama = order.pathologistSama.ifBlank {
-        clinic.defaultPathologistSama.ifBlank { clinic.doctorSama }
-      }
-      val effectivePathologistTitle = order.pathologistTitle.ifBlank {
-        clinic.defaultPathologistTitle
-      }
+    sb.append("</div>") // Close .main-content
 
-      sb.append("""
-        <div class="footer-section">
-          <table class="sign-table">
-            <tr>
-              ${if (hasTechnician) """
-              <td class="sign-cell">
-                <div class="sign-line"></div>
-                <strong>${order.technicianName}</strong><br/>
-                <span style="color: #64748b; font-size: 10px;">Medical Laboratory Technologist</span>
-              </td>
-              """ else """
-              <td class="sign-cell" style="width: 50%;"></td>
-              """}
-              <td class="sign-cell" style="${if (!hasTechnician) "width: 50%; float: right;" else ""}">
-                <div class="sign-line"></div>
-                <strong style="color: #0f172a;">$effectivePathologistName</strong><br/>
-                <span style="font-size: 10.5px; color: #334155;">$effectivePathologistDegree</span><br/>
-                <span style="color: #475569; font-size: 10px;">(S.A.M.A: $effectivePathologistSama)</span><br/>
-                ${if (effectivePathologistTitle.isNotBlank()) "<span style='color: #0f172a; font-size: 10px; font-weight: 500;'>$effectivePathologistTitle</span>" else ""}
-              </td>
-            </tr>
-          </table>
-          <div style="text-align: center; margin-top: 18px; font-size: 9.5px; color: #94a3b8;">
-            This investigation is processed by the Laboratory Services at ${clinic.clinicNameMm}.
-          </div>
-        </div>
-      """.trimIndent())
+    // Signatures footer pinned at bottom
+    val hasTechnician = order.technicianName.isNotBlank()
+    val effectivePathologistName = order.pathologistName.ifBlank {
+      clinic.defaultPathologistName.ifBlank { clinic.doctorName }
     }
+    val effectivePathologistDegree = order.pathologistDegree.ifBlank {
+      clinic.defaultPathologistDegree.ifBlank { clinic.doctorDegree }
+    }
+    val effectivePathologistSama = order.pathologistSama.ifBlank {
+      clinic.defaultPathologistSama.ifBlank { clinic.doctorSama }
+    }
+    val effectivePathologistTitle = order.pathologistTitle.ifBlank {
+      clinic.defaultPathologistTitle
+    }.trim()
 
     sb.append("""
+      <div class="footer-section">
+        <table class="sign-table">
+          <tr>
+            ${if (hasTechnician) """
+            <td class="sign-cell">
+              <div class="sign-line"></div>
+              <strong>${order.technicianName}</strong><br/>
+              <span style="color: #64748b; font-size: 10px;">Medical Laboratory Technologist</span>
+            </td>
+            """ else """
+            <td class="sign-cell" style="width: 50%;"></td>
+            """}
+            <td class="sign-cell" style="${if (!hasTechnician) "width: 50%; float: right;" else ""}">
+              <div class="sign-line"></div>
+              <strong style="color: #0f172a;">$effectivePathologistName</strong><br/>
+              <span style="font-size: 10.5px; color: #334155;">$effectivePathologistDegree</span><br/>
+              <span style="color: #475569; font-size: 10px;">(S.A.M.A: $effectivePathologistSama)</span><br/>
+              ${if (effectivePathologistTitle.isNotBlank()) "<span style='color: #0f172a; font-size: 10px; font-weight: 500;'>$effectivePathologistTitle</span>" else ""}
+            </td>
+          </tr>
+        </table>
+        <div style="text-align: center; margin-top: 14px; font-size: 9.5px; color: #94a3b8;">
+          This investigation is processed by the Laboratory Services at ${clinic.clinicNameMm}.
+        </div>
+      </div>
       </body>
       </html>
     """.trimIndent())
