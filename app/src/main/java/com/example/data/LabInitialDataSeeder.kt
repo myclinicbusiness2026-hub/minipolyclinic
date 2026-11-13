@@ -18,14 +18,14 @@ object LabInitialDataSeeder {
       isAnalyzerSlipOnly = true, // Designed for blank letterhead feed or analyzer slip
       parameters = listOf(
         LabTestParameter("Hemoglobin (Hb)", "", "g/dL", "13.0 - 17.5 (M), 12.0 - 15.5 (F)"),
-        LabTestParameter("Total WBC Count", "", "/uL", "4,000 - 11,000"),
+        LabTestParameter("Total WBC Count", "", "10^9/L", "4.0 - 11.0"),
         LabTestParameter("Neutrophils", "", "%", "40 - 75"),
         LabTestParameter("Lymphocytes", "", "%", "20 - 45"),
         LabTestParameter("Monocytes", "", "%", "2 - 10"),
         LabTestParameter("Eosinophils", "", "%", "1 - 6"),
         LabTestParameter("Basophils", "", "%", "0 - 1"),
-        LabTestParameter("Platelet Count", "", "/uL", "150,000 - 450,000"),
-        LabTestParameter("RBC Count", "", "x10^6/uL", "4.5 - 5.9 (M), 4.1 - 5.1 (F)"),
+        LabTestParameter("Platelet Count (PLT)", "", "10^9/L", "150 - 450"),
+        LabTestParameter("RBC Count", "", "10^12/L", "4.5 - 5.5 (M), 4.0 - 5.0 (F)"),
         LabTestParameter("Hematocrit (HCT/PCV)", "", "%", "40 - 52 (M), 36 - 48 (F)"),
         LabTestParameter("MCV", "", "fL", "80 - 100"),
         LabTestParameter("MCH", "", "pg", "27 - 33"),

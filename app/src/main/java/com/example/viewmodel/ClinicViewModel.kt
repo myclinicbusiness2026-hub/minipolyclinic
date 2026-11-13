@@ -326,6 +326,10 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           // Upgrade template parameters with section groupings if missing
           merged[existingIdx] = seed
           modified = true
+        } else if (seed.id == "TMPL-CBC" && merged[existingIdx].parameters.any { it.referenceRange.contains("4,000") || it.unit == "/uL" }) {
+          // Upgrade CBC with modern SI units (10^9/L)
+          merged[existingIdx] = seed
+          modified = true
         }
       }
       if (modified) {
@@ -4451,7 +4455,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     pathologistName: String = "",
     pathologistDegree: String = "",
     pathologistSama: String = "",
-    pathologistTitle: String = ""
+    pathologistTitle: String = "",
+    showDoctorSeal: Boolean = true,
+    showTechnicianSign: Boolean = false
   ) {
     val ctx = getApplication<Application>()
     val isAllCompleted = updatedItems.all { it.isCompleted }
@@ -4466,6 +4472,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           pathologistDegree = pathologistDegree.ifBlank { ord.pathologistDegree },
           pathologistSama = pathologistSama.ifBlank { ord.pathologistSama },
           pathologistTitle = pathologistTitle.ifBlank { ord.pathologistTitle },
+          showDoctorSeal = showDoctorSeal,
+          showTechnicianSign = showTechnicianSign,
           status = if (isAllCompleted) LabOrderStatus.COMPLETED else ord.status,
           completedAt = completedAtStr ?: ord.completedAt
         )

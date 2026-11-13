@@ -115,6 +115,7 @@ object LabPrintHelper {
 
   /**
    * Generates responsive, high-contrast HTML formatted specifically for ISO A4 Canon & Inkjet Printers.
+   * Supports multi-page independent reports with per-page letterheads and pinned doctor seals.
    */
   private fun generateLabReportHtml(
     context: Context,
@@ -124,8 +125,28 @@ object LabPrintHelper {
     isBlankLetterhead: Boolean
   ): String {
     val itemsToPrint = if (item != null) listOf(item) else order.items
-    val title = if (isBlankLetterhead) "LABORATORY INVESTIGATION LETTERHEAD" else "LABORATORY INVESTIGATION REPORT"
-    val testNames = itemsToPrint.joinToString(", ") { it.templateName }
+    val docTitle = if (isBlankLetterhead) "Clinic Pre-printed Letterhead" else "Laboratory Investigation Report"
+
+    val pages: List<List<LabOrderItem>> = if (isBlankLetterhead) {
+      listOf(emptyList())
+    } else if (item != null) {
+      listOf(listOf(item))
+    } else {
+      partitionItemsIntoPages(itemsToPrint)
+    }
+
+    val effectivePathologistName = order.pathologistName.ifBlank {
+      clinic.defaultPathologistName.ifBlank { clinic.doctorName }
+    }
+    val effectivePathologistDegree = order.pathologistDegree.ifBlank {
+      clinic.defaultPathologistDegree.ifBlank { clinic.doctorDegree }
+    }
+    val effectivePathologistSama = order.pathologistSama.ifBlank {
+      clinic.defaultPathologistSama.ifBlank { clinic.doctorSama }
+    }
+    val effectivePathologistTitle = order.pathologistTitle.ifBlank {
+      clinic.defaultPathologistTitle
+    }.trim()
 
     val sb = StringBuilder()
     sb.append("""
@@ -133,51 +154,68 @@ object LabPrintHelper {
       <html>
       <head>
         <meta charset="utf-8">
-        <title>$title</title>
+        <title>$docTitle</title>
         <style>
           @page {
             size: A4 portrait;
-            margin: 12mm 15mm 15mm 15mm;
+            margin: 10mm 14mm 10mm 14mm;
           }
           * {
             box-sizing: border-box;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pyidaungsu", Helvetica, Arial, sans-serif;
-            color: #1a1a1a;
+          html, body {
             margin: 0;
             padding: 0;
-            font-size: 13px;
-            line-height: 1.4;
             background-color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pyidaungsu", Helvetica, Arial, sans-serif;
+            color: #1a1a1a;
+            font-size: 12.5px;
+            line-height: 1.4;
+          }
+          .page-sheet {
+            page-break-after: always;
+            break-after: page;
+            min-height: 275mm;
+            max-height: 275mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
+            box-sizing: border-box;
+            background: #ffffff;
+          }
+          .page-sheet:last-child {
+            page-break-after: avoid;
+            break-after: avoid;
           }
           .header-table {
             width: 100%;
             border-bottom: 2.5px solid #0056b3;
-            padding-bottom: 10px;
-            margin-bottom: 12px;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+            flex-shrink: 0;
           }
           .clinic-logo {
-            max-height: 65px;
-            max-width: 120px;
+            max-height: 52px;
+            max-width: 110px;
             object-fit: contain;
           }
           .clinic-name-mm {
-            font-size: 18px;
+            font-size: 17px;
             font-weight: bold;
             color: #1b5e20;
             margin: 0 0 2px 0;
           }
           .clinic-name-en {
-            font-size: 13.5px;
+            font-size: 13px;
             font-weight: bold;
             color: #2e7d32;
-            margin: 0 0 3px 0;
+            margin: 0 0 2px 0;
           }
           .clinic-contact {
-            font-size: 10.5px;
+            font-size: 10px;
             color: #4b5563;
             margin: 1px 0;
           }
@@ -187,20 +225,22 @@ object LabPrintHelper {
             border-top: 1.5px solid #cbd5e1;
             border-bottom: 1.5px solid #cbd5e1;
             color: #1b5e20;
-            padding: 5px;
+            padding: 4px;
             font-weight: bold;
-            font-size: 13px;
+            font-size: 12.5px;
             letter-spacing: 0.8px;
             border-radius: 2px;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+            flex-shrink: 0;
           }
           .patient-box {
             width: 100%;
             border: 1px solid #dcdcdc;
             border-radius: 4px;
-            padding: 8px 12px;
-            margin-bottom: 15px;
+            padding: 6px 10px;
+            margin-bottom: 10px;
             background-color: #fafbfc;
+            flex-shrink: 0;
           }
           .patient-grid {
             display: table;
@@ -211,155 +251,91 @@ object LabPrintHelper {
           }
           .patient-cell {
             display: table-cell;
-            padding: 3px 6px;
-            font-size: 12px;
+            padding: 2px 6px;
+            font-size: 11.5px;
           }
           .patient-cell strong {
             color: #222;
           }
+          .page-body {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+          }
           .param-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
-            margin-bottom: 15px;
+            margin-top: 6px;
+            margin-bottom: 10px;
           }
           .param-table th {
             background-color: #f1f5f9;
             color: #1e293b;
             font-weight: bold;
             text-align: left;
-            padding: 6px 10px;
+            padding: 5px 8px;
             font-size: 11px;
             border-top: 1.5px solid #94a3b8;
             border-bottom: 1.5px solid #94a3b8;
-            border-left: none;
-            border-right: none;
           }
           .param-table td {
-            padding: 6px 10px;
-            border-bottom: 1px solid #e1e4e8;
-            font-size: 12px;
+            padding: 5px 8px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 11.5px;
           }
           .param-table tr:nth-child(even) {
-            background-color: #f8f9fa;
-          }
-          .badge-high {
-            background-color: #ffeef0;
-            color: #d73a49;
-            font-weight: bold;
-            padding: 2px 6px;
-            border-radius: 3px;
-            border: 1px solid #f97583;
-            font-size: 10px;
-          }
-          .badge-low {
-            background-color: #fffbdd;
-            color: #b08800;
-            font-weight: bold;
-            padding: 2px 6px;
-            border-radius: 3px;
-            border: 1px solid #ffea7f;
-            font-size: 10px;
-          }
-          .badge-normal {
-            background-color: #dcffe4;
-            color: #22863a;
-            font-weight: 600;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 10px;
+            background-color: #f8fafc;
           }
           .panel-section-row td {
             background-color: #f1f5f9;
             color: #0b3954;
             font-weight: bold;
             font-size: 11.5px;
-            padding: 6px 10px;
+            padding: 5px 8px;
             border-top: 1.5px solid #cbd5e1;
             border-bottom: 1px solid #cbd5e1;
             letter-spacing: 0.3px;
           }
-          .test-heading {
-            background: #eef4f8;
-            padding: 6px 10px;
-            font-weight: bold;
-            font-size: 13px;
-            color: #0b3954;
-            border-left: 4px solid #0056b3;
-            margin-top: 15px;
-            margin-bottom: 4px;
-          }
-          .blank-area {
-            min-height: 480px;
-            border: 1.5px dashed #cccccc;
-            border-radius: 8px;
-            margin: 20px 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            color: #888888;
-            background-color: #ffffff;
-            padding: 40px 20px;
-          }
-          .blank-notice {
-            font-size: 13px;
-            line-height: 1.6;
-          }
-          html, body {
-            height: 100%;
-            position: relative;
-            box-sizing: border-box;
-          }
-          .main-content {
-            padding-bottom: 120px;
-          }
-          .footer-section {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            width: 100%;
-            page-break-inside: avoid;
+          .page-footer {
+            flex-shrink: 0;
+            margin-top: auto;
+            padding-top: 8px;
+            border-top: 1px solid #e2e8f0;
           }
           .sign-table {
             width: 100%;
-            margin-top: 15px;
+            margin-top: 6px;
           }
           .sign-cell {
             width: 50%;
             text-align: center;
             vertical-align: bottom;
-            font-size: 11.5px;
+            font-size: 11px;
           }
           .sign-line {
-            width: 75%;
-            margin: 0 auto 5px auto;
-            border-bottom: 1px solid #444;
+            width: 70%;
+            margin: 0 auto 4px auto;
+            border-bottom: 1px solid #334155;
           }
           .remark-box {
-            border: 1px solid #e1e4e8;
+            border: 1px solid #e2e8f0;
             background: #fafbfc;
             border-radius: 4px;
-            padding: 8px 12px;
-            margin-top: 10px;
-            font-size: 11.5px;
-          }
-          .slip-attachment {
-            margin-top: 15px;
-            text-align: center;
-          }
-          .slip-image {
-            max-width: 95%;
-            max-height: 450px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            padding: 6px 10px;
+            margin-top: 8px;
+            font-size: 11px;
           }
         </style>
       </head>
       <body>
-        <div class="main-content">
-        <!-- Header (Identical to Consultation A4 Letterhead) -->
+    """.trimIndent())
+
+    for (pageItems in pages) {
+      sb.append("<div class=\"page-sheet\">")
+
+      // 1. Clinic Letterhead
+      sb.append("""
         <table class="header-table">
           <tr>
             <td style="width: 72%; vertical-align: top;">
@@ -372,11 +348,15 @@ object LabPrintHelper {
             </td>
           </tr>
         </table>
+      """.trimIndent())
 
-        <!-- Report Banner -->
-        <div class="report-banner">$title</div>
+      // 2. Banner: Only on actual result reports (Omit on blank letterhead to avoid cluttering analyzer print)
+      if (!isBlankLetterhead) {
+        sb.append("<div class=\"report-banner\">LABORATORY INVESTIGATION REPORT</div>")
+      }
 
-        <!-- Patient Demographics (Clean layout without bulky Inx request row) -->
+      // 3. Patient Demographics Box
+      sb.append("""
         <div class="patient-box">
           <div class="patient-grid">
             <div class="patient-row">
@@ -393,175 +373,203 @@ object LabPrintHelper {
             </div>
           </div>
         </div>
-    """.trimIndent())
-
-    if (isBlankLetterhead) {
-      // Mode A: Pre-printed Sheet for Analyzer feed (Blank middle area with Pinned Bottom Doctor Seal)
-      sb.append("""
-        <div style="min-height: 480px; width: 100%;"></div>
-      """.trimIndent())
-    } else {
-      // Mode B: Dynamic Parameters Unified Table
-      sb.append("""
-        <table class="param-table">
-          <thead>
-            <tr>
-              <th style="width: 44%;">Investigation / Test Parameter</th>
-              <th style="width: 22%;">Result</th>
-              <th style="width: 14%;">Unit</th>
-              <th style="width: 20%;">Reference Interval</th>
-            </tr>
-          </thead>
-          <tbody>
       """.trimIndent())
 
-      for (testItem in itemsToPrint) {
-        if (testItem.isAnalyzerSlipOnly && testItem.parameters.isEmpty()) {
+      // 4. Page Body
+      sb.append("<div class=\"page-body\">")
+
+      if (isBlankLetterhead) {
+        // Mode A: Clean pre-printed sheet for feeding into CBC Analyzer
+        sb.append("<div style=\"flex: 1 1 auto; min-height: 175mm;\"></div>")
+      } else {
+        val hasSingleSlipItem = pageItems.size == 1 &&
+          (pageItems[0].isAnalyzerSlipOnly || pageItems[0].preferSlipPrint || !pageItems[0].attachedImageUri.isNullOrBlank())
+
+        if (hasSingleSlipItem && pageItems[0].slipImageUri.isNotBlank()) {
+          // Mode B-1: Machine Slip / Scan Photo Centered in Plain Sheet
+          val targetItem = pageItems[0]
+          val imgSrc = convertImageToBase64DataUri(context, targetItem.slipImageUri)
           sb.append("""
-            <tr class="panel-section-row">
-              <td colspan="4"><strong>${testItem.templateName}</strong> — <em>Automated Analyzer Direct Print Slip Recorded</em></td>
-            </tr>
-          """.trimIndent())
-        } else if (testItem.parameters.size > 1) {
-          // Multi-parameter panel: Show clean subtle section header row
-          sb.append("""
-            <tr class="panel-section-row">
-              <td colspan="4"><strong>${testItem.templateName}</strong></td>
-            </tr>
+            <div style="font-weight: bold; font-size: 12px; color: #0b3954; margin: 4px 0 6px 0; border-left: 3px solid #0056b3; padding-left: 6px;">
+              🔬 ${targetItem.templateName} — Automated Analyzer Direct Slip
+            </div>
+            <div style="text-align: center; margin: 6px auto; flex: 1 1 auto; display: flex; align-items: center; justify-content: center;">
+              <img src="$imgSrc" style="max-width: 95%; max-height: 165mm; object-fit: contain; border: 1px solid #cbd5e1; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);" />
+            </div>
           """.trimIndent())
 
-          var currentSection = ""
-          for (param in testItem.parameters) {
-            if (param.section.isNotBlank() && param.section != currentSection) {
-              currentSection = param.section
+          if (targetItem.remarks.isNotBlank()) {
+            sb.append("<div class=\"remark-box\"><strong>${targetItem.templateName} Remarks:</strong> ${targetItem.remarks}</div>")
+          }
+        } else {
+          // Mode B-2: Unified High-Contrast Parameters Table
+          sb.append("""
+            <table class="param-table">
+              <thead>
+                <tr>
+                  <th style="width: 44%;">Investigation / Test Parameter</th>
+                  <th style="width: 22%;">Result</th>
+                  <th style="width: 14%;">Unit</th>
+                  <th style="width: 20%;">Reference Interval</th>
+                </tr>
+              </thead>
+              <tbody>
+          """.trimIndent())
+
+          for (testItem in pageItems) {
+            if (pageItems.size > 1 || testItem.parameters.size > 1) {
               sb.append("""
-                <tr style="background-color: #f8fafc; border-top: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1;">
-                  <td colspan="4" style="padding: 4px 10px; font-weight: bold; color: #1e3a8a; font-size: 11px;">
-                    ▶ $currentSection
-                  </td>
+                <tr class="panel-section-row">
+                  <td colspan="4"><strong>${testItem.templateName}</strong></td>
                 </tr>
               """.trimIndent())
             }
 
-            val arrowBadge = when (param.flag.uppercase()) {
-              "HIGH" -> "<span style='color: #dc2626; font-weight: bold; font-size: 11px; margin-left: 4px;'>▲</span>"
-              "LOW" -> "<span style='color: #0284c7; font-weight: bold; font-size: 11px; margin-left: 4px;'>▼</span>"
-              else -> ""
+            var currentSection = ""
+            for (param in testItem.parameters) {
+              if (param.section.isNotBlank() && param.section != currentSection) {
+                currentSection = param.section
+                sb.append("""
+                  <tr style="background-color: #f8fafc; border-top: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1;">
+                    <td colspan="4" style="padding: 4px 10px; font-weight: bold; color: #1e3a8a; font-size: 11px;">
+                      ▶ $currentSection
+                    </td>
+                  </tr>
+                """.trimIndent())
+              }
+
+              val arrowBadge = when (param.flag.uppercase()) {
+                "HIGH" -> "<span style='color: #dc2626; font-weight: bold; font-size: 11px; margin-left: 4px;'>▲</span>"
+                "LOW" -> "<span style='color: #0284c7; font-weight: bold; font-size: 11px; margin-left: 4px;'>▼</span>"
+                else -> ""
+              }
+              sb.append("""
+                <tr>
+                  <td style="padding-left: ${if (currentSection.isNotBlank()) "24px" else "14px"};">${param.name}</td>
+                  <td><strong style="color: #0f172a;">${param.result.ifBlank { "-" }}</strong>$arrowBadge</td>
+                  <td>${param.unit.ifBlank { "-" }}</td>
+                  <td>${param.referenceRange.ifBlank { "-" }}</td>
+                </tr>
+              """.trimIndent())
             }
+          }
+
+          sb.append("</tbody></table>")
+
+          // Remarks for items on this page
+          for (testItem in pageItems) {
+            if (testItem.remarks.isNotBlank()) {
+              sb.append("""
+                <div class="remark-box">
+                  <strong>${testItem.templateName} Remarks:</strong> ${testItem.remarks}
+                </div>
+              """.trimIndent())
+            }
+          }
+
+          if (order.notes.isNotBlank() && pageItems == pages.lastOrNull()) {
             sb.append("""
-              <tr>
-                <td style="padding-left: ${if (currentSection.isNotBlank()) "24px" else "18px"};">${param.name}</td>
-                <td><strong style="color: #0f172a;">${param.result.ifBlank { "-" }}</strong>$arrowBadge</td>
-                <td>${param.unit.ifBlank { "-" }}</td>
-                <td>${param.referenceRange.ifBlank { "-" }}</td>
-              </tr>
+              <div class="remark-box" style="margin-top: 8px;">
+                <strong>General Clinical Notes:</strong> ${order.notes}
+              </div>
             """.trimIndent())
           }
-        } else {
-          // Single parameter test: Render directly without redundant section header
-          val singleParam = testItem.parameters.firstOrNull()
-          val paramName = singleParam?.name ?: ""
-          val displayName = if (paramName.isBlank() || paramName.equals("Result", ignoreCase = true) || paramName.equals(testItem.templateName, ignoreCase = true)) {
-            testItem.templateName
-          } else {
-            "${testItem.templateName} ($paramName)"
-          }
-          val arrowBadge = when ((singleParam?.flag ?: "").uppercase()) {
-            "HIGH" -> "<span style='color: #dc2626; font-weight: bold; font-size: 11px; margin-left: 4px;'>▲</span>"
-            "LOW" -> "<span style='color: #0284c7; font-weight: bold; font-size: 11px; margin-left: 4px;'>▼</span>"
-            else -> ""
-          }
-          sb.append("""
+        }
+      }
+
+      sb.append("</div>") // Close .page-body
+
+      // 5. Pinned Page Footer (Signatures & Doctor Seal)
+      sb.append("""
+        <div class="page-footer">
+          <table class="sign-table">
             <tr>
-              <td><strong>$displayName</strong></td>
-              <td><strong style="color: #0f172a;">${singleParam?.result?.ifBlank { "-" } ?: "-"}</strong>$arrowBadge</td>
-              <td>${singleParam?.unit?.ifBlank { "-" } ?: "-"}</td>
-              <td>${singleParam?.referenceRange?.ifBlank { "-" } ?: "-"}</td>
+              ${if (order.showTechnicianSign && order.technicianName.isNotBlank()) """
+              <td class="sign-cell">
+                <div class="sign-line"></div>
+                <strong>${order.technicianName}</strong><br/>
+                <span style="color: #64748b; font-size: 9.5px;">Medical Laboratory Technologist</span>
+              </td>
+              """ else """
+              <td class="sign-cell" style="width: 50%;"></td>
+              """}
+              ${if (order.showDoctorSeal) """
+              <td class="sign-cell" style="${if (!order.showTechnicianSign) "width: 50%; float: right;" else ""}">
+                <div class="sign-line"></div>
+                <strong style="color: #0f172a;">$effectivePathologistName</strong><br/>
+                <span style="font-size: 10px; color: #334155;">$effectivePathologistDegree</span><br/>
+                <span style="color: #475569; font-size: 9.5px;">(S.A.M.A: $effectivePathologistSama)</span><br/>
+                ${if (effectivePathologistTitle.isNotBlank()) "<span style='color: #0f172a; font-size: 9.5px; font-weight: 500;'>$effectivePathologistTitle</span>" else ""}
+              </td>
+              """ else """
+              <td class="sign-cell" style="${if (!order.showTechnicianSign) "width: 50%; float: right;" else ""}">
+                <div class="sign-line" style="border-bottom: 1px dashed #94a3b8;"></div>
+                <span style="color: #94a3b8; font-size: 9.5px;">(Attending Doctor Signature & Seal)</span>
+              </td>
+              """}
             </tr>
-          """.trimIndent())
-        }
-      }
-
-      sb.append("</tbody></table>")
-
-      // Technician remarks & Analyzer Slips
-      for (testItem in itemsToPrint) {
-        if (testItem.remarks.isNotBlank()) {
-          sb.append("""
-            <div class="remark-box">
-              <strong>${testItem.templateName} Remarks:</strong> ${testItem.remarks}
-            </div>
-          """.trimIndent())
-        }
-
-        if (testItem.slipImageUri.isNotBlank()) {
-          val imgSrc = convertImageToBase64DataUri(context, testItem.slipImageUri)
-          sb.append("""
-            <div class="slip-attachment" style="text-align: center; margin: 15px 0;">
-              <div style="font-weight: bold; font-size: 11px; color: #475569; margin-bottom: 6px;">Attached Analyzer Slip (${testItem.templateName}):</div>
-              <img src="$imgSrc" style="max-width: 95%; max-height: 460px; object-fit: contain; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);" />
-            </div>
-          """.trimIndent())
-        }
-      }
-
-      if (order.notes.isNotBlank()) {
-        sb.append("""
-          <div class="remark-box" style="margin-top: 15px;">
-            <strong>General Clinical Notes:</strong> ${order.notes}
+          </table>
+          <div style="text-align: center; margin-top: 8px; font-size: 9px; color: #94a3b8;">
+            This investigation is processed by the Laboratory Services at ${clinic.clinicNameMm}.
           </div>
-        """.trimIndent())
-      }
-    }
+        </div>
+      """.trimIndent())
 
-    sb.append("</div>") // Close .main-content
-
-    // Signatures footer pinned at bottom
-    val hasTechnician = order.technicianName.isNotBlank()
-    val effectivePathologistName = order.pathologistName.ifBlank {
-      clinic.defaultPathologistName.ifBlank { clinic.doctorName }
+      sb.append("</div>") // Close .page-sheet
     }
-    val effectivePathologistDegree = order.pathologistDegree.ifBlank {
-      clinic.defaultPathologistDegree.ifBlank { clinic.doctorDegree }
-    }
-    val effectivePathologistSama = order.pathologistSama.ifBlank {
-      clinic.defaultPathologistSama.ifBlank { clinic.doctorSama }
-    }
-    val effectivePathologistTitle = order.pathologistTitle.ifBlank {
-      clinic.defaultPathologistTitle
-    }.trim()
 
     sb.append("""
-      <div class="footer-section">
-        <table class="sign-table">
-          <tr>
-            ${if (hasTechnician) """
-            <td class="sign-cell">
-              <div class="sign-line"></div>
-              <strong>${order.technicianName}</strong><br/>
-              <span style="color: #64748b; font-size: 10px;">Medical Laboratory Technologist</span>
-            </td>
-            """ else """
-            <td class="sign-cell" style="width: 50%;"></td>
-            """}
-            <td class="sign-cell" style="${if (!hasTechnician) "width: 50%; float: right;" else ""}">
-              <div class="sign-line"></div>
-              <strong style="color: #0f172a;">$effectivePathologistName</strong><br/>
-              <span style="font-size: 10.5px; color: #334155;">$effectivePathologistDegree</span><br/>
-              <span style="color: #475569; font-size: 10px;">(S.A.M.A: $effectivePathologistSama)</span><br/>
-              ${if (effectivePathologistTitle.isNotBlank()) "<span style='color: #0f172a; font-size: 10px; font-weight: 500;'>$effectivePathologistTitle</span>" else ""}
-            </td>
-          </tr>
-        </table>
-        <div style="text-align: center; margin-top: 14px; font-size: 9.5px; color: #94a3b8;">
-          This investigation is processed by the Laboratory Services at ${clinic.clinicNameMm}.
-        </div>
-      </div>
       </body>
       </html>
     """.trimIndent())
 
     return sb.toString()
+  }
+
+  /**
+   * Partitions lab test items into pages.
+   * CBC, Urine RE/ME, Stool RE/ME, and items with attached analyzer slips get their own dedicated page.
+   * Smaller biochemistry panels (LFT, Lipid, RFT, etc.) are comfortably grouped together on a shared page.
+   */
+  private fun partitionItemsIntoPages(items: List<LabOrderItem>): List<List<LabOrderItem>> {
+    val pages = mutableListOf<List<LabOrderItem>>()
+    val currentGeneral = mutableListOf<LabOrderItem>()
+    var currentParamCount = 0
+
+    for (it in items) {
+      val isStandalone = it.isAnalyzerSlipOnly ||
+        it.preferSlipPrint ||
+        !it.attachedImageUri.isNullOrBlank() ||
+        it.testName.contains("CBC", ignoreCase = true) ||
+        it.testName.contains("Complete Blood", ignoreCase = true) ||
+        it.testName.contains("Urine RE", ignoreCase = true) ||
+        it.testName.contains("Stool RE", ignoreCase = true) ||
+        it.parameters.size >= 10
+
+      if (isStandalone) {
+        if (currentGeneral.isNotEmpty()) {
+          pages.add(currentGeneral.toList())
+          currentGeneral.clear()
+          currentParamCount = 0
+        }
+        pages.add(listOf(it))
+      } else {
+        val count = it.parameters.size.coerceAtLeast(1)
+        if (currentGeneral.isNotEmpty() && (currentParamCount + count) > 16) {
+          pages.add(currentGeneral.toList())
+          currentGeneral.clear()
+          currentParamCount = 0
+        }
+        currentGeneral.add(it)
+        currentParamCount += count
+      }
+    }
+
+    if (currentGeneral.isNotEmpty()) {
+      pages.add(currentGeneral.toList())
+    }
+
+    return if (pages.isEmpty() && items.isNotEmpty()) listOf(items) else pages
   }
 
   /**

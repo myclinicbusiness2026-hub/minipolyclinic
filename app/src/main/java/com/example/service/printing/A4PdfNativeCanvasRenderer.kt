@@ -859,12 +859,21 @@ object A4PdfNativeCanvasRenderer {
       "For specialist evaluation, advanced diagnostic workup, and further inpatient management."
     } ?: "For specialist evaluation and further inpatient management."
 
+    val reasonPaint = Paint(paint).apply {
+      textSize = 8.5f
+      typeface = Typeface.DEFAULT
+    }
+    val reasonLines = reason.lines().flatMap { line ->
+      if (line.isBlank()) listOf("") else wrapTextIntoLines(line, width - 56f, reasonPaint)
+    }
+    val reasonBoxH = 16f + (reasonLines.size * 12f)
+
     paint.color = Color.rgb(0xFA, 0xFA, 0xFA)
-    canvas.drawRoundRect(20f, currentY, width - 20f, currentY + 34f, 3f, 3f, paint)
+    canvas.drawRoundRect(20f, currentY, width - 20f, currentY + reasonBoxH, 3f, 3f, paint)
     paint.color = Color.rgb(0xE2, 0xE8, 0xF0)
     paint.style = Paint.Style.STROKE
     paint.strokeWidth = 0.6f
-    canvas.drawRoundRect(20f, currentY, width - 20f, currentY + 34f, 3f, 3f, paint)
+    canvas.drawRoundRect(20f, currentY, width - 20f, currentY + reasonBoxH, 3f, 3f, paint)
     paint.style = Paint.Style.FILL
 
     paint.color = Color.rgb(0x47, 0x55, 0x69)
@@ -875,21 +884,54 @@ object A4PdfNativeCanvasRenderer {
     paint.color = Color.rgb(0x1E, 0x29, 0x3B)
     paint.textSize = 8.5f
     paint.typeface = Typeface.DEFAULT
-    canvas.drawText(reason.take(85), 28f, currentY + 24f, paint)
-    currentY += 40f
+    var rY = currentY + 23f
+    reasonLines.forEach { rLine ->
+      canvas.drawText(rLine, 28f, rY, paint)
+      rY += 12f
+    }
+    currentY += reasonBoxH + 6f
 
-    // 7. Clinical Summary & Findings
+    // 7. Clinical Summary & Examination Findings (Full History & Examination without truncation)
     val summaryLines = mutableListOf<String>()
     val customClinicalSummary = ref?.clinicalSummary?.trim() ?: ""
-    if (customClinicalSummary.isNotBlank()) {
-      summaryLines.addAll(customClinicalSummary.lines().filter { it.isNotBlank() }.map { it.take(90) })
-    } else {
-      if (consultation.subjective.isNotBlank()) summaryLines.add("History: ${consultation.subjective.replace("\n", " ").take(90)}")
-      if (consultation.objective.isNotBlank()) summaryLines.add("Findings: ${consultation.objective.replace("\n", " ").take(90)}")
+    val summaryPaint = Paint(paint).apply {
+      textSize = 8f
+      typeface = Typeface.DEFAULT
     }
+
+    val rawSummaryText = if (customClinicalSummary.isNotBlank()) {
+      customClinicalSummary
+    } else {
+      buildString {
+        if (consultation.subjective.isNotBlank()) {
+          append("History & Presentation:\n")
+          append(consultation.subjective)
+          append("\n\n")
+        }
+        if (consultation.objective.isNotBlank()) {
+          append("Physical Examination Findings:\n")
+          append(consultation.objective)
+          append("\n\n")
+        }
+        if (consultation.assessment.isNotBlank()) {
+          append("Clinical Assessment: ${consultation.assessment}")
+        }
+      }.trim()
+    }
+
+    if (rawSummaryText.isNotBlank()) {
+      rawSummaryText.lines().forEach { line ->
+        if (line.isBlank()) {
+          summaryLines.add("")
+        } else {
+          summaryLines.addAll(wrapTextIntoLines(line, width - 56f, summaryPaint))
+        }
+      }
+    }
+
     if (summaryLines.isNotEmpty()) {
+      val boxH = 16f + (summaryLines.size * 11.5f)
       paint.color = Color.rgb(0xFA, 0xFA, 0xFA)
-      val boxH = 14f + (summaryLines.size * 13f)
       canvas.drawRoundRect(20f, currentY, width - 20f, currentY + boxH, 3f, 3f, paint)
       paint.color = Color.rgb(0xE2, 0xE8, 0xF0)
       paint.style = Paint.Style.STROKE
@@ -905,10 +947,12 @@ object A4PdfNativeCanvasRenderer {
       paint.color = Color.rgb(0x21, 0x21, 0x21)
       paint.textSize = 8f
       paint.typeface = Typeface.DEFAULT
-      var sY = currentY + 23f
+      var sY = currentY + 22f
       summaryLines.forEach { line ->
-        canvas.drawText(line, 28f, sY, paint)
-        sY += 13f
+        if (line.isNotBlank()) {
+          canvas.drawText(line, 28f, sY, paint)
+        }
+        sY += 11.5f
       }
       currentY += boxH + 6f
     }
@@ -916,7 +960,14 @@ object A4PdfNativeCanvasRenderer {
     // 8. Medications Given / Current Regimen (Respect edited medications from referral modal)
     val editedMedText = ref?.currentMedicationsGiven?.trim() ?: ""
     if (editedMedText.isNotBlank()) {
-      val medLines = editedMedText.lines().filter { it.isNotBlank() }
+      val medPaint = Paint(paint).apply {
+        textSize = 8.5f
+        typeface = Typeface.DEFAULT
+      }
+      val medLines = editedMedText.lines().flatMap { line ->
+        val cleanLine = if (line.startsWith("•") || line.startsWith("-")) line else "• $line"
+        if (cleanLine.isBlank()) listOf("") else wrapTextIntoLines(cleanLine, width - 56f, medPaint)
+      }
       paint.color = Color.rgb(0x2E, 0x7D, 0x32)
       paint.textSize = 8.5f
       paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
@@ -924,7 +975,7 @@ object A4PdfNativeCanvasRenderer {
       currentY += 14f
 
       paint.color = Color.rgb(0xF8, 0xFA, 0xFC)
-      val boxH = 12f + (medLines.size * 13f)
+      val boxH = 12f + (medLines.size * 12.5f)
       canvas.drawRoundRect(20f, currentY, width - 20f, currentY + boxH, 3f, 3f, paint)
       paint.color = Color.rgb(0xCB, 0xD5, 0xE1)
       paint.style = Paint.Style.STROKE
@@ -937,9 +988,10 @@ object A4PdfNativeCanvasRenderer {
       paint.typeface = Typeface.DEFAULT
       var mY = currentY + 12f
       medLines.forEach { line ->
-        val cleanLine = if (line.startsWith("•") || line.startsWith("-")) line else "• $line"
-        canvas.drawText(cleanLine.take(85), 28f, mY, paint)
-        mY += 13f
+        if (line.isNotBlank()) {
+          canvas.drawText(line, 28f, mY, paint)
+        }
+        mY += 12.5f
       }
       currentY += boxH + 8f
     } else if (consultation.prescriptions.isNotEmpty()) {

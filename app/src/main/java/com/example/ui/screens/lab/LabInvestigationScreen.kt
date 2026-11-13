@@ -520,8 +520,8 @@ fun LabInvestigationScreen(
       defaultPathologistSama = clinicSettings.defaultPathologistSama,
       defaultPathologistTitle = clinicSettings.defaultPathologistTitle,
       onDismiss = { orderToEnterResults = null },
-      onSave = { updatedItems, tech, notes, pName, pDegree, pSama, pTitle ->
-        viewModel.saveLabOrderResults(order.id, updatedItems, tech, notes, pName, pDegree, pSama, pTitle)
+      onSave = { updatedItems, tech, notes, pName, pDegree, pSama, pTitle, showDocSeal, showTechSign ->
+        viewModel.saveLabOrderResults(order.id, updatedItems, tech, notes, pName, pDegree, pSama, pTitle, showDocSeal, showTechSign)
         orderToEnterResults = null
         Toast.makeText(context, "ဓာတ်ခွဲအဖြေများ မှတ်တမ်းတင်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
       }
@@ -1052,12 +1052,37 @@ fun MobileLabCompletedResultCard(
               modifier = Modifier.fillMaxWidth()
             ) {
               Column(modifier = Modifier.padding(8.dp)) {
-                Text(
-                  "🔬 ${item.testName} (${item.specimenType})",
-                  fontSize = 11.5.sp,
-                  fontWeight = FontWeight.Bold,
-                  color = Color(0xFF0F172A)
-                )
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.SpaceBetween,
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Text(
+                    "🔬 ${item.testName} (${item.specimenType})",
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0F172A),
+                    modifier = Modifier.weight(1f)
+                  )
+                  OutlinedButton(
+                    onClick = {
+                      LabPrintHelper.printLabReportA4(
+                        context = context,
+                        order = order,
+                        singleItem = item,
+                        clinicSettings = clinicSettings,
+                        isBlankLetterhead = false
+                      )
+                    },
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                    shape = RoundedCornerShape(4.dp),
+                    modifier = Modifier.height(26.dp)
+                  ) {
+                    Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(11.dp))
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text("သီးသန့် Report", fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold)
+                  }
+                }
 
                 if (item.parameters.isNotEmpty()) {
                   Spacer(modifier = Modifier.height(4.dp))
@@ -1792,23 +1817,31 @@ fun MobileNewLabOrderDialog(
 // -------------------------------------------------------------
 // Quick Qualitative Presets Helper for Urine RE/ME, Stool RE/ME & Serology
 // -------------------------------------------------------------
-private fun getQuickPresetsForParam(paramName: String): List<String> {
+private fun getQuickPresetsForParam(paramName: String, specimenType: String = "", testName: String = ""): List<String> {
   val n = paramName.lowercase()
+  val s = specimenType.lowercase()
+  val t = testName.lowercase()
+
+  // CBC and Blood count tests must NOT have urine/stool microscopy presets
+  if (t.contains("cbc") || t.contains("complete blood") || s.contains("edta") || (s.contains("blood") && !t.contains("widal") && !t.contains("malaria") && !t.contains("dengue") && !t.contains("serology"))) {
+    return emptyList()
+  }
+
   return when {
     n.contains("protein") || n.contains("albumin") || n.contains("glucose") || n.contains("sugar") || n.contains("ketone") -> {
       listOf("Nil", "Trace", "+", "++", "+++")
     }
-    n.contains("pus") || n.contains("wbc") -> {
+    n.contains("pus") || (n.contains("wbc") && (s.contains("urine") || s.contains("stool") || n.contains("/hpf") || n.contains("pus"))) -> {
       listOf("Nil", "0 - 2", "2 - 4", "5 - 10", "10 - 15", "Numerous")
     }
-    n.contains("rbc") || n.contains("red blood") -> {
+    (n.contains("rbc") || n.contains("red blood")) && (s.contains("urine") || s.contains("stool") || n.contains("/hpf") || n.contains("urine") || n.contains("stool")) -> {
       listOf("Nil", "0 - 1", "1 - 2", "3 - 5", "Numerous")
     }
     n.contains("epithelial") || n.contains("cast") || n.contains("crystal") || n.contains("bacteria") || n.contains("cyst") || n.contains("trophozoite") || n.contains("ova") || n.contains("macrophage") || n.contains("fat") -> {
       listOf("Nil seen", "Few", "Occasional", "Moderate", "Many", "Seen")
     }
     n.contains("color") || n.contains("colour") -> {
-      if (n.contains("stool")) listOf("Brown", "Yellowish", "Dark Brown", "Clay")
+      if (s.contains("stool") || n.contains("stool")) listOf("Brown", "Yellowish", "Dark Brown", "Clay")
       else listOf("Pale Yellow", "Straw", "Amber", "Reddish")
     }
     n.contains("appearance") -> {
@@ -1817,7 +1850,7 @@ private fun getQuickPresetsForParam(paramName: String): List<String> {
     n.contains("consistency") -> {
       listOf("Formed", "Semi-formed", "Soft", "Loose", "Watery")
     }
-    n.contains("mucus") || n.contains("blood") -> {
+    n.contains("mucus") || (n.contains("blood") && (s.contains("stool") || s.contains("urine"))) -> {
       listOf("Absent", "Present", "Negative", "Positive")
     }
     n.contains("bilirubin") || n.contains("urobilinogen") || n.contains("widal") || n.contains("dengue") || n.contains("malaria") || n.contains("hbsag") || n.contains("hcv") || n.contains("hiv") -> {
@@ -1839,13 +1872,36 @@ fun MobileLabResultEntryDialog(
   defaultPathologistSama: String = "",
   defaultPathologistTitle: String = "",
   onDismiss: () -> Unit,
-  onSave: (List<LabOrderItem>, String, String, String, String, String, String) -> Unit
+  onSave: (List<LabOrderItem>, String, String, String, String, String, String, Boolean, Boolean) -> Unit
 ) {
-  var techName by remember { mutableStateOf(order.technicianName) }
+  val context = LocalContext.current
+  var techName by remember { mutableStateOf(order.technicianName.ifBlank { technicianName }) }
   var pathologistName by remember { mutableStateOf(order.pathologistName.ifBlank { defaultPathologistName }) }
   var pathologistDegree by remember { mutableStateOf(order.pathologistDegree.ifBlank { defaultPathologistDegree }) }
   var pathologistSama by remember { mutableStateOf(order.pathologistSama.ifBlank { defaultPathologistSama }) }
   var pathologistTitle by remember { mutableStateOf(order.pathologistTitle.ifBlank { defaultPathologistTitle }) }
+  var showDoctorSeal by remember { mutableStateOf(order.showDoctorSeal) }
+  var showTechnicianSign by remember { mutableStateOf(order.showTechnicianSign) }
+  var generalNotes by remember { mutableStateOf(order.notes) }
+
+  var activeItemIndexForSlip by remember { mutableStateOf<Int?>(null) }
+  val slipPickerLauncher = rememberLauncherForActivityResult(
+    contract = ActivityResultContracts.GetContent()
+  ) { uri: Uri? ->
+    uri?.let {
+      val (_, localPath) = AttachmentHelper.copyUriToLocalStorage(context, it, "lab_slip")
+      activeItemIndexForSlip?.let { idx ->
+        if (idx in order.items.indices) {
+          // updated below in state
+        }
+      }
+    }
+  }
+  var pathologistDegree by remember { mutableStateOf(order.pathologistDegree.ifBlank { defaultPathologistDegree }) }
+  var pathologistSama by remember { mutableStateOf(order.pathologistSama.ifBlank { defaultPathologistSama }) }
+  var pathologistTitle by remember { mutableStateOf(order.pathologistTitle.ifBlank { defaultPathologistTitle }) }
+  var showDoctorSeal by remember { mutableStateOf(order.showDoctorSeal) }
+  var showTechnicianSign by remember { mutableStateOf(order.showTechnicianSign) }
   var generalNotes by remember { mutableStateOf(order.notes) }
 
   // Working state for items and parameters
@@ -1853,6 +1909,20 @@ fun MobileLabResultEntryDialog(
     order.items.map { item ->
       item.copy(parameters = item.parameters.map { it.copy() })
     }.toMutableStateList()
+  }
+
+  var activeItemIndexForSlip by remember { mutableStateOf<Int?>(null) }
+  val slipPickerLauncher = rememberLauncherForActivityResult(
+    contract = ActivityResultContracts.GetContent()
+  ) { uri: Uri? ->
+    uri?.let {
+      val (_, localPath) = AttachmentHelper.copyUriToLocalStorage(context, it, "lab_slip")
+      activeItemIndexForSlip?.let { idx ->
+        if (idx in itemsState.indices) {
+          itemsState[idx] = itemsState[idx].copy(attachedImageUri = localPath, preferSlipPrint = true)
+        }
+      }
+    }
   }
 
   Dialog(
@@ -1919,26 +1989,176 @@ fun MobileLabResultEntryDialog(
                   }
                 }
 
-                if (item.parameters.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Mode Selector: Manual Entry vs Analyzer Machine Slip
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                  Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = if (!item.preferSlipPrint) Color(0xFF0284C7) else Color(0xFFF1F5F9),
+                    border = BorderStroke(0.6.dp, if (!item.preferSlipPrint) Color(0xFF0284C7) else Color(0xFFCBD5E1)),
+                    modifier = Modifier.weight(1f).clickable {
+                      itemsState[itemIdx] = item.copy(preferSlipPrint = false)
+                    }
+                  ) {
+                    Text(
+                      "📝 ဇယားဖြင့် အဖြေရိုက်မည်",
+                      fontSize = 10.5.sp,
+                      fontWeight = if (!item.preferSlipPrint) FontWeight.Bold else FontWeight.Medium,
+                      color = if (!item.preferSlipPrint) PureWhite else SlateDark,
+                      textAlign = TextAlign.Center,
+                      modifier = Modifier.padding(vertical = 5.dp)
+                    )
+                  }
+
+                  Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = if (item.preferSlipPrint) Color(0xFF0D9488) else Color(0xFFF1F5F9),
+                    border = BorderStroke(0.6.dp, if (item.preferSlipPrint) Color(0xFF0D9488) else Color(0xFFCBD5E1)),
+                    modifier = Modifier.weight(1f).clickable {
+                      itemsState[itemIdx] = item.copy(preferSlipPrint = true)
+                    }
+                  ) {
+                    Text(
+                      "📷 စက်အဖြေ စလစ်/Scan ပုံ",
+                      fontSize = 10.5.sp,
+                      fontWeight = if (item.preferSlipPrint) FontWeight.Bold else FontWeight.Medium,
+                      color = if (item.preferSlipPrint) PureWhite else SlateDark,
+                      textAlign = TextAlign.Center,
+                      modifier = Modifier.padding(vertical = 5.dp)
+                    )
+                  }
+                }
+
+                if (item.preferSlipPrint) {
+                  // Machine Slip / Scan Photo Mode
+                  Spacer(modifier = Modifier.height(6.dp))
+                  Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = PureWhite,
+                    border = BorderStroke(0.8.dp, Color(0xFFCBD5E1)),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                  ) {
+                    Column(
+                      modifier = Modifier.padding(10.dp),
+                      horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                      if (!item.attachedImageUri.isNullOrBlank()) {
+                        AsyncImage(
+                          model = item.attachedImageUri,
+                          contentDescription = "Slip Preview",
+                          contentScale = ContentScale.Fit,
+                          modifier = Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(4.dp))
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                          OutlinedButton(
+                            onClick = {
+                              activeItemIndexForSlip = itemIdx
+                              slipPickerLauncher.launch("image/*")
+                            },
+                            shape = RoundedCornerShape(4.dp),
+                            modifier = Modifier.height(28.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                          ) {
+                            Text("📷 ပုံပြန်ရွေးမည်", fontSize = 10.sp)
+                          }
+                          OutlinedButton(
+                            onClick = {
+                              itemsState[itemIdx] = item.copy(attachedImageUri = null)
+                            },
+                            shape = RoundedCornerShape(4.dp),
+                            modifier = Modifier.height(28.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFDC2626)),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                          ) {
+                            Text("🗑️ ဖျက်မည်", fontSize = 10.sp)
+                          }
+                        }
+                      } else {
+                        Button(
+                          onClick = {
+                            activeItemIndexForSlip = itemIdx
+                            slipPickerLauncher.launch("image/*")
+                          },
+                          colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D9488)),
+                          shape = RoundedCornerShape(6.dp),
+                          modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
+                        ) {
+                          Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
+                          Spacer(modifier = Modifier.width(6.dp))
+                          Text("စက်အဖြေ စလစ်/Scan ပုံ ရွေးချယ်တင်သွင်းရန်", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Text(
+                          "စက်အဖြေ စလစ်ပုံကို A4 Letterhead စာရွက်အလွတ်အလယ်တွင် Margin အလိုအလျောက်ချိန်ပြီး အောက်ဆုံး ဆရာဝန်လက်မှတ်ဖြင့် အံဝင်ခွင်ကျ ထုတ်ပေးပါမည်။",
+                          fontSize = 9.5.sp,
+                          color = SlateMuted,
+                          textAlign = TextAlign.Center
+                        )
+                      }
+                    }
+                  }
+                } else if (item.parameters.isNotEmpty()) {
                   Spacer(modifier = Modifier.height(6.dp))
 
                   // Each Parameter is an individual mobile input card
                   item.parameters.forEachIndexed { pIdx, p ->
                     val showSectionHeader = p.section.isNotBlank() && (pIdx == 0 || item.parameters[pIdx - 1].section != p.section)
                     if (showSectionHeader) {
+                      var isEditingSection by remember { mutableStateOf(false) }
+                      var sectionTitleText by remember(p.section) { mutableStateOf(p.section) }
+
                       Surface(
                         shape = RoundedCornerShape(4.dp),
                         color = Color(0xFFEFF6FF),
                         border = BorderStroke(0.8.dp, Color(0xFFBFDBFE)),
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp)
                       ) {
-                        Text(
-                          "▶ ${p.section}",
-                          fontSize = 11.5.sp,
-                          fontWeight = FontWeight.Bold,
-                          color = Color(0xFF1D4ED8),
-                          modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
+                        Row(
+                          modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
+                          horizontalArrangement = Arrangement.SpaceBetween,
+                          verticalAlignment = Alignment.CenterVertically
+                        ) {
+                          if (isEditingSection) {
+                            OutlinedTextField(
+                              value = sectionTitleText,
+                              onValueChange = { sectionTitleText = it },
+                              modifier = Modifier.weight(1f),
+                              singleLine = true,
+                              textStyle = LocalTextStyle.current.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1D4ED8))
+                            )
+                            IconButton(
+                              onClick = {
+                                isEditingSection = false
+                                val oldSec = p.section
+                                val updatedParams = item.parameters.map { param ->
+                                  if (param.section == oldSec) param.copy(section = sectionTitleText) else param
+                                }
+                                itemsState[itemIdx] = item.copy(parameters = updatedParams)
+                              },
+                              modifier = Modifier.size(28.dp)
+                            ) {
+                              Icon(Icons.Default.Check, contentDescription = "Save Section Title", modifier = Modifier.size(16.dp), tint = Color(0xFF16A34A))
+                            }
+                          } else {
+                            Text(
+                              "▶ ${p.section}",
+                              fontSize = 11.5.sp,
+                              fontWeight = FontWeight.Bold,
+                              color = Color(0xFF1D4ED8),
+                              modifier = Modifier.weight(1f)
+                            )
+                            IconButton(
+                              onClick = { isEditingSection = true },
+                              modifier = Modifier.size(28.dp)
+                            ) {
+                              Icon(Icons.Default.Edit, contentDescription = "Edit Subtitle", modifier = Modifier.size(14.dp), tint = Color(0xFF1D4ED8))
+                            }
+                          }
+                        }
                       }
                     }
 
@@ -2056,8 +2276,10 @@ fun MobileLabResultEntryDialog(
                           }
                         }
 
-                        // Quick Qualitative Presets Chips
-                        val quickPresets = remember(p.name) { getQuickPresetsForParam(p.name) }
+                        // Quick Qualitative Presets Chips (Urine / Stool / Serology only)
+                        val quickPresets = remember(p.name, item.specimenType, item.testName) {
+                          getQuickPresetsForParam(p.name, item.specimenType, item.testName)
+                        }
                         if (quickPresets.isNotEmpty()) {
                           Spacer(modifier = Modifier.height(4.dp))
                           Row(
@@ -2124,72 +2346,98 @@ fun MobileLabResultEntryDialog(
             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
           ) {
             Column(modifier = Modifier.padding(10.dp)) {
-              Text("👨‍⚕️ အတည်ပြုသူ Pathologist ဆရာဝန် (Report Signature)", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
-              Spacer(modifier = Modifier.height(6.dp))
-              Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+              Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                  checked = showDoctorSeal,
+                  onCheckedChange = { showDoctorSeal = it },
+                  modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("A4 Report တွင် ဆရာဝန်/Pathologist Seal ထည့်သွင်းမည်", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
+              }
+
+              if (showDoctorSeal) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                  OutlinedTextField(
+                    value = pathologistName,
+                    onValueChange = { pathologistName = it },
+                    label = { Text("Pathologist အမည်", fontSize = 10.sp) },
+                    placeholder = { Text("Dr. ...") },
+                    modifier = Modifier.weight(1.3f),
+                    singleLine = true,
+                    shape = RoundedCornerShape(6.dp),
+                    textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
+                  )
+                  OutlinedTextField(
+                    value = pathologistSama,
+                    onValueChange = { pathologistSama = it },
+                    label = { Text("ဆမ (S.A.M.A)", fontSize = 10.sp) },
+                    modifier = Modifier.weight(0.7f),
+                    singleLine = true,
+                    shape = RoundedCornerShape(6.dp),
+                    textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
+                  )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
                 OutlinedTextField(
-                  value = pathologistName,
-                  onValueChange = { pathologistName = it },
-                  label = { Text("Pathologist အမည်", fontSize = 10.sp) },
-                  placeholder = { Text("Dr. ...") },
-                  modifier = Modifier.weight(1.3f),
+                  value = pathologistDegree,
+                  onValueChange = { pathologistDegree = it },
+                  label = { Text("ဘွဲ့ (Medical Degree)", fontSize = 10.sp) },
+                  placeholder = { Text("M.B.,B.S, M.Med.Sc (Pathology)") },
+                  modifier = Modifier.fillMaxWidth(),
                   singleLine = true,
                   shape = RoundedCornerShape(6.dp),
                   textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
                 )
+                Spacer(modifier = Modifier.height(6.dp))
                 OutlinedTextField(
-                  value = pathologistSama,
-                  onValueChange = { pathologistSama = it },
-                  label = { Text("ဆမ (S.A.M.A)", fontSize = 10.sp) },
-                  modifier = Modifier.weight(0.7f),
+                  value = pathologistTitle,
+                  onValueChange = { pathologistTitle = it },
+                  label = { Text("ရာထူး (Title / Position - e.g. Consultant Pathologist)", fontSize = 10.sp) },
+                  placeholder = { Text("မလိုပါက ကွက်လပ်ထားနိုင်ပါသည်") },
+                  modifier = Modifier.fillMaxWidth(),
                   singleLine = true,
                   shape = RoundedCornerShape(6.dp),
                   textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
                 )
               }
-              Spacer(modifier = Modifier.height(6.dp))
-              OutlinedTextField(
-                value = pathologistDegree,
-                onValueChange = { pathologistDegree = it },
-                label = { Text("ဘွဲ့ (Medical Degree)", fontSize = 10.sp) },
-                placeholder = { Text("M.B.,B.S, M.Med.Sc (Pathology)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(6.dp),
-                textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
-              )
-              Spacer(modifier = Modifier.height(6.dp))
-              OutlinedTextField(
-                value = pathologistTitle,
-                onValueChange = { pathologistTitle = it },
-                label = { Text("ရာထူး (Title / Position - e.g. Consultant Pathologist)", fontSize = 10.sp) },
-                placeholder = { Text("မလိုပါက ကွက်လပ်ထားနိုင်ပါသည်") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(6.dp),
-                textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
-              )
             }
           }
 
-          OutlinedTextField(
-            value = techName,
-            onValueChange = { techName = it },
-            label = { Text("စစ်ဆေးသူ ဓာတ်ခွဲပညာရှင် (Technologist)", fontSize = 11.sp) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+          // Medical Technologist Card
+          Surface(
             shape = RoundedCornerShape(8.dp),
-            textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = Color(0xFF0F172A)),
-            colors = OutlinedTextFieldDefaults.colors(
-              focusedTextColor = Color(0xFF0F172A),
-              unfocusedTextColor = Color(0xFF0F172A),
-              focusedContainerColor = PureWhite,
-              unfocusedContainerColor = PureWhite,
-              unfocusedBorderColor = BorderGray,
-              focusedBorderColor = Color(0xFF0284C7)
-            )
-          )
-          Spacer(modifier = Modifier.height(6.dp))
+            color = Color(0xFFF8FAFC),
+            border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+          ) {
+            Column(modifier = Modifier.padding(10.dp)) {
+              Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                  checked = showTechnicianSign,
+                  onCheckedChange = { showTechnicianSign = it },
+                  modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("A4 Report တွင် Medical Technologist လက်မှတ် ထည့်သွင်းမည်", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
+              }
+              if (showTechnicianSign) {
+                Spacer(modifier = Modifier.height(6.dp))
+                OutlinedTextField(
+                  value = techName,
+                  onValueChange = { techName = it },
+                  label = { Text("စစ်ဆေးသူ ဓာတ်ခွဲပညာရှင် (Technologist အမည်)", fontSize = 11.sp) },
+                  singleLine = true,
+                  modifier = Modifier.fillMaxWidth(),
+                  shape = RoundedCornerShape(6.dp),
+                  textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp, color = Color(0xFF0F172A))
+                )
+              }
+            }
+          }
+
+          Spacer(modifier = Modifier.height(4.dp))
           OutlinedTextField(
             value = generalNotes,
             onValueChange = { generalNotes = it },
@@ -2230,7 +2478,17 @@ fun MobileLabResultEntryDialog(
           Button(
             onClick = {
               val finalizedItems = itemsState.map { it.copy(isCompleted = true) }
-              onSave(finalizedItems, techName, generalNotes, pathologistName, pathologistDegree, pathologistSama, pathologistTitle)
+              onSave(
+                finalizedItems,
+                techName,
+                generalNotes,
+                pathologistName,
+                pathologistDegree,
+                pathologistSama,
+                pathologistTitle,
+                showDoctorSeal,
+                showTechnicianSign
+              )
             },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
             shape = RoundedCornerShape(6.dp),

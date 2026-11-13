@@ -2040,6 +2040,8 @@ object ClinicDataPersistence {
       oo.put("pathologistDegree", ord.pathologistDegree)
       oo.put("pathologistSama", ord.pathologistSama)
       oo.put("pathologistTitle", ord.pathologistTitle)
+      oo.put("showDoctorSeal", ord.showDoctorSeal)
+      oo.put("showTechnicianSign", ord.showTechnicianSign)
 
       val iArr = JSONArray()
       ord.items.forEach { item ->
@@ -2052,6 +2054,7 @@ object ClinicDataPersistence {
         io.put("remarks", item.remarks)
         io.put("attachedImageUri", item.attachedImageUri ?: "")
         io.put("isCompleted", item.isCompleted)
+        io.put("preferSlipPrint", item.preferSlipPrint)
 
         val pArr = JSONArray()
         item.parameters.forEach { p ->
@@ -2112,6 +2115,7 @@ object ClinicDataPersistence {
                 remarks = io.optString("remarks"),
                 attachedImageUri = io.optString("attachedImageUri").ifBlank { null },
                 isCompleted = io.optBoolean("isCompleted", false),
+                preferSlipPrint = io.optBoolean("preferSlipPrint", false),
                 parameters = params
               )
             )
@@ -2151,6 +2155,8 @@ object ClinicDataPersistence {
             pathologistDegree = o.optString("pathologistDegree", ""),
             pathologistSama = o.optString("pathologistSama", ""),
             pathologistTitle = o.optString("pathologistTitle", "Consultant Pathologist"),
+            showDoctorSeal = o.optBoolean("showDoctorSeal", true),
+            showTechnicianSign = o.optBoolean("showTechnicianSign", false),
             items = items
           )
         )
@@ -2307,6 +2313,7 @@ object ClinicDataPersistence {
                 remarks = io.optString("remarks"),
                 attachedImageUri = io.optString("attachedImageUri").ifBlank { null },
                 isCompleted = io.optBoolean("isCompleted", false),
+                preferSlipPrint = io.optBoolean("preferSlipPrint", false),
                 parameters = params
               )
             )
@@ -2346,6 +2353,8 @@ object ClinicDataPersistence {
             pathologistDegree = o.optString("pathologistDegree", ""),
             pathologistSama = o.optString("pathologistSama", ""),
             pathologistTitle = o.optString("pathologistTitle", "Consultant Pathologist"),
+            showDoctorSeal = o.optBoolean("showDoctorSeal", true),
+            showTechnicianSign = o.optBoolean("showTechnicianSign", false),
             items = items
           )
         )

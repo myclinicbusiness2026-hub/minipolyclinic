@@ -41,11 +41,12 @@ data class LabOrderItem(
   val parameters: List<LabTestParameter> = emptyList(),
   val remarks: String = "",
   val attachedImageUri: String? = null,
-  val isCompleted: Boolean = false
+  val isCompleted: Boolean = false,
+  val preferSlipPrint: Boolean = false
 ) {
   val templateName: String get() = testName
   val slipImageUri: String get() = attachedImageUri ?: ""
-  val isAnalyzerSlipOnly: Boolean get() = parameters.isEmpty()
+  val isAnalyzerSlipOnly: Boolean get() = parameters.isEmpty() || (preferSlipPrint && !attachedImageUri.isNullOrBlank())
 }
 
 enum class LabOrderStatus {
@@ -81,7 +82,9 @@ data class LabOrder(
   val pathologistName: String = "",
   val pathologistDegree: String = "",
   val pathologistSama: String = "",
-  val pathologistTitle: String = ""
+  val pathologistTitle: String = "",
+  val showDoctorSeal: Boolean = true,
+  val showTechnicianSign: Boolean = false
 ) {
   val isPaid: Boolean get() = paidAmount >= totalAmount && totalAmount > 0.0 || paymentStatus.equals("Paid", ignoreCase = true)
   val isFullyPaid: Boolean get() = isPaid
