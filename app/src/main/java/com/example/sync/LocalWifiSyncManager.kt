@@ -52,6 +52,8 @@ class LocalWifiSyncManager(
   private val _syncLogs = MutableStateFlow<List<SyncAuditEntry>>(emptyList())
   val syncLogs: StateFlow<List<SyncAuditEntry>> = _syncLogs.asStateFlow()
 
+  private val activeSyncingPeers = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+
   private var nsdManager: NsdManager? = null
   private var nsdRegistrationListener: NsdManager.RegistrationListener? = null
   private var nsdDiscoveryListener: NsdManager.DiscoveryListener? = null

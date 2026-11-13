@@ -3552,7 +3552,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     // Auto-sync injection procedure fees into ClinicSettings
     val n = updated.name.lowercase()
     val mn = updated.myanmarName.lowercase()
-    val curSettings = _clinicSettings.value
+    val curSettings = clinicSettings.value
     var newSettings = curSettings
     if (n.contains("infusion") || n.contains("drip") || mn.contains("အကြောပုလင်း") || mn.contains("သွင်းဆေး")) {
       newSettings = newSettings.copy(defaultIvInfusionFee = updated.standardFee)
@@ -3564,7 +3564,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       newSettings = newSettings.copy(defaultNebulizerFee = updated.standardFee)
     }
     if (newSettings != curSettings) {
-      _clinicSettings.value = newSettings
+      clinicSettings.value = newSettings
       ClinicDataPersistence.saveClinicSettings(getApplication(), newSettings)
     }
   }

@@ -395,6 +395,11 @@ fun LabInvestigationScreen(
                     viewModel.updateLabOrderStatus(order.id, LabOrderStatus.CANCELLED)
                     Toast.makeText(context, "စစ်ဆေးမှု ပယ်ဖျက်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
                   },
+                  onAttachSlipImage = { imageUri ->
+                    val updatedItems = order.items.map { it.copy(attachedImageUri = imageUri) }
+                    viewModel.updateLabOrder(order.copy(items = updatedItems))
+                    Toast.makeText(context, "စက်အဖြေပုံ တွဲစပ်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
+                  },
                   onDeleteOrder = { orderToDelete = order }
                 )
               }
@@ -619,8 +624,18 @@ fun MobileLabOrderQueueCard(
   onPrintBlankLetterhead: () -> Unit,
   onCreateInvoice: () -> Unit,
   onCancelOrder: () -> Unit,
+  onAttachSlipImage: (String) -> Unit = {},
   onDeleteOrder: () -> Unit = {}
 ) {
+  val context = LocalContext.current
+  val photoLauncher = rememberLauncherForActivityResult(
+    contract = ActivityResultContracts.GetContent()
+  ) { uri: Uri? ->
+    uri?.let {
+      val (_, localPath) = AttachmentHelper.copyUriToLocalStorage(context, it, "lab_slip")
+      onAttachSlipImage(localPath)
+    }
+  }
   val currencyFmt = remember { NumberFormat.getNumberInstance(Locale.US) }
   var showMenu by remember { mutableStateOf(false) }
 
