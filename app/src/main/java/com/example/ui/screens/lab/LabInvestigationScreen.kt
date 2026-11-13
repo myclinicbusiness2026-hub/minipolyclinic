@@ -1069,7 +1069,7 @@ fun MobileLabCompletedResultCard(
                       LabPrintHelper.printLabReportA4(
                         context = context,
                         order = order,
-                        singleItem = item,
+                        item = item,
                         clinicSettings = clinicSettings,
                         isBlankLetterhead = false
                       )
@@ -1877,26 +1877,6 @@ fun MobileLabResultEntryDialog(
   val context = LocalContext.current
   var techName by remember { mutableStateOf(order.technicianName.ifBlank { technicianName }) }
   var pathologistName by remember { mutableStateOf(order.pathologistName.ifBlank { defaultPathologistName }) }
-  var pathologistDegree by remember { mutableStateOf(order.pathologistDegree.ifBlank { defaultPathologistDegree }) }
-  var pathologistSama by remember { mutableStateOf(order.pathologistSama.ifBlank { defaultPathologistSama }) }
-  var pathologistTitle by remember { mutableStateOf(order.pathologistTitle.ifBlank { defaultPathologistTitle }) }
-  var showDoctorSeal by remember { mutableStateOf(order.showDoctorSeal) }
-  var showTechnicianSign by remember { mutableStateOf(order.showTechnicianSign) }
-  var generalNotes by remember { mutableStateOf(order.notes) }
-
-  var activeItemIndexForSlip by remember { mutableStateOf<Int?>(null) }
-  val slipPickerLauncher = rememberLauncherForActivityResult(
-    contract = ActivityResultContracts.GetContent()
-  ) { uri: Uri? ->
-    uri?.let {
-      val (_, localPath) = AttachmentHelper.copyUriToLocalStorage(context, it, "lab_slip")
-      activeItemIndexForSlip?.let { idx ->
-        if (idx in order.items.indices) {
-          // updated below in state
-        }
-      }
-    }
-  }
   var pathologistDegree by remember { mutableStateOf(order.pathologistDegree.ifBlank { defaultPathologistDegree }) }
   var pathologistSama by remember { mutableStateOf(order.pathologistSama.ifBlank { defaultPathologistSama }) }
   var pathologistTitle by remember { mutableStateOf(order.pathologistTitle.ifBlank { defaultPathologistTitle }) }
