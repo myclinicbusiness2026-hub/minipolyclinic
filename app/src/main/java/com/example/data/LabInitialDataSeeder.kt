@@ -41,22 +41,48 @@ object LabInitialDataSeeder {
       defaultPrice = 4000.0,
       specimenType = "Urine (Fresh Midstream)",
       parameters = listOf(
-        LabTestParameter("Color", "Pale Yellow", "", "Pale Yellow / Amber"),
-        LabTestParameter("Appearance", "Clear", "", "Clear"),
-        LabTestParameter("Specific Gravity", "1.015", "", "1.005 - 1.030"),
-        LabTestParameter("Reaction (pH)", "6.0", "", "4.6 - 8.0"),
-        LabTestParameter("Protein (Albumin)", "Nil", "", "Nil / Negative"),
-        LabTestParameter("Glucose (Sugar)", "Nil", "", "Nil / Negative"),
-        LabTestParameter("Ketone Bodies", "Nil", "", "Negative"),
-        LabTestParameter("Bilirubin", "Negative", "", "Negative"),
-        LabTestParameter("Urobilinogen", "Normal", "", "Normal"),
-        LabTestParameter("Blood (Hb)", "Negative", "", "Negative"),
-        LabTestParameter("Pus Cells (WBC)", "0 - 2", "/HPF", "0 - 5 / HPF"),
-        LabTestParameter("Red Blood Cells (RBC)", "0 - 1", "/HPF", "0 - 2 / HPF"),
-        LabTestParameter("Epithelial Cells", "Few", "/HPF", "Few / HPF"),
-        LabTestParameter("Casts", "Nil", "/LPF", "Nil / LPF"),
-        LabTestParameter("Crystals", "Nil", "/HPF", "Nil"),
-        LabTestParameter("Bacteria", "Nil", "", "Nil")
+        // Section: Routine Examination (Physical & Chemical / RE)
+        LabTestParameter("Color", "Pale Yellow", "", "Pale Yellow / Amber", "", "Routine Examination (Physical & Chemical / RE)"),
+        LabTestParameter("Appearance", "Clear", "", "Clear", "", "Routine Examination (Physical & Chemical / RE)"),
+        LabTestParameter("Specific Gravity", "1.015", "", "1.005 - 1.030", "", "Routine Examination (Physical & Chemical / RE)"),
+        LabTestParameter("Reaction (pH)", "6.0", "", "4.6 - 8.0", "", "Routine Examination (Physical & Chemical / RE)"),
+        LabTestParameter("Protein (Albumin)", "Nil", "", "Nil / Negative", "", "Routine Examination (Physical & Chemical / RE)"),
+        LabTestParameter("Glucose (Sugar)", "Nil", "", "Nil / Negative", "", "Routine Examination (Physical & Chemical / RE)"),
+        LabTestParameter("Ketone Bodies", "Nil", "", "Negative", "", "Routine Examination (Physical & Chemical / RE)"),
+        LabTestParameter("Bilirubin", "Negative", "", "Negative", "", "Routine Examination (Physical & Chemical / RE)"),
+        LabTestParameter("Urobilinogen", "Normal", "", "Normal", "", "Routine Examination (Physical & Chemical / RE)"),
+        LabTestParameter("Blood (Hb)", "Negative", "", "Negative", "", "Routine Examination (Physical & Chemical / RE)"),
+        // Section: Microscopic Examination (ME)
+        LabTestParameter("Pus Cells (WBC)", "0 - 2", "/HPF", "0 - 5 / HPF", "", "Microscopic Examination (ME)"),
+        LabTestParameter("Red Blood Cells (RBC)", "0 - 1", "/HPF", "0 - 2 / HPF", "", "Microscopic Examination (ME)"),
+        LabTestParameter("Epithelial Cells", "Few", "/HPF", "Few / HPF", "", "Microscopic Examination (ME)"),
+        LabTestParameter("Casts", "Nil seen", "/LPF", "Nil / LPF", "", "Microscopic Examination (ME)"),
+        LabTestParameter("Crystals", "Nil seen", "/HPF", "Nil seen", "", "Microscopic Examination (ME)"),
+        LabTestParameter("Bacteria", "Nil seen", "", "Nil seen", "", "Microscopic Examination (ME)")
+      )
+    ),
+
+    // 3. Stool RE/ME (Routine & Microscopic Examination)
+    LabTestTemplate(
+      id = "TMPL-STOOL-RE-ME",
+      name = "Stool RE / ME",
+      category = "Urine / Stool",
+      defaultPrice = 4000.0,
+      specimenType = "Stool (Fresh)",
+      parameters = listOf(
+        // Section: Macroscopic Examination (RE)
+        LabTestParameter("Color", "Brown", "", "Brown / Yellowish", "", "Macroscopic Examination (RE)"),
+        LabTestParameter("Consistency", "Formed", "", "Formed / Soft", "", "Macroscopic Examination (RE)"),
+        LabTestParameter("Mucus", "Absent", "", "Absent", "", "Macroscopic Examination (RE)"),
+        LabTestParameter("Blood", "Absent", "", "Absent", "", "Macroscopic Examination (RE)"),
+        // Section: Microscopic Examination (ME)
+        LabTestParameter("Pus Cells (WBC)", "Nil seen", "/HPF", "Nil / HPF", "", "Microscopic Examination (ME)"),
+        LabTestParameter("Red Blood Cells (RBC)", "Nil seen", "/HPF", "Nil / HPF", "", "Microscopic Examination (ME)"),
+        LabTestParameter("Cysts (E. histolytica / Giardia)", "Nil seen", "", "Nil seen", "", "Microscopic Examination (ME)"),
+        LabTestParameter("Trophozoites", "Nil seen", "", "Nil seen", "", "Microscopic Examination (ME)"),
+        LabTestParameter("Ova / Helminths", "Nil seen", "", "Nil seen", "", "Microscopic Examination (ME)"),
+        LabTestParameter("Macrophages", "Nil seen", "", "Nil seen", "", "Microscopic Examination (ME)"),
+        LabTestParameter("Fat Globules", "Nil seen", "", "Nil seen", "", "Microscopic Examination (ME)")
       )
     ),
 

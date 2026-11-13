@@ -10,7 +10,8 @@ data class LabTestParameter(
   val result: String = "",
   val unit: String = "",
   val referenceRange: String = "",
-  val flag: String = "" // "Normal", "Low", "High", "Critical", or custom text
+  val flag: String = "", // "Normal", "Low", "High", "Critical", or custom text
+  val section: String = "" // e.g. "Routine Examination (Physical & Chemical)" or "Microscopic Examination (/HPF)"
 ) {
   val normalRange: String get() = referenceRange
 }

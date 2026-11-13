@@ -1962,6 +1962,7 @@ object ClinicDataPersistence {
         po.put("unit", p.unit)
         po.put("referenceRange", p.referenceRange)
         po.put("flag", p.flag)
+        po.put("section", p.section)
         pArr.put(po)
       }
       to.put("parameters", pArr)
@@ -1988,7 +1989,8 @@ object ClinicDataPersistence {
                 result = po.optString("result"),
                 unit = po.optString("unit"),
                 referenceRange = po.optString("referenceRange"),
-                flag = po.optString("flag")
+                flag = po.optString("flag"),
+                section = po.optString("section", "")
               )
             )
           }
@@ -2059,6 +2061,7 @@ object ClinicDataPersistence {
           po.put("unit", p.unit)
           po.put("referenceRange", p.referenceRange)
           po.put("flag", p.flag)
+          po.put("section", p.section)
           pArr.put(po)
         }
         io.put("parameters", pArr)
@@ -2093,7 +2096,8 @@ object ClinicDataPersistence {
                     result = po.optString("result"),
                     unit = po.optString("unit"),
                     referenceRange = po.optString("referenceRange"),
-                    flag = po.optString("flag")
+                    flag = po.optString("flag"),
+                    section = po.optString("section", "")
                   )
                 )
               }
@@ -2241,7 +2245,8 @@ object ClinicDataPersistence {
                 result = po.optString("result"),
                 unit = po.optString("unit"),
                 referenceRange = po.optString("referenceRange"),
-                flag = po.optString("flag")
+                flag = po.optString("flag"),
+                section = po.optString("section", "")
               )
             )
           }
@@ -2286,7 +2291,8 @@ object ClinicDataPersistence {
                     result = po.optString("result"),
                     unit = po.optString("unit"),
                     referenceRange = po.optString("referenceRange"),
-                    flag = po.optString("flag")
+                    flag = po.optString("flag"),
+                    section = po.optString("section", "")
                   )
                 )
               }

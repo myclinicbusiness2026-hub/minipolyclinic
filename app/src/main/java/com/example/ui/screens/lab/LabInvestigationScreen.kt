@@ -1790,6 +1790,44 @@ fun MobileNewLabOrderDialog(
 }
 
 // -------------------------------------------------------------
+// Quick Qualitative Presets Helper for Urine RE/ME, Stool RE/ME & Serology
+// -------------------------------------------------------------
+private fun getQuickPresetsForParam(paramName: String): List<String> {
+  val n = paramName.lowercase()
+  return when {
+    n.contains("protein") || n.contains("albumin") || n.contains("glucose") || n.contains("sugar") || n.contains("ketone") -> {
+      listOf("Nil", "Trace", "+", "++", "+++")
+    }
+    n.contains("pus") || n.contains("wbc") -> {
+      listOf("Nil", "0 - 2", "2 - 4", "5 - 10", "10 - 15", "Numerous")
+    }
+    n.contains("rbc") || n.contains("red blood") -> {
+      listOf("Nil", "0 - 1", "1 - 2", "3 - 5", "Numerous")
+    }
+    n.contains("epithelial") || n.contains("cast") || n.contains("crystal") || n.contains("bacteria") || n.contains("cyst") || n.contains("trophozoite") || n.contains("ova") || n.contains("macrophage") || n.contains("fat") -> {
+      listOf("Nil seen", "Few", "Occasional", "Moderate", "Many", "Seen")
+    }
+    n.contains("color") || n.contains("colour") -> {
+      if (n.contains("stool")) listOf("Brown", "Yellowish", "Dark Brown", "Clay")
+      else listOf("Pale Yellow", "Straw", "Amber", "Reddish")
+    }
+    n.contains("appearance") -> {
+      listOf("Clear", "Slightly Turbid", "Turbid")
+    }
+    n.contains("consistency") -> {
+      listOf("Formed", "Semi-formed", "Soft", "Loose", "Watery")
+    }
+    n.contains("mucus") || n.contains("blood") -> {
+      listOf("Absent", "Present", "Negative", "Positive")
+    }
+    n.contains("bilirubin") || n.contains("urobilinogen") || n.contains("widal") || n.contains("dengue") || n.contains("malaria") || n.contains("hbsag") || n.contains("hcv") || n.contains("hiv") -> {
+      listOf("Negative", "Positive", "Normal")
+    }
+    else -> emptyList()
+  }
+}
+
+// -------------------------------------------------------------
 // Dialog: Mobile Lab Result Entry Form (Card-based parameter inputs)
 // -------------------------------------------------------------
 @Composable
@@ -1886,6 +1924,24 @@ fun MobileLabResultEntryDialog(
 
                   // Each Parameter is an individual mobile input card
                   item.parameters.forEachIndexed { pIdx, p ->
+                    val showSectionHeader = p.section.isNotBlank() && (pIdx == 0 || item.parameters[pIdx - 1].section != p.section)
+                    if (showSectionHeader) {
+                      Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = Color(0xFFEFF6FF),
+                        border = BorderStroke(0.8.dp, Color(0xFFBFDBFE)),
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp)
+                      ) {
+                        Text(
+                          "▶ ${p.section}",
+                          fontSize = 11.5.sp,
+                          fontWeight = FontWeight.Bold,
+                          color = Color(0xFF1D4ED8),
+                          modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                      }
+                    }
+
                     Surface(
                       shape = RoundedCornerShape(6.dp),
                       color = PureWhite,
@@ -1995,6 +2051,38 @@ fun MobileLabResultEntryDialog(
                                     color = if (isFlagSelected) PureWhite else SlateDark
                                   )
                                 }
+                              }
+                            }
+                          }
+                        }
+
+                        // Quick Qualitative Presets Chips
+                        val quickPresets = remember(p.name) { getQuickPresetsForParam(p.name) }
+                        if (quickPresets.isNotEmpty()) {
+                          Spacer(modifier = Modifier.height(4.dp))
+                          Row(
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                          ) {
+                            quickPresets.forEach { preset ->
+                              val isSelected = p.result.equals(preset, ignoreCase = true)
+                              Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isSelected) Color(0xFF0284C7) else Color(0xFFF1F5F9),
+                                border = BorderStroke(0.6.dp, if (isSelected) Color(0xFF0284C7) else Color(0xFFCBD5E1)),
+                                modifier = Modifier.clickable {
+                                  val updatedParams = item.parameters.toMutableList()
+                                  updatedParams[pIdx] = p.copy(result = preset)
+                                  itemsState[itemIdx] = item.copy(parameters = updatedParams)
+                                }
+                              ) {
+                                Text(
+                                  preset,
+                                  fontSize = 10.sp,
+                                  fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                  color = if (isSelected) PureWhite else Color(0xFF334155),
+                                  modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
                               }
                             }
                           }

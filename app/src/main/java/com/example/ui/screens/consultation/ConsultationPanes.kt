@@ -297,14 +297,15 @@ fun ConsultationPrescriptionAndBillingPane(
                 medicineId = "EXT-CST",
                 medicineName = "CST (Continue Same Treatment)",
                 name = "CST (Continue Same Treatment)",
-                genericName = "သောက်လက်စသောက်ဆေးများ",
-                dosage = "-",
-                frequency = "ပုံမှန်အတိုင်း",
-                duration = "ပုံမှန်သောက်ရန်",
-                quantity = 1,
+                genericName = "",
+                dosage = "",
+                frequency = "-",
+                duration = "-",
+                quantity = 0,
                 unitPrice = 0.0,
-                instructions = "သောက်လက်စသောက်ဆေးများ ပုံမှန်အတိုင်းဆက်သောက်ရန်",
-                isExternal = true
+                instructions = "Continue previously prescribed treatment",
+                isExternal = true,
+                isCst = true
               )
             )
           }

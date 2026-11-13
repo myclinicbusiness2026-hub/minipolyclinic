@@ -314,7 +314,24 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       ClinicDataPersistence.saveLabTemplates(ctx, seeds)
       seeds
     } else {
-      savedLabTemplates
+      val seeds = LabInitialDataSeeder.getSeedTemplates()
+      val merged = savedLabTemplates.toMutableList()
+      var modified = false
+      seeds.forEach { seed ->
+        val existingIdx = merged.indexOfFirst { it.id == seed.id || it.name.equals(seed.name, ignoreCase = true) }
+        if (existingIdx < 0) {
+          merged.add(seed)
+          modified = true
+        } else if (merged[existingIdx].parameters.any { it.section.isBlank() } && seed.parameters.any { it.section.isNotBlank() }) {
+          // Upgrade template parameters with section groupings if missing
+          merged[existingIdx] = seed
+          modified = true
+        }
+      }
+      if (modified) {
+        ClinicDataPersistence.saveLabTemplates(ctx, merged)
+      }
+      merged
     }
     _labOrders.value = ClinicDataPersistence.loadLabOrders(ctx) ?: emptyList()
     _labInvoices.value = ClinicDataPersistence.loadLabInvoices(ctx) ?: emptyList()
@@ -1647,7 +1664,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     treatmentOrders.forEach { card ->
-      val sFee = if (card.sessionFee > 0) card.sessionFee else card.route.getEffectiveFee(clinicSettings.value, _procedures.value)
+      val sFee = card.sessionFee
       val numDoses = if (card.totalSessions > 1 && (card.isPrepaidFullCourse || !card.isPayPerVisit)) card.totalSessions else 1
       val isFullCourse = numDoses > 1
 

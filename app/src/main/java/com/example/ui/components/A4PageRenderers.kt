@@ -532,6 +532,10 @@ fun A4AttachedDocumentsSection(
  * Meal Timing: After meal -> စားပြီး, Before meal -> မစားမီ
  */
 fun formatDosageAndDirection(drug: PrescribedDrug): String {
+  val isCst = drug.isCst || drug.medicineId.startsWith("CST-") || drug.medicineId == "EXT-CST" || drug.name.startsWith("CST")
+  if (isCst && (drug.frequency.isBlank() || drug.frequency == "-" || drug.frequency.contains("ပုံမှန်အတိုင်း"))) {
+    return "-"
+  }
   val freqRaw = drug.frequency.trim()
   val cleanFreq = when {
     freqRaw.contains("1-1-1-1") || freqRaw.contains("qid", ignoreCase = true) || freqRaw.contains("qds", ignoreCase = true) || freqRaw.contains("Four times", ignoreCase = true) -> "1-1-1-1"
@@ -603,15 +607,21 @@ fun A4PrescriptionTable(
       }
       HorizontalDivider(thickness = 0.8.dp, color = BorderGray)
       consultation.prescriptions.forEachIndexed { idx, drug ->
-        val isCst = drug.isCst || drug.medicineId.startsWith("CST-") || drug.instructions.contains("သောက်လက်စ")
+        val isCst = drug.isCst || drug.medicineId.startsWith("CST-") || drug.medicineId == "EXT-CST" || drug.name.startsWith("CST") || drug.instructions.contains("သောက်လက်စ")
         val isExt = drug.isExternal || drug.medicineId.startsWith("EXT-")
         val effectiveDrugName = drug.effectiveName.ifBlank { drug.name.ifBlank { drug.medicineName } }
-        val baseTitle = if (drug.dosage.isNotBlank() && !effectiveDrugName.contains(drug.dosage, ignoreCase = true)) {
+        val baseTitle = if (drug.dosage.isNotBlank() && drug.dosage != "-" && !effectiveDrugName.contains(drug.dosage, ignoreCase = true)) {
           "${effectiveDrugName} (${drug.dosage})"
         } else {
           effectiveDrugName
         }
-        val drugTitle = if (isCst) "$baseTitle  (သောက်လက်စ ဆက်သောက်ရန်)" else if (isExt) "$baseTitle  [External]" else baseTitle
+        val drugTitle = if (isCst) {
+          if (baseTitle.startsWith("CST") || baseTitle.contains("Continue Same Treatment")) baseTitle else "$baseTitle  [CST]"
+        } else if (isExt) {
+          "$baseTitle  [External]"
+        } else {
+          baseTitle
+        }
         Row(
           modifier = Modifier
             .fillMaxWidth()

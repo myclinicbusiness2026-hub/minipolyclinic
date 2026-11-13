@@ -84,16 +84,20 @@ object A4PdfReportService {
       subjectiveNotes = consultation.subjective,
       doctorAdvice = consultation.plan,
       prescriptions = consultation.prescriptions.map { drug ->
-        val isCst = drug.isCst || drug.medicineId.startsWith("CST-") || drug.instructions.contains("သောက်လက်စ")
+        val isCst = drug.isCst || drug.medicineId.startsWith("CST-") || drug.medicineId == "EXT-CST" || drug.name.startsWith("CST") || drug.instructions.contains("သောက်လက်စ")
         val isExt = drug.isExternal || drug.medicineId.startsWith("EXT-")
-        val finalTitle = if (isCst) "${drug.name} (သောက်လက်စ ဆက်သောက်ရန်)" else if (isExt) "${drug.name} [ပြင်ပဝယ်ရန်/External]" else drug.name
+        val finalTitle = if (isCst) {
+          if (drug.name.startsWith("CST") || drug.name.contains("Continue Same Treatment")) drug.name else "${drug.name} [CST]"
+        } else if (isExt) "${drug.name} [External]" else drug.name
+        val cleanFreq = if (isCst && (drug.frequency.isBlank() || drug.frequency == "-" || drug.frequency.contains("ပုံမှန်အတိုင်း"))) "-" else drug.frequency
+        val cleanDuration = if (isCst && (drug.duration.isBlank() || drug.duration == "-" || drug.duration.contains("ပုံမှန်သောက်ရန်"))) "-" else drug.duration
         A4PrescriptionLine(
           tradeName = finalTitle,
           genericName = drug.name.split(" ").firstOrNull() ?: drug.name,
-          dosage = drug.dosage,
-          frequency = drug.frequency,
-          duration = drug.duration,
-          instructions = drug.instructions,
+          dosage = if (drug.dosage == "-") "" else drug.dosage,
+          frequency = cleanFreq,
+          duration = cleanDuration,
+          instructions = if (isCst) "Continue previously prescribed treatment" else drug.instructions,
           quantity = drug.quantity
         )
       },

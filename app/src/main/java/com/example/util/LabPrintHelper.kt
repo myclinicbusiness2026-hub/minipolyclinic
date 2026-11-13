@@ -430,7 +430,19 @@ object LabPrintHelper {
             </tr>
           """.trimIndent())
 
+          var currentSection = ""
           for (param in testItem.parameters) {
+            if (param.section.isNotBlank() && param.section != currentSection) {
+              currentSection = param.section
+              sb.append("""
+                <tr style="background-color: #f8fafc; border-top: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1;">
+                  <td colspan="4" style="padding: 4px 10px; font-weight: bold; color: #1e3a8a; font-size: 11px;">
+                    ▶ $currentSection
+                  </td>
+                </tr>
+              """.trimIndent())
+            }
+
             val arrowBadge = when (param.flag.uppercase()) {
               "HIGH" -> "<span style='color: #dc2626; font-weight: bold; font-size: 11px; margin-left: 4px;'>▲</span>"
               "LOW" -> "<span style='color: #0284c7; font-weight: bold; font-size: 11px; margin-left: 4px;'>▼</span>"
@@ -438,7 +450,7 @@ object LabPrintHelper {
             }
             sb.append("""
               <tr>
-                <td style="padding-left: 18px;">${param.name}</td>
+                <td style="padding-left: ${if (currentSection.isNotBlank()) "24px" else "18px"};">${param.name}</td>
                 <td><strong style="color: #0f172a;">${param.result.ifBlank { "-" }}</strong>$arrowBadge</td>
                 <td>${param.unit.ifBlank { "-" }}</td>
                 <td>${param.referenceRange.ifBlank { "-" }}</td>
