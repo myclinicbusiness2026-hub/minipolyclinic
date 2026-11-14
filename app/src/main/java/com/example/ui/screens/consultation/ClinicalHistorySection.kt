@@ -1,4 +1,4 @@
-package com.example.ui.screens.consultation
+﻿package com.example.ui.screens.consultation
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -56,6 +56,15 @@ fun ClinicalHistorySection(
 
   val traumaHistory = remember(patientId) { mutableStateListOf<String>() }
   var customTrauma by remember(patientId) { mutableStateOf("") }
+
+  // Section Conceal / Expand states (Default Concealed 👁️)
+  var isPmhxExpanded by remember(patientId) { mutableStateOf(false) }
+  var isPshxExpanded by remember(patientId) { mutableStateOf(false) }
+  var isAllergiesExpanded by remember(patientId) { mutableStateOf(false) }
+  var isRegularMedsExpanded by remember(patientId) { mutableStateOf(false) }
+  var isObgynExpanded by remember(patientId) { mutableStateOf(false) }
+  var isSocialExpanded by remember(patientId) { mutableStateOf(false) }
+  var isTraumaExpanded by remember(patientId) { mutableStateOf(false) }
 
   var saveFeedbackMessage by remember { mutableStateOf<String?>(null) }
   var initializedFromExisting by remember(patientId) { mutableStateOf(false) }
@@ -593,7 +602,9 @@ fun ClinicalHistorySection(
           ) {
             Column(modifier = Modifier.padding(10.dp)) {
               Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .clickable { isPmhxExpanded = !isPmhxExpanded },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
               ) {
@@ -613,91 +624,102 @@ fun ClinicalHistorySection(
                     Text("နာတာရှည်နှင့် ယခင်ခံစားခဲ့ရသော ရောဂါများ", fontSize = 9.sp, color = SlateMedium)
                   }
                 }
-                if (pastMedicalHistory.isNotEmpty()) {
-                  Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFBBDEFB)) {
-                    Text("${pastMedicalHistory.size} selected", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0D47A1), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                  if (pastMedicalHistory.isNotEmpty()) {
+                    Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFBBDEFB)) {
+                      Text("${pastMedicalHistory.size} selected", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0D47A1), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                  }
+                  Icon(
+                    if (isPmhxExpanded || pastMedicalHistory.isNotEmpty()) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                    contentDescription = null,
+                    tint = if (isPmhxExpanded || pastMedicalHistory.isNotEmpty()) Color(0xFF1976D2) else SlateMuted,
+                    modifier = Modifier.size(18.dp)
+                  )
+                }
+              }
+
+              if (isPmhxExpanded || pastMedicalHistory.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                val defaultPmhxList = listOf("None", "Hypertension (HTN)", "Diabetes Mellitus (T2DM)", "Asthma / COPD", "IHD / CAD", "CKD", "Dyslipidemia", "Stroke / CVA", "GERD / Gastritis", "Thyroid disorder", "Gout", "Epilepsy")
+                val customPmhxList = pastMedicalHistory.filter { it !in defaultPmhxList }
+
+                FlowRow(
+                  horizontalArrangement = Arrangement.spacedBy(4.dp),
+                  verticalArrangement = Arrangement.spacedBy(3.dp),
+                  modifier = Modifier.fillMaxWidth()
+                ) {
+                  defaultPmhxList.forEach { dis ->
+                    val isPicked = pastMedicalHistory.contains(dis)
+                    FilterChip(
+                      selected = isPicked,
+                      onClick = {
+                        if (isPicked) {
+                          pastMedicalHistory.remove(dis)
+                        } else {
+                          if (dis == "None") pastMedicalHistory.clear()
+                          else pastMedicalHistory.remove("None")
+                          pastMedicalHistory.add(dis)
+                        }
+                        syncHistory()
+                      },
+                      label = { Text(dis, fontSize = 9.sp, fontWeight = if (isPicked) FontWeight.Bold else FontWeight.Normal) },
+                      colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFF1976D2),
+                        selectedLabelColor = PureWhite
+                      )
+                    )
+                  }
+                  customPmhxList.forEach { customDis ->
+                    FilterChip(
+                      selected = true,
+                      onClick = {
+                        pastMedicalHistory.remove(customDis)
+                        syncHistory()
+                      },
+                      label = { Text("$customDis \u2715", fontSize = 9.sp, fontWeight = FontWeight.Bold) },
+                      colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFF0D47A1),
+                        selectedLabelColor = PureWhite
+                      )
+                    )
                   }
                 }
-              }
-
-              Spacer(modifier = Modifier.height(6.dp))
-              val defaultPmhxList = listOf("None", "Hypertension (HTN)", "Diabetes Mellitus (T2DM)", "Asthma / COPD", "IHD / CAD", "CKD", "Dyslipidemia", "Stroke / CVA", "GERD / Gastritis", "Thyroid disorder", "Gout", "Epilepsy")
-              val customPmhxList = pastMedicalHistory.filter { it !in defaultPmhxList }
-
-              FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalArrangement = Arrangement.spacedBy(3.dp),
-                modifier = Modifier.fillMaxWidth()
-              ) {
-                defaultPmhxList.forEach { dis ->
-                  val isPicked = pastMedicalHistory.contains(dis)
-                  FilterChip(
-                    selected = isPicked,
-                    onClick = {
-                      if (isPicked) {
-                        pastMedicalHistory.remove(dis)
-                      } else {
-                        if (dis == "None") pastMedicalHistory.clear()
-                        else pastMedicalHistory.remove("None")
-                        pastMedicalHistory.add(dis)
-                      }
-                      syncHistory()
-                    },
-                    label = { Text(dis, fontSize = 9.sp, fontWeight = if (isPicked) FontWeight.Bold else FontWeight.Normal) },
-                    colors = FilterChipDefaults.filterChipColors(
-                      selectedContainerColor = Color(0xFF1976D2),
-                      selectedLabelColor = PureWhite
-                    )
-                  )
-                }
-                customPmhxList.forEach { customDis ->
-                  FilterChip(
-                    selected = true,
-                    onClick = {
-                      pastMedicalHistory.remove(customDis)
-                      syncHistory()
-                    },
-                    label = { Text("$customDis \u2715", fontSize = 9.sp, fontWeight = FontWeight.Bold) },
-                    colors = FilterChipDefaults.filterChipColors(
-                      selectedContainerColor = Color(0xFF0D47A1),
-                      selectedLabelColor = PureWhite
-                    )
-                  )
-                }
-              }
-              Spacer(modifier = Modifier.height(4.dp))
-              Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-              ) {
-                OutlinedTextField(
-                  value = customPmhx,
-                  onValueChange = { customPmhx = it },
-                  placeholder = { Text("Custom PMHx (e.g. Hepatitis B, CKD Stage 3...)", fontSize = 9.5.sp, color = SlateMuted) },
-                  modifier = Modifier.weight(1f),
-                  textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
-                  shape = RoundedCornerShape(4.dp),
-                  keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
-                  singleLine = true
-                )
-                Button(
-                  onClick = {
-                    if (customPmhx.isNotBlank()) {
-                      pastMedicalHistory.remove("None")
-                      pastMedicalHistory.add(customPmhx.trim())
-                      customPmhx = ""
-                      syncHistory()
-                    }
-                  },
-                  colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2)),
-                  shape = RoundedCornerShape(4.dp),
-                  contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                  modifier = Modifier.height(36.dp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.spacedBy(6.dp),
+                  verticalAlignment = Alignment.CenterVertically
                 ) {
-                  Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
-                  Spacer(modifier = Modifier.width(2.dp))
-                  Text("Add", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                  OutlinedTextField(
+                    value = customPmhx,
+                    onValueChange = { customPmhx = it },
+                    placeholder = { Text("Custom PMHx (e.g. Hepatitis B, CKD Stage 3...)", fontSize = 9.5.sp, color = SlateMuted) },
+                    modifier = Modifier.weight(1f),
+                    textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
+                    shape = RoundedCornerShape(4.dp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
+                    singleLine = true
+                  )
+                  Button(
+                    onClick = {
+                      if (customPmhx.isNotBlank()) {
+                        pastMedicalHistory.remove("None")
+                        pastMedicalHistory.add(customPmhx.trim())
+                        customPmhx = ""
+                        syncHistory()
+                      }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2)),
+                    shape = RoundedCornerShape(4.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                    modifier = Modifier.height(36.dp)
+                  ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text("Add", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                  }
                 }
               }
             }

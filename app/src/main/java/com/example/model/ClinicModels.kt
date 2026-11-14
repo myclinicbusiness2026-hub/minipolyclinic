@@ -141,7 +141,7 @@ data class Medicine(
       else -> "Oral"
     }
   }
-  val totalStock: Double get() = batches.sumOf { it.quantity }
+  val totalStock: Double get() = maxOf(0.0, batches.sumOf { maxOf(0.0, it.quantity) })
   val totalStockInt: Int get() = totalStock.toInt()
   val totalStockDisplay: String get() = if (totalStock % 1.0 == 0.0) totalStock.toInt().toString() else String.format(Locale.US, "%.1f", totalStock)
   val isLowStock: Boolean get() = minStockThreshold > 0 && totalStock <= minStockThreshold

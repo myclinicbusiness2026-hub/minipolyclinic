@@ -217,6 +217,7 @@ fun DoctorConsultationScreen(
   val selectedInvestigations = remember(patientId) { mutableStateListOf<String>() }
   val orderedTreatmentCards = remember(patientId) { mutableStateListOf<TreatmentCard>() }
   var showAddTreatmentOrderModal by remember { mutableStateOf(false) }
+  var editingTreatmentIndex by remember { mutableStateOf<Int?>(null) }
   val initialConsultationFee = remember(clinicSettings.defaultConsultationFee, procedures) {
     val masterDocFee = procedures.find {
       it.name.contains("Consultation", ignoreCase = true) ||
@@ -1033,7 +1034,14 @@ fun DoctorConsultationScreen(
                 prescribedDrugs = prescribedDrugs,
                 onOpenAddDrug = { showAddDrugModal = true },
                 orderedTreatmentCards = orderedTreatmentCards,
-                onOpenAddTreatmentOrder = { showAddTreatmentOrderModal = true },
+                onOpenAddTreatmentOrder = {
+                  editingTreatmentIndex = null
+                  showAddTreatmentOrderModal = true
+                },
+                onEditTreatmentOrder = { idx ->
+                  editingTreatmentIndex = idx
+                  showAddTreatmentOrderModal = true
+                },
                 procedures = procedures,
                 selectedProcedures = selectedProcedures,
                 medicines = medicines,
@@ -1122,7 +1130,14 @@ fun DoctorConsultationScreen(
               prescribedDrugs = prescribedDrugs,
               onOpenAddDrug = { showAddDrugModal = true },
               orderedTreatmentCards = orderedTreatmentCards,
-              onOpenAddTreatmentOrder = { showAddTreatmentOrderModal = true },
+              onOpenAddTreatmentOrder = {
+                editingTreatmentIndex = null
+                showAddTreatmentOrderModal = true
+              },
+              onEditTreatmentOrder = { idx ->
+                editingTreatmentIndex = idx
+                showAddTreatmentOrderModal = true
+              },
               procedures = procedures,
               selectedProcedures = selectedProcedures,
               medicines = medicines,
@@ -1399,9 +1414,19 @@ fun DoctorConsultationScreen(
       medicines = medicines,
       clinicSettings = clinicSettings,
       doctorName = effectiveDoctor.first,
-      onDismiss = { showAddTreatmentOrderModal = false },
+      initialCard = editingTreatmentIndex?.let { orderedTreatmentCards.getOrNull(it) },
+      onDismiss = {
+        editingTreatmentIndex = null
+        showAddTreatmentOrderModal = false
+      },
       onConfirm = { card ->
-        orderedTreatmentCards.add(card)
+        val idx = editingTreatmentIndex
+        if (idx != null && idx in orderedTreatmentCards.indices) {
+          orderedTreatmentCards[idx] = card
+        } else {
+          orderedTreatmentCards.add(card)
+        }
+        editingTreatmentIndex = null
         showAddTreatmentOrderModal = false
       }
     )

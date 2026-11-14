@@ -44,6 +44,7 @@ fun TreatmentOrderCard(
   treatmentOrders: List<TreatmentCard>,
   onOpenAddOrder: () -> Unit,
   onRemoveOrder: (Int) -> Unit,
+  onEditOrder: ((Int) -> Unit)? = null,
   onTogglePaymentMode: ((Int) -> Unit)? = null,
   currencyFmt: NumberFormat
 ) {
@@ -211,11 +212,22 @@ fun TreatmentOrderCard(
                 }
               }
 
-              IconButton(
-                onClick = { onRemoveOrder(index) },
-                modifier = Modifier.size(24.dp)
-              ) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = StatusCritical, modifier = Modifier.size(14.dp))
+              Row(verticalAlignment = Alignment.CenterVertically) {
+                if (onEditOrder != null) {
+                  IconButton(
+                    onClick = { onEditOrder(index) },
+                    modifier = Modifier.size(24.dp)
+                  ) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MedicalGreen, modifier = Modifier.size(15.dp))
+                  }
+                  Spacer(modifier = Modifier.width(4.dp))
+                }
+                IconButton(
+                  onClick = { onRemoveOrder(index) },
+                  modifier = Modifier.size(24.dp)
+                ) {
+                  Icon(Icons.Default.Delete, contentDescription = "Delete", tint = StatusCritical, modifier = Modifier.size(14.dp))
+                }
               }
             }
           }
@@ -235,31 +247,46 @@ fun AddTreatmentOrderModal(
   medicines: List<Medicine>,
   clinicSettings: ClinicSettings,
   doctorName: String,
+  initialCard: TreatmentCard? = null,
   onDismiss: () -> Unit,
   onConfirm: (TreatmentCard) -> Unit
 ) {
-  var isCocktail by remember { mutableStateOf(false) }
-  var isPatientSupplied by remember { mutableStateOf(false) }
+  var isCocktail by remember(initialCard) { mutableStateOf(initialCard?.isCocktail ?: false) }
+  var isPatientSupplied by remember(initialCard) { mutableStateOf(initialCard?.isPatientSupplied ?: false) }
 
-  var medicationName by remember { mutableStateOf("") }
-  var selectedMedId by remember { mutableStateOf("") }
-  var cocktailTitle by remember { mutableStateOf("") }
-  val cocktailItems = remember { mutableStateListOf<CocktailDrugItem>() }
+  var medicationName by remember(initialCard) { mutableStateOf(initialCard?.medicationName ?: "") }
+  var selectedMedId by remember(initialCard) { mutableStateOf(initialCard?.medicationId ?: "") }
+  var cocktailTitle by remember(initialCard) { mutableStateOf(if (initialCard?.isCocktail == true) initialCard.medicationName else "") }
+  val cocktailItems = remember(initialCard) {
+    mutableStateListOf<CocktailDrugItem>().apply {
+      if (initialCard?.isCocktail == true && initialCard.cocktailItems.isNotEmpty()) {
+        addAll(initialCard.cocktailItems)
+      }
+    }
+  }
 
-  val consumablesList = remember { mutableStateListOf<TreatmentConsumable>() }
+  val consumablesList = remember(initialCard) {
+    mutableStateListOf<TreatmentConsumable>().apply {
+      if (initialCard != null && initialCard.consumables.isNotEmpty()) {
+        addAll(initialCard.consumables)
+      }
+    }
+  }
   var consumableSearchQuery by remember { mutableStateOf("") }
 
-  var dosage by remember { mutableStateOf("") }
-  var selectedRoute by remember { mutableStateOf(TreatmentRoute.IV_PUSH) }
-  var customRouteText by remember { mutableStateOf("") }
-  var frequency by remember { mutableStateOf("12 hrly") }
-  var totalDaysText by remember { mutableStateOf("3") }
-  var medFeeText by remember { mutableStateOf("0") }
-  var sessionFeeText by remember(selectedRoute) { mutableStateOf(selectedRoute.getDefaultFee(clinicSettings).toInt().toString()) }
-  var instructions by remember { mutableStateOf("") }
+  var dosage by remember(initialCard) { mutableStateOf(initialCard?.dosage ?: "") }
+  var selectedRoute by remember(initialCard) { mutableStateOf(initialCard?.route ?: TreatmentRoute.IV_PUSH) }
+  var customRouteText by remember(initialCard) { mutableStateOf(initialCard?.customRoute ?: "") }
+  var frequency by remember(initialCard) { mutableStateOf(initialCard?.frequency ?: "12 hrly") }
+  var totalDaysText by remember(initialCard) { mutableStateOf((initialCard?.totalDays ?: 3).toString()) }
+  var medFeeText by remember(initialCard) { mutableStateOf((initialCard?.medicationFee?.toInt() ?: 0).toString()) }
+  var sessionFeeText by remember(initialCard, selectedRoute) {
+    mutableStateOf(initialCard?.sessionFee?.toInt()?.toString() ?: selectedRoute.getDefaultFee(clinicSettings).toInt().toString())
+  }
+  var instructions by remember(initialCard) { mutableStateOf(initialCard?.instructions ?: "") }
   var searchQuery by remember { mutableStateOf("") }
   var splitVialMode by remember { mutableStateOf(false) }
-  var isPayPerVisit by remember { mutableStateOf(true) }
+  var isPayPerVisit by remember(initialCard) { mutableStateOf(initialCard?.isPayPerVisit ?: true) }
 
   val filteredMedicines = remember(medicines, searchQuery) {
     if (searchQuery.isBlank()) emptyList()
@@ -327,7 +354,13 @@ fun AddTreatmentOrderModal(
             }
             Spacer(modifier = Modifier.width(8.dp))
             Column {
-              Text("ဆေးထိုး/အကြောဆေး အော်ဒါ (New Injection Order)", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+              Text(
+                if (initialCard != null) "ဆေးထိုး/အကြောဆေး အော်ဒါ ပြင်ဆင်ရန် (Edit Injection Order)"
+                else "ဆေးထိုး/အကြောဆေး အော်ဒါ (New Injection Order)",
+                fontSize = 13.5.sp,
+                fontWeight = FontWeight.Bold,
+                color = SlateDark
+              )
               Text("လူနာ: ${patient?.name ?: ""} (${patient?.hn ?: ""})", fontSize = 10.5.sp, color = SlateMuted)
             }
           }
@@ -1016,7 +1049,37 @@ fun AddTreatmentOrderModal(
             }
           }
 
-          // 7. Fee breakdown
+          // 7. Fee breakdown with clear Auto-Sum of Medication + Consumables
+          val currencyFmt = remember { NumberFormat.getNumberInstance(Locale.US) }
+          val totalConsumablesFee = consumablesList.sumOf { it.totalPrice }
+          val effectiveBaseMedFee = if (isPatientSupplied) 0.0 else (medFeeText.toDoubleOrNull() ?: 0.0)
+          val combinedDrugAndConsumables = effectiveBaseMedFee + totalConsumablesFee
+
+          Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = Color(0xFFF0FDF4),
+            border = BorderStroke(1.dp, Color(0xFFBBF7D0)),
+            modifier = Modifier.fillMaxWidth()
+          ) {
+            Column(modifier = Modifier.padding(8.dp)) {
+              Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Text("ဆေးနှင့် အသုံးပစ္စည်းဖိုး စုစုပေါင်း:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+                Text("${currencyFmt.format(combinedDrugAndConsumables.toInt())} Ks", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+              }
+              if (totalConsumablesFee > 0) {
+                Text(
+                  "ဆေးဖိုး: ${currencyFmt.format(effectiveBaseMedFee.toInt())} Ks + ပစ္စည်း (${consumablesList.size} မျိုး): ${currencyFmt.format(totalConsumablesFee.toInt())} Ks",
+                  fontSize = 9.5.sp,
+                  color = SlateMedium
+                )
+              }
+            }
+          }
+
           Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
               value = if (isPatientSupplied) "0 (လူနာပါဆေး)" else medFeeText,
@@ -1097,11 +1160,24 @@ fun AddTreatmentOrderModal(
                 splitVialMode = splitVialMode,
                 consumables = consumablesList.toList()
               )
-              val card = TreatmentCard(
-                patientId = patient?.id ?: "",
-                patientName = patient?.name ?: "",
-                patientHn = patient?.hn ?: "",
-                doctorName = doctorName,
+              val finalSessions = sessions.mapIndexed { idx, s ->
+                val prev = initialCard?.sessions?.getOrNull(idx)
+                if (prev != null) {
+                  prev.copy(
+                    medicationFee = medFee,
+                    sessionFee = sessionFee,
+                    consumables = consumablesList.toList(),
+                    isPrepaid = !isPayPerVisit
+                  )
+                } else {
+                  if (!isPayPerVisit) s.copy(isPrepaid = true) else s
+                }
+              }
+              val card = (initialCard ?: TreatmentCard(patientId = patient?.id ?: "", patientName = patient?.name ?: "")).copy(
+                patientId = patient?.id ?: (initialCard?.patientId ?: ""),
+                patientName = patient?.name ?: (initialCard?.patientName ?: ""),
+                patientHn = patient?.hn ?: (initialCard?.patientHn ?: ""),
+                doctorName = doctorName.ifBlank { initialCard?.doctorName ?: "" },
                 medicationId = selectedMedId,
                 medicationName = finalMedName,
                 dosage = finalDosage,
@@ -1109,10 +1185,8 @@ fun AddTreatmentOrderModal(
                 customRoute = if (selectedRoute == TreatmentRoute.CUSTOM) customRouteText.trim() else "",
                 frequency = frequency.ifBlank { "12 hrly" },
                 totalDays = days,
-                totalSessions = sessions.size,
-                sessions = sessions.mapIndexed { idx, s ->
-                  if (!isPayPerVisit) s.copy(isPrepaid = true) else s
-                },
+                totalSessions = finalSessions.size,
+                sessions = finalSessions,
                 sessionFee = sessionFee,
                 medicationFee = medFee,
                 instructions = instructions,
@@ -1135,7 +1209,8 @@ fun AddTreatmentOrderModal(
           ) {
             Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(6.dp))
-            Text("အော်ဒါအတည်ပြုမည် (Confirm Order)", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+            Text(if (initialCard != null) "ပြင်ဆင်ချက် သိမ်းမည် (Update Order)" else "အော်ဒါအတည်ပြုမည် (Confirm Order)", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+          }
           }
         }
       }

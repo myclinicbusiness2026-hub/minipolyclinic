@@ -2073,7 +2073,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         if (remaining > 0.0 && b.quantity > 0.0) {
           val deduct = minOf(b.quantity, remaining)
           remaining -= deduct
-          b.copy(quantity = b.quantity - deduct, lastUpdated = now)
+          b.copy(quantity = maxOf(0.0, b.quantity - deduct), lastUpdated = now)
         } else b
       }
       medMap[med.id] = med.copy(batches = updatedBatches)
@@ -2155,10 +2155,15 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
       // Deduct attached consumables for billed session(s)
       val sessionsToDeduct = card.sessions.filter { it.invoiceId == inv.id }.ifEmpty { card.sessions.take(1) }
-      sessionsToDeduct.forEach { session ->
-        for (c in session.consumables) {
-          val med = findMatchingMedicine(c.medicineId, c.name, medMap)
-          if (med != null && c.quantity > 0) {
+      val consList = if (sessionsToDeduct.isNotEmpty() && sessionsToDeduct.any { it.consumables.isNotEmpty() }) {
+        sessionsToDeduct.flatMap { it.consumables }
+      } else {
+        card.consumables
+      }
+      for (c in consList) {
+        val med = findMatchingMedicine(c.medicineId, c.name, medMap)
+        if (med != null && c.quantity > 0) {
+          if (!deductedMedIds.contains(med.id)) {
             deductMed(med, c.quantity)
           }
         }
@@ -2313,7 +2318,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           if (remaining > 0.0 && b.quantity > 0.0) {
             val deduct = minOf(b.quantity, remaining)
             remaining -= deduct
-            b.copy(quantity = b.quantity - deduct, lastUpdated = now)
+            b.copy(quantity = maxOf(0.0, b.quantity - deduct), lastUpdated = now)
           } else b
         }
         medMap[med.id] = med.copy(batches = updatedBatches)
@@ -2945,7 +2950,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             if (remaining > 0.0 && b.quantity > 0.0) {
               val deduct = minOf(b.quantity, remaining)
               remaining -= deduct
-              b.copy(quantity = b.quantity - deduct, lastUpdated = now)
+              b.copy(quantity = maxOf(0.0, b.quantity - deduct), lastUpdated = now)
             } else b
           }
           medMap[med.id] = med.copy(batches = updatedBatches)
@@ -3415,7 +3420,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         val deduct = minOf(b.quantity, remaining)
         remaining -= deduct
         totalCostDeducted += deduct * b.costPricePerUnit
-        b.copy(quantity = b.quantity - deduct, lastUpdated = now)
+        b.copy(quantity = maxOf(0.0, b.quantity - deduct), lastUpdated = now)
       } else b
     }
 

@@ -152,7 +152,8 @@ fun ConsultationBillingActionCard(
         ).show()
       }
 
-      val isPresetSelected = (followUpAppointmentText.contains("၃ ရက်") || followUpAppointmentText.contains("3 Days")) ||
+      val isPresetSelected = (followUpAppointmentText.contains("၁ ရက်") || followUpAppointmentText.contains("မနက်ဖြန်") || followUpAppointmentText.contains("Daily")) ||
+          (followUpAppointmentText.contains("၃ ရက်") || followUpAppointmentText.contains("3 Days")) ||
           (followUpAppointmentText.contains("၅ ရက်") || followUpAppointmentText.contains("5 Days")) ||
           (followUpAppointmentText.contains("၁ ပတ်") || followUpAppointmentText.contains("1 Week")) ||
           (followUpAppointmentText.contains("၂ ပတ်") || followUpAppointmentText.contains("2 Weeks")) ||
@@ -172,6 +173,7 @@ fun ConsultationBillingActionCard(
       ) {
         listOf(
           "PRN (မသက်သာမှ ပြန်ပြရန်)" to 0,
+          "၁ ရက် (Daily / မနက်ဖြန်)" to 1,
           "၃ ရက် (3 Days)" to 3,
           "၅ ရက် (5 Days)" to 5,
           "၁ ပတ် (1 Week)" to 7,
@@ -181,6 +183,7 @@ fun ConsultationBillingActionCard(
           "၂ လ (2 Months)" to 60
         ).forEach { (label, days) ->
           val isSelected = (days == 0 && (followUpAppointmentText.contains("PRN", ignoreCase = true) || followUpAppointmentText.contains("မသက်သာမှ"))) ||
+              (days == 1 && (followUpAppointmentText.contains("၁ ရက်") || followUpAppointmentText.contains("မနက်ဖြန်") || followUpAppointmentText.contains("Daily"))) ||
               (days == 3 && (followUpAppointmentText.contains("၃ ရက်") || followUpAppointmentText.contains("3 Days"))) ||
               (days == 5 && (followUpAppointmentText.contains("၅ ရက်") || followUpAppointmentText.contains("5 Days"))) ||
               (days == 7 && (followUpAppointmentText.contains("၁ ပတ်") || followUpAppointmentText.contains("1 Week"))) ||

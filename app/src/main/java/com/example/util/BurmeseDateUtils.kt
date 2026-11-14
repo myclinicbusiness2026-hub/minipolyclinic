@@ -37,6 +37,7 @@ object BurmeseDateUtils {
     val dateStr = String.format("%02d/%02d/%04d", day, month, year)
 
     val periodLabel = when (days) {
+      1 -> "၁ ရက်အကြာ (မနက်ဖြန်)"
       3 -> "၃ ရက်အကြာ"
       5 -> "၅ ရက်အကြာ"
       7 -> "၁ ပတ်အကြာ"

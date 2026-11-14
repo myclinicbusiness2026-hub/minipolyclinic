@@ -1,4 +1,4 @@
-package com.example.util
+﻿package com.example.util
 
 import android.content.Context
 import android.graphics.Canvas
@@ -74,6 +74,29 @@ object LabPrintHelper {
     clinicSettings: ClinicSettings
   ) = printLabReportA4(context, order, null, clinicSettings, false)
 
+  fun printBlankLetterheadA4(
+    context: Context,
+    clinicSettings: ClinicSettings
+  ) {
+    val dummyOrder = LabOrder(
+      id = "BLANK-LETTERHEAD",
+      orderNumber = "",
+      patientId = "",
+      patientName = "",
+      patientHn = "",
+      patientAge = 0,
+      patientGender = com.example.model.Gender.OTHER,
+      doctorName = "",
+      orderDate = "",
+      orderTime = "",
+      status = com.example.model.LabOrderStatus.COMPLETED,
+      totalAmount = 0.0,
+      items = emptyList(),
+      referringDoctorName = ""
+    )
+    printLabReportA4(context, dummyOrder, null, clinicSettings, isBlankLetterhead = true)
+  }
+
   fun printLabReportA4(
     context: Context,
     order: LabOrder,
@@ -135,18 +158,30 @@ object LabPrintHelper {
       partitionItemsIntoPages(itemsToPrint)
     }
 
-    val effectivePathologistName = order.pathologistName.ifBlank {
-      clinic.defaultPathologistName.ifBlank { clinic.doctorName }
+    val effectivePathologistName = if (isBlankLetterhead) {
+      clinic.defaultPathologistName.ifBlank { "Consultant Pathologist" }
+    } else {
+      order.pathologistName.ifBlank {
+        clinic.defaultPathologistName.ifBlank { "Consultant Pathologist" }
+      }
     }
-    val effectivePathologistDegree = order.pathologistDegree.ifBlank {
-      clinic.defaultPathologistDegree.ifBlank { clinic.doctorDegree }
+    val effectivePathologistDegree = if (isBlankLetterhead) {
+      clinic.defaultPathologistDegree.ifBlank { "M.B.,B.S., M.Med.Sc (Pathology)" }
+    } else {
+      order.pathologistDegree.ifBlank {
+        clinic.defaultPathologistDegree.ifBlank { "M.B.,B.S., M.Med.Sc (Pathology)" }
+      }
     }
-    val effectivePathologistSama = order.pathologistSama.ifBlank {
-      clinic.defaultPathologistSama.ifBlank { clinic.doctorSama }
+    val effectivePathologistSama = if (isBlankLetterhead) {
+      clinic.defaultPathologistSama
+    } else {
+      order.pathologistSama.ifBlank { clinic.defaultPathologistSama }
     }
-    val effectivePathologistTitle = order.pathologistTitle.ifBlank {
-      clinic.defaultPathologistTitle
-    }.trim()
+    val effectivePathologistTitle = if (isBlankLetterhead) {
+      clinic.defaultPathologistTitle.ifBlank { "Consultant Pathologist" }
+    } else {
+      order.pathologistTitle.ifBlank { clinic.defaultPathologistTitle }.trim()
+    }
 
     val sb = StringBuilder()
     sb.append("""
@@ -300,22 +335,22 @@ object LabPrintHelper {
           .page-footer {
             flex-shrink: 0;
             margin-top: auto;
-            padding-top: 8px;
+            padding-top: 4px;
             border-top: 1px solid #e2e8f0;
           }
           .sign-table {
             width: 100%;
-            margin-top: 6px;
+            margin-top: 4px;
           }
           .sign-cell {
             width: 50%;
             text-align: center;
             vertical-align: bottom;
-            font-size: 11px;
+            font-size: 10px;
           }
           .sign-line {
-            width: 70%;
-            margin: 0 auto 4px auto;
+            width: 60%;
+            margin: 0 auto 3px auto;
             border-bottom: 1px solid #334155;
           }
           .remark-box {
@@ -355,25 +390,34 @@ object LabPrintHelper {
         sb.append("<div class=\"report-banner\">LABORATORY INVESTIGATION REPORT</div>")
       }
 
-      // 3. Patient Demographics Box
-      sb.append("""
-        <div class="patient-box">
-          <div class="patient-grid">
-            <div class="patient-row">
-              <div class="patient-cell" style="width: 50%;"><strong>Patient Name:</strong> ${order.patientName}</div>
-              <div class="patient-cell" style="width: 50%;"><strong>Lab Order No:</strong> ${order.orderNumber}</div>
-            </div>
-            <div class="patient-row">
-              <div class="patient-cell"><strong>Patient ID / Reg No:</strong> ${order.patientHn}</div>
-              <div class="patient-cell"><strong>Date & Time:</strong> ${order.orderDate} ${order.orderTime}</div>
-            </div>
-            <div class="patient-row">
-              <div class="patient-cell"><strong>Age / Gender:</strong> ${order.patientAge} / ${order.patientGender}</div>
-              <div class="patient-cell"><strong>Referring Doctor:</strong> ${order.referringDoctorName.ifBlank { clinic.doctorName }}</div>
+      // 3. Patient Demographics Box (Omit completely on blank letterhead)
+      if (!isBlankLetterhead) {
+        val refDocDisplay = if (order.referringDoctorName.isNotBlank()) {
+          if (order.referringDoctorName.startsWith("Dr", ignoreCase = true)) order.referringDoctorName
+          else "Dr. ${order.referringDoctorName}"
+        } else {
+          if (clinic.doctorName.startsWith("Dr", ignoreCase = true)) clinic.doctorName
+          else "Dr. ${clinic.doctorName}"
+        }
+        sb.append("""
+          <div class="patient-box">
+            <div class="patient-grid">
+              <div class="patient-row">
+                <div class="patient-cell" style="width: 50%;"><strong>Patient Name:</strong> ${order.patientName}</div>
+                <div class="patient-cell" style="width: 50%;"><strong>Lab Order No:</strong> ${order.orderNumber}</div>
+              </div>
+              <div class="patient-row">
+                <div class="patient-cell"><strong>Patient ID / Reg No:</strong> ${order.patientHn}</div>
+                <div class="patient-cell"><strong>Date & Time:</strong> ${order.orderDate} ${order.orderTime}</div>
+              </div>
+              <div class="patient-row">
+                <div class="patient-cell"><strong>Age / Gender:</strong> ${order.patientAge} / ${order.patientGender}</div>
+                <div class="patient-cell"><strong>Referring Doctor:</strong> $refDocDisplay</div>
+              </div>
             </div>
           </div>
-        </div>
-      """.trimIndent())
+        """.trimIndent())
+      }
 
       // 4. Page Body
       sb.append("<div class=\"page-body\">")
@@ -484,22 +528,22 @@ object LabPrintHelper {
         <div class="page-footer">
           <table class="sign-table">
             <tr>
-              ${if (order.showTechnicianSign && order.technicianName.isNotBlank()) """
+              ${if (!isBlankLetterhead && order.showTechnicianSign && order.technicianName.isNotBlank()) """
               <td class="sign-cell">
                 <div class="sign-line"></div>
                 <strong>${order.technicianName}</strong><br/>
-                <span style="color: #64748b; font-size: 9.5px;">Medical Laboratory Technologist</span>
+                <span style="color: #64748b; font-size: 9px;">Medical Laboratory Technologist</span>
               </td>
               """ else """
               <td class="sign-cell" style="width: 50%;"></td>
               """}
-              ${if (order.showDoctorSeal) """
-              <td class="sign-cell" style="${if (!order.showTechnicianSign) "width: 50%; float: right;" else ""}">
+              ${if (isBlankLetterhead || order.showDoctorSeal) """
+              <td class="sign-cell" style="${if (!order.showTechnicianSign || isBlankLetterhead) "width: 50%; float: right;" else ""}">
                 <div class="sign-line"></div>
                 <strong style="color: #0f172a;">$effectivePathologistName</strong><br/>
-                <span style="font-size: 10px; color: #334155;">$effectivePathologistDegree</span><br/>
-                <span style="color: #475569; font-size: 9.5px;">(S.A.M.A: $effectivePathologistSama)</span><br/>
-                ${if (effectivePathologistTitle.isNotBlank()) "<span style='color: #0f172a; font-size: 9.5px; font-weight: 500;'>$effectivePathologistTitle</span>" else ""}
+                ${if (effectivePathologistDegree.isNotBlank()) "<span style='font-size: 9.5px; color: #334155;'>$effectivePathologistDegree</span><br/>" else ""}
+                ${if (effectivePathologistSama.isNotBlank()) "<span style='color: #475569; font-size: 9px;'>(S.A.M.A: $effectivePathologistSama)</span><br/>" else ""}
+                ${if (effectivePathologistTitle.isNotBlank()) "<span style='color: #0f172a; font-size: 9px; font-weight: 500;'>$effectivePathologistTitle</span>" else ""}
               </td>
               """ else """
               <td class="sign-cell" style="${if (!order.showTechnicianSign) "width: 50%; float: right;" else ""}">
@@ -509,7 +553,7 @@ object LabPrintHelper {
               """}
             </tr>
           </table>
-          <div style="text-align: center; margin-top: 8px; font-size: 9px; color: #94a3b8;">
+          <div style="text-align: center; margin-top: 5px; font-size: 8.5px; color: #94a3b8;">
             This investigation is processed by the Laboratory Services at ${clinic.clinicNameMm}.
           </div>
         </div>

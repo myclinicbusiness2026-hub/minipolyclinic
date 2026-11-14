@@ -847,7 +847,13 @@ fun AdministerSessionModal(
   var medPriceText by remember { mutableStateOf((if (isPrepaid) 0.0 else (if (session.medicationFee > 0) session.medicationFee else card.medicationFee)).toInt().toString()) }
   var sessionFeeText by remember { mutableStateOf((if (isPrepaid) 0.0 else card.sessionFee).toInt().toString()) }
   var notes by remember { mutableStateOf(session.notes) }
-  val selectedConsumables = remember { mutableStateListOf<TreatmentConsumable>() }
+  val initialConsumables = remember(session, card) {
+    if (session.consumables.isNotEmpty()) session.consumables
+    else card.consumables
+  }
+  val selectedConsumables = remember(initialConsumables) {
+    mutableStateListOf<TreatmentConsumable>().apply { addAll(initialConsumables) }
+  }
   var isConsumablesFoc by remember { mutableStateOf(false) }
   var storeSearchQuery by remember { mutableStateOf("") }
 

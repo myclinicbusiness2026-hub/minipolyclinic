@@ -72,6 +72,7 @@ fun LabInvestigationScreen(
   val clinicSettings by viewModel.clinicSettings.collectAsState()
   val allPatients by viewModel.patients.collectAsState()
   val allExpenses by viewModel.expenses.collectAsState()
+  val procedures by viewModel.procedures.collectAsState()
 
   val labExpenses = remember(allExpenses) {
     allExpenses.filter { it.category.contains("Lab", ignoreCase = true) || it.category.contains("Reagent", ignoreCase = true) }
@@ -207,8 +208,21 @@ fun LabInvestigationScreen(
               }
             }
 
-            // Mobile Action Buttons: Lab Expense & New Order
+            // Mobile Action Buttons: Blank Letterhead, Lab Expense & New Order
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+              OutlinedButton(
+                onClick = {
+                  LabPrintHelper.printBlankLetterheadA4(context, clinicSettings)
+                },
+                shape = RoundedCornerShape(6.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.height(34.dp),
+                border = BorderStroke(1.dp, Color(0xFF0D9488))
+              ) {
+                Icon(Icons.Default.Print, contentDescription = null, tint = Color(0xFF0D9488), modifier = Modifier.size(13.dp))
+                Spacer(modifier = Modifier.width(3.dp))
+                Text("📄 Blank Letterhead", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0D9488))
+              }
               OutlinedButton(
                 onClick = { showLabExpenseDialog = true },
                 shape = RoundedCornerShape(6.dp),
@@ -500,6 +514,7 @@ fun LabInvestigationScreen(
     MobileNewLabOrderDialog(
       patients = allPatients,
       templates = labTemplates,
+      procedures = procedures,
       attendingDoctor = viewModel.currentUser.value?.displayName ?: clinicSettings.doctorName,
       onDismiss = { showNewOrderDialog = false },
       onSubmit = { newOrder ->
@@ -712,12 +727,31 @@ fun MobileLabOrderQueueCard(
 
       Spacer(modifier = Modifier.height(4.dp))
 
-      // Row 2: Demographics & Time
-      Text(
-        "Age: ${order.patientAge} • ${order.patientGender.name} • ${order.orderDate} ${order.orderTime}",
-        fontSize = 10.sp,
-        color = SlateMuted
-      )
+      // Row 2: Demographics & Time & Lab No
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Text(
+          "Age: ${order.patientAge} • ${order.patientGender.name} • ${order.orderDate} ${order.orderTime}",
+          fontSize = 10.sp,
+          color = SlateMuted
+        )
+        Surface(
+          shape = RoundedCornerShape(4.dp),
+          color = Color(0xFFF1F5F9),
+          border = BorderStroke(0.5.dp, Color(0xFFCBD5E1))
+        ) {
+          Text(
+            "🔬 Lab No: ${order.orderNumber}",
+            fontSize = 9.5.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF0369A1),
+            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
+          )
+        }
+      }
 
       Spacer(modifier = Modifier.height(6.dp))
 
@@ -824,13 +858,6 @@ fun MobileLabOrderQueueCard(
                 onClick = {
                   showMenu = false
                   onPrintBlankLetterhead()
-                }
-              )
-              DropdownMenuItem(
-                text = { Text("📷 စက်အဖြေ Slip ပုံတင်ရန် (Attach Slip Photo)", fontSize = 11.5.sp) },
-                onClick = {
-                  showMenu = false
-                  photoLauncher.launch("image/*")
                 }
               )
               if (!order.isPaid) {
@@ -985,13 +1012,6 @@ fun MobileLabCompletedResultCard(
                 }
               )
               DropdownMenuItem(
-                text = { Text("📷 စက်အဖြေ Slip ပုံတင်ရန်", fontSize = 11.5.sp) },
-                onClick = {
-                  showMenu = false
-                  photoLauncher.launch("image/*")
-                }
-              )
-              DropdownMenuItem(
                 text = { Text("✏️ အဖြေများ ပြန်လည်ပြင်ဆင်ရန်", fontSize = 11.5.sp) },
                 onClick = {
                   showMenu = false
@@ -1010,11 +1030,30 @@ fun MobileLabCompletedResultCard(
         }
       }
 
-      Text(
-        "HN: ${order.patientHn} • ${order.orderDate} • Dr: ${order.doctorName.ifBlank { "Direct" }}",
-        fontSize = 10.sp,
-        color = SlateMuted
-      )
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Text(
+          "HN: ${order.patientHn} • ${order.orderDate} • Dr: ${order.doctorName.ifBlank { "Direct" }}",
+          fontSize = 10.sp,
+          color = SlateMuted
+        )
+        Surface(
+          shape = RoundedCornerShape(4.dp),
+          color = Color(0xFFF1F5F9),
+          border = BorderStroke(0.5.dp, Color(0xFFCBD5E1))
+        ) {
+          Text(
+            "🔬 Lab No: ${order.orderNumber}",
+            fontSize = 9.5.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF0369A1),
+            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
+          )
+        }
+      }
 
       Spacer(modifier = Modifier.height(6.dp))
 
@@ -1447,6 +1486,7 @@ fun MobileEmptyState(
 fun MobileNewLabOrderDialog(
   patients: List<Patient>,
   templates: List<LabTestTemplate>,
+  procedures: List<ProcedureItem> = emptyList(),
   attendingDoctor: String,
   onDismiss: () -> Unit,
   onSubmit: (LabOrder) -> Unit
@@ -1473,7 +1513,18 @@ fun MobileNewLabOrderDialog(
   val selectedTemplates = remember(selectedTemplateIds.toList(), templates) {
     templates.filter { selectedTemplateIds.contains(it.id) }
   }
-  val totalAmount = remember(selectedTemplates) { selectedTemplates.sumOf { it.defaultPrice } }
+
+  fun getPriceForTemplate(tmpl: LabTestTemplate): Double {
+    val matchedProc = procedures.firstOrNull {
+      it.name.trim().equals(tmpl.name.trim(), ignoreCase = true) ||
+      it.code.trim().equals(tmpl.id.trim(), ignoreCase = true)
+    }
+    return matchedProc?.fee ?: tmpl.defaultPrice
+  }
+
+  val totalAmount = remember(selectedTemplates, procedures) {
+    selectedTemplates.sumOf { getPriceForTemplate(it) }
+  }
 
   Dialog(
     onDismissRequest = onDismiss,
@@ -1662,7 +1713,7 @@ fun MobileNewLabOrderDialog(
                 },
                 label = {
                   Text(
-                    "${tmpl.name} (${currencyFmt.format(tmpl.defaultPrice.toInt())} Ks)",
+                    "${tmpl.name} (${currencyFmt.format(getPriceForTemplate(tmpl).toInt())} Ks)",
                     fontSize = 10.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                   )
@@ -1760,7 +1811,7 @@ fun MobileNewLabOrderDialog(
                     testId = t.id,
                     testName = t.name,
                     category = t.category,
-                    price = t.defaultPrice,
+                    price = getPriceForTemplate(t),
                     specimenType = t.specimenType,
                     remarks = "",
                     isCompleted = false,
@@ -1936,6 +1987,107 @@ fun MobileLabResultEntryDialog(
 
         // Scrollable List of Tests & Parameter Cards (Mobile Friendly Form)
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+          // Pathologist Verification Signature Input Card (Top of dialog)
+          Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = Color(0xFFF0FDF4),
+            border = BorderStroke(1.dp, Color(0xFFBBF7D0)),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+          ) {
+            Column(modifier = Modifier.padding(10.dp)) {
+              Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                  checked = showDoctorSeal,
+                  onCheckedChange = { showDoctorSeal = it },
+                  modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("A4 Report တွင် ဆရာဝန်/Pathologist Seal ထည့်သွင်းမည်", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
+              }
+
+              if (showDoctorSeal) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                  OutlinedTextField(
+                    value = pathologistName,
+                    onValueChange = { pathologistName = it },
+                    label = { Text("Pathologist အမည်", fontSize = 10.sp) },
+                    placeholder = { Text("Dr. ...") },
+                    modifier = Modifier.weight(1.3f),
+                    singleLine = true,
+                    shape = RoundedCornerShape(6.dp),
+                    textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
+                  )
+                  OutlinedTextField(
+                    value = pathologistSama,
+                    onValueChange = { pathologistSama = it },
+                    label = { Text("ဆမ (S.A.M.A)", fontSize = 10.sp) },
+                    modifier = Modifier.weight(0.7f),
+                    singleLine = true,
+                    shape = RoundedCornerShape(6.dp),
+                    textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
+                  )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                OutlinedTextField(
+                  value = pathologistDegree,
+                  onValueChange = { pathologistDegree = it },
+                  label = { Text("ဘွဲ့ (Medical Degree)", fontSize = 10.sp) },
+                  placeholder = { Text("M.B.,B.S, M.Med.Sc (Pathology)") },
+                  modifier = Modifier.fillMaxWidth(),
+                  singleLine = true,
+                  shape = RoundedCornerShape(6.dp),
+                  textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                OutlinedTextField(
+                  value = pathologistTitle,
+                  onValueChange = { pathologistTitle = it },
+                  label = { Text("ရာထူး (Title / Position - e.g. Consultant Pathologist)", fontSize = 10.sp) },
+                  placeholder = { Text("မလိုပါက ကွက်လပ်ထားနိုင်ပါသည်") },
+                  modifier = Modifier.fillMaxWidth(),
+                  singleLine = true,
+                  shape = RoundedCornerShape(6.dp),
+                  textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
+                )
+              }
+            }
+          }
+
+          // Medical Technologist Card
+          Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = Color(0xFFF8FAFC),
+            border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+          ) {
+            Column(modifier = Modifier.padding(10.dp)) {
+              Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                  checked = showTechnicianSign,
+                  onCheckedChange = { showTechnicianSign = it },
+                  modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("A4 Report တွင် Medical Technologist လက်မှတ် ထည့်သွင်းမည်", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
+              }
+              if (showTechnicianSign) {
+                Spacer(modifier = Modifier.height(6.dp))
+                OutlinedTextField(
+                  value = techName,
+                  onValueChange = { techName = it },
+                  label = { Text("စစ်ဆေးသူ ဓာတ်ခွဲပညာရှင် (Technologist အမည်)", fontSize = 11.sp) },
+                  singleLine = true,
+                  modifier = Modifier.fillMaxWidth(),
+                  shape = RoundedCornerShape(6.dp),
+                  textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp, color = Color(0xFF0F172A))
+                )
+              }
+            }
+          }
+
+          Spacer(modifier = Modifier.height(4.dp))
+
           itemsState.forEachIndexed { itemIdx, item ->
             Surface(
               shape = RoundedCornerShape(8.dp),
@@ -2313,105 +2465,6 @@ fun MobileLabResultEntryDialog(
                     unfocusedBorderColor = BorderGray,
                     focusedBorderColor = Color(0xFF0284C7)
                   )
-                )
-              }
-            }
-          }
-
-          // Pathologist Verification Signature Input Card
-          Surface(
-            shape = RoundedCornerShape(8.dp),
-            color = Color(0xFFF0FDF4),
-            border = BorderStroke(1.dp, Color(0xFFBBF7D0)),
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
-          ) {
-            Column(modifier = Modifier.padding(10.dp)) {
-              Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(
-                  checked = showDoctorSeal,
-                  onCheckedChange = { showDoctorSeal = it },
-                  modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("A4 Report တွင် ဆရာဝန်/Pathologist Seal ထည့်သွင်းမည်", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
-              }
-
-              if (showDoctorSeal) {
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                  OutlinedTextField(
-                    value = pathologistName,
-                    onValueChange = { pathologistName = it },
-                    label = { Text("Pathologist အမည်", fontSize = 10.sp) },
-                    placeholder = { Text("Dr. ...") },
-                    modifier = Modifier.weight(1.3f),
-                    singleLine = true,
-                    shape = RoundedCornerShape(6.dp),
-                    textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
-                  )
-                  OutlinedTextField(
-                    value = pathologistSama,
-                    onValueChange = { pathologistSama = it },
-                    label = { Text("ဆမ (S.A.M.A)", fontSize = 10.sp) },
-                    modifier = Modifier.weight(0.7f),
-                    singleLine = true,
-                    shape = RoundedCornerShape(6.dp),
-                    textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
-                  )
-                }
-                Spacer(modifier = Modifier.height(6.dp))
-                OutlinedTextField(
-                  value = pathologistDegree,
-                  onValueChange = { pathologistDegree = it },
-                  label = { Text("ဘွဲ့ (Medical Degree)", fontSize = 10.sp) },
-                  placeholder = { Text("M.B.,B.S, M.Med.Sc (Pathology)") },
-                  modifier = Modifier.fillMaxWidth(),
-                  singleLine = true,
-                  shape = RoundedCornerShape(6.dp),
-                  textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                OutlinedTextField(
-                  value = pathologistTitle,
-                  onValueChange = { pathologistTitle = it },
-                  label = { Text("ရာထူး (Title / Position - e.g. Consultant Pathologist)", fontSize = 10.sp) },
-                  placeholder = { Text("မလိုပါက ကွက်လပ်ထားနိုင်ပါသည်") },
-                  modifier = Modifier.fillMaxWidth(),
-                  singleLine = true,
-                  shape = RoundedCornerShape(6.dp),
-                  textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
-                )
-              }
-            }
-          }
-
-          // Medical Technologist Card
-          Surface(
-            shape = RoundedCornerShape(8.dp),
-            color = Color(0xFFF8FAFC),
-            border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
-          ) {
-            Column(modifier = Modifier.padding(10.dp)) {
-              Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(
-                  checked = showTechnicianSign,
-                  onCheckedChange = { showTechnicianSign = it },
-                  modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("A4 Report တွင် Medical Technologist လက်မှတ် ထည့်သွင်းမည်", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
-              }
-              if (showTechnicianSign) {
-                Spacer(modifier = Modifier.height(6.dp))
-                OutlinedTextField(
-                  value = techName,
-                  onValueChange = { techName = it },
-                  label = { Text("စစ်ဆေးသူ ဓာတ်ခွဲပညာရှင် (Technologist အမည်)", fontSize = 11.sp) },
-                  singleLine = true,
-                  modifier = Modifier.fillMaxWidth(),
-                  shape = RoundedCornerShape(6.dp),
-                  textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp, color = Color(0xFF0F172A))
                 )
               }
             }

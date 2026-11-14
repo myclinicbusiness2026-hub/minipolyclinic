@@ -236,6 +236,7 @@ fun ConsultationPrescriptionAndBillingPane(
   onOpenAddDrug: () -> Unit,
   orderedTreatmentCards: SnapshotStateList<TreatmentCard>,
   onOpenAddTreatmentOrder: () -> Unit,
+  onEditTreatmentOrder: ((Int) -> Unit)? = null,
   procedures: List<ProcedureItem>,
   selectedProcedures: SnapshotStateList<ProcedureItem>,
   medicines: List<Medicine>,
@@ -264,6 +265,7 @@ fun ConsultationPrescriptionAndBillingPane(
       treatmentOrders = orderedTreatmentCards,
       onOpenAddOrder = { if (!isReadOnly) onOpenAddTreatmentOrder() },
       onRemoveOrder = { index -> if (!isReadOnly) orderedTreatmentCards.removeAt(index) },
+      onEditOrder = { index -> if (!isReadOnly) onEditTreatmentOrder?.invoke(index) },
       onTogglePaymentMode = { index ->
         if (!isReadOnly) {
           val c = orderedTreatmentCards[index]
