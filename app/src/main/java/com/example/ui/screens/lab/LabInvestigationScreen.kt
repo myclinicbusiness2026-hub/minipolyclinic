@@ -531,6 +531,14 @@ fun LabInvestigationScreen(
               viewModel.deleteLabTemplate(it.id)
               Toast.makeText(context, "စစ်ဆေးမှု ပုံစံ ဖျက်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
             },
+            onRestoreFromOrders = {
+              val count = viewModel.restoreLabTemplatesFromOrders()
+              if (count > 0) {
+                Toast.makeText(context, "ယခင်မှတ်တမ်းများမှ စစ်ဆေးမှု $count မျိုး၏ ဈေးနှုန်းနှင့် Parameter များကို အောင်မြင်စွာ ပြန်လည်ဆယ်ယူပြီးပါပြီ", Toast.LENGTH_LONG).show()
+              } else {
+                Toast.makeText(context, "ဆယ်ယူရန် ယခင်မှတ်တမ်း မတွေ့ရှိပါ သို့မဟုတ် မူလအတိုင်း ရှိနှင့်ပြီးဖြစ်ပါသည်", Toast.LENGTH_SHORT).show()
+              }
+            },
             onResetPresets = {
               val seeds = LabInitialDataSeeder.getSeedTemplates()
               seeds.forEach { viewModel.saveLabTemplate(it) }
@@ -1619,6 +1627,7 @@ fun MobileLabTemplatesTabContent(
   onAddNew: () -> Unit,
   onEdit: (LabTestTemplate) -> Unit,
   onDelete: (LabTestTemplate) -> Unit,
+  onRestoreFromOrders: () -> Unit = {},
   onResetPresets: () -> Unit
 ) {
   val currencyFmt = remember { NumberFormat.getNumberInstance(Locale.US) }
@@ -1631,33 +1640,45 @@ fun MobileLabTemplatesTabContent(
     ) {
       Text(
         "စစ်ဆေးမှုပုံစံများ (${templates.size} မျိုး)",
-        fontSize = 13.sp,
+        fontSize = 12.5.sp,
         fontWeight = FontWeight.Bold,
         color = SlateDark
       )
 
-      Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        OutlinedButton(
-          onClick = onResetPresets,
+      Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Button(
+          onClick = onRestoreFromOrders,
+          colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
           shape = RoundedCornerShape(4.dp),
           contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
           modifier = Modifier.height(28.dp)
         ) {
           Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(11.dp))
           Spacer(modifier = Modifier.width(2.dp))
-          Text("Reset", fontSize = 9.5.sp)
+          Text("🔄 ဆယ်ယူမည်", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+        }
+
+        OutlinedButton(
+          onClick = onResetPresets,
+          shape = RoundedCornerShape(4.dp),
+          contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+          modifier = Modifier.height(28.dp)
+        ) {
+          Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(11.dp))
+          Spacer(modifier = Modifier.width(2.dp))
+          Text("Reset", fontSize = 9.sp)
         }
 
         Button(
           onClick = onAddNew,
           colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
           shape = RoundedCornerShape(4.dp),
-          contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+          contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
           modifier = Modifier.height(28.dp)
         ) {
-          Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(12.dp))
-          Spacer(modifier = Modifier.width(3.dp))
-          Text("အသစ်ထည့်", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+          Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(11.dp))
+          Spacer(modifier = Modifier.width(2.dp))
+          Text("အသစ်ထည့်", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
         }
       }
     }
@@ -2204,19 +2225,7 @@ fun MobileLabResultEntryDialog(
     }.toMutableStateList()
   }
 
-  var activeItemIndexForSlip by remember { mutableStateOf<Int?>(null) }
-  val slipPickerLauncher = rememberLauncherForActivityResult(
-    contract = ActivityResultContracts.GetContent()
-  ) { uri: Uri? ->
-    uri?.let {
-      val (_, localPath) = AttachmentHelper.copyUriToLocalStorage(context, it, "lab_slip")
-      activeItemIndexForSlip?.let { idx ->
-        if (idx in itemsState.indices) {
-          itemsState[idx] = itemsState[idx].copy(attachedImageUri = localPath, preferSlipPrint = true)
-        }
-      }
-    }
-  }
+
 
   Dialog(
     onDismissRequest = onDismiss,
@@ -2385,117 +2394,7 @@ fun MobileLabResultEntryDialog(
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                // Mode Selector: Manual Entry vs Analyzer Machine Slip
-                Row(
-                  modifier = Modifier.fillMaxWidth(),
-                  horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                  Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = if (!item.preferSlipPrint) Color(0xFF0284C7) else Color(0xFFF1F5F9),
-                    border = BorderStroke(0.6.dp, if (!item.preferSlipPrint) Color(0xFF0284C7) else Color(0xFFCBD5E1)),
-                    modifier = Modifier.weight(1f).clickable {
-                      itemsState[itemIdx] = item.copy(preferSlipPrint = false)
-                    }
-                  ) {
-                    Text(
-                      "📝 ဇယားဖြင့် အဖြေရိုက်မည်",
-                      fontSize = 10.5.sp,
-                      fontWeight = if (!item.preferSlipPrint) FontWeight.Bold else FontWeight.Medium,
-                      color = if (!item.preferSlipPrint) PureWhite else SlateDark,
-                      textAlign = TextAlign.Center,
-                      modifier = Modifier.padding(vertical = 5.dp)
-                    )
-                  }
-
-                  Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = if (item.preferSlipPrint) Color(0xFF0D9488) else Color(0xFFF1F5F9),
-                    border = BorderStroke(0.6.dp, if (item.preferSlipPrint) Color(0xFF0D9488) else Color(0xFFCBD5E1)),
-                    modifier = Modifier.weight(1f).clickable {
-                      itemsState[itemIdx] = item.copy(preferSlipPrint = true)
-                    }
-                  ) {
-                    Text(
-                      "📷 စက်အဖြေ စလစ်/Scan ပုံ",
-                      fontSize = 10.5.sp,
-                      fontWeight = if (item.preferSlipPrint) FontWeight.Bold else FontWeight.Medium,
-                      color = if (item.preferSlipPrint) PureWhite else SlateDark,
-                      textAlign = TextAlign.Center,
-                      modifier = Modifier.padding(vertical = 5.dp)
-                    )
-                  }
-                }
-
-                if (item.preferSlipPrint) {
-                  // Machine Slip / Scan Photo Mode
-                  Spacer(modifier = Modifier.height(6.dp))
-                  Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = PureWhite,
-                    border = BorderStroke(0.8.dp, Color(0xFFCBD5E1)),
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-                  ) {
-                    Column(
-                      modifier = Modifier.padding(10.dp),
-                      horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                      if (!item.attachedImageUri.isNullOrBlank()) {
-                        AsyncImage(
-                          model = item.attachedImageUri,
-                          contentDescription = "Slip Preview",
-                          contentScale = ContentScale.Fit,
-                          modifier = Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(4.dp))
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                          OutlinedButton(
-                            onClick = {
-                              activeItemIndexForSlip = itemIdx
-                              slipPickerLauncher.launch("image/*")
-                            },
-                            shape = RoundedCornerShape(4.dp),
-                            modifier = Modifier.height(28.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                          ) {
-                            Text("📷 ပုံပြန်ရွေးမည်", fontSize = 10.sp)
-                          }
-                          OutlinedButton(
-                            onClick = {
-                              itemsState[itemIdx] = item.copy(attachedImageUri = null)
-                            },
-                            shape = RoundedCornerShape(4.dp),
-                            modifier = Modifier.height(28.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFDC2626)),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                          ) {
-                            Text("🗑️ ဖျက်မည်", fontSize = 10.sp)
-                          }
-                        }
-                      } else {
-                        Button(
-                          onClick = {
-                            activeItemIndexForSlip = itemIdx
-                            slipPickerLauncher.launch("image/*")
-                          },
-                          colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D9488)),
-                          shape = RoundedCornerShape(6.dp),
-                          modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
-                        ) {
-                          Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
-                          Spacer(modifier = Modifier.width(6.dp))
-                          Text("စက်အဖြေ စလစ်/Scan ပုံ ရွေးချယ်တင်သွင်းရန်", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
-                        }
-                        Text(
-                          "စက်အဖြေ စလစ်ပုံကို A4 Letterhead စာရွက်အလွတ်အလယ်တွင် Margin အလိုအလျောက်ချိန်ပြီး အောက်ဆုံး ဆရာဝန်လက်မှတ်ဖြင့် အံဝင်ခွင်ကျ ထုတ်ပေးပါမည်။",
-                          fontSize = 9.5.sp,
-                          color = SlateMuted,
-                          textAlign = TextAlign.Center
-                        )
-                      }
-                    }
-                  }
-                } else if (item.parameters.isNotEmpty()) {
+                if (item.parameters.isNotEmpty()) {
                   Spacer(modifier = Modifier.height(6.dp))
 
                   // Each Parameter is an individual mobile input card
@@ -2995,7 +2894,6 @@ fun MobileLabTemplateEditorDialog(
   var category by remember { mutableStateOf(template?.category ?: "Hematology") }
   var specimenType by remember { mutableStateOf(template?.specimenType ?: "Blood") }
   var priceText by remember { mutableStateOf(template?.defaultPrice?.toInt()?.toString() ?: "5000") }
-  var isAnalyzerSlipOnly by remember { mutableStateOf(template?.isAnalyzerSlipOnly ?: false) }
 
   val parameters = remember {
     (template?.parameters ?: emptyList()).map { it.copy() }.toMutableStateList()
@@ -3102,18 +3000,7 @@ fun MobileLabTemplateEditorDialog(
 
           Spacer(modifier = Modifier.height(8.dp))
 
-          Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(
-              checked = isAnalyzerSlipOnly,
-              onCheckedChange = { isAnalyzerSlipOnly = it },
-              modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Column {
-              Text("စက်အဖြေ Slip သီးသန့် Test ဖြစ်သည် (CBC)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-              Text("A4 Blank Letterhead ထုတ်၍ စက်ထဲထည့်သွင်းနိုင်ပါသည်", fontSize = 9.sp, color = SlateMuted)
-            }
-          }
+
 
           Spacer(modifier = Modifier.height(10.dp))
           HorizontalDivider(color = Color(0xFFF1F5F9))
@@ -3243,7 +3130,7 @@ fun MobileLabTemplateEditorDialog(
                 category = category.trim(),
                 defaultPrice = pVal,
                 specimenType = specimenType.trim(),
-                isAnalyzerSlipOnly = isAnalyzerSlipOnly,
+                isAnalyzerSlipOnly = false,
                 parameters = parameters.toList()
               )
               onSave(item)

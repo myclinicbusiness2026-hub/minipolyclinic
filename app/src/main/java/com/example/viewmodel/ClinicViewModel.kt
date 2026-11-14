@@ -336,14 +336,6 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         if (existingIdx < 0) {
           merged.add(seed)
           modified = true
-        } else if (merged[existingIdx].parameters.any { it.section.isBlank() } && seed.parameters.any { it.section.isNotBlank() }) {
-          // Upgrade template parameters with section groupings if missing
-          merged[existingIdx] = seed
-          modified = true
-        } else if (seed.id == "TMPL-CBC" && merged[existingIdx].parameters.any { it.referenceRange.contains("4,000") || it.unit == "/uL" }) {
-          // Upgrade CBC with modern SI units (10^9/L)
-          merged[existingIdx] = seed
-          modified = true
         }
       }
       if (modified) {
@@ -353,6 +345,11 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
     _labOrders.value = ClinicDataPersistence.loadLabOrders(ctx) ?: emptyList()
     _labInvoices.value = ClinicDataPersistence.loadLabInvoices(ctx) ?: emptyList()
+
+    // Auto-heal templates from past orders or procedures if templates lost customized parameters/prices
+    if (_labOrders.value.isNotEmpty() || _procedures.value.isNotEmpty()) {
+      restoreLabTemplatesFromOrders()
+    }
   }
 
   fun setTab(index: Int) {
@@ -4555,6 +4552,96 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val updated = _labTemplates.value.filter { it.id != templateId }
     _labTemplates.value = updated
     ClinicDataPersistence.saveLabTemplates(ctx, updated)
+  }
+
+  fun restoreLabTemplatesFromOrders(): Int {
+    val ctx = getApplication<Application>()
+    val allOrders = _labOrders.value
+    val allProcedures = _procedures.value
+
+    val currentTemplates = _labTemplates.value.toMutableList()
+    var restoredCount = 0
+
+    // Group items by testName from orders (latest orders first)
+    val sortedOrders = allOrders.sortedByDescending { it.orderDate }
+    val orderItemsByName = mutableMapOf<String, LabOrderItem>()
+    for (order in sortedOrders) {
+      for (item in order.items) {
+        val key = item.testName.trim().lowercase()
+        val existing = orderItemsByName[key]
+        if (existing == null) {
+          orderItemsByName[key] = item
+        } else if (existing.parameters.isEmpty() && item.parameters.isNotEmpty()) {
+          orderItemsByName[key] = item
+        }
+      }
+    }
+
+    orderItemsByName.forEach { (_, orderItem) ->
+      val existingIdx = currentTemplates.indexOfFirst { it.name.trim().equals(orderItem.testName.trim(), ignoreCase = true) }
+      val matchedProc = allProcedures.find { it.name.trim().equals(orderItem.testName.trim(), ignoreCase = true) }
+      val standardPrice = if (orderItem.price > 0) orderItem.price else (matchedProc?.standardFee ?: 0.0)
+
+      val restoredParams = if (orderItem.parameters.isNotEmpty()) {
+        orderItem.parameters.map { p ->
+          LabTestParameter(
+            name = p.name,
+            result = "",
+            unit = p.unit,
+            referenceRange = p.referenceRange,
+            flag = "",
+            section = p.section
+          )
+        }
+      } else emptyList()
+
+      if (existingIdx >= 0) {
+        val existing = currentTemplates[existingIdx]
+        val finalPrice = if (standardPrice > 0) standardPrice else existing.defaultPrice
+        val finalParams = if (restoredParams.isNotEmpty()) restoredParams else existing.parameters
+        currentTemplates[existingIdx] = existing.copy(
+          defaultPrice = finalPrice,
+          category = orderItem.category.ifBlank { existing.category },
+          specimenType = orderItem.specimenType.ifBlank { existing.specimenType },
+          parameters = finalParams,
+          isAnalyzerSlipOnly = false
+        )
+        restoredCount++
+      } else {
+        val newTmpl = LabTestTemplate(
+          id = "TMPL-" + UUID.randomUUID().toString().take(6).uppercase(),
+          name = orderItem.testName,
+          category = orderItem.category.ifBlank { "General" },
+          defaultPrice = standardPrice,
+          specimenType = orderItem.specimenType.ifBlank { "Blood" },
+          parameters = restoredParams,
+          isAnalyzerSlipOnly = false
+        )
+        currentTemplates.add(newTmpl)
+        restoredCount++
+      }
+    }
+
+    // Also match any templates with procedures that have standardFee if price is still 0
+    for (i in currentTemplates.indices) {
+      val t = currentTemplates[i]
+      if (t.defaultPrice == 0.0) {
+        val p = allProcedures.find { it.name.trim().equals(t.name.trim(), ignoreCase = true) }
+        if (p != null && p.standardFee > 0) {
+          currentTemplates[i] = t.copy(defaultPrice = p.standardFee)
+          restoredCount++
+        }
+      }
+    }
+
+    if (restoredCount > 0) {
+      _labTemplates.value = currentTemplates
+      ClinicDataPersistence.saveLabTemplates(ctx, currentTemplates)
+      viewModelScope.launch(Dispatchers.IO) {
+        syncManager.syncWithAllPeers()
+      }
+    }
+    return restoredCount
   }
 
   fun createLabInvoice(invoice: LabInvoice) {

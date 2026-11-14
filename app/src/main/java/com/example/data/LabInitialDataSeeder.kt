@@ -15,7 +15,7 @@ object LabInitialDataSeeder {
       category = "Hematology",
       defaultPrice = 8000.0,
       specimenType = "Whole Blood (EDTA)",
-      isAnalyzerSlipOnly = true, // Designed for blank letterhead feed or analyzer slip
+      isAnalyzerSlipOnly = false, // Full manual parameters table entry
       parameters = listOf(
         LabTestParameter("Hemoglobin (Hb)", "", "g/dL", "13.0 - 17.5 (M), 12.0 - 15.5 (F)"),
         LabTestParameter("Total WBC Count", "", "10^9/L", "4.0 - 11.0"),
