@@ -114,7 +114,7 @@ object LabPrintHelper {
               val jobName = if (isBlankLetterhead) {
                 "Lab_Letterhead_${order.orderNumber}"
               } else {
-                "Lab_Report_${order.orderNumber}_${item?.templateName ?: "All"}"
+                "Lab_Report_${order.orderNumber}_${order.patientName.replace(" ", "_")}"
               }
               val printAdapter = webView.createPrintDocumentAdapter(jobName)
               val printAttributes = PrintAttributes.Builder()
@@ -450,10 +450,10 @@ object LabPrintHelper {
             <table class="param-table">
               <thead>
                 <tr>
-                  <th style="width: 44%;">Investigation / Test Parameter</th>
-                  <th style="width: 22%;">Result</th>
-                  <th style="width: 14%;">Unit</th>
-                  <th style="width: 20%;">Reference Interval</th>
+                  <th style="width: 34%;">Investigation / Test Parameter</th>
+                  <th style="width: 18%;">Result</th>
+                  <th style="width: 13%;">Unit</th>
+                  <th style="width: 35%;">Reference Interval</th>
                 </tr>
               </thead>
               <tbody>
@@ -486,12 +486,17 @@ object LabPrintHelper {
                 "LOW" -> "<span style='color: #0284c7; font-weight: bold; font-size: 11px; margin-left: 4px;'>▼</span>"
                 else -> ""
               }
+              val refRangeHtml = if (param.referenceRange.isNotBlank()) {
+                param.referenceRange.replace("\n", "<br/>")
+              } else {
+                "-"
+              }
               sb.append("""
                 <tr>
                   <td style="padding-left: ${if (currentSection.isNotBlank()) "24px" else "14px"};">${param.name}</td>
                   <td><strong style="color: #0f172a;">${param.result.ifBlank { "-" }}</strong>$arrowBadge</td>
                   <td>${param.unit.ifBlank { "-" }}</td>
-                  <td>${param.referenceRange.ifBlank { "-" }}</td>
+                  <td style="font-size: 10.5px; line-height: 1.35; white-space: normal;">$refRangeHtml</td>
                 </tr>
               """.trimIndent())
             }

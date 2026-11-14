@@ -1709,20 +1709,30 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       val perDoseSvcFee = sFee
       val perDoseTotal = perDoseMedFee + perDoseConsFee + perDoseSvcFee
 
-      val doseStr = if (card.dosage.isNotBlank()) " (${card.dosage})" else ""
-      val medTitle = if (card.isCocktail && card.cocktailItems.isNotEmpty()) {
-        val ckNames = card.cocktailItems.joinToString("+") { it.name }
-        if (isFullCourse) "Cocktail ($ckNames) x $numDoses Doses" else "Cocktail ($ckNames)"
-      } else {
-        if (isFullCourse) "${card.medicationName}$doseStr x $numDoses Doses" else "${card.medicationName}$doseStr"
+      val routeCode = when (card.route) {
+        TreatmentRoute.IV_PUSH, TreatmentRoute.IV_INFUSION -> "IV"
+        TreatmentRoute.IM -> "IM"
+        TreatmentRoute.SC -> "SC"
+        TreatmentRoute.NEBULIZATION -> "Neb"
+        TreatmentRoute.DRESSING -> "Dressing"
+        TreatmentRoute.CUSTOM -> if (card.customRoute.isNotBlank()) card.customRoute else "Inj"
       }
 
-      val consText = if (card.consumables.isNotEmpty()) {
-        card.consumables.joinToString(", ") { "${it.name} x${it.quantity}" }
-      } else ""
-
-      // Consolidated clean doctor order line: e.g. "IV KTR 30mg + Polywin + NS 15cc (stat)"
-      val itemDisplayName = "${card.routeDisplay} $medTitle".trim()
+      val itemDisplayName = if (card.isCocktail) {
+        val drugNames = if (card.cocktailItems.isNotEmpty()) {
+          card.cocktailItems.joinToString(" + ") { "${it.name}${if (it.dosage.isNotBlank()) " " + it.dosage else ""}".trim() }
+        } else {
+          card.medicationName
+        }
+        val freq = if (card.frequency.isNotBlank()) " ${card.frequency}" else ""
+        val dosesSuffix = if (isFullCourse) " x $numDoses Doses" else ""
+        "$routeCode $drugNames$freq$dosesSuffix (Cocktail)".trim()
+      } else {
+        val dose = if (card.dosage.isNotBlank()) " ${card.dosage}" else ""
+        val freq = if (card.frequency.isNotBlank()) " ${card.frequency}" else ""
+        val dosesSuffix = if (isFullCourse) " x $numDoses Doses" else ""
+        "$routeCode ${card.medicationName}$dose$freq$dosesSuffix (Single drug)".trim()
+      }
 
       invoiceItems.add(
         InvoiceItem(
@@ -2974,109 +2984,57 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       }
     }
 
-    // 1. Build line items for this visit (bundled med + injection administration fee)
-    val invoiceItems = mutableListOf<InvoiceItem>()
     val isPrepaid = session.isPrepaid || card.isPrepaidFullCourse
     val effectiveMedPrice = if (isPrepaid || card.isPatientSupplied) 0.0 else (if (isClinicMed) medPrice else 0.0)
     val effectiveSessionFee = if (isPrepaid) 0.0 else sessionFee
-    // 1. Medication Item (isProcedure = false -> Pharmacy Revenue)
-    if (effectiveMedPrice > 0) {
-      val cleanMedName = card.medicationName
-        .replace(Regex("(?i)^inj\\.?\\s*"), "")
-        .replace(Regex("(?i)^iv\\s*"), "")
-        .replace(Regex("(?i)^im\\s*"), "")
-        .replace(Regex("(?i)^sc\\s*"), "")
-        .trim()
-      val doseStr = if (card.dosage.isNotBlank() && !cleanMedName.contains(card.dosage, ignoreCase = true)) " ${card.dosage}" else ""
-      val medName = "$cleanMedName$doseStr (Dose ${session.sessionNumber}/${card.totalSessions})"
-      invoiceItems.add(
-        InvoiceItem(
-          name = medName,
-          quantity = 1,
-          unitPrice = effectiveMedPrice,
-          totalPrice = effectiveMedPrice,
-          isProcedure = false
-        )
-      )
+    val consTotal = if (!isConsumablesFoc) consumables.sumOf { it.totalPrice } else 0.0
+    val totalVisitCost = effectiveMedPrice + effectiveSessionFee + consTotal
+
+    val routeCode = when (card.route) {
+      TreatmentRoute.IV_PUSH, TreatmentRoute.IV_INFUSION -> "IV"
+      TreatmentRoute.IM -> "IM"
+      TreatmentRoute.SC -> "SC"
+      TreatmentRoute.NEBULIZATION -> "Neb"
+      TreatmentRoute.DRESSING -> "Dressing"
+      TreatmentRoute.CUSTOM -> if (card.customRoute.isNotBlank()) card.customRoute else "Inj"
     }
 
-    // 2. Administration Service Fee (isProcedure = true -> Service Revenue)
-    if (effectiveSessionFee > 0) {
-      val routeShort = card.routeDisplay.split(" ").first()
-      val patientOwnedBadge = if (card.isPatientSupplied) " (Patient's Own Med)" else ""
-      val svcFeeName = "$routeShort Administration Fee$patientOwnedBadge (Dose ${session.sessionNumber}/${card.totalSessions})"
+    val itemDisplayName = if (card.isCocktail) {
+      val drugNames = if (card.cocktailItems.isNotEmpty()) {
+        card.cocktailItems.joinToString(" + ") { "${it.name}${if (it.dosage.isNotBlank()) " " + it.dosage else ""}".trim() }
+      } else {
+        card.medicationName
+      }
+      val freq = if (card.frequency.isNotBlank()) " ${card.frequency}" else ""
+      "$routeCode $drugNames$freq (Dose ${session.sessionNumber}/${card.totalSessions}) (Cocktail)".trim()
+    } else {
+      val dose = if (card.dosage.isNotBlank()) " ${card.dosage}" else ""
+      val freq = if (card.frequency.isNotBlank()) " ${card.frequency}" else ""
+      "$routeCode ${card.medicationName}$dose$freq (Dose ${session.sessionNumber}/${card.totalSessions}) (Single drug)".trim()
+    }
+
+    // 1. Build line items for this visit (Single clean bundled line item: med + consumables + session fee)
+    val invoiceItems = mutableListOf<InvoiceItem>()
+    if (totalVisitCost > 0) {
       invoiceItems.add(
         InvoiceItem(
-          name = svcFeeName,
+          name = itemDisplayName,
           quantity = 1,
-          unitPrice = effectiveSessionFee,
-          totalPrice = effectiveSessionFee,
+          unitPrice = totalVisitCost,
+          totalPrice = totalVisitCost,
           isProcedure = true
         )
       )
     }
-
-    // If not FOC, add consumables as billable items
-    val consumableItemsForBill = if (!isConsumablesFoc) {
-      consumables.filter { it.totalPrice > 0 }.map { c ->
-        InvoiceItem(
-          name = c.name,
-          quantity = c.quantity,
-          unitPrice = c.unitPrice,
-          totalPrice = c.totalPrice,
-          isProcedure = false
-        )
-      }
-    } else {
-      emptyList()
-    }
-    invoiceItems.addAll(consumableItemsForBill)
-
-    val totalCost = invoiceItems.sumOf { it.totalPrice }
 
     val isAlreadyBilled = (session.invoiceId?.isNotBlank() == true && !session.invoiceId.startsWith("INV-TC-")) ||
       (!card.consultationInvoiceId.isNullOrBlank() && (session.sessionNumber == 1 || isPrepaid))
 
     var invoice: Invoice? = null
     if (isAlreadyBilled) {
-      // Option C: Check if existing consultation invoice is unpaid to merge extra consumables
       val existingInv = _invoices.value.find { it.id == card.consultationInvoiceId || it.id == session.invoiceId }
-      if (existingInv != null && !existingInv.isPaid && consumableItemsForBill.isNotEmpty()) {
-        // Merge extra consumables directly into unpaid consultation invoice!
-        val updatedItems = existingInv.items + consumableItemsForBill
-        val addedAmount = consumableItemsForBill.sumOf { it.totalPrice }
-        val updatedInv = existingInv.copy(
-          items = updatedItems,
-          totalAmount = existingInv.totalAmount + addedAmount
-        )
-        val updatedInvs = _invoices.value.map { if (it.id == updatedInv.id) updatedInv else it }
-        _invoices.value = updatedInvs
-        ClinicDataPersistence.saveInvoices(ctx, updatedInvs)
-        invoice = updatedInv
-      } else if ((existingInv == null || existingInv.isPaid) && consumableItemsForBill.isNotEmpty()) {
-        // If already paid, issue supplementary invoice so Cashier can collect the extra consumables!
-        val suppInvId = "INV-TC-SUPP-" + UUID.randomUUID().toString().take(6)
-        val suppInvNo = "INV-" + (1000 + _invoices.value.size + 1)
-        val suppInv = Invoice(
-          id = suppInvId,
-          invoiceNumber = suppInvNo,
-          patientId = card.patientId.ifBlank { "WALK-IN" },
-          patientName = card.patientName.ifBlank { "Treatment Patient" },
-          items = consumableItemsForBill,
-          consultationFee = 0.0,
-          serviceFee = 0.0,
-          totalAmount = consumableItemsForBill.sumOf { it.totalPrice },
-          paidAmount = 0.0,
-          paymentStatus = "Unpaid",
-          cashierName = nurseName.ifBlank { _currentUser.value?.fullName ?: "Nurse Station" },
-          timestamp = BurmeseDateUtils.getNowFormatted()
-        )
-        val updatedInvoices = _invoices.value + suppInv
-        _invoices.value = updatedInvoices
-        ClinicDataPersistence.saveInvoices(ctx, updatedInvoices)
-        invoice = suppInv
-      }
-    } else {
+      invoice = existingInv
+    } else if (invoiceItems.isNotEmpty()) {
       val invId = "INV-TC-" + UUID.randomUUID().toString().take(8)
       val invNo = "INV-" + (1000 + _invoices.value.size + 1)
       val newInv = Invoice(
@@ -3087,8 +3045,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         items = invoiceItems,
         consultationFee = 0.0,
         serviceFee = 0.0,
-        totalAmount = totalCost,
-        paidAmount = totalCost,
+        totalAmount = totalVisitCost,
+        paidAmount = totalVisitCost,
         paymentStatus = "Paid",
         cashierName = nurseName.ifBlank { _currentUser.value?.fullName ?: "Nurse Station" },
         timestamp = BurmeseDateUtils.getNowFormatted()
@@ -4618,6 +4576,31 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
     _labOrders.value = updatedOrders
     ClinicDataPersistence.saveLabOrders(ctx, updatedOrders)
+  }
+
+  fun deleteLabInvoice(invoiceId: String) {
+    val ctx = getApplication<Application>()
+    val invToDelete = _labInvoices.value.find { it.id == invoiceId } ?: return
+    val remainingInvoices = _labInvoices.value.filter { it.id != invoiceId }
+    _labInvoices.value = remainingInvoices
+    ClinicDataPersistence.saveLabInvoices(ctx, remainingInvoices)
+
+    // Revert corresponding LabOrder payment status if needed
+    val updatedOrders = _labOrders.value.map { ord ->
+      if (ord.id == invToDelete.orderId || ord.orderNumber == invToDelete.orderId || (ord.invoiceNumber.isNotBlank() && ord.invoiceNumber == invToDelete.invoiceNumber)) {
+        ord.copy(
+          paidAmount = 0.0,
+          paymentStatus = "Unpaid",
+          invoiceNumber = ""
+        )
+      } else ord
+    }
+    _labOrders.value = updatedOrders
+    ClinicDataPersistence.saveLabOrders(ctx, updatedOrders)
+
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
   }
 
   fun orderLabTestsForPatient(

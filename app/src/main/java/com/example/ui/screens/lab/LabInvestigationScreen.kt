@@ -80,7 +80,7 @@ fun LabInvestigationScreen(
 
   var selectedTab by remember { mutableStateOf(0) }
   var searchQuery by remember { mutableStateOf("") }
-  var selectedDateFilter by remember { mutableStateOf("ALL") } // "ALL", "TODAY", "YESTERDAY", "MONTH"
+  var selectedDateFilter by remember { mutableStateOf("ALL") } // "ALL", "TODAY", "YESTERDAY", "MONTH", "LAST_MONTH"
 
   val todayStr = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
   val yesterdayStr = remember {
@@ -89,6 +89,11 @@ fun LabInvestigationScreen(
     SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(cal.time)
   }
   val thisMonthStr = remember { SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date()) }
+  val lastMonthStr = remember {
+    val cal = Calendar.getInstance()
+    cal.add(Calendar.MONTH, -1)
+    SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(cal.time)
+  }
 
   // Modals state
   var showNewOrderDialog by remember { mutableStateOf(false) }
@@ -108,6 +113,7 @@ fun LabInvestigationScreen(
           "TODAY" -> ord.orderDate.startsWith(todayStr)
           "YESTERDAY" -> ord.orderDate.startsWith(yesterdayStr)
           "MONTH" -> ord.orderDate.startsWith(thisMonthStr)
+          "LAST_MONTH" -> ord.orderDate.startsWith(lastMonthStr)
           else -> true
         }
         val matchesQuery = searchQuery.isBlank() ||
@@ -126,6 +132,7 @@ fun LabInvestigationScreen(
           "TODAY" -> ord.orderDate.startsWith(todayStr)
           "YESTERDAY" -> ord.orderDate.startsWith(yesterdayStr)
           "MONTH" -> ord.orderDate.startsWith(thisMonthStr)
+          "LAST_MONTH" -> ord.orderDate.startsWith(lastMonthStr)
           else -> true
         }
         val matchesQuery = searchQuery.isBlank() ||
@@ -143,6 +150,7 @@ fun LabInvestigationScreen(
         "TODAY" -> inv.timestamp.startsWith(todayStr)
         "YESTERDAY" -> inv.timestamp.startsWith(yesterdayStr)
         "MONTH" -> inv.timestamp.startsWith(thisMonthStr)
+        "LAST_MONTH" -> inv.timestamp.startsWith(lastMonthStr)
         else -> true
       }
       val matchesQuery = searchQuery.isBlank() ||
@@ -150,6 +158,25 @@ fun LabInvestigationScreen(
         inv.patientHn.contains(searchQuery, ignoreCase = true) ||
         inv.invoiceNumber.contains(searchQuery, ignoreCase = true) ||
         inv.timestamp.contains(searchQuery, ignoreCase = true)
+      matchesDate && matchesQuery
+    }
+  }
+
+  val filteredExpenses = remember(labExpenses, searchQuery, selectedDateFilter) {
+    labExpenses.filter { exp ->
+      val expDate = exp.date.ifBlank { exp.timestamp }
+      val matchesDate = when (selectedDateFilter) {
+        "TODAY" -> expDate.startsWith(todayStr)
+        "YESTERDAY" -> expDate.startsWith(yesterdayStr)
+        "MONTH" -> expDate.startsWith(thisMonthStr)
+        "LAST_MONTH" -> expDate.startsWith(lastMonthStr)
+        else -> true
+      }
+      val matchesQuery = searchQuery.isBlank() ||
+        exp.title.contains(searchQuery, ignoreCase = true) ||
+        exp.description.contains(searchQuery, ignoreCase = true) ||
+        exp.payee.contains(searchQuery, ignoreCase = true) ||
+        exp.voucherNo.contains(searchQuery, ignoreCase = true)
       matchesDate && matchesQuery
     }
   }
@@ -288,10 +315,11 @@ fun LabInvestigationScreen(
               onClick = { selectedTab = 2 },
               text = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                  Text("ဘောင်ချာ (Vouchers)", fontSize = 11.5.sp, fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal)
-                  if (filteredInvoices.isNotEmpty()) {
+                  Text("ငွေစာရင်း (Ledger)", fontSize = 11.5.sp, fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal)
+                  val totalCount = filteredInvoices.size + filteredExpenses.size
+                  if (totalCount > 0) {
                     Spacer(modifier = Modifier.width(4.dp))
-                    Badge(containerColor = Color(0xFF7C3AED)) { Text("${filteredInvoices.size}", fontSize = 9.sp) }
+                    Badge(containerColor = Color(0xFF7C3AED)) { Text("$totalCount", fontSize = 9.sp) }
                   }
                 }
               }
@@ -345,7 +373,8 @@ fun LabInvestigationScreen(
                 Pair("ALL", "အားလုံး (All)"),
                 Pair("TODAY", "ယနေ့ (Today)"),
                 Pair("YESTERDAY", "ယမန်နေ့"),
-                Pair("MONTH", "ဒီလ (This Month)")
+                Pair("MONTH", "ဒီလ (This Month)"),
+                Pair("LAST_MONTH", "ပြီးခဲ့သည့်လ")
               ).forEach { (code, label) ->
                 val isSel = selectedDateFilter == code
                 FilterChip(
@@ -477,12 +506,18 @@ fun LabInvestigationScreen(
         }
 
         2 -> {
-          // Tab 3: Lab Invoices (Dedicated accounting)
+          // Tab 3: Lab Invoices & Expenses (Dedicated Ledger)
           MobileLabInvoicesTabContent(
             invoices = filteredInvoices,
+            expenses = filteredExpenses,
             clinicSettings = clinicSettings,
             currencyFmt = currencyFmt,
-            onPrintVoucher = { previewLabThermalSlip = it }
+            onPrintVoucher = { previewLabThermalSlip = it },
+            onAddExpense = { showLabExpenseDialog = true },
+            onDeleteInvoice = { inv ->
+              viewModel.deleteLabInvoice(inv.id)
+              Toast.makeText(context, "ဘောင်ချာ ${inv.invoiceNumber} အား ဖျက်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
+            }
           )
         }
 
@@ -970,7 +1005,7 @@ fun MobileLabCompletedResultCard(
           ) {
             Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(12.dp))
             Spacer(modifier = Modifier.width(3.dp))
-            Text("A4 Report", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Text("📄 A4 / PDF Print", fontSize = 10.sp, fontWeight = FontWeight.Bold)
           }
 
           Button(
@@ -1237,106 +1272,303 @@ fun MobileLabCompletedResultCard(
 }
 
 // -------------------------------------------------------------
-// Component: Mobile Lab Invoices Tab Content
+// Component: Mobile Lab Invoices & Expenses Ledger Tab Content
 // -------------------------------------------------------------
+private data class LabLedgerEntry(
+  val id: String,
+  val isIncome: Boolean,
+  val timestamp: String,
+  val title: String,
+  val subtitle: String,
+  val tag: String,
+  val amount: Double,
+  val invoice: LabInvoice? = null,
+  val expense: ExpenseRecord? = null
+)
+
 @Composable
 fun MobileLabInvoicesTabContent(
   invoices: List<LabInvoice>,
+  expenses: List<ExpenseRecord> = emptyList(),
   clinicSettings: ClinicSettings,
   currencyFmt: NumberFormat,
-  onPrintVoucher: (LabInvoice) -> Unit = {}
+  onPrintVoucher: (LabInvoice) -> Unit = {},
+  onAddExpense: () -> Unit = {},
+  onDeleteInvoice: (LabInvoice) -> Unit = {}
 ) {
-  val context = LocalContext.current
-  val todayStr = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
-  val todayInvoices = remember(invoices) { invoices.filter { it.timestamp.startsWith(todayStr) } }
-  val totalTodayRevenue = remember(todayInvoices) { todayInvoices.sumOf { it.paidAmount } }
-  val totalAllRevenue = remember(invoices) { invoices.sumOf { it.paidAmount } }
+  var transactionType by remember { mutableStateOf("ALL") } // "ALL", "INCOME", "EXPENSE"
+  var invoiceToDelete by remember { mutableStateOf<LabInvoice?>(null) }
+
+  val totalIncome = remember(invoices) { invoices.sumOf { it.paidAmount } }
+  val totalExpense = remember(expenses) { expenses.sumOf { it.amount } }
+  val netProfit = totalIncome - totalExpense
+
+  val ledgerEntries = remember(invoices, expenses, transactionType) {
+    val list = mutableListOf<LabLedgerEntry>()
+    if (transactionType == "ALL" || transactionType == "INCOME") {
+      invoices.forEach { inv ->
+        list.add(
+          LabLedgerEntry(
+            id = "INV_${inv.id}",
+            isIncome = true,
+            timestamp = inv.timestamp,
+            title = inv.invoiceNumber,
+            subtitle = "${inv.patientName} (${inv.patientHn})",
+            tag = inv.paymentMethod.label,
+            amount = inv.paidAmount,
+            invoice = inv
+          )
+        )
+      }
+    }
+    if (transactionType == "ALL" || transactionType == "EXPENSE") {
+      expenses.forEach { exp ->
+        list.add(
+          LabLedgerEntry(
+            id = "EXP_${exp.id}",
+            isIncome = false,
+            timestamp = exp.date.ifBlank { exp.timestamp },
+            title = exp.voucherNo.ifBlank { exp.title },
+            subtitle = if (exp.payee.isNotBlank()) "${exp.title} (${exp.payee})" else exp.title,
+            tag = exp.category,
+            amount = exp.amount,
+            expense = exp
+          )
+        )
+      }
+    }
+    list.sortedByDescending { it.timestamp }
+  }
 
   Column(modifier = Modifier.fillMaxSize().padding(10.dp)) {
-    // Compact KPI Row
+    // Header & Quick Action Row
     Row(
       modifier = Modifier.fillMaxWidth(),
-      horizontalArrangement = Arrangement.spacedBy(8.dp)
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically
     ) {
+      Text(
+        "ဓာတ်ခွဲခန်း ငွေစာရင်း (Lab Ledger)",
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold,
+        color = SlateDark
+      )
+      OutlinedButton(
+        onClick = onAddExpense,
+        shape = RoundedCornerShape(6.dp),
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+        modifier = Modifier.height(28.dp),
+        border = BorderStroke(1.dp, Color(0xFFEA580C))
+      ) {
+        Icon(Icons.Default.Add, contentDescription = null, tint = Color(0xFFEA580C), modifier = Modifier.size(12.dp))
+        Spacer(modifier = Modifier.width(3.dp))
+        Text("Lab စရိတ်ထည့်ရန်", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFEA580C))
+      }
+    }
+
+    Spacer(modifier = Modifier.height(6.dp))
+
+    // 3 KPI Cards Row (Income, Expense, Net)
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+      // 1. Income
       Surface(
         shape = RoundedCornerShape(6.dp),
         color = Color(0xFFF5F3FF),
         border = BorderStroke(1.dp, Color(0xFFDDD6FE)),
         modifier = Modifier.weight(1f)
       ) {
-        Column(modifier = Modifier.padding(8.dp)) {
-          Text("ယနေ့ ဓာတ်ခွဲရငွေ", fontSize = 10.sp, color = Color(0xFF6D28D9))
-          Text("${currencyFmt.format(totalTodayRevenue.toInt())} Ks", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4C1D95))
-          Text("${todayInvoices.size} Vouchers", fontSize = 9.sp, color = Color(0xFF7C3AED))
+        Column(modifier = Modifier.padding(6.dp)) {
+          Text("ရငွေ (Income)", fontSize = 9.sp, color = Color(0xFF6D28D9))
+          Text(
+            "${currencyFmt.format(totalIncome.toInt())} Ks",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF4C1D95),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+          )
+          Text("${invoices.size} Invoices", fontSize = 8.5.sp, color = Color(0xFF7C3AED))
         }
       }
 
+      // 2. Expense
       Surface(
         shape = RoundedCornerShape(6.dp),
-        color = Color(0xFFF0FDF4),
-        border = BorderStroke(1.dp, Color(0xFFBBF7D0)),
+        color = Color(0xFFFFF7ED),
+        border = BorderStroke(1.dp, Color(0xFFFFEDD5)),
         modifier = Modifier.weight(1f)
       ) {
-        Column(modifier = Modifier.padding(8.dp)) {
-          Text("စုစုပေါင်း ရငွေ", fontSize = 10.sp, color = Color(0xFF15803D))
-          Text("${currencyFmt.format(totalAllRevenue.toInt())} Ks", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF14532D))
-          Text("${invoices.size} Invoices", fontSize = 9.sp, color = Color(0xFF16A34A))
+        Column(modifier = Modifier.padding(6.dp)) {
+          Text("စရိတ် (Expense)", fontSize = 9.sp, color = Color(0xFFEA580C))
+          Text(
+            "${currencyFmt.format(totalExpense.toInt())} Ks",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFFC2410C),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+          )
+          Text("${expenses.size} Items", fontSize = 8.5.sp, color = Color(0xFFEA580C))
+        }
+      }
+
+      // 3. Net
+      val isProfit = netProfit >= 0
+      Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = if (isProfit) Color(0xFFF0FDF4) else Color(0xFFFEF2F2),
+        border = BorderStroke(1.dp, if (isProfit) Color(0xFFBBF7D0) else Color(0xFFFECACA)),
+        modifier = Modifier.weight(1f)
+      ) {
+        Column(modifier = Modifier.padding(6.dp)) {
+          Text("အသားတင် (Net)", fontSize = 9.sp, color = if (isProfit) Color(0xFF15803D) else Color(0xFFDC2626))
+          Text(
+            "${currencyFmt.format(netProfit.toInt())} Ks",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (isProfit) Color(0xFF14532D) else Color(0xFF991B1B),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+          )
+          Text(
+            if (isProfit) "အမြတ် (Profit)" else "အရှုံး (Deficit)",
+            fontSize = 8.5.sp,
+            color = if (isProfit) Color(0xFF16A34A) else Color(0xFFDC2626)
+          )
         }
       }
     }
 
-    Spacer(modifier = Modifier.height(10.dp))
+    Spacer(modifier = Modifier.height(6.dp))
 
-    if (invoices.isEmpty()) {
+    // Transaction Type Filter Chips
+    Row(
+      modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+      horizontalArrangement = Arrangement.spacedBy(4.dp),
+      verticalAlignment = Alignment.CenterVertically
+    ) {
+      listOf(
+        Pair("ALL", "အားလုံး (${invoices.size + expenses.size})"),
+        Pair("INCOME", "ရငွေ Invoices (${invoices.size})"),
+        Pair("EXPENSE", "စရိတ် Expenses (${expenses.size})")
+      ).forEach { (typeCode, label) ->
+        val isSel = transactionType == typeCode
+        FilterChip(
+          selected = isSel,
+          onClick = { transactionType = typeCode },
+          label = { Text(label, fontSize = 9.5.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
+          colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = if (typeCode == "EXPENSE") Color(0xFFEA580C) else Color(0xFF7C3AED),
+            selectedLabelColor = PureWhite
+          ),
+          shape = RoundedCornerShape(12.dp),
+          modifier = Modifier.height(24.dp)
+        )
+      }
+    }
+
+    Spacer(modifier = Modifier.height(6.dp))
+
+    if (ledgerEntries.isEmpty()) {
       MobileEmptyState(
         icon = Icons.Default.Receipt,
-        title = "ဓာတ်ခွဲခန်း သီးသန့် ဘောင်ချာ မရှိသေးပါ",
-        description = "Queue ရှိ စစ်ဆေးမှုများအား ငွေရှင်းသည့်အခါ ဤနေရာတွင် စာရင်းပေါ်လာပါမည်။"
+        title = "ဓာတ်ခွဲခန်း ငွေစာရင်း မှတ်တမ်း မရှိသေးပါ",
+        description = "စစ်ဆေးမှုများအား ငွေရှင်းခြင်း သို့မဟုတ် စရိတ်မှတ်တမ်းတင်ခြင်း ပြုလုပ်ပါက ဤနေရာတွင် ပေါ်လာပါမည်။"
       )
     } else {
       LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
         modifier = Modifier.fillMaxSize()
       ) {
-        items(invoices, key = { it.id }) { inv ->
+        items(ledgerEntries, key = { it.id }) { entry ->
           Surface(
             shape = RoundedCornerShape(6.dp),
             color = PureWhite,
-            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+            border = BorderStroke(1.dp, if (entry.isIncome) Color(0xFFE2E8F0) else Color(0xFFFFEDD5)),
             modifier = Modifier.fillMaxWidth()
           ) {
             Row(
-              modifier = Modifier.padding(10.dp).fillMaxWidth(),
+              modifier = Modifier.padding(8.dp).fillMaxWidth(),
               horizontalArrangement = Arrangement.SpaceBetween,
               verticalAlignment = Alignment.CenterVertically
             ) {
               Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                  Text(inv.invoiceNumber, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4C1D95))
-                  Spacer(modifier = Modifier.width(6.dp))
-                  Surface(shape = RoundedCornerShape(3.dp), color = Color(0xFFF3E8FF)) {
-                    Text(inv.paymentMethod.label, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF7E22CE), modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
+                  Surface(
+                    shape = RoundedCornerShape(3.dp),
+                    color = if (entry.isIncome) Color(0xFFF3E8FF) else Color(0xFFFFEDD5)
+                  ) {
+                    Text(
+                      if (entry.isIncome) "+ ရငွေ" else "- စရိတ်",
+                      fontSize = 8.5.sp,
+                      fontWeight = FontWeight.Bold,
+                      color = if (entry.isIncome) Color(0xFF7E22CE) else Color(0xFFC2410C),
+                      modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                    )
+                  }
+                  Spacer(modifier = Modifier.width(4.dp))
+                  Text(
+                    entry.title,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (entry.isIncome) Color(0xFF4C1D95) else Color(0xFFC2410C)
+                  )
+                  if (entry.tag.isNotBlank()) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Surface(
+                      shape = RoundedCornerShape(3.dp),
+                      color = Color(0xFFF1F5F9)
+                    ) {
+                      Text(
+                        entry.tag,
+                        fontSize = 8.5.sp,
+                        color = SlateMuted,
+                        modifier = Modifier.padding(horizontal = 3.dp, vertical = 1.dp)
+                      )
+                    }
                   }
                 }
-                Text("${inv.patientName} (${inv.patientHn})", fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                Text(inv.timestamp, fontSize = 9.5.sp, color = SlateMuted)
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                  entry.subtitle,
+                  fontSize = 10.5.sp,
+                  fontWeight = FontWeight.Medium,
+                  color = Color(0xFF1E293B)
+                )
+                Text(entry.timestamp, fontSize = 9.sp, color = SlateMuted)
               }
 
               Column(horizontalAlignment = Alignment.End) {
-                Text("${currencyFmt.format(inv.paidAmount.toInt())} Ks", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
-                Spacer(modifier = Modifier.height(4.dp))
-                Button(
-                  onClick = {
-                    onPrintVoucher(inv)
-                  },
-                  colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
-                  shape = RoundedCornerShape(4.dp),
-                  contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                  modifier = Modifier.height(28.dp)
-                ) {
-                  Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(11.dp))
-                  Spacer(modifier = Modifier.width(3.dp))
-                  Text("Thermal", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                Text(
+                  "${if (entry.isIncome) "+" else "-"}${currencyFmt.format(entry.amount.toInt())} Ks",
+                  fontSize = 12.5.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = if (entry.isIncome) Color(0xFF15803D) else Color(0xFFDC2626)
+                )
+                if (entry.isIncome && entry.invoice != null) {
+                  Spacer(modifier = Modifier.height(4.dp))
+                  Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Button(
+                      onClick = { onPrintVoucher(entry.invoice) },
+                      colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
+                      shape = RoundedCornerShape(4.dp),
+                      contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                      modifier = Modifier.height(26.dp)
+                    ) {
+                      Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(10.dp))
+                      Spacer(modifier = Modifier.width(2.dp))
+                      Text("Thermal", fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    }
+                    IconButton(
+                      onClick = { invoiceToDelete = entry.invoice },
+                      modifier = Modifier.size(26.dp)
+                    ) {
+                      Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = Color(0xFFDC2626), modifier = Modifier.size(16.dp))
+                    }
+                  }
                 }
               }
             }
@@ -1344,6 +1576,36 @@ fun MobileLabInvoicesTabContent(
         }
       }
     }
+  }
+
+  // Confirm Delete Invoice Dialog
+  invoiceToDelete?.let { inv ->
+    AlertDialog(
+      onDismissRequest = { invoiceToDelete = null },
+      title = { Text("ဘောင်ချာဖျက်ရန် အတည်ပြုပါ", fontWeight = FontWeight.Bold, fontSize = 14.sp) },
+      text = {
+        Text(
+          "ဘောင်ချာနံပါတ် ${inv.invoiceNumber} (${inv.patientName}) အား စာရင်းမှ ဖျက်ထုတ်ရန် သေချာပါသလား?\n\nဤဘောင်ချာအား ဖျက်လိုက်ပါက သက်ဆိုင်ရာ စစ်ဆေးမှုအော်ဒါ၏ ငွေပေးချေမှုအခြေအနေသည် 'မရှင်းရသေး (Unpaid)' သို့ ပြန်လည်ပြောင်းလဲသွားပါမည်။",
+          fontSize = 12.sp
+        )
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            onDeleteInvoice(inv)
+            invoiceToDelete = null
+          },
+          colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
+        ) {
+          Text("ဖျက်မည်", color = PureWhite, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { invoiceToDelete = null }) {
+          Text("မဖျက်တော့ပါ", color = DarkGrayText, fontSize = 11.sp)
+        }
+      }
+    )
   }
 }
 
