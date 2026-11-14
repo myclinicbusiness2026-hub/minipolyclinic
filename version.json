@@ -6,7 +6,7 @@
   "releaseNotesMm": "• Lab ဘောင်ချာ ဖျက်သိမ်းမှု တည်မြဲခြင်းနှင့် Sync ပြန်မဝင်စေခြင်း - Deleted Tombstones စနစ် ထည့်သွင်းထားသဖြင့် ဖျက်လိုက်သော Lab Invoice များသည် အခြားဖုန်းများနှင့် Sync မိသည့်အခါ လုံးဝ ပြန်မရှင်တော့ဘဲ အပြီးတိုင် ပျက်ပြယ်သွားခြင်း။\n• ဆက်စပ်ဖျက်သိမ်းမှုများတွင် အလိုအလျောက် သန့်စင်ပေးခြင်း (Cascade Deletion) - လူနာ သို့မဟုတ် Lab Order ဖျက်ပါက ၎င်းနှင့်ဆိုင်သော Lab ဘောင်ချာနှင့် အော်ဒါများကို စက်အားလုံးတွင် တစ်ပါတည်း အပြီးဖျက်ပေးခြင်း။\n• စရိတ်မှတ်တမ်းများ (Expenses) အား စက်အားလုံးသို့ Sync အပြည့်အဝ ပို့ဆောင်ပေးခြင်းနှင့် ဖျက်ထားသော လူနာမှတ်တမ်းများအား အလိုအလျောက် ရှင်းထုတ်ပေးခြင်း။",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-14",
-  "apkSizeBytes": 14900724,
-  "commitSha": "HEAD",
-  "updatedAt": "2026-11-14T14:15:00.000Z"
+  "apkSizeBytes": 14900733,
+  "commitSha": "91a97d02a00df1cd5a716ba3bfe9556f29ada585",
+  "updatedAt": "2026-11-14T14:35:00.000Z"
 }
