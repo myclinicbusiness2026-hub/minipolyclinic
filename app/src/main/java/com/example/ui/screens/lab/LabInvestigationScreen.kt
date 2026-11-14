@@ -1519,7 +1519,7 @@ fun MobileNewLabOrderDialog(
       it.name.trim().equals(tmpl.name.trim(), ignoreCase = true) ||
       it.code.trim().equals(tmpl.id.trim(), ignoreCase = true)
     }
-    return matchedProc?.fee ?: tmpl.defaultPrice
+    return matchedProc?.standardFee ?: tmpl.defaultPrice
   }
 
   val totalAmount = remember(selectedTemplates, procedures) {

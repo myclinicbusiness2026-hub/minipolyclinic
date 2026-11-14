@@ -1,4 +1,4 @@
-﻿package com.example.util
+package com.example.util
 
 import android.content.Context
 import android.graphics.Canvas
@@ -91,8 +91,7 @@ object LabPrintHelper {
       orderTime = "",
       status = com.example.model.LabOrderStatus.COMPLETED,
       totalAmount = 0.0,
-      items = emptyList(),
-      referringDoctorName = ""
+      items = emptyList()
     )
     printLabReportA4(context, dummyOrder, null, clinicSettings, isBlankLetterhead = true)
   }

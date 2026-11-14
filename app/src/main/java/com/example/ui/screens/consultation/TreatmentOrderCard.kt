@@ -1173,7 +1173,7 @@ fun AddTreatmentOrderModal(
                   if (!isPayPerVisit) s.copy(isPrepaid = true) else s
                 }
               }
-              val card = (initialCard ?: TreatmentCard(patientId = patient?.id ?: "", patientName = patient?.name ?: "")).copy(
+              val card = (initialCard ?: TreatmentCard(patientId = patient?.id ?: "", patientName = patient?.name ?: "", medicationName = finalMedName)).copy(
                 patientId = patient?.id ?: (initialCard?.patientId ?: ""),
                 patientName = patient?.name ?: (initialCard?.patientName ?: ""),
                 patientHn = patient?.hn ?: (initialCard?.patientHn ?: ""),
@@ -1210,7 +1210,6 @@ fun AddTreatmentOrderModal(
             Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(6.dp))
             Text(if (initialCard != null) "ပြင်ဆင်ချက် သိမ်းမည် (Update Order)" else "အော်ဒါအတည်ပြုမည် (Confirm Order)", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
-          }
           }
         }
       }
