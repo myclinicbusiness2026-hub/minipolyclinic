@@ -68,7 +68,7 @@ fun RegisterPatientDialog(
   var selectedGender by remember { mutableStateOf(Gender.MALE) }
   var phone by remember { mutableStateOf("09-") }
   var address by remember { mutableStateOf("") }
-  var bloodType by remember { mutableStateOf("O+") }
+  var bloodType by remember { mutableStateOf("") }
   var allergyInput by remember { mutableStateOf("") }
   var chiefComplaint by remember { mutableStateOf("") }
 
@@ -303,6 +303,54 @@ fun RegisterPatientDialog(
           }
         )
 
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Blood Type Selector (Optional)
+        Column {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Text(
+              "Blood Type (သွေးအမျိုးအစား - မသိပါက ကွက်လပ်ထားနိုင်သည်):",
+              fontSize = 11.5.sp,
+              fontWeight = FontWeight.Medium,
+              color = SlateDark
+            )
+            if (bloodType.isNotBlank()) {
+              Text(
+                "မသိပါ / ဖျက်မည် ✕",
+                fontSize = 10.5.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFDC2626),
+                modifier = Modifier.clickable { bloodType = "" }
+              )
+            }
+          }
+          Spacer(modifier = Modifier.height(4.dp))
+          Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+          ) {
+            listOf("A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-").forEach { bt ->
+              FilterChip(
+                selected = bloodType.equals(bt, ignoreCase = true),
+                onClick = {
+                  bloodType = if (bloodType.equals(bt, ignoreCase = true)) "" else bt
+                },
+                label = {
+                  Text(
+                    bt,
+                    fontSize = 11.5.sp,
+                    fontWeight = if (bloodType.equals(bt, ignoreCase = true)) FontWeight.Bold else FontWeight.Normal
+                  )
+                }
+              )
+            }
+          }
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         // Vitals Section
@@ -430,7 +478,7 @@ fun EditPatientDialog(
   var selectedGender by remember(patient.id) { mutableStateOf(patient.gender) }
   var phone by remember(patient.id) { mutableStateOf(patient.phone) }
   var address by remember(patient.id) { mutableStateOf(patient.address) }
-  var bloodType by remember(patient.id) { mutableStateOf(if (patient.bloodType.isNotBlank()) patient.bloodType else "O+") }
+  var bloodType by remember(patient.id) { mutableStateOf(patient.bloodType) }
   var allergyInput by remember(patient.id) { mutableStateOf(patient.allergies.joinToString(", ")) }
   var chiefComplaint by remember(patient.id) { mutableStateOf(patient.chiefComplaint) }
   var followUpReason by remember(patient.id) { mutableStateOf(patient.followUpReason) }
@@ -534,10 +582,32 @@ fun EditPatientDialog(
             value = bloodType,
             onValueChange = { bloodType = it },
             label = { Text("သွေးအမျိုးအစား") },
-            placeholder = { Text("O+, B+, ...") },
+            placeholder = { Text("မသိပါက ကွက်လပ်ထားနိုင်သည်") },
             modifier = Modifier.weight(0.9f),
             singleLine = true
           )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+          modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+          horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+          listOf("A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-").forEach { bt ->
+            FilterChip(
+              selected = bloodType.equals(bt, ignoreCase = true),
+              onClick = {
+                bloodType = if (bloodType.equals(bt, ignoreCase = true)) "" else bt
+              },
+              label = { Text(bt, fontSize = 10.5.sp) }
+            )
+          }
+          if (bloodType.isNotBlank()) {
+            FilterChip(
+              selected = false,
+              onClick = { bloodType = "" },
+              label = { Text("ဖျက်မည် ✕", fontSize = 10.5.sp, color = Color(0xFFDC2626)) }
+            )
+          }
         }
 
         Spacer(modifier = Modifier.height(8.dp))

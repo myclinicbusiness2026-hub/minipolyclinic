@@ -194,12 +194,25 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       } else p
     }
 
-    _patients.value = loadedPatients
+    val prefs = ctx.getSharedPreferences("clinic_prefs", Context.MODE_PRIVATE)
+    val hasCleanedLegacyBloodType = prefs.getBoolean("has_cleaned_legacy_blood_type_v54", false)
+    val finalPatients = if (!hasCleanedLegacyBloodType) {
+      val cleaned = loadedPatients.map { p ->
+        if (p.bloodType == "O+") p.copy(bloodType = "") else p
+      }
+      ClinicDataPersistence.savePatients(ctx, cleaned)
+      prefs.edit().putBoolean("has_cleaned_legacy_blood_type_v54", true).apply()
+      cleaned
+    } else {
+      loadedPatients
+    }
+
+    _patients.value = finalPatients
     val savedPatientId = ClinicDataPersistence.loadSelectedPatientId(ctx)
-    _selectedPatientId.value = if (savedPatientId != null && loadedPatients.any { it.id == savedPatientId && (it.status == QueueStatus.WAITING || it.status == QueueStatus.IN_CONSULTATION) }) {
+    _selectedPatientId.value = if (savedPatientId != null && finalPatients.any { it.id == savedPatientId && (it.status == QueueStatus.WAITING || it.status == QueueStatus.IN_CONSULTATION) }) {
       savedPatientId
     } else {
-      loadedPatients.firstOrNull { it.status == QueueStatus.WAITING || it.status == QueueStatus.IN_CONSULTATION }?.id
+      finalPatients.firstOrNull { it.status == QueueStatus.WAITING || it.status == QueueStatus.IN_CONSULTATION }?.id
     }
 
     _invoices.value = (ClinicDataPersistence.loadInvoices(ctx) ?: ClinicInitialDataSeeder.getSeedInvoices())
@@ -865,7 +878,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     gender: Gender,
     phone: String,
     address: String,
-    bloodType: String = "O+",
+    bloodType: String = "",
     allergies: List<String> = emptyList(),
     chiefComplaint: String = "",
     bp: String = "120/80 mmHg",
@@ -910,7 +923,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     gender: Gender,
     phone: String,
     address: String,
-    bloodType: String = "O+",
+    bloodType: String = "",
     allergies: List<String> = emptyList(),
     chiefComplaint: String = "တိုက်ရိုက် Day-Care / သူနာပြုကုသမှု",
     procedureName: String = "အနာဆေးထည့်ခြင်း (Wound Dressing)",
@@ -1036,7 +1049,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     gender: Gender,
     phone: String,
     address: String,
-    bloodType: String = "O+",
+    bloodType: String = "",
     allergies: List<String> = emptyList(),
     chiefComplaint: String = "တိုက်ရိုက်ဆေးထိုး / Day-Care (Direct Injection)",
     bp: String = "120/80 mmHg",
@@ -1151,6 +1164,24 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       ClinicDataPersistence.saveTreatmentCards(ctx, remainingCards)
     }
 
+    // 5.6. Cascade delete associated lab orders and lab invoices
+    val deletedLabOrders = _labOrders.value.filter { it.patientId == patientId }
+    if (deletedLabOrders.isNotEmpty()) {
+      deletedLabOrders.forEach {
+        ClinicDataPersistence.addDeletedLabOrderId(ctx, it.id)
+      }
+      val remainingLabOrders = _labOrders.value.filterNot { it.patientId == patientId }
+      _labOrders.value = remainingLabOrders
+      ClinicDataPersistence.saveLabOrders(ctx, remainingLabOrders)
+    }
+
+    val deletedLabInvoices = _labInvoices.value.filter { it.patientId == patientId }
+    if (deletedLabInvoices.isNotEmpty()) {
+      val remainingLabInvoices = _labInvoices.value.filterNot { it.patientId == patientId }
+      _labInvoices.value = remainingLabInvoices
+      ClinicDataPersistence.saveLabInvoices(ctx, remainingLabInvoices)
+    }
+
     // 6. Instantly push tombstone to all connected Wi-Fi peers!
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
@@ -1227,7 +1258,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       gender = orig?.gender ?: Gender.MALE,
       phone = orig?.phone ?: "",
       address = orig?.address ?: "မန္တလေးမြို့",
-      bloodType = orig?.bloodType ?: "O+",
+      bloodType = orig?.bloodType ?: "",
       status = QueueStatus.WAITING,
       registrationTime = BurmeseDateUtils.getNowFormatted(),
       vitals = vitals,
@@ -4498,10 +4529,26 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
   fun deleteLabOrder(orderId: String) {
     val ctx = getApplication<Application>()
+    val targetOrder = _labOrders.value.find { it.id == orderId }
     ClinicDataPersistence.addDeletedLabOrderId(ctx, orderId)
     val updated = _labOrders.value.filter { it.id != orderId }
     _labOrders.value = updated
     ClinicDataPersistence.saveLabOrders(ctx, updated)
+
+    // Auto-delete linked Lab Invoice (by orderId, orderNumber, or invoiceNumber)
+    val linkedInvoices = _labInvoices.value.filter { inv ->
+      inv.orderId == orderId ||
+      (targetOrder != null && inv.orderId == targetOrder.orderNumber) ||
+      (targetOrder != null && targetOrder.invoiceNumber.isNotBlank() && inv.invoiceNumber == targetOrder.invoiceNumber)
+    }
+    if (linkedInvoices.isNotEmpty()) {
+      val remainingInvoices = _labInvoices.value.filterNot { inv ->
+        linkedInvoices.any { it.id == inv.id }
+      }
+      _labInvoices.value = remainingInvoices
+      ClinicDataPersistence.saveLabInvoices(ctx, remainingInvoices)
+    }
+
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
     }

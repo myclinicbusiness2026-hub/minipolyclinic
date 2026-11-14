@@ -63,7 +63,7 @@ data class Patient(
   val isFollowUp: Boolean = false,
   val followUpReason: String = "",
   val chiefComplaint: String = "",
-  val bloodType: String = "O+"
+  val bloodType: String = ""
 ) {
   val effectiveAllergies: List<String> get() = if (allergies.isNotEmpty()) allergies else knownAllergies
   val registrationDate: String get() {

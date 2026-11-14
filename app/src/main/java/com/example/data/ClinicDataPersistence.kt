@@ -375,7 +375,7 @@ object ClinicDataPersistence {
             isReminderSent = o.optBoolean("isReminderSent", false),
             isFollowUp = o.optBoolean("isFollowUp", false),
             followUpReason = o.optString("followUpReason", ""),
-            bloodType = o.optString("bloodType", "O+")
+            bloodType = o.optString("bloodType", "")
           )
         )
       }

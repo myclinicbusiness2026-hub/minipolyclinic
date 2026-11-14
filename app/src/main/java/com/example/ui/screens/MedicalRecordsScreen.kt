@@ -963,8 +963,9 @@ private fun PatientDetailedEmrPane(
                 }
               }
               Spacer(modifier = Modifier.height(2.dp))
+              val bloodInfo1 = if (patient.bloodType.isNotBlank()) " • 🩸 ${patient.bloodType}" else ""
               Text(
-                "${patient.age} Yrs • ${patient.gender.label} • ${patient.bloodType} • 📞 ${patient.phone}",
+                "${patient.age} Yrs • ${patient.gender.label}$bloodInfo1 • 📞 ${patient.phone}",
                 fontSize = 11.sp,
                 color = SlateMedium
               )
@@ -1049,8 +1050,9 @@ private fun PatientDetailedEmrPane(
                   }
                 }
                 Spacer(modifier = Modifier.height(2.dp))
+                val bloodInfo2 = if (patient.bloodType.isNotBlank()) " • 🩸 Blood: ${patient.bloodType}" else ""
                 Text(
-                  "${patient.age} Years • ${patient.gender.label} • Blood: ${patient.bloodType} • 📞 ${patient.phone}",
+                  "${patient.age} Years • ${patient.gender.label}$bloodInfo2 • 📞 ${patient.phone}",
                   fontSize = 11.sp,
                   color = SlateMedium
                 )
