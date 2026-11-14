@@ -25,6 +25,7 @@ object ClinicDataPersistence {
   private const val KEY_DELETED_USER_IDS = "deleted_user_ids"
   private const val KEY_DELETED_TREATMENT_CARD_IDS = "deleted_treatment_card_ids"
   private const val KEY_DELETED_LAB_ORDER_IDS = "deleted_lab_order_ids"
+  private const val KEY_DELETED_LAB_INVOICE_IDS = "deleted_lab_invoice_ids"
   private const val KEY_TREATMENT_CARDS = "treatment_cards"
   private const val KEY_CLINIC_SETTINGS = "clinic_settings"
   private const val KEY_DRAFT_CONSULTATIONS = "draft_consultations"
@@ -257,6 +258,34 @@ object ClinicDataPersistence {
     val current = loadDeletedLabOrderIds(context)
     current.add(id)
     saveDeletedLabOrderIds(context, current)
+  }
+
+  fun saveDeletedLabInvoiceIds(context: Context, ids: Set<String>) {
+    val arr = JSONArray()
+    ids.forEach { arr.put(it) }
+    getPrefs(context).edit().putString(KEY_DELETED_LAB_INVOICE_IDS, arr.toString()).apply()
+  }
+
+  fun loadDeletedLabInvoiceIds(context: Context): MutableSet<String> {
+    val str = getPrefs(context).getString(KEY_DELETED_LAB_INVOICE_IDS, null) ?: return mutableSetOf()
+    return try {
+      val arr = JSONArray(str)
+      val set = mutableSetOf<String>()
+      for (i in 0 until arr.length()) {
+        val id = arr.getString(i)
+        if (id.isNotBlank()) set.add(id)
+      }
+      set
+    } catch (_: Exception) {
+      mutableSetOf()
+    }
+  }
+
+  fun addDeletedLabInvoiceId(context: Context, id: String) {
+    if (id.isBlank()) return
+    val current = loadDeletedLabInvoiceIds(context)
+    current.add(id)
+    saveDeletedLabInvoiceIds(context, current)
   }
 
   fun removeDeletedTreatmentCardId(context: Context, id: String) {

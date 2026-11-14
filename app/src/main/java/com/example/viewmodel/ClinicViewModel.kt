@@ -343,8 +343,13 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       }
       merged
     }
-    _labOrders.value = ClinicDataPersistence.loadLabOrders(ctx) ?: emptyList()
-    _labInvoices.value = ClinicDataPersistence.loadLabInvoices(ctx) ?: emptyList()
+    val delLabInvs = ClinicDataPersistence.loadDeletedLabInvoiceIds(ctx)
+    val delLabOrds = ClinicDataPersistence.loadDeletedLabOrderIds(ctx)
+    val delPats = ClinicDataPersistence.loadDeletedPatientIds(ctx)
+    _labOrders.value = (ClinicDataPersistence.loadLabOrders(ctx) ?: emptyList())
+      .filterNot { delLabOrds.contains(it.id) || delPats.contains(it.patientId) }
+    _labInvoices.value = (ClinicDataPersistence.loadLabInvoices(ctx) ?: emptyList())
+      .filterNot { delLabInvs.contains(it.id) || delPats.contains(it.patientId) }
 
     // Auto-heal templates from past orders or procedures if templates lost customized parameters/prices
     if (_labOrders.value.isNotEmpty() || _procedures.value.isNotEmpty()) {
@@ -1175,6 +1180,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
     val deletedLabInvoices = _labInvoices.value.filter { it.patientId == patientId }
     if (deletedLabInvoices.isNotEmpty()) {
+      deletedLabInvoices.forEach {
+        ClinicDataPersistence.addDeletedLabInvoiceId(ctx, it.id)
+      }
       val remainingLabInvoices = _labInvoices.value.filterNot { it.patientId == patientId }
       _labInvoices.value = remainingLabInvoices
       ClinicDataPersistence.saveLabInvoices(ctx, remainingLabInvoices)
@@ -3988,11 +3996,34 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         }
       }
 
-      // 11.1 Lab Orders (Non-destructive ID-based merge)
+      // 11.0 Tombstones for Lab
+      val remoteDelLabOrders = SyncPayloadParser.parseStringList(root.optJSONArray("deletedLabOrderIds"))
+      val localDelLabOrders = ClinicDataPersistence.loadDeletedLabOrderIds(ctx)
+      val allDeletedLabOrderIds = (localDelLabOrders + remoteDelLabOrders).toMutableSet()
+      ClinicDataPersistence.saveDeletedLabOrderIds(ctx, allDeletedLabOrderIds)
+
+      val remoteDelLabInvoices = SyncPayloadParser.parseStringList(root.optJSONArray("deletedLabInvoiceIds"))
+      val localDelLabInvoices = ClinicDataPersistence.loadDeletedLabInvoiceIds(ctx)
+      val allDeletedLabInvoiceIds = (localDelLabInvoices + remoteDelLabInvoices).toMutableSet()
+      ClinicDataPersistence.saveDeletedLabInvoiceIds(ctx, allDeletedLabInvoiceIds)
+
+      val allDeletedPatientIds = ClinicDataPersistence.loadDeletedPatientIds(ctx)
+
+      // 11.1 Lab Orders (Tombstone-filtered merge)
       if (root.has("labOrders")) {
         val parsedLabOrders = ClinicDataPersistence.parseLabOrders(root.getJSONArray("labOrders").toString())
-        val currentLabOrderMap = _labOrders.value.associateBy { it.id }.toMutableMap()
-        parsedLabOrders.forEach { o -> currentLabOrderMap[o.id] = o }
+        val currentLabOrderMap = _labOrders.value
+          .filterNot { allDeletedLabOrderIds.contains(it.id) || allDeletedPatientIds.contains(it.patientId) }
+          .associateBy { it.id }
+          .toMutableMap()
+        parsedLabOrders.forEach { o ->
+          if (!allDeletedLabOrderIds.contains(o.id) && !allDeletedPatientIds.contains(o.patientId)) {
+            val ex = currentLabOrderMap[o.id]
+            if (ex == null || o.status == LabOrderStatus.COMPLETED || ex.status != LabOrderStatus.COMPLETED) {
+              currentLabOrderMap[o.id] = o
+            }
+          }
+        }
         val mergedLabOrders = currentLabOrderMap.values.toList()
         _labOrders.value = mergedLabOrders
         ClinicDataPersistence.saveLabOrders(ctx, mergedLabOrders)
@@ -4008,11 +4039,18 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         ClinicDataPersistence.saveLabTemplates(ctx, mergedLabTemplates)
       }
 
-      // 11.3 Lab Invoices (Non-destructive ID-based merge)
+      // 11.3 Lab Invoices (Tombstone-filtered merge)
       if (root.has("labInvoices")) {
         val parsedLabInvoices = ClinicDataPersistence.parseLabInvoices(root.getJSONArray("labInvoices").toString())
-        val currentLabInvMap = _labInvoices.value.associateBy { it.id }.toMutableMap()
-        parsedLabInvoices.forEach { inv -> currentLabInvMap[inv.id] = inv }
+        val currentLabInvMap = _labInvoices.value
+          .filterNot { allDeletedLabInvoiceIds.contains(it.id) || allDeletedPatientIds.contains(it.patientId) }
+          .associateBy { it.id }
+          .toMutableMap()
+        parsedLabInvoices.forEach { inv ->
+          if (!allDeletedLabInvoiceIds.contains(inv.id) && !allDeletedPatientIds.contains(inv.patientId)) {
+            currentLabInvMap[inv.id] = inv
+          }
+        }
         val mergedLabInvoices = currentLabInvMap.values.toList()
         _labInvoices.value = mergedLabInvoices
         ClinicDataPersistence.saveLabInvoices(ctx, mergedLabInvoices)
@@ -4503,6 +4541,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       (targetOrder != null && targetOrder.invoiceNumber.isNotBlank() && inv.invoiceNumber == targetOrder.invoiceNumber)
     }
     if (linkedInvoices.isNotEmpty()) {
+      linkedInvoices.forEach {
+        ClinicDataPersistence.addDeletedLabInvoiceId(ctx, it.id)
+      }
       val remainingInvoices = _labInvoices.value.filterNot { inv ->
         linkedInvoices.any { it.id == inv.id }
       }
@@ -4668,6 +4709,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   fun deleteLabInvoice(invoiceId: String) {
     val ctx = getApplication<Application>()
     val invToDelete = _labInvoices.value.find { it.id == invoiceId } ?: return
+    ClinicDataPersistence.addDeletedLabInvoiceId(ctx, invoiceId)
     val remainingInvoices = _labInvoices.value.filter { it.id != invoiceId }
     _labInvoices.value = remainingInvoices
     ClinicDataPersistence.saveLabInvoices(ctx, remainingInvoices)

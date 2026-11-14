@@ -372,7 +372,9 @@ class LocalWifiSyncManager(
       deletedInvoiceIds = deletedInvoices,
       deletedMedicineIds = deletedMedicines,
       deletedUserIds = ClinicDataPersistence.loadDeletedUserIds(context).toList(),
-      deletedTreatmentCardIds = ClinicDataPersistence.loadDeletedTreatmentCardIds(context).toList()
+      deletedTreatmentCardIds = ClinicDataPersistence.loadDeletedTreatmentCardIds(context).toList(),
+      deletedLabOrderIds = ClinicDataPersistence.loadDeletedLabOrderIds(context).toList(),
+      deletedLabInvoiceIds = ClinicDataPersistence.loadDeletedLabInvoiceIds(context).toList()
     )
     return payload.toJsonString(context)
   }
@@ -625,22 +627,36 @@ class LocalWifiSyncManager(
         ClinicDataPersistence.saveClinicSettings(context, finalSettings)
       }
 
-      // Merge Lab Orders & Templates & Invoices
+      // Merge Expenses (Non-destructive ID-based merge)
+      if (root.has("expenses")) {
+        val incomingExpenses = SyncPayloadParser.parseExpenses(root.getJSONArray("expenses"))
+        val localExpenses = ClinicDataPersistence.loadExpenses(context) ?: emptyList()
+        val expMap = localExpenses.associateBy { it.id }.toMutableMap()
+        incomingExpenses.forEach { expMap[it.id] = it }
+        ClinicDataPersistence.saveExpenses(context, expMap.values.toList())
+      }
+
+      // Merge Lab Orders & Templates & Invoices with Tombstones
       val remoteDelLab = SyncPayloadParser.parseStringList(root.optJSONArray("deletedLabOrderIds"))
       val localDelLab = ClinicDataPersistence.loadDeletedLabOrderIds(context)
       val allDeletedLabIds = (localDelLab + remoteDelLab).toMutableSet()
       ClinicDataPersistence.saveDeletedLabOrderIds(context, allDeletedLabIds)
 
+      val remoteDelLabInv = SyncPayloadParser.parseStringList(root.optJSONArray("deletedLabInvoiceIds"))
+      val localDelLabInv = ClinicDataPersistence.loadDeletedLabInvoiceIds(context)
+      val allDeletedLabInvoiceIds = (localDelLabInv + remoteDelLabInv).toMutableSet()
+      ClinicDataPersistence.saveDeletedLabInvoiceIds(context, allDeletedLabInvoiceIds)
+
       if (root.has("labOrders")) {
         val incomingLabOrders = ClinicDataPersistence.parseLabOrders(root.getJSONArray("labOrders").toString())
         val localLabOrders = ClinicDataPersistence.loadLabOrders(context) ?: emptyList()
         val labMap = localLabOrders
-          .filterNot { allDeletedLabIds.contains(it.id) }
+          .filterNot { allDeletedLabIds.contains(it.id) || allDeletedPatientIds.contains(it.patientId) }
           .associateBy { it.id }
           .toMutableMap()
 
         incomingLabOrders.forEach { inc ->
-          if (!allDeletedLabIds.contains(inc.id)) {
+          if (!allDeletedLabIds.contains(inc.id) && !allDeletedPatientIds.contains(inc.patientId)) {
             val ex = labMap[inc.id]
             if (ex == null) {
               labMap[inc.id] = inc
@@ -665,8 +681,15 @@ class LocalWifiSyncManager(
       if (root.has("labInvoices")) {
         val incomingInvoices = ClinicDataPersistence.parseLabInvoices(root.getJSONArray("labInvoices").toString())
         val localInvoices = ClinicDataPersistence.loadLabInvoices(context) ?: emptyList()
-        val invMap = localInvoices.associateBy { it.id }.toMutableMap()
-        incomingInvoices.forEach { invMap[it.id] = it }
+        val invMap = localInvoices
+          .filterNot { allDeletedLabInvoiceIds.contains(it.id) || allDeletedPatientIds.contains(it.patientId) }
+          .associateBy { it.id }
+          .toMutableMap()
+        incomingInvoices.forEach { inc ->
+          if (!allDeletedLabInvoiceIds.contains(inc.id) && !allDeletedPatientIds.contains(inc.patientId)) {
+            invMap[inc.id] = inc
+          }
+        }
         ClinicDataPersistence.saveLabInvoices(context, invMap.values.toList())
       }
 

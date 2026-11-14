@@ -72,7 +72,8 @@ data class SyncDataPayload(
   val labOrders: List<LabOrder> = emptyList(),
   val labInvoices: List<LabInvoice> = emptyList(),
   val labTemplates: List<LabTestTemplate> = emptyList(),
-  val deletedLabOrderIds: List<String> = emptyList()
+  val deletedLabOrderIds: List<String> = emptyList(),
+  val deletedLabInvoiceIds: List<String> = emptyList()
 ) {
   fun toJsonString(context: Context? = null): String {
     val root = JSONObject()
@@ -545,9 +546,19 @@ data class SyncDataPayload(
     }
 
     if (context != null) {
+      val delPatSet = com.example.data.ClinicDataPersistence.loadDeletedPatientIds(context)
+      val delLabOrdSet = com.example.data.ClinicDataPersistence.loadDeletedLabOrderIds(context)
+      val delLabInvSet = com.example.data.ClinicDataPersistence.loadDeletedLabInvoiceIds(context)
+
       val labOrdersJson = com.example.data.ClinicDataPersistence.getLabOrdersJson(context)
       if (!labOrdersJson.isNullOrBlank()) {
-        root.put("labOrders", JSONArray(labOrdersJson))
+        val parsed = com.example.data.ClinicDataPersistence.parseLabOrders(labOrdersJson)
+          .filterNot { delLabOrdSet.contains(it.id) || delPatSet.contains(it.patientId) }
+        val ordArr = JSONArray()
+        parsed.forEach { ord ->
+          ordArr.put(com.example.data.ClinicDataPersistence.labOrderToJson(ord))
+        }
+        root.put("labOrders", ordArr)
       }
       val labTemplatesJson = com.example.data.ClinicDataPersistence.getLabTemplatesJson(context)
       if (!labTemplatesJson.isNullOrBlank()) {
@@ -555,11 +566,36 @@ data class SyncDataPayload(
       }
       val labInvoicesJson = com.example.data.ClinicDataPersistence.getLabInvoicesJson(context)
       if (!labInvoicesJson.isNullOrBlank()) {
-        root.put("labInvoices", JSONArray(labInvoicesJson))
+        val parsed = com.example.data.ClinicDataPersistence.parseLabInvoices(labInvoicesJson)
+          .filterNot { delLabInvSet.contains(it.id) || delPatSet.contains(it.patientId) }
+        val invArr = JSONArray()
+        parsed.forEach { inv ->
+          invArr.put(JSONObject().apply {
+            put("id", inv.id)
+            put("invoiceNumber", inv.invoiceNumber)
+            put("orderId", inv.orderId)
+            put("patientId", inv.patientId)
+            put("patientName", inv.patientName)
+            put("patientHn", inv.patientHn)
+            put("totalAmount", inv.totalAmount)
+            put("discountAmount", inv.discountAmount)
+            put("paidAmount", inv.paidAmount)
+            put("paymentMethod", inv.paymentMethod.name)
+            put("timestamp", inv.timestamp)
+            put("cashierName", inv.cashierName)
+            put("status", inv.status)
+            put("notes", inv.notes)
+          })
+        }
+        root.put("labInvoices", invArr)
       }
       val delLabArr = JSONArray()
-      com.example.data.ClinicDataPersistence.loadDeletedLabOrderIds(context).forEach { delLabArr.put(it) }
+      delLabOrdSet.forEach { delLabArr.put(it) }
       root.put("deletedLabOrderIds", delLabArr)
+
+      val delLabInvArr = JSONArray()
+      delLabInvSet.forEach { delLabInvArr.put(it) }
+      root.put("deletedLabInvoiceIds", delLabInvArr)
     }
 
     return root.toString()
