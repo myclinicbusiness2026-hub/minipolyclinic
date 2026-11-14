@@ -550,13 +550,66 @@ data class SyncDataPayload(
       val delLabOrdSet = com.example.data.ClinicDataPersistence.loadDeletedLabOrderIds(context)
       val delLabInvSet = com.example.data.ClinicDataPersistence.loadDeletedLabInvoiceIds(context)
 
-      val labOrdersJson = com.example.data.ClinicDataPersistence.getLabOrdersJson(context)
-      if (!labOrdersJson.isNullOrBlank()) {
-        val parsed = com.example.data.ClinicDataPersistence.parseLabOrders(labOrdersJson)
-          .filterNot { delLabOrdSet.contains(it.id) || delPatSet.contains(it.patientId) }
+      val labOrders = com.example.data.ClinicDataPersistence.loadLabOrders(context)
+      if (!labOrders.isNullOrEmpty()) {
+        val parsed = labOrders.filterNot { delLabOrdSet.contains(it.id) || delPatSet.contains(it.patientId) }
         val ordArr = JSONArray()
         parsed.forEach { ord ->
-          ordArr.put(com.example.data.ClinicDataPersistence.labOrderToJson(ord))
+          val oo = JSONObject().apply {
+            put("id", ord.id)
+            put("orderNumber", ord.orderNumber)
+            put("patientId", ord.patientId)
+            put("patientName", ord.patientName)
+            put("patientHn", ord.patientHn)
+            put("patientAge", ord.patientAge)
+            put("patientGender", ord.patientGender.name)
+            put("doctorName", ord.doctorName)
+            put("orderDate", ord.orderDate)
+            put("orderTime", ord.orderTime)
+            put("status", ord.status.name)
+            put("totalAmount", ord.totalAmount)
+            put("paidAmount", ord.paidAmount)
+            put("paymentStatus", ord.paymentStatus)
+            put("invoiceNumber", ord.invoiceNumber)
+            put("technicianName", ord.technicianName)
+            put("completedAt", ord.completedAt)
+            put("notes", ord.notes)
+            put("pathologistName", ord.pathologistName)
+            put("pathologistDegree", ord.pathologistDegree)
+            put("pathologistSama", ord.pathologistSama)
+            put("pathologistTitle", ord.pathologistTitle)
+            put("showDoctorSeal", ord.showDoctorSeal)
+            put("showTechnicianSign", ord.showTechnicianSign)
+            val iArr = JSONArray()
+            ord.items.forEach { item ->
+              val io = JSONObject().apply {
+                put("testId", item.testId)
+                put("testName", item.testName)
+                put("category", item.category)
+                put("price", item.price)
+                put("specimenType", item.specimenType)
+                put("remarks", item.remarks)
+                put("attachedImageUri", item.attachedImageUri ?: "")
+                put("isCompleted", item.isCompleted)
+                put("preferSlipPrint", item.preferSlipPrint)
+                val pArr = JSONArray()
+                item.parameters.forEach { p ->
+                  pArr.put(JSONObject().apply {
+                    put("name", p.name)
+                    put("result", p.result)
+                    put("unit", p.unit)
+                    put("referenceRange", p.referenceRange)
+                    put("flag", p.flag)
+                    put("section", p.section)
+                  })
+                }
+                put("parameters", pArr)
+              }
+              iArr.put(io)
+            }
+            put("items", iArr)
+          }
+          ordArr.put(oo)
         }
         root.put("labOrders", ordArr)
       }
@@ -564,10 +617,9 @@ data class SyncDataPayload(
       if (!labTemplatesJson.isNullOrBlank()) {
         root.put("labTemplates", JSONArray(labTemplatesJson))
       }
-      val labInvoicesJson = com.example.data.ClinicDataPersistence.getLabInvoicesJson(context)
-      if (!labInvoicesJson.isNullOrBlank()) {
-        val parsed = com.example.data.ClinicDataPersistence.parseLabInvoices(labInvoicesJson)
-          .filterNot { delLabInvSet.contains(it.id) || delPatSet.contains(it.patientId) }
+      val labInvoices = com.example.data.ClinicDataPersistence.loadLabInvoices(context)
+      if (!labInvoices.isNullOrEmpty()) {
+        val parsed = labInvoices.filterNot { delLabInvSet.contains(it.id) || delPatSet.contains(it.patientId) }
         val invArr = JSONArray()
         parsed.forEach { inv ->
           invArr.put(JSONObject().apply {
@@ -578,13 +630,10 @@ data class SyncDataPayload(
             put("patientName", inv.patientName)
             put("patientHn", inv.patientHn)
             put("totalAmount", inv.totalAmount)
-            put("discountAmount", inv.discountAmount)
             put("paidAmount", inv.paidAmount)
             put("paymentMethod", inv.paymentMethod.name)
             put("timestamp", inv.timestamp)
             put("cashierName", inv.cashierName)
-            put("status", inv.status)
-            put("notes", inv.notes)
           })
         }
         root.put("labInvoices", invArr)
