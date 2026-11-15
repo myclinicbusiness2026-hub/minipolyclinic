@@ -1,12 +1,12 @@
 {
-  "versionCode": 60,
-  "versionName": "1.5.36",
+  "versionCode": 61,
+  "versionName": "1.5.37",
   "minSupportedVersion": 1,
-  "releaseNotes": "• Preserved Lab Template Edits: Removed automatic auto-heal on startup so CBC & all test parameters, reference intervals, and prices remain permanently saved without reverting to presets.\n• Clean Single-Line CST: Clicking CST generates a clean single line '(သောက်နေကြဆေးများပုံမှန်သောက်ရန်)' without spilling into frequency or duration.\n• Removed Template Reset Button: Removed the preset reset button from lab templates tab to prevent accidental data loss.",
-  "releaseNotesMm": "• Lab စျေးနှုန်းနှင့် Parameter များ အမြဲတမ်း တည်မြဲနေစေခြင်း - App ပြန်ဖွင့်တိုင်း တန်ဖိုးဟောင်းများ ပြန်ဖုံးအုပ်သော Auto-heal စနစ်ကို ဖြုတ်ပစ်ထားသဖြင့် CBC အပါအဝင် ပြင်ဆင်ထားသမျှ အသစ်အတိုင်း အမြဲတမ်း တည်မြဲနေခြင်း။\n• CST ကို တစ်ကြောင်းတည်း သန့်ရှင်းစွာ ဖော်ပြခြင်း - CST နှိပ်ပါက '(သောက်နေကြဆေးများပုံမှန်သောက်ရန်)' ဟုသာ တစ်ကြောင်းတည်း ရှင်းလင်းစွာ ဖော်ပြခြင်း (Frequency/Duration များထဲ မရောတော့ပါ)။\n• Lab Template Reset ခလုတ်ကြီး ဖြုတ်ပေးထားခြင်း - မှားယွင်းနှိပ်မိ၍ မူလအခြေအနေ ပြန်မဖြစ်စေရန် Reset ခလုတ်အား လုံးဝ ဖြုတ်ပစ်ထားခြင်း။",
+  "releaseNotes": "• Lab Test Template Sync & Integrity Fix: Added updatedAt timestamps and deleted template tombstone tracking so CBC and test parameters, units, reference intervals, and prices are never overwritten or resurrected.\n• Bluetooth Thermal Printer Fallback: Added Insecure RFCOMM and Channel 1 fallback sockets to ensure smooth, reliable receipt printing on portable Bluetooth POS printers without connection refusal.\n• Accelerated Local Wi-Fi Sync: Auto-sync frequency boosted to 1.5s with instant trigger push on edit and fast discovery burst upon connection.",
+  "releaseNotesMm": "• Lab စစ်ဆေးချက်များ ပျက်ပြယ်ခြင်းနှင့် တန်ဖိုးဟောင်းများ ပြန်ဝင်ခြင်းကို အပြီးအပိုင် ဖြေရှင်းခြင်း - Lab Template များကို အချိန်မှတ်တမ်း (updatedAt) နှင့် ဖျက်သိမ်းမှုမှတ်တမ်း (Tombstones) စနစ်ဖြင့် တည်ဆောက်ထားသဖြင့် CBC အပါအဝင် စျေးနှုန်း၊ Parameter၊ Unit၊ Reference Interval များ အခြားစက်များနှင့် Sync လုပ်ချိန်တွင် ပျက်ပြယ်ခြင်း သို့မဟုတ် ဖျက်ထားသည့် Template များ ပြန်လည် ထွက်ပေါ်လာခြင်း လုံးဝ မရှိတော့ပါ။\n• Bluetooth Thermal Receipt Printer ချိတ်ဆက်မှု အဆင်ပြေစေခြင်း - POS-58, Rongta, Xprinter, Goojprt စသည့် Bluetooth ပရင်တာများတွင် ချိတ်ဆက်မရ (Connection Refused) ဖြစ်တတ်သော ပြဿနာအား Insecure RFCOMM & Channel 1 အလိုအလျောက် အဆင့်ဆင့် ချိတ်ဆက်မှုဖြင့် ချောမွေ့စွာ ဘောက်ချာ ထုတ်နိုင်စေရန် ဖြေရှင်းပေးထားခြင်း။\n• Device အချင်းချင်း Local Wi-Fi Sync ပိုမို လျင်မြန်စွာ ချိတ်ဆက်မိခြင်း - အချက်အလက် ပြင်ဆင်/ဖျက်သိမ်းပြီးသည်နှင့် တစ်ပြိုင်နက် တစ်ဖက်စက်သို့ ချက်ချင်း Push ပြုလုပ်ပေးပြီး စက္ကန့်ပိုင်းအတွင်း ဒေတာ အပြန်အလှန် အချိန်နှင့်တစ်ပြေးညီ ကူးပြောင်းနိုင်စေရန် အဆင့်မြှင့်တင်ထားခြင်း။",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-15",
-  "apkSizeBytes": 14900731,
-  "commitSha": "d2e065842d45cb323cdb1d4a795bb489738728a8",
-  "updatedAt": "2026-11-15T06:40:00.000Z"
+  "apkSizeBytes": 14900727,
+  "commitSha": "79e63856be2b2a5b653374b81878fd7f23c060af",
+  "updatedAt": "2026-11-15T12:55:00.000Z"
 }
