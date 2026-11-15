@@ -2246,6 +2246,7 @@ object ClinicDataPersistence {
       io.put("patientId", inv.patientId)
       io.put("patientName", inv.patientName)
       io.put("patientHn", inv.patientHn)
+      io.put("referringDoctorName", inv.referringDoctorName)
       io.put("totalAmount", inv.totalAmount)
       io.put("paidAmount", inv.paidAmount)
       io.put("paymentMethod", inv.paymentMethod.name)
@@ -2276,6 +2277,7 @@ object ClinicDataPersistence {
             patientId = o.optString("patientId"),
             patientName = o.optString("patientName"),
             patientHn = o.optString("patientHn"),
+            referringDoctorName = o.optString("referringDoctorName"),
             totalAmount = o.optDouble("totalAmount", 0.0),
             paidAmount = o.optDouble("paidAmount", 0.0),
             paymentMethod = pm,
@@ -2453,6 +2455,7 @@ object ClinicDataPersistence {
             patientId = o.optString("patientId"),
             patientName = o.optString("patientName"),
             patientHn = o.optString("patientHn"),
+            referringDoctorName = o.optString("referringDoctorName"),
             totalAmount = o.optDouble("totalAmount", 0.0),
             paidAmount = o.optDouble("paidAmount", 0.0),
             paymentMethod = pm,

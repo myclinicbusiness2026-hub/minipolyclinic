@@ -392,8 +392,14 @@ object LabPrintHelper {
       // 3. Patient Demographics Box (Omit completely on blank letterhead)
       if (!isBlankLetterhead) {
         val refDocDisplay = if (order.referringDoctorName.isNotBlank()) {
-          if (order.referringDoctorName.startsWith("Dr", ignoreCase = true)) order.referringDoctorName
-          else "Dr. ${order.referringDoctorName}"
+          val clean = order.referringDoctorName.trim()
+          if (clean.equals("Self-request", ignoreCase = true) || clean.equals("Self", ignoreCase = true) || clean.contains("ကိုယ်တိုင်")) {
+            clean
+          } else if (clean.startsWith("Dr", ignoreCase = true) || clean.startsWith("ဒေါက်တာ", ignoreCase = true)) {
+            clean
+          } else {
+            "Dr. $clean"
+          }
         } else {
           if (clinic.doctorName.startsWith("Dr", ignoreCase = true)) clinic.doctorName
           else "Dr. ${clinic.doctorName}"
@@ -815,6 +821,10 @@ class LabThermalReceiptPrintAdapter(
     y += 11f
     canvas.drawText("HN: ${invoice.patientHn}", margin, y, paint)
     y += 11f
+    if (invoice.referringDoctorName.isNotBlank()) {
+      canvas.drawText("Ref. Dr: ${invoice.referringDoctorName}", margin, y, paint)
+      y += 11f
+    }
     canvas.drawText("Cashier: ${invoice.cashierName.ifBlank { "Lab Cashier" }}", margin, y, paint)
     y += 13f
 

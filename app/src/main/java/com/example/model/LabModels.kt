@@ -105,6 +105,7 @@ data class LabInvoice(
   val patientId: String,
   val patientName: String,
   val patientHn: String = "",
+  val referringDoctorName: String = "",
   val items: List<LabOrderItem> = emptyList(),
   val totalAmount: Double = 0.0,
   val discount: Double = 0.0,

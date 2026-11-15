@@ -4501,7 +4501,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     pathologistSama: String = "",
     pathologistTitle: String = "",
     showDoctorSeal: Boolean = true,
-    showTechnicianSign: Boolean = false
+    showTechnicianSign: Boolean = false,
+    referringDoctorName: String = ""
   ) {
     val ctx = getApplication<Application>()
     val isAllCompleted = updatedItems.all { it.isCompleted }
@@ -4510,6 +4511,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       if (ord.id == orderId) {
         ord.copy(
           items = updatedItems,
+          doctorName = referringDoctorName.ifBlank { ord.doctorName },
           technicianName = technicianName.ifBlank { ord.technicianName },
           notes = notes,
           pathologistName = pathologistName.ifBlank { ord.pathologistName },

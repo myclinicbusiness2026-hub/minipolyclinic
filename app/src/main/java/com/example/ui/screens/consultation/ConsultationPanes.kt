@@ -213,10 +213,12 @@ fun ConsultationClinicalRecordPane(
       selectedInvestigations = selectedInvestigations,
       labTemplates = labTemplates,
       onOrderToLab = { templates ->
+        val (effDocName, _, _) = viewModel.getEffectiveDoctor()
+        val docName = effDocName.ifBlank { viewModel.currentUser.value?.displayName ?: viewModel.clinicSettings.value.doctorName }
         viewModel.orderLabTestsForPatient(
           patient = patient,
           selectedTemplates = templates,
-          doctorName = viewModel.currentUser.value?.displayName ?: "Attending Doctor",
+          doctorName = docName,
           clinicalNotes = "OPD Doctor Suggested Investigation"
         )
         android.widget.Toast.makeText(context, "ဓာတ်ခွဲခန်းသို့ တိုက်ရိုက်ပေးပို့ပြီးပါပြီ (Sent to Lab Queue)", android.widget.Toast.LENGTH_SHORT).show()

@@ -559,6 +559,7 @@ fun LabInvestigationScreen(
       templates = labTemplates,
       procedures = procedures,
       attendingDoctor = viewModel.currentUser.value?.displayName ?: clinicSettings.doctorName,
+      recentDoctorNames = labOrders.mapNotNull { it.doctorName.trim().takeIf { d -> d.isNotBlank() && !d.equals("Self-request", ignoreCase = true) } }.distinct().take(8),
       onDismiss = { showNewOrderDialog = false },
       onSubmit = { newOrder ->
         viewModel.createLabOrder(newOrder)
@@ -578,8 +579,8 @@ fun LabInvestigationScreen(
       defaultPathologistSama = clinicSettings.defaultPathologistSama,
       defaultPathologistTitle = clinicSettings.defaultPathologistTitle,
       onDismiss = { orderToEnterResults = null },
-      onSave = { updatedItems, tech, notes, pName, pDegree, pSama, pTitle, showDocSeal, showTechSign ->
-        viewModel.saveLabOrderResults(order.id, updatedItems, tech, notes, pName, pDegree, pSama, pTitle, showDocSeal, showTechSign)
+      onSave = { updatedItems, tech, notes, pName, pDegree, pSama, pTitle, showDocSeal, showTechSign, refDoc ->
+        viewModel.saveLabOrderResults(order.id, updatedItems, tech, notes, pName, pDegree, pSama, pTitle, showDocSeal, showTechSign, refDoc)
         orderToEnterResults = null
         Toast.makeText(context, "ဓာတ်ခွဲအဖြေများ မှတ်တမ်းတင်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
       }
@@ -794,6 +795,21 @@ fun MobileLabOrderQueueCard(
             modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
           )
         }
+      }
+
+      val refDocQueue = order.referringDoctorName.ifBlank { "Direct / Self-request" }
+      Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Icon(Icons.Default.MedicalServices, contentDescription = null, modifier = Modifier.size(11.dp), tint = Color(0xFF0284C7))
+        Spacer(modifier = Modifier.width(3.dp))
+        Text(
+          "Ref. Dr: $refDocQueue",
+          fontSize = 10.sp,
+          fontWeight = FontWeight.Medium,
+          color = if (refDocQueue.equals("Direct / Self-request", ignoreCase = true) || refDocQueue.equals("Self-request", ignoreCase = true)) Color(0xFF64748B) else Color(0xFF0369A1)
+        )
       }
 
       Spacer(modifier = Modifier.height(6.dp))
@@ -1102,7 +1118,7 @@ fun MobileLabCompletedResultCard(
         verticalAlignment = Alignment.CenterVertically
       ) {
         Text(
-          "HN: ${order.patientHn} • ${order.orderDate} • Dr: ${order.doctorName.ifBlank { "Direct" }}",
+          "HN: ${order.patientHn} • ${order.orderDate} • Ref. Dr: ${order.referringDoctorName.ifBlank { "Direct / Self-request" }}",
           fontSize = 10.sp,
           color = SlateMuted
         )
@@ -1792,6 +1808,7 @@ fun MobileNewLabOrderDialog(
   templates: List<LabTestTemplate>,
   procedures: List<ProcedureItem> = emptyList(),
   attendingDoctor: String,
+  recentDoctorNames: List<String> = emptyList(),
   onDismiss: () -> Unit,
   onSubmit: (LabOrder) -> Unit
 ) {
@@ -2035,14 +2052,111 @@ fun MobileNewLabOrderDialog(
           HorizontalDivider(color = Color(0xFFF1F5F9))
           Spacer(modifier = Modifier.height(8.dp))
 
+          // ညွှန်းပို့သည့် ဆရာဝန် (Referred Dr. Name)
+          Text(
+            "ညွှန်းပို့သည့် ဆရာဝန် (Referred Dr. Name)",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF0F172A)
+          )
+          Spacer(modifier = Modifier.height(4.dp))
+
+          FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
+          ) {
+            val clinicDocLabel = attendingDoctor.ifBlank { "ဆေးခန်းဆရာဝန်" }
+            val isClinicDoc = doctorName == clinicDocLabel
+            Surface(
+              shape = RoundedCornerShape(12.dp),
+              color = if (isClinicDoc) Color(0xFFE0F2FE) else Color(0xFFF1F5F9),
+              border = BorderStroke(0.6.dp, if (isClinicDoc) Color(0xFF0284C7) else Color(0xFFCBD5E1)),
+              modifier = Modifier.clickable { doctorName = clinicDocLabel }
+            ) {
+              Text(
+                "🏥 ဆေးခန်း ($clinicDocLabel)",
+                fontSize = 10.sp,
+                fontWeight = if (isClinicDoc) FontWeight.Bold else FontWeight.Normal,
+                color = if (isClinicDoc) Color(0xFF0369A1) else Color(0xFF334155),
+                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+              )
+            }
+
+            val isSelf = doctorName.equals("Self-request", ignoreCase = true) || doctorName.contains("ကိုယ်တိုင်")
+            Surface(
+              shape = RoundedCornerShape(12.dp),
+              color = if (isSelf) Color(0xFFFEF3C7) else Color(0xFFF1F5F9),
+              border = BorderStroke(0.6.dp, if (isSelf) Color(0xFFD97706) else Color(0xFFCBD5E1)),
+              modifier = Modifier.clickable { doctorName = "Self-request" }
+            ) {
+              Text(
+                "👤 လူနာကိုယ်တိုင် (Self)",
+                fontSize = 10.sp,
+                fontWeight = if (isSelf) FontWeight.Bold else FontWeight.Normal,
+                color = if (isSelf) Color(0xFFB45309) else Color(0xFF334155),
+                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+              )
+            }
+
+            val isOutside = doctorName.startsWith("Dr.") && doctorName != clinicDocLabel
+            Surface(
+              shape = RoundedCornerShape(12.dp),
+              color = if (isOutside) Color(0xFFF3E8FF) else Color(0xFFF1F5F9),
+              border = BorderStroke(0.6.dp, if (isOutside) Color(0xFF9333EA) else Color(0xFFCBD5E1)),
+              modifier = Modifier.clickable {
+                if (!doctorName.startsWith("Dr.")) {
+                  doctorName = "Dr. "
+                }
+              }
+            ) {
+              Text(
+                "🩺 Dr. (အပြင်ဆရာဝန်)",
+                fontSize = 10.sp,
+                fontWeight = if (isOutside) FontWeight.Bold else FontWeight.Normal,
+                color = if (isOutside) Color(0xFF7E22CE) else Color(0xFF334155),
+                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+              )
+            }
+
+            recentDoctorNames.filter { it != clinicDocLabel && !it.equals("Self-request", ignoreCase = true) }.take(3).forEach { doc ->
+              val isSelected = doctorName == doc
+              Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = if (isSelected) Color(0xFFDCFCE7) else Color(0xFFF8FAFC),
+                border = BorderStroke(0.6.dp, if (isSelected) Color(0xFF16A34A) else Color(0xFFE2E8F0)),
+                modifier = Modifier.clickable { doctorName = doc }
+              ) {
+                Text(
+                  doc,
+                  fontSize = 10.sp,
+                  fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                  color = if (isSelected) Color(0xFF15803D) else Color(0xFF475569),
+                  modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                )
+              }
+            }
+          }
+
           OutlinedTextField(
             value = doctorName,
             onValueChange = { doctorName = it },
-            label = { Text("ညွှန်ကြားသူ (Doctor / Self)", fontSize = 11.sp) },
+            label = { Text("ညွှန်းပို့သည့် ဆရာဝန် (Referred Dr. Name)", fontSize = 11.sp) },
+            placeholder = { Text("e.g. Dr. Zaw Min / ဆေးခန်းဆရာဝန် / Self-request", fontSize = 10.5.sp, color = SlateMuted) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(8.dp),
             textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = Color(0xFF0F172A)),
+            leadingIcon = {
+              Icon(Icons.Default.MedicalServices, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF0284C7))
+            },
+            trailingIcon = {
+              if (doctorName.isNotBlank()) {
+                IconButton(onClick = { doctorName = "" }, modifier = Modifier.size(24.dp)) {
+                  Icon(Icons.Default.Clear, contentDescription = "Clear", modifier = Modifier.size(14.dp), tint = SlateMuted)
+                }
+              }
+            },
             colors = OutlinedTextFieldDefaults.colors(
               focusedTextColor = Color(0xFF0F172A),
               unfocusedTextColor = Color(0xFF0F172A),
@@ -2139,7 +2253,7 @@ fun MobileNewLabOrderDialog(
                   patientHn = pHn,
                   patientAge = pAge,
                   patientGender = pGender,
-                  doctorName = doctorName.ifBlank { if (isWalkIn) "Self-request" else "Clinic Doctor" },
+                  doctorName = doctorName.trim().ifBlank { if (isWalkIn) "Self-request" else attendingDoctor.ifBlank { "Clinic Doctor" } },
                   orderDate = now,
                   orderTime = nowTime,
                   status = LabOrderStatus.ORDERED,
@@ -2227,9 +2341,10 @@ fun MobileLabResultEntryDialog(
   defaultPathologistSama: String = "",
   defaultPathologistTitle: String = "",
   onDismiss: () -> Unit,
-  onSave: (List<LabOrderItem>, String, String, String, String, String, String, Boolean, Boolean) -> Unit
+  onSave: (List<LabOrderItem>, String, String, String, String, String, String, Boolean, Boolean, String) -> Unit
 ) {
   val context = LocalContext.current
+  var referringDoctor by remember { mutableStateOf(order.referringDoctorName) }
   var techName by remember { mutableStateOf(order.technicianName.ifBlank { technicianName }) }
   var pathologistName by remember { mutableStateOf(order.pathologistName.ifBlank { defaultPathologistName }) }
   var pathologistDegree by remember { mutableStateOf(order.pathologistDegree.ifBlank { defaultPathologistDegree }) }
@@ -2375,6 +2490,41 @@ fun MobileLabResultEntryDialog(
                   textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp, color = Color(0xFF0F172A))
                 )
               }
+            }
+          }
+
+          Spacer(modifier = Modifier.height(4.dp))
+
+          // Referring Doctor Card
+          Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = Color(0xFFF8FAFC),
+            border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+          ) {
+            Column(modifier = Modifier.padding(10.dp)) {
+              Text("ညွှန်းပို့သည့် ဆရာဝန် (Referred Dr. Name)", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
+              Spacer(modifier = Modifier.height(4.dp))
+              OutlinedTextField(
+                value = referringDoctor,
+                onValueChange = { referringDoctor = it },
+                label = { Text("Referred Doctor / Self", fontSize = 11.sp) },
+                placeholder = { Text("e.g. Dr. Zaw Min / ဆေးခန်းဆရာဝန် / Self-request", fontSize = 10.5.sp) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(6.dp),
+                textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp, color = Color(0xFF0F172A)),
+                leadingIcon = {
+                  Icon(Icons.Default.MedicalServices, contentDescription = null, modifier = Modifier.size(15.dp), tint = Color(0xFF0284C7))
+                },
+                trailingIcon = {
+                  if (referringDoctor.isNotBlank()) {
+                    IconButton(onClick = { referringDoctor = "" }, modifier = Modifier.size(24.dp)) {
+                      Icon(Icons.Default.Clear, contentDescription = "Clear", modifier = Modifier.size(14.dp), tint = SlateMuted)
+                    }
+                  }
+                }
+              )
             }
           }
 
@@ -2719,7 +2869,8 @@ fun MobileLabResultEntryDialog(
                 pathologistSama,
                 pathologistTitle,
                 showDoctorSeal,
-                showTechnicianSign
+                showTechnicianSign,
+                referringDoctor
               )
             },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
@@ -2777,6 +2928,7 @@ fun MobileCreateLabInvoiceDialog(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text("${order.patientName} (${order.patientHn})", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Text("ညွှန်းပို့ဆရာဝန်: ${order.referringDoctorName.ifBlank { "လူနာကိုယ်တိုင် / Direct" }}", fontSize = 10.sp, color = Color(0xFF0369A1), fontWeight = FontWeight.Medium)
         Text("Tests: " + order.items.joinToString(", ") { it.testName }, fontSize = 10.sp, color = SlateMuted)
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -2892,6 +3044,7 @@ fun MobileCreateLabInvoiceDialog(
                 patientId = order.patientId,
                 patientName = order.patientName,
                 patientHn = order.patientHn,
+                referringDoctorName = order.referringDoctorName,
                 totalAmount = subtotal,
                 discount = discount,
                 netTotal = netTotal,
