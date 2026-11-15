@@ -1,12 +1,12 @@
 {
-  "versionCode": 62,
-  "versionName": "1.5.38",
+  "versionCode": 63,
+  "versionName": "1.5.39",
   "minSupportedVersion": 1,
-  "releaseNotes": "• Dynamic Lab Catalog in Suggested Investigations: All clinic lab tests from Lab Investigation are now dynamically available with category tabs (Hematology, Biochemistry, Urine/Stool, Serology, Imaging, Others) and test prices on the doctor screen.\n• Clean A4 Print: Test prices are strictly displayed on doctor screen only; A4 prescription prints only clean test names without prices.\n• Unlisted & Imaging Tests Support: Outside tests and imaging (X-Ray, USG, ECG) can be selected/input for doctor screen & A4 print, but are excluded from clinic lab invoices.\n• Lab Order Queue Slip-First Workflow: Lab orders require printing thermal slip & purchasing payment first before entering test results.",
-  "releaseNotesMm": "• Consultation တွင် Lab Test များ တိုက်ရိုက်ရွေးချယ်နိုင်ခြင်း - ဆေးခန်း Lab ထဲရှိ စစ်ဆေးချက်များ (CBC, Lipid, LFT, Creatinine စသည်) အားလုံးအား Category အလိုက် (သွေးစစ်၊ ဇီဝဓာတု၊ ဆီး/ဝမ်း၊ ပိုးစစ်၊ ဓာတ်မှန်/Scan) စုံလင်စွာဖြင့် ဆရာဝန် Screen ပေါ်တွင် စစ်ဆေးခ စျေးနှုန်းများနှင့်တကွ တိုက်ရိုက် ရွေးချယ်နိုင်ခြင်း။\n• A4 ဆေးညွှန်း Print တွင် စျေးနှုန်းမပါဘဲ သန့်ရှင်းစွာ ပုံနှိပ်ခြင်း - စစ်ဆေးခ စျေးနှုန်းများကို ဆရာဝန် Screen ပေါ်တွင်သာ ပြသပြီး လူနာထံပေးအပ်မည့် A4 ဆေးညွှန်းတွင် စမ်းသပ်ချက် အမည်သီးသန့်သာ သန့်ရှင်းစွာ ပုံနှိပ်ခြင်း။\n• Lab ပြင်ပ/ဓာတ်မှန် စစ်ဆေးချက်များ (X-Ray, USG, ECG) အား Lab Invoice ထဲ မရောစေခြင်း - ဆေးခန်း Lab ထဲမရှိသော အပြင်စစ်ဆေးချက်များကို Consultation တွင် ရွေးချယ်နိုင်ပြီး A4 ဆေးညွှန်းတွင် ပုံနှိပ်ပေးမည်ဖြစ်သော်လည်း ဆေးခန်းတွင်း Lab Invoice ထဲသို့ စျေးနှုန်း ထည့်သွင်းတွက်ချက်ခြင်း လုံးဝ မပြုလုပ်စေရန် စီမံထားခြင်း။\n• Lab Order များတွင် ငွေရှင်း / Slip အရင်ထုတ်ပြီးမှ အဖြေထည့်သွင်းသည့် Flow ဖြစ်စေခြင်း - Lab Queue ရောက်လာသော စစ်ဆေးမှုများအား 'ငွေရှင်း / Slip ထုတ်မည်' ခလုတ်ဖြင့် ဘောင်ချာအရင်ထုတ်ငွေချေပြီးမှ 'အဖြေထည့်ရန်' ခလုတ်သို့ အလိုအလျောက် ပြောင်းလဲပေးခြင်း။",
+  "releaseNotes": "• Dedicated Referred Dr. Name Input: Added explicit input field for referring doctor name with quick-select chips (Clinic Doctor, Self-request, Outside Doctor Dr.) and recent doctor pills in Lab Order creation.\n• Referred Dr. Tracking Across Queue & Reports: Referring doctor is prominently displayed on Lab Queue order cards, Completed Result cards, Thermal POS Cash Vouchers, and A4 Lab Investigation Reports.\n• Result Entry Referring Dr. Editor: Technologists can review or edit the referring doctor name directly in the Result Entry modal before finalizing or printing.\n• Clean Doctor Prefix Handling: Fixed prefix formatting to prevent 'Dr. Self-request' and display 'Self-request' cleanly.",
+  "releaseNotesMm": "• ညွှန်းပို့သည့် ဆရာဝန် (Referred Dr. Name) ထည့်သွင်းနိုင်ခြင်း - Lab Order အသစ်တင်ရာတွင် ညွှန်းပို့သည့် ဆရာဝန် အမည်အား တိုက်ရိုက်ရိုက်ထည့်နိုင်သည့် input field နှင့်အတူ အမြန်ရွေးချယ်နိုင်သော Shortcut Chip များ (ဆေးခန်းဆရာဝန်၊ လူနာကိုယ်တိုင်/Self-request၊ အပြင်ဆရာဝန် Dr.) ပါဝင်ခြင်း။\n• Lab Queue နှင့် Report များတွင် ညွှန်းပို့ဆရာဝန် ဖော်ပြခြင်း - သွေးစစ်စောင့်ဆိုင်း Queue Card၊ ပြီးစီးသည့် Card၊ Thermal POS ငွေရှင်းဘောင်ချာ နှင့် A4 Lab Report များတွင် ညွှန်းပို့သည့်ဆရာဝန် (Ref. Dr) အမည်အား ရှင်းလင်းစွာ ဖော်ပြပေးခြင်း။\n• အဖြေထည့်သွင်းချိန်တွင် ညွှန်းပို့ဆရာဝန် ပြန်လည်ပြင်ဆင်နိုင်ခြင်း - Result Entry Form တွင် ညွှန်းပို့သည့် ဆရာဝန် အမည်အား စစ်ဆေးပြင်ဆင်ပြီး သိမ်းဆည်းနိုင်ခြင်း။",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-15",
-  "apkSizeBytes": 14917119,
-  "commitSha": "e11cc7d611bf2eee23167cf4a177595c7a2c933a",
-  "updatedAt": "2026-11-15T13:35:00.000Z"
+  "apkSizeBytes": 14933503,
+  "commitSha": "7610500b55650cc4b87f5fc72a62c7e0d21e998f",
+  "updatedAt": "2026-11-15T14:40:00.000Z"
 }
