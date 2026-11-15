@@ -77,9 +77,11 @@ fun PosThermalSlipDialog(
   val pairedPrinters = remember { BluetoothThermalPrinterManager.getPairedPrinters(context) }
   var selectedPrinterAddress by remember {
     mutableStateOf(
-      if (savedMac.isNotBlank()) savedMac
-      else if (clinicSettings.bluetoothPrinterMac.isNotBlank()) clinicSettings.bluetoothPrinterMac
-      else pairedPrinters.firstOrNull()?.address ?: ""
+      when {
+        savedMac.isNotBlank() && (pairedPrinters.isEmpty() || pairedPrinters.any { it.address.equals(savedMac, ignoreCase = true) }) -> savedMac
+        clinicSettings.bluetoothPrinterMac.isNotBlank() && pairedPrinters.any { it.address.equals(clinicSettings.bluetoothPrinterMac, ignoreCase = true) } -> clinicSettings.bluetoothPrinterMac
+        else -> pairedPrinters.firstOrNull()?.address ?: ""
+      }
     )
   }
 
@@ -735,9 +737,11 @@ fun PosThermalTreatmentSlipDialog(
   val pairedPrinters = remember { BluetoothThermalPrinterManager.getPairedPrinters(context) }
   var selectedPrinterAddress by remember {
     mutableStateOf(
-      if (savedMac.isNotBlank()) savedMac
-      else if (clinicSettings.bluetoothPrinterMac.isNotBlank()) clinicSettings.bluetoothPrinterMac
-      else pairedPrinters.firstOrNull()?.address ?: ""
+      when {
+        savedMac.isNotBlank() && (pairedPrinters.isEmpty() || pairedPrinters.any { it.address.equals(savedMac, ignoreCase = true) }) -> savedMac
+        clinicSettings.bluetoothPrinterMac.isNotBlank() && pairedPrinters.any { it.address.equals(clinicSettings.bluetoothPrinterMac, ignoreCase = true) } -> clinicSettings.bluetoothPrinterMac
+        else -> pairedPrinters.firstOrNull()?.address ?: ""
+      }
     )
   }
 

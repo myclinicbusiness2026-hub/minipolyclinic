@@ -26,7 +26,8 @@ data class LabTestTemplate(
   val defaultPrice: Double = 0.0,
   val specimenType: String = "Blood", // Blood, Urine, Stool, Swab, Sputum, etc.
   val parameters: List<LabTestParameter> = emptyList(),
-  val isAnalyzerSlipOnly: Boolean = false // If true, analyzer prints direct slip or needs image attachment
+  val isAnalyzerSlipOnly: Boolean = false, // If true, analyzer prints direct slip or needs image attachment
+  val updatedAt: Long = System.currentTimeMillis()
 )
 
 /**

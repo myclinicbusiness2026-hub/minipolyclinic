@@ -26,6 +26,7 @@ object ClinicDataPersistence {
   private const val KEY_DELETED_TREATMENT_CARD_IDS = "deleted_treatment_card_ids"
   private const val KEY_DELETED_LAB_ORDER_IDS = "deleted_lab_order_ids"
   private const val KEY_DELETED_LAB_INVOICE_IDS = "deleted_lab_invoice_ids"
+  private const val KEY_DELETED_LAB_TEMPLATE_IDS = "deleted_lab_template_ids"
   private const val KEY_TREATMENT_CARDS = "treatment_cards"
   private const val KEY_CLINIC_SETTINGS = "clinic_settings"
   private const val KEY_DRAFT_CONSULTATIONS = "draft_consultations"
@@ -286,6 +287,42 @@ object ClinicDataPersistence {
     val current = loadDeletedLabInvoiceIds(context)
     current.add(id)
     saveDeletedLabInvoiceIds(context, current)
+  }
+
+  fun saveDeletedLabTemplateIds(context: Context, ids: Set<String>) {
+    val arr = JSONArray()
+    ids.forEach { arr.put(it) }
+    getPrefs(context).edit().putString(KEY_DELETED_LAB_TEMPLATE_IDS, arr.toString()).apply()
+  }
+
+  fun loadDeletedLabTemplateIds(context: Context): MutableSet<String> {
+    val str = getPrefs(context).getString(KEY_DELETED_LAB_TEMPLATE_IDS, null) ?: return mutableSetOf()
+    return try {
+      val arr = JSONArray(str)
+      val set = mutableSetOf<String>()
+      for (i in 0 until arr.length()) {
+        val id = arr.getString(i)
+        if (id.isNotBlank()) set.add(id)
+      }
+      set
+    } catch (_: Exception) {
+      mutableSetOf()
+    }
+  }
+
+  fun addDeletedLabTemplateId(context: Context, id: String) {
+    if (id.isBlank()) return
+    val current = loadDeletedLabTemplateIds(context)
+    current.add(id)
+    saveDeletedLabTemplateIds(context, current)
+  }
+
+  fun removeDeletedLabTemplateId(context: Context, id: String) {
+    if (id.isBlank()) return
+    val current = loadDeletedLabTemplateIds(context)
+    if (current.remove(id)) {
+      saveDeletedLabTemplateIds(context, current)
+    }
   }
 
   fun removeDeletedTreatmentCardId(context: Context, id: String) {
@@ -1983,6 +2020,7 @@ object ClinicDataPersistence {
       to.put("defaultPrice", tmpl.defaultPrice)
       to.put("specimenType", tmpl.specimenType)
       to.put("isAnalyzerSlipOnly", tmpl.isAnalyzerSlipOnly)
+      to.put("updatedAt", tmpl.updatedAt)
       val pArr = JSONArray()
       tmpl.parameters.forEach { p ->
         val po = JSONObject()
@@ -2032,7 +2070,8 @@ object ClinicDataPersistence {
             defaultPrice = o.optDouble("defaultPrice", 0.0),
             specimenType = o.optString("specimenType", "Blood"),
             isAnalyzerSlipOnly = o.optBoolean("isAnalyzerSlipOnly", false),
-            parameters = params
+            parameters = params,
+            updatedAt = o.optLong("updatedAt", 0L)
           )
         )
       }
@@ -2294,7 +2333,8 @@ object ClinicDataPersistence {
             defaultPrice = o.optDouble("defaultPrice", 0.0),
             specimenType = o.optString("specimenType", "Blood"),
             isAnalyzerSlipOnly = o.optBoolean("isAnalyzerSlipOnly", false),
-            parameters = params
+            parameters = params,
+            updatedAt = o.optLong("updatedAt", 0L)
           )
         )
       }

@@ -322,18 +322,19 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     draftConsultations.value = ClinicDataPersistence.loadDraftConsultations(ctx)
     clinicSettings.value = ClinicDataPersistence.loadClinicSettings(ctx)
 
-    val savedLabTemplates = ClinicDataPersistence.loadLabTemplates(ctx)
+    val delLabTemplates = ClinicDataPersistence.loadDeletedLabTemplateIds(ctx)
+    val savedLabTemplates = ClinicDataPersistence.loadLabTemplates(ctx)?.filterNot { delLabTemplates.contains(it.id) }
     _labTemplates.value = if (savedLabTemplates.isNullOrEmpty()) {
-      val seeds = LabInitialDataSeeder.getSeedTemplates()
+      val seeds = LabInitialDataSeeder.getSeedTemplates().filterNot { delLabTemplates.contains(it.id) }
       ClinicDataPersistence.saveLabTemplates(ctx, seeds)
       seeds
     } else {
-      val seeds = LabInitialDataSeeder.getSeedTemplates()
+      val seeds = LabInitialDataSeeder.getSeedTemplates().filterNot { delLabTemplates.contains(it.id) }
       val merged = savedLabTemplates.toMutableList()
       var modified = false
       seeds.forEach { seed ->
         val existingIdx = merged.indexOfFirst { it.id == seed.id || it.name.equals(seed.name, ignoreCase = true) }
-        if (existingIdx < 0) {
+        if (existingIdx < 0 && !delLabTemplates.contains(seed.id)) {
           merged.add(seed)
           modified = true
         }
@@ -4004,6 +4005,11 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       val allDeletedLabInvoiceIds = (localDelLabInvoices + remoteDelLabInvoices).toMutableSet()
       ClinicDataPersistence.saveDeletedLabInvoiceIds(ctx, allDeletedLabInvoiceIds)
 
+      val remoteDelLabTemplates = SyncPayloadParser.parseStringList(root.optJSONArray("deletedLabTemplateIds"))
+      val localDelLabTemplates = ClinicDataPersistence.loadDeletedLabTemplateIds(ctx)
+      val allDeletedLabTemplateIds = (localDelLabTemplates + remoteDelLabTemplates).toMutableSet()
+      ClinicDataPersistence.saveDeletedLabTemplateIds(ctx, allDeletedLabTemplateIds)
+
       val allDeletedPatientIds = ClinicDataPersistence.loadDeletedPatientIds(ctx)
 
       // 11.1 Lab Orders (Tombstone-filtered merge)
@@ -4026,11 +4032,21 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         ClinicDataPersistence.saveLabOrders(ctx, mergedLabOrders)
       }
 
-      // 11.2 Lab Templates (Non-destructive ID-based merge)
+      // 11.2 Lab Templates (Tombstone-filtered, newest-wins merge)
       if (root.has("labTemplates")) {
         val parsedLabTemplates = ClinicDataPersistence.parseLabTemplates(root.getJSONArray("labTemplates").toString())
-        val currentLabTempMap = _labTemplates.value.associateBy { it.id }.toMutableMap()
-        parsedLabTemplates.forEach { t -> currentLabTempMap[t.id] = t }
+        val currentLabTempMap = _labTemplates.value
+          .filterNot { allDeletedLabTemplateIds.contains(it.id) }
+          .associateBy { it.id }
+          .toMutableMap()
+        parsedLabTemplates.forEach { t ->
+          if (!allDeletedLabTemplateIds.contains(t.id)) {
+            val ex = currentLabTempMap[t.id]
+            if (ex == null || t.updatedAt >= ex.updatedAt) {
+              currentLabTempMap[t.id] = t
+            }
+          }
+        }
         val mergedLabTemplates = currentLabTempMap.values.toList()
         _labTemplates.value = mergedLabTemplates
         ClinicDataPersistence.saveLabTemplates(ctx, mergedLabTemplates)
@@ -4178,9 +4194,10 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     if (loadedLabOrders != null) {
       _labOrders.value = loadedLabOrders
     }
+    val delLabTemplates = ClinicDataPersistence.loadDeletedLabTemplateIds(ctx)
     val loadedLabTemplates = ClinicDataPersistence.loadLabTemplates(ctx)
     if (loadedLabTemplates != null) {
-      _labTemplates.value = loadedLabTemplates
+      _labTemplates.value = loadedLabTemplates.filterNot { delLabTemplates.contains(it.id) }
     }
     val loadedLabInvoices = ClinicDataPersistence.loadLabInvoices(ctx)
     if (loadedLabInvoices != null) {
@@ -4574,22 +4591,27 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
   fun saveLabTemplate(template: LabTestTemplate) {
     val ctx = getApplication<Application>()
+    val stamped = template.copy(updatedAt = System.currentTimeMillis())
+    ClinicDataPersistence.removeDeletedLabTemplateId(ctx, stamped.id)
     val current = _labTemplates.value.toMutableList()
-    val index = current.indexOfFirst { it.id == template.id }
+    val index = current.indexOfFirst { it.id == stamped.id }
     if (index >= 0) {
-      current[index] = template
+      current[index] = stamped
     } else {
-      current.add(template)
+      current.add(stamped)
     }
     _labTemplates.value = current
     ClinicDataPersistence.saveLabTemplates(ctx, current)
+    syncManager.syncWithAllPeers()
   }
 
   fun deleteLabTemplate(templateId: String) {
     val ctx = getApplication<Application>()
+    ClinicDataPersistence.addDeletedLabTemplateId(ctx, templateId)
     val updated = _labTemplates.value.filter { it.id != templateId }
     _labTemplates.value = updated
     ClinicDataPersistence.saveLabTemplates(ctx, updated)
+    syncManager.syncWithAllPeers()
   }
 
   fun restoreLabTemplatesFromOrders(): Int {

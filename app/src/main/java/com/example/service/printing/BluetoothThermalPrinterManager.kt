@@ -72,53 +72,83 @@ object BluetoothThermalPrinterManager {
     bytes: ByteArray
   ): Result<String> = withContext(Dispatchers.IO) {
     if (!hasBluetoothPermission(context)) {
-      return@withContext Result.failure(Exception("Bluetooth permission not granted"))
+      return@withContext Result.failure(Exception("Bluetooth ခွင့်ပြုချက် မရှိသေးပါ။ Android Settings > Apps > Shwe Khit Clinic တွင် Nearby devices ခွင့်ပြုချက် ပေးပါ"))
     }
 
     val adapter = BluetoothAdapter.getDefaultAdapter()
-      ?: return@withContext Result.failure(Exception("Bluetooth hardware not available on this device"))
+      ?: return@withContext Result.failure(Exception("ဤစက်တွင် Bluetooth hardware မပါဝင်ပါ"))
 
     if (!adapter.isEnabled) {
-      return@withContext Result.failure(Exception("Bluetooth is turned off. Please turn on Bluetooth in Android Settings."))
+      return@withContext Result.failure(Exception("Bluetooth ပိတ်ထားပါသည်။ ကျေးဇူးပြု၍ ဖုန်း/တက်ဘလက် Settings တွင် Bluetooth ဖွင့်ပေးပါ"))
+    }
+
+    val cleanAddress = deviceAddress.trim()
+    if (cleanAddress.isBlank()) {
+      return@withContext Result.failure(Exception("Bluetooth ပရင်တာ MAC Address မရှိပါ။ ကျေးဇူးပြု၍ Pair လုပ်ထားသော ပရင်တာကို ရွေးချယ်ပါ"))
     }
 
     var socket: BluetoothSocket? = null
     var outStream: OutputStream? = null
 
     try {
-      val device: BluetoothDevice = adapter.getRemoteDevice(deviceAddress)
-      adapter.cancelDiscovery() // Cancel discovery to prevent slow connection
+      val device: BluetoothDevice = adapter.getRemoteDevice(cleanAddress)
+      try { adapter.cancelDiscovery() } catch (_: Exception) {}
 
-      // Standard RFCOMM socket
-      socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
-      socket.connect()
+      var connected = false
+      var lastError: Exception? = null
+
+      val socketFactories: List<Pair<String, () -> BluetoothSocket>> = listOf(
+        "Secure SPP" to { device.createRfcommSocketToServiceRecord(SPP_UUID) },
+        "Insecure SPP" to { device.createInsecureRfcommSocketToServiceRecord(SPP_UUID) },
+        "Insecure Channel 1" to {
+          val m = device.javaClass.getMethod("createInsecureRfcommSocket", Int::class.javaPrimitiveType)
+          m.invoke(device, 1) as BluetoothSocket
+        },
+        "Secure Channel 1" to {
+          val m = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
+          m.invoke(device, 1) as BluetoothSocket
+        }
+      )
+
+      for ((_, factory) in socketFactories) {
+        try {
+          socket?.close()
+        } catch (_: Exception) {}
+        socket = null
+
+        try {
+          val testSocket = factory()
+          testSocket.connect()
+          socket = testSocket
+          connected = true
+          break
+        } catch (e: Exception) {
+          lastError = e
+          try {
+            socket?.close()
+          } catch (_: Exception) {}
+          socket = null
+        }
+      }
+
+      if (!connected || socket == null) {
+        val detail = lastError?.localizedMessage ?: "Connection refused"
+        return@withContext Result.failure(
+          Exception("ပရင်တာသို့ ချိတ်ဆက်မရပါ ($cleanAddress): $detail။ ပရင်တာပါဝါဖွင့်ထားခြင်း၊ Bluetooth တွဲချိတ် (Pair) ထားခြင်းနှင့် အခြားစက်တစ်ခုခုနှင့် ချိတ်ဆက်အသုံးပြုမနေခြင်း သေချာပါစေ။")
+        )
+      }
 
       outStream = socket.outputStream
       outStream.write(bytes)
       outStream.flush()
 
-      // Small delay to ensure printer buffer completes
+      // Small delay to ensure printer hardware buffer finishes printing
       Thread.sleep(300)
 
-      Result.success("Receipt printed successfully on ${device.name ?: deviceAddress}")
+      val printerName = try { device.name ?: cleanAddress } catch (_: Exception) { cleanAddress }
+      Result.success("ဘောက်ချာ ပရင့်ထုတ်ယူပြီးပါပြီ ($printerName)")
     } catch (e: Exception) {
-      e.printStackTrace()
-      // Fallback: try fallback reflection method for stubborn POS printers
-      try {
-        val device: BluetoothDevice = adapter.getRemoteDevice(deviceAddress)
-        val m = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
-        val fallbackSocket = m.invoke(device, 1) as BluetoothSocket
-        fallbackSocket.connect()
-        val stream = fallbackSocket.outputStream
-        stream.write(bytes)
-        stream.flush()
-        Thread.sleep(300)
-        fallbackSocket.close()
-        Result.success("Receipt printed successfully (Fallback channel)")
-      } catch (fallbackError: Exception) {
-        fallbackError.printStackTrace()
-        Result.failure(Exception("Cannot connect to printer ($deviceAddress): ${e.localizedMessage}"))
-      }
+      Result.failure(Exception("ပရင့်ထုတ်ရာတွင် အမှားဖြစ်ပေါ်ပါသည်: ${e.localizedMessage}"))
     } finally {
       try {
         outStream?.close()

@@ -221,7 +221,7 @@ class LocalWifiSyncManager(
   private fun startAutoSyncLoop() {
     scope.launch {
       while (isActive) {
-        delay(3000)
+        delay(1500)
         _localIp.value = wifiHelper.getLocalIpAddress()
         if (_isAutoSyncEnabled.value && _discoveredPeers.value.isNotEmpty()) {
           syncWithAllPeers()
@@ -374,7 +374,8 @@ class LocalWifiSyncManager(
       deletedUserIds = ClinicDataPersistence.loadDeletedUserIds(context).toList(),
       deletedTreatmentCardIds = ClinicDataPersistence.loadDeletedTreatmentCardIds(context).toList(),
       deletedLabOrderIds = ClinicDataPersistence.loadDeletedLabOrderIds(context).toList(),
-      deletedLabInvoiceIds = ClinicDataPersistence.loadDeletedLabInvoiceIds(context).toList()
+      deletedLabInvoiceIds = ClinicDataPersistence.loadDeletedLabInvoiceIds(context).toList(),
+      deletedLabTemplateIds = ClinicDataPersistence.loadDeletedLabTemplateIds(context).toList()
     )
     return payload.toJsonString(context)
   }
@@ -647,6 +648,11 @@ class LocalWifiSyncManager(
       val allDeletedLabInvoiceIds = (localDelLabInv + remoteDelLabInv).toMutableSet()
       ClinicDataPersistence.saveDeletedLabInvoiceIds(context, allDeletedLabInvoiceIds)
 
+      val remoteDelLabTmpl = SyncPayloadParser.parseStringList(root.optJSONArray("deletedLabTemplateIds"))
+      val localDelLabTmpl = ClinicDataPersistence.loadDeletedLabTemplateIds(context)
+      val allDeletedLabTemplateIds = (localDelLabTmpl + remoteDelLabTmpl).toMutableSet()
+      ClinicDataPersistence.saveDeletedLabTemplateIds(context, allDeletedLabTemplateIds)
+
       if (root.has("labOrders")) {
         val incomingLabOrders = ClinicDataPersistence.parseLabOrders(root.getJSONArray("labOrders").toString())
         val localLabOrders = ClinicDataPersistence.loadLabOrders(context) ?: emptyList()
@@ -673,8 +679,18 @@ class LocalWifiSyncManager(
       if (root.has("labTemplates")) {
         val incomingTemplates = ClinicDataPersistence.parseLabTemplates(root.getJSONArray("labTemplates").toString())
         val localTemplates = ClinicDataPersistence.loadLabTemplates(context) ?: emptyList()
-        val tMap = localTemplates.associateBy { it.id }.toMutableMap()
-        incomingTemplates.forEach { tMap[it.id] = it }
+        val tMap = localTemplates
+          .filterNot { allDeletedLabTemplateIds.contains(it.id) }
+          .associateBy { it.id }
+          .toMutableMap()
+        incomingTemplates.forEach { inc ->
+          if (!allDeletedLabTemplateIds.contains(inc.id)) {
+            val ex = tMap[inc.id]
+            if (ex == null || inc.updatedAt >= ex.updatedAt) {
+              tMap[inc.id] = inc
+            }
+          }
+        }
         ClinicDataPersistence.saveLabTemplates(context, tMap.values.toList())
       }
 

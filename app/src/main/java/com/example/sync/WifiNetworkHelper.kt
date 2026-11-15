@@ -135,6 +135,7 @@ class WifiNetworkHelper(
   private fun startUdpBroadcaster(myDeviceId: String, myDeviceName: String, myRole: String) {
     scope.launch {
       val broadcastIp = getBroadcastAddress()
+      var burstCount = 0
       while (isActive) {
         try {
           val myIp = getLocalIpAddress()
@@ -169,7 +170,12 @@ class WifiNetworkHelper(
         } catch (e: Exception) {
           Log.e(TAG, "Broadcast error: ${e.message}")
         }
-        delay(4000) // Broadcast every 4 seconds
+        if (burstCount < 3) {
+          burstCount++
+          delay(400) // Fast initial discovery burst
+        } else {
+          delay(2000) // Fast steady discovery heartbeat every 2 seconds
+        }
       }
     }
   }

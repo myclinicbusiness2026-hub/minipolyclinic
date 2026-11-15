@@ -73,7 +73,8 @@ data class SyncDataPayload(
   val labInvoices: List<LabInvoice> = emptyList(),
   val labTemplates: List<LabTestTemplate> = emptyList(),
   val deletedLabOrderIds: List<String> = emptyList(),
-  val deletedLabInvoiceIds: List<String> = emptyList()
+  val deletedLabInvoiceIds: List<String> = emptyList(),
+  val deletedLabTemplateIds: List<String> = emptyList()
 ) {
   fun toJsonString(context: Context? = null): String {
     val root = JSONObject()
@@ -613,9 +614,35 @@ data class SyncDataPayload(
         }
         root.put("labOrders", ordArr)
       }
-      val labTemplatesJson = com.example.data.ClinicDataPersistence.getLabTemplatesJson(context)
-      if (!labTemplatesJson.isNullOrBlank()) {
-        root.put("labTemplates", JSONArray(labTemplatesJson))
+      val delLabTmplSet = com.example.data.ClinicDataPersistence.loadDeletedLabTemplateIds(context)
+      val labTemplates = com.example.data.ClinicDataPersistence.loadLabTemplates(context)
+      if (!labTemplates.isNullOrEmpty()) {
+        val tmplArr = JSONArray()
+        labTemplates.filterNot { delLabTmplSet.contains(it.id) }.forEach { tmpl ->
+          val to = JSONObject().apply {
+            put("id", tmpl.id)
+            put("name", tmpl.name)
+            put("category", tmpl.category)
+            put("defaultPrice", tmpl.defaultPrice)
+            put("specimenType", tmpl.specimenType)
+            put("isAnalyzerSlipOnly", tmpl.isAnalyzerSlipOnly)
+            put("updatedAt", tmpl.updatedAt)
+            val pArr = JSONArray()
+            tmpl.parameters.forEach { p ->
+              pArr.put(JSONObject().apply {
+                put("name", p.name)
+                put("result", p.result)
+                put("unit", p.unit)
+                put("referenceRange", p.referenceRange)
+                put("flag", p.flag)
+                put("section", p.section)
+              })
+            }
+            put("parameters", pArr)
+          }
+          tmplArr.put(to)
+        }
+        root.put("labTemplates", tmplArr)
       }
       val labInvoices = com.example.data.ClinicDataPersistence.loadLabInvoices(context)
       if (!labInvoices.isNullOrEmpty()) {
@@ -645,6 +672,10 @@ data class SyncDataPayload(
       val delLabInvArr = JSONArray()
       delLabInvSet.forEach { delLabInvArr.put(it) }
       root.put("deletedLabInvoiceIds", delLabInvArr)
+
+      val delLabTmplArr = JSONArray()
+      delLabTmplSet.forEach { delLabTmplArr.put(it) }
+      root.put("deletedLabTemplateIds", delLabTmplArr)
     }
 
     return root.toString()
