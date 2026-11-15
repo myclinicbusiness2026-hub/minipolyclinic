@@ -1,12 +1,12 @@
 {
-  "versionCode": 58,
-  "versionName": "1.5.34",
+  "versionCode": 59,
+  "versionName": "1.5.35",
   "minSupportedVersion": 1,
-  "releaseNotes": "• Permanent Lab Invoice Deletion & Tombstones: Eliminated peer resurrection bug; deleted lab invoices are permanently tombstoned and purged across all syncing devices.\n• Cascade Deletions & Integrity: Deleting a patient or lab order automatically tombstones all linked lab invoices and lab orders to prevent ghost reappearance.\n• Wi-Fi Sync Purge & Expenses Merge: Enhanced peer sync to automatically exchange deleted lab invoice IDs, filter out deleted patient orders, and synchronize clinic expenses across all stations.",
-  "releaseNotesMm": "• Lab ဘောင်ချာ ဖျက်သိမ်းမှု တည်မြဲခြင်းနှင့် Sync ပြန်မဝင်စေခြင်း - Deleted Tombstones စနစ် ထည့်သွင်းထားသဖြင့် ဖျက်လိုက်သော Lab Invoice များသည် အခြားဖုန်းများနှင့် Sync မိသည့်အခါ လုံးဝ ပြန်မရှင်တော့ဘဲ အပြီးတိုင် ပျက်ပြယ်သွားခြင်း။\n• ဆက်စပ်ဖျက်သိမ်းမှုများတွင် အလိုအလျောက် သန့်စင်ပေးခြင်း (Cascade Deletion) - လူနာ သို့မဟုတ် Lab Order ဖျက်ပါက ၎င်းနှင့်ဆိုင်သော Lab ဘောင်ချာနှင့် အော်ဒါများကို စက်အားလုံးတွင် တစ်ပါတည်း အပြီးဖျက်ပေးခြင်း။\n• စရိတ်မှတ်တမ်းများ (Expenses) အား စက်အားလုံးသို့ Sync အပြည့်အဝ ပို့ဆောင်ပေးခြင်းနှင့် ဖျက်ထားသော လူနာမှတ်တမ်းများအား အလိုအလျောက် ရှင်းထုတ်ပေးခြင်း။",
+  "releaseNotes": "• Multiline Lab Reference Intervals: Support multiline normal ranges in lab templates (Male, Female, Child) with quick format helper chips [+ M/F/Child] and [+ M/F].\n• Clean Result Entry & A4 PDF Report: Enhanced result entry cards and A4 PDF printing with generous 35% reference interval column width and HTML line wrapping for multi-category normal ranges.",
+  "releaseNotesMm": "• ဓာတ်ခွဲခန်း ပုံမှန်ပမာဏ (Reference Range) စာကြောင်းအများကြီး ရိုက်ထည့်နိုင်ခြင်း - Lab Test Template များတွင် Male, Female, Child သီးသန့် ခွဲခြားရိုက်ထည့်နိုင်သော Multiline စနစ်နှင့် [+ M/F/Child], [+ M/F] အမြန်ဖြည့်ခလုတ်များ ထည့်သွင်းပေးထားခြင်း။\n• သွေးစစ်အဖြေထည့်သွင်းမှုနှင့် A4 Report ရှင်းလင်းလှပစေခြင်း - Result Entry ကတ်များတွင် သပ်ရပ်စွာ ပြသပေးပြီး A4 Lab Report PDF တွင် Reference Interval ကော်လံအား ကျယ်ပြန့်စွာ နေရာချထားပေးခြင်း။",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
-  "publishedAt": "2026-11-14",
+  "publishedAt": "2026-11-15",
   "apkSizeBytes": 14900733,
-  "commitSha": "91a97d02a00df1cd5a716ba3bfe9556f29ada585",
-  "updatedAt": "2026-11-14T14:35:00.000Z"
+  "commitSha": "HEAD",
+  "updatedAt": "2026-11-15T01:45:00.000Z"
 }

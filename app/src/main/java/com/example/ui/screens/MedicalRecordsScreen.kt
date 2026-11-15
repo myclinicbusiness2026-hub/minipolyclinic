@@ -1303,12 +1303,20 @@ private fun PatientDetailedEmrPane(
                         Text(" ${res.unit}", fontSize = 9.sp, color = SlateMuted)
                       }
                     }
-                    Text(
-                      if (res.referenceRange.isNotBlank()) "(${res.referenceRange})" else "",
-                      fontSize = 9.sp,
-                      color = SlateMuted,
-                      modifier = Modifier.weight(0.9f)
-                    )
+                    if (res.referenceRange.isNotBlank()) {
+                      val refText = if (res.referenceRange.contains("\n")) {
+                        res.referenceRange.trim()
+                      } else {
+                        "(${res.referenceRange.trim()})"
+                      }
+                      Text(
+                        refText,
+                        fontSize = 9.sp,
+                        lineHeight = 12.sp,
+                        color = SlateMuted,
+                        modifier = Modifier.weight(0.9f)
+                      )
+                    }
                   }
                 }
               }

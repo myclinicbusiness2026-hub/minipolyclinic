@@ -1177,7 +1177,16 @@ fun MobileLabCompletedResultCard(
                       ) {
                         Column(modifier = Modifier.weight(1.5f)) {
                           Text(p.name, fontSize = 10.5.sp, fontWeight = FontWeight.Medium)
-                          Text("Ref: ${p.referenceRange} ${p.unit}", fontSize = 9.sp, color = SlateMuted)
+                          if (p.referenceRange.isNotBlank()) {
+                            val cleanRef = p.referenceRange.trim()
+                            val unitSuffix = if (p.unit.isNotBlank()) " ${p.unit}" else ""
+                            val refDisplay = if (cleanRef.contains("\n")) {
+                              cleanRef.split("\n").joinToString("\n") { "Ref: ${it.trim()}$unitSuffix" }
+                            } else {
+                              "Ref: $cleanRef$unitSuffix"
+                            }
+                            Text(refDisplay, fontSize = 9.sp, lineHeight = 12.sp, color = SlateMuted)
+                          }
                         }
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2464,10 +2473,27 @@ fun MobileLabResultEntryDialog(
                       Column(modifier = Modifier.padding(8.dp)) {
                         Row(
                           modifier = Modifier.fillMaxWidth(),
-                          horizontalArrangement = Arrangement.SpaceBetween
+                          horizontalArrangement = Arrangement.SpaceBetween,
+                          verticalAlignment = Alignment.Top
                         ) {
-                          Text(p.name, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
-                          Text("Ref: ${p.referenceRange} ${p.unit}", fontSize = 9.5.sp, color = SlateMuted)
+                          Text(p.name, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B), modifier = Modifier.weight(1f))
+                          if (p.referenceRange.isNotBlank()) {
+                            val cleanRef = p.referenceRange.trim()
+                            val unitSuffix = if (p.unit.isNotBlank()) " ${p.unit}" else ""
+                            val refDisplay = if (cleanRef.contains("\n")) {
+                              cleanRef.split("\n").joinToString("\n") { "Ref: ${it.trim()}$unitSuffix" }
+                            } else {
+                              "Ref: $cleanRef$unitSuffix"
+                            }
+                            Text(
+                              refDisplay,
+                              fontSize = 9.sp,
+                              lineHeight = 12.sp,
+                              color = SlateMuted,
+                              textAlign = TextAlign.End,
+                              modifier = Modifier.padding(start = 6.dp)
+                            )
+                          }
                         }
 
                         Spacer(modifier = Modifier.height(4.dp))
@@ -3085,14 +3111,50 @@ fun MobileLabTemplateEditorDialog(
                   }
                 }
                 Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.SpaceBetween,
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Text("ပုံမှန်ပမာဏ (Reference Range / Interval):", fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold, color = SlateDark)
+                  Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Surface(
+                      shape = RoundedCornerShape(4.dp),
+                      color = Color(0xFFEFF6FF),
+                      border = BorderStroke(0.6.dp, Color(0xFF93C5FD)),
+                      modifier = Modifier.clickable {
+                        val current = param.referenceRange.trim()
+                        val template = "M: \nF: \nChild: "
+                        parameters[pIdx] = param.copy(referenceRange = if (current.isBlank()) template else "$current\n$template")
+                      }
+                    ) {
+                      Text("+ M/F/Child", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1D4ED8), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                    }
+                    Surface(
+                      shape = RoundedCornerShape(4.dp),
+                      color = Color(0xFFF0FDF4),
+                      border = BorderStroke(0.6.dp, Color(0xFF86EFAC)),
+                      modifier = Modifier.clickable {
+                        val current = param.referenceRange.trim()
+                        val template = "M: \nF: "
+                        parameters[pIdx] = param.copy(referenceRange = if (current.isBlank()) template else "$current\n$template")
+                      }
+                    ) {
+                      Text("+ M/F", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF15803D), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                    }
+                  }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
                 OutlinedTextField(
                   value = param.referenceRange,
                   onValueChange = { parameters[pIdx] = param.copy(referenceRange = it) },
-                  placeholder = { Text("ပုံမှန်ပမာဏ / Normal Range (e.g. 13.0 - 17.5)", fontSize = 11.sp, color = SlateMuted) },
-                  singleLine = true,
+                  placeholder = { Text("ဥပမာ -\nM: 13.0 - 17.5\nF: 12.0 - 15.5\nChild: 11.5 - 14.5", fontSize = 11.sp, color = SlateMuted, lineHeight = 14.sp) },
+                  singleLine = false,
+                  minLines = 2,
+                  maxLines = 5,
                   modifier = Modifier.fillMaxWidth(),
                   shape = RoundedCornerShape(6.dp),
-                  textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = Color(0xFF0F172A)),
+                  textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = Color(0xFF0F172A), lineHeight = 16.sp),
                   colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = Color(0xFF0F172A),
                     unfocusedTextColor = Color(0xFF0F172A),

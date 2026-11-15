@@ -1747,12 +1747,20 @@ private fun ConsultationLabResultsCard(
                         Text(" ${res.unit}", fontSize = 8.5.sp, color = SlateMuted)
                       }
                     }
-                    Text(
-                      if (res.referenceRange.isNotBlank()) "(${res.referenceRange})" else "",
-                      fontSize = 8.5.sp,
-                      color = SlateMuted,
-                      modifier = Modifier.weight(0.8f)
-                    )
+                    if (res.referenceRange.isNotBlank()) {
+                      val refText = if (res.referenceRange.contains("\n")) {
+                        res.referenceRange.trim()
+                      } else {
+                        "(${res.referenceRange.trim()})"
+                      }
+                      Text(
+                        refText,
+                        fontSize = 8.5.sp,
+                        lineHeight = 11.5.sp,
+                        color = SlateMuted,
+                        modifier = Modifier.weight(0.8f)
+                      )
+                    }
                   }
                 }
               }
