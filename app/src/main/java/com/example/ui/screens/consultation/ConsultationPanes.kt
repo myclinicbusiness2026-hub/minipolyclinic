@@ -354,13 +354,73 @@ fun SuggestedInvestigationsCard(
   onOrderToLab: ((List<LabTestTemplate>) -> Unit)? = null
 ) {
   var customInvestigationText by remember { mutableStateOf("") }
-  val commonInvestigations = remember {
+  var selectedCategory by remember { mutableStateOf("ALL") }
+  val currencyFmt = remember { NumberFormat.getNumberInstance(java.util.Locale.US) }
+
+  // Non-lab Imaging & Outside Scans
+  val imagingTests = remember {
     listOf(
-      "CBC", "RBS", "FBS", "Urine RE", "Stool RE",
-      "Lipid Profile", "LFT", "RFT (Urea / Cr)", "Serum Electrolytes", "Serum Uric Acid",
       "Chest X-Ray", "ECG", "USG Whole Abdomen", "USG KUB",
-      "Dengue NS1 / IgM", "Malaria RDT", "H. Pylori Ag", "Widal / Typhidot", "Thyroid Profile (TSH)"
+      "Echocardiogram", "X-Ray Spine", "CT Brain", "MRI Brain"
     )
+  }
+
+  // Pre-configured Categories
+  val categories = remember(labTemplates) {
+    val cats = mutableListOf(
+      "ALL" to "အားလုံး (All)",
+      "Hematology" to "သွေးစစ် (Hematology)",
+      "Biochemistry" to "ဇီဝဓာတု (Biochemistry)",
+      "Urine/Stool" to "ဆီးနှင့်ဝမ်း (Urine/Stool)",
+      "Serology" to "ပိုးစစ် (Serology / Rapid)",
+      "Imaging" to "ဓာတ်မှန် / Scan (Imaging)",
+      "Others" to "အခြား (Others)"
+    )
+    cats
+  }
+
+  // Filtered Test Items for current category
+  val displayedItems: List<Pair<String, Double>> = remember(selectedCategory, labTemplates) {
+    when (selectedCategory) {
+      "Imaging" -> imagingTests.map { it to 0.0 }
+      "ALL" -> {
+        val labItems = labTemplates.map { it.name to it.defaultPrice }
+        val nonLabItems = imagingTests
+          .filterNot { img -> labTemplates.any { it.name.equals(img, ignoreCase = true) } }
+          .map { it to 0.0 }
+        labItems + nonLabItems
+      }
+      "Urine/Stool" -> {
+        labTemplates
+          .filter { it.category.contains("Urine", ignoreCase = true) || it.category.contains("Stool", ignoreCase = true) || it.name.contains("Urine", ignoreCase = true) || it.name.contains("Stool", ignoreCase = true) }
+          .map { it.name to it.defaultPrice }
+      }
+      else -> {
+        labTemplates
+          .filter { it.category.equals(selectedCategory, ignoreCase = true) }
+          .map { it.name to it.defaultPrice }
+      }
+    }
+  }
+
+  // Search suggestions
+  val searchSuggestions = remember(customInvestigationText, labTemplates) {
+    val q = customInvestigationText.trim()
+    if (q.length < 2) emptyList()
+    else {
+      val matches = mutableListOf<Pair<String, Double>>()
+      labTemplates.forEach { t ->
+        if (t.name.contains(q, ignoreCase = true)) {
+          matches.add(t.name to t.defaultPrice)
+        }
+      }
+      imagingTests.forEach { img ->
+        if (img.contains(q, ignoreCase = true) && matches.none { it.first.equals(img, ignoreCase = true) }) {
+          matches.add(img to 0.0)
+        }
+      }
+      matches.take(6)
+    }
   }
 
   Surface(
@@ -397,26 +457,63 @@ fun SuggestedInvestigationsCard(
 
       Spacer(modifier = Modifier.height(6.dp))
 
-      // Quick Chips
+      // Category Tabs / Selector
+      FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.fillMaxWidth()
+      ) {
+        categories.forEach { (catKey, catLabel) ->
+          val isCatSelected = selectedCategory == catKey
+          Surface(
+            shape = RoundedCornerShape(4.dp),
+            color = if (isCatSelected) Color(0xFFE0F2FE) else PureWhite,
+            border = BorderStroke(1.dp, if (isCatSelected) Color(0xFF0284C7) else BorderGray),
+            modifier = Modifier.clickable { selectedCategory = catKey }
+          ) {
+            Text(
+              catLabel,
+              fontSize = 9.sp,
+              fontWeight = if (isCatSelected) FontWeight.Bold else FontWeight.Normal,
+              color = if (isCatSelected) Color(0xFF0369A1) else DarkGrayText,
+              modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+            )
+          }
+        }
+      }
+
+      Spacer(modifier = Modifier.height(6.dp))
+
+      // Test Chips from Clinic Lab Catalog & Imaging
       FlowRow(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
       ) {
-        commonInvestigations.forEach { testName ->
+        displayedItems.forEach { (testName, price) ->
           val isSelected = selectedInvestigations.any { it.equals(testName, ignoreCase = true) }
+          val priceBadge = if (price > 0.0) " (${currencyFmt.format(price.toInt())} Ks)" else ""
           FilterChip(
             selected = isSelected,
             onClick = {
               if (isSelected) {
                 selectedInvestigations.removeAll { it.equals(testName, ignoreCase = true) }
               } else {
+                // Store clean test name only (prices never saved into text or printed on A4)
                 selectedInvestigations.add(testName)
               }
             },
-            label = { Text(testName, fontSize = 10.sp, fontWeight = FontWeight.Medium) },
+            label = {
+              Text(
+                "$testName$priceBadge",
+                fontSize = 9.5.sp,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+              )
+            },
             colors = FilterChipDefaults.filterChipColors(
               selectedContainerColor = Color(0xFF0284C7),
-              selectedLabelColor = PureWhite
+              selectedLabelColor = PureWhite,
+              containerColor = Color(0xFFF8FAFC),
+              labelColor = DarkGrayText
             ),
             modifier = Modifier.height(28.dp)
           )
@@ -425,7 +522,7 @@ fun SuggestedInvestigationsCard(
 
       Spacer(modifier = Modifier.height(8.dp))
 
-      // Custom Input Row
+      // Custom Input Row & Search
       Row(
         modifier = Modifier.fillMaxWidth().animateContentSize(),
         verticalAlignment = Alignment.CenterVertically,
@@ -434,7 +531,7 @@ fun SuggestedInvestigationsCard(
         OutlinedTextField(
           value = customInvestigationText,
           onValueChange = { customInvestigationText = it },
-          placeholder = { Text("အခြားစစ်ဆေးလိုသည့် Lab/X-Ray (e.g. HbA1c, Serum Creatinine)...", fontSize = 10.5.sp, color = SlateMuted) },
+          placeholder = { Text("အခြားစစ်ဆေးလိုသည့် Lab/X-Ray (e.g. HbA1c, USG, CT)...", fontSize = 10.5.sp, color = SlateMuted) },
           modifier = Modifier.weight(1f),
           textStyle = TextStyle(fontSize = 11.sp, color = DarkGrayText),
           shape = RoundedCornerShape(6.dp),
@@ -469,35 +566,82 @@ fun SuggestedInvestigationsCard(
         }
       }
 
-      // Selected list preview
+      // Quick Search Suggestions
+      if (searchSuggestions.isNotEmpty()) {
+        Spacer(modifier = Modifier.height(4.dp))
+        FlowRow(
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
+          verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+          searchSuggestions.forEach { (sugName, price) ->
+            val pStr = if (price > 0.0) " (${currencyFmt.format(price.toInt())} Ks)" else ""
+            Surface(
+              shape = RoundedCornerShape(4.dp),
+              color = Color(0xFFF0FDF4),
+              border = BorderStroke(1.dp, Color(0xFF86EFAC)),
+              modifier = Modifier.clickable {
+                if (selectedInvestigations.none { it.equals(sugName, ignoreCase = true) }) {
+                  selectedInvestigations.add(sugName)
+                }
+                customInvestigationText = ""
+              }
+            ) {
+              Text(
+                "+ $sugName$pStr",
+                fontSize = 9.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF15803D),
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+              )
+            }
+          }
+        }
+      }
+
+      // Selected list preview (Doctor Screen shows price badge for in-house tests)
       if (selectedInvestigations.isNotEmpty()) {
         Spacer(modifier = Modifier.height(8.dp))
+        Text("ရွေးချယ်ထားသော စစ်ဆေးချက်များ (Selected):", fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, color = SlateMedium)
+        Spacer(modifier = Modifier.height(3.dp))
         FlowRow(
           horizontalArrangement = Arrangement.spacedBy(4.dp),
           verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
           selectedInvestigations.forEach { inv ->
+            val matchedTmpl = labTemplates.find { it.name.equals(inv, ignoreCase = true) }
+            val priceBadge = if (matchedTmpl != null && matchedTmpl.defaultPrice > 0.0) {
+              " • ${currencyFmt.format(matchedTmpl.defaultPrice.toInt())} Ks"
+            } else ""
+
             InputChip(
               selected = true,
               onClick = { selectedInvestigations.remove(inv) },
-              label = { Text(inv, fontSize = 10.5.sp, fontWeight = FontWeight.Bold) },
+              label = {
+                Text(
+                  "$inv$priceBadge",
+                  fontSize = 10.sp,
+                  fontWeight = FontWeight.Bold
+                )
+              },
               trailingIcon = {
                 Icon(Icons.Default.Close, contentDescription = "Remove", modifier = Modifier.size(12.dp))
               },
               colors = InputChipDefaults.inputChipColors(
-                selectedContainerColor = Color(0xFFE0F2FE),
-                selectedLabelColor = Color(0xFF0369A1)
+                selectedContainerColor = if (matchedTmpl != null) Color(0xFFE0F2FE) else Color(0xFFF1F5F9),
+                selectedLabelColor = if (matchedTmpl != null) Color(0xFF0369A1) else Color(0xFF334155)
               ),
               modifier = Modifier.height(26.dp)
             )
           }
         }
 
-        // Direct Order to Lab Queue if matching templates exist
+        // Direct Order to Lab Queue (Only filters actual in-house lab templates)
         val matchedTemplates = remember(selectedInvestigations.toList(), labTemplates) {
           labTemplates.filter { t ->
             selectedInvestigations.any { inv ->
-              t.name.contains(inv, ignoreCase = true) || inv.contains(t.name, ignoreCase = true) ||
+              t.name.equals(inv, ignoreCase = true) ||
+              inv.contains(t.name, ignoreCase = true) ||
+              t.name.contains(inv, ignoreCase = true) ||
               (inv.equals("CBC", ignoreCase = true) && t.name.contains("CBC", ignoreCase = true)) ||
               (inv.equals("Urine RE", ignoreCase = true) && t.name.contains("Urine", ignoreCase = true)) ||
               (inv.equals("LFT", ignoreCase = true) && t.name.contains("Liver", ignoreCase = true)) ||
@@ -505,6 +649,12 @@ fun SuggestedInvestigationsCard(
               (inv.contains("Lipid", ignoreCase = true) && t.name.contains("Lipid", ignoreCase = true)) ||
               (inv.contains("Electrolyte", ignoreCase = true) && t.name.contains("Electrolyte", ignoreCase = true))
             }
+          }
+        }
+
+        val unlistedTests = remember(selectedInvestigations.toList(), matchedTemplates) {
+          selectedInvestigations.filterNot { inv ->
+            matchedTemplates.any { it.name.equals(inv, ignoreCase = true) || inv.contains(it.name, ignoreCase = true) || it.name.contains(inv, ignoreCase = true) }
           }
         }
 
@@ -519,17 +669,43 @@ fun SuggestedInvestigationsCard(
             Column(
               modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp).fillMaxWidth()
             ) {
+              val labTotal = matchedTemplates.sumOf { it.defaultPrice }
+              Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Text(
+                  "🧪 ဆေးခန်း Lab တိုက်ရိုက်စစ်ဆေးမည့်စာရင်း (${matchedTemplates.size} ခု)",
+                  fontSize = 11.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = Color(0xFF166534)
+                )
+                if (labTotal > 0.0) {
+                  Text(
+                    "စုစုပေါင်း: ${currencyFmt.format(labTotal.toInt())} Ks",
+                    fontSize = 10.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF15803D)
+                  )
+                }
+              }
+              Spacer(modifier = Modifier.height(2.dp))
               Text(
-                "🧪 ဓာတ်ခွဲခန်း တိုက်ရိုက် Test (${matchedTemplates.size} ခု တွေ့ရှိ)",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF166534)
-              )
-              Text(
-                matchedTemplates.joinToString(", ") { "${it.name} (${it.defaultPrice.toInt()} Ks)" },
-                fontSize = 10.sp,
+                matchedTemplates.joinToString(", ") { "${it.name} (${currencyFmt.format(it.defaultPrice.toInt())} Ks)" },
+                fontSize = 9.5.sp,
                 color = Color(0xFF15803D)
               )
+
+              if (unlistedTests.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                  "📷 ပြင်ပ/ဓာတ်မှန် စစ်ဆေးချက်များ: ${unlistedTests.joinToString(", ")} (ဆေးညွှန်း A4 တွင်သာ ဖော်ပြမည်၊ Lab Invoice တွင် မပါပါ)",
+                  fontSize = 9.sp,
+                  color = Color(0xFF64748B)
+                )
+              }
+
               Spacer(modifier = Modifier.height(6.dp))
               Button(
                 onClick = { onOrderToLab(matchedTemplates) },
@@ -540,10 +716,17 @@ fun SuggestedInvestigationsCard(
               ) {
                 Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(13.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("ဓာတ်ခွဲခန်းသို့ တိုက်ရိုက် Order ပို့မည်", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+                Text("ဓာတ်ခွဲခန်းသို့ တိုက်ရိုက် Order ပို့မည် (Send to Lab Queue)", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
               }
             }
           }
+        } else if (unlistedTests.isNotEmpty()) {
+          Spacer(modifier = Modifier.height(6.dp))
+          Text(
+            "ℹ️ ရွေးချယ်ထားသော စစ်ဆေးချက်များ (${unlistedTests.joinToString(", ")}) သည် ပြင်ပ/ဓာတ်မှန် စစ်ဆေးချက်များဖြစ်သဖြင့် ဆေးညွှန်း A4 ပေါ်တွင်သာ ဖော်ပြပါမည်။",
+            fontSize = 9.sp,
+            color = Color(0xFF64748B)
+          )
         }
       }
     }

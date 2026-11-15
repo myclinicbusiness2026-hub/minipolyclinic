@@ -1748,11 +1748,12 @@ object A4PdfNativeCanvasRenderer {
     paint.typeface = Typeface.DEFAULT
     paint.color = Color.rgb(0x1E, 0x29, 0x3B)
     paint.textSize = 8.5f
+    val cleanPriceRegex = Regex("(?i)\\s*[•\\-]?\\s*\\(?\\s*\\d[\\d,]*\\s*(?:ks|mmk|kyat)?\\s*\\)?")
     investigations.chunked(2).forEach { rowItems ->
-      val textL = "• ${rowItems[0]}"
+      val textL = "• ${rowItems[0].replace(cleanPriceRegex, "").trim()}"
       canvas.drawText(textL, 28f, currentY + 9f, paint)
       if (rowItems.size > 1) {
-        val textR = "• ${rowItems[1]}"
+        val textR = "• ${rowItems[1].replace(cleanPriceRegex, "").trim()}"
         canvas.drawText(textR, width / 2f + 10f, currentY + 9f, paint)
       }
       currentY += 14f

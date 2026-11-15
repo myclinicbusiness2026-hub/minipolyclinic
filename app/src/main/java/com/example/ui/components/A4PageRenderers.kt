@@ -417,8 +417,9 @@ fun A4SuggestedInvestigationsSection(
               modifier = Modifier.weight(1f),
               verticalAlignment = Alignment.CenterVertically
             ) {
+              val cleanName = testName.replace(Regex("(?i)\\s*[•\\-]?\\s*\\(?\\s*\\d[\\d,]*\\s*(?:ks|mmk|kyat)?\\s*\\)?"), "").trim()
               Text("[✓] ", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = if (isGrayscale) DarkGrayText else Color(0xFF2563EB))
-              Text(testName, fontSize = 8.5.sp, color = DarkGrayText, fontWeight = FontWeight.Medium)
+              Text(cleanName, fontSize = 8.5.sp, color = DarkGrayText, fontWeight = FontWeight.Medium)
             }
           }
           if (chunk.size == 1) {

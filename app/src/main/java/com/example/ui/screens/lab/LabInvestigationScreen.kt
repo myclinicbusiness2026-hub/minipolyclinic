@@ -853,37 +853,52 @@ fun MobileLabOrderQueueCard(
           }
         }
 
-        // Action Buttons Row (Mobile optimized)
+        // Action Buttons Row (Mobile & Tablet optimized: Slip & Payment First, then Results Follow)
         Row(verticalAlignment = Alignment.CenterVertically) {
-          // Primary Action
-          if (order.status == LabOrderStatus.ORDERED) {
+          if (!order.isPaid) {
+            // STEP 1: Must print slip and purchase payment first!
             Button(
-              onClick = onSampleCollected,
-              colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
+              onClick = onCreateInvoice,
+              colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
               shape = RoundedCornerShape(6.dp),
               contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
               modifier = Modifier.height(30.dp)
             ) {
-              Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(12.dp))
+              Icon(Icons.Default.ReceiptLong, contentDescription = null, modifier = Modifier.size(12.dp))
               Spacer(modifier = Modifier.width(3.dp))
-              Text("နမူနာရယူပြီး", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+              Text("ငွေရှင်း / Slip ထုတ်မည်", fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
-            Spacer(modifier = Modifier.width(6.dp))
+          } else {
+            // STEP 2: Payment purchased -> Sample collection & Test results follow!
+            if (order.status == LabOrderStatus.ORDERED) {
+              Button(
+                onClick = onSampleCollected,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
+                shape = RoundedCornerShape(6.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.height(30.dp)
+              ) {
+                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(12.dp))
+                Spacer(modifier = Modifier.width(3.dp))
+                Text("နမူနာရယူပြီး", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+              }
+              Spacer(modifier = Modifier.width(6.dp))
+            }
+
+            Button(
+              onClick = onEnterResults,
+              colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
+              shape = RoundedCornerShape(6.dp),
+              contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+              modifier = Modifier.height(30.dp)
+            ) {
+              Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(12.dp))
+              Spacer(modifier = Modifier.width(3.dp))
+              Text("အဖြေထည့်ရန်", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            }
           }
 
-          Button(
-            onClick = onEnterResults,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
-            shape = RoundedCornerShape(6.dp),
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-            modifier = Modifier.height(30.dp)
-          ) {
-            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(12.dp))
-            Spacer(modifier = Modifier.width(3.dp))
-            Text("အဖြေထည့်ရန်", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-          }
-
-          // More Options Dropdown Menu (Contains A4 letterhead, voucher, cancel)
+          // More Options Dropdown Menu
           Box {
             IconButton(
               onClick = { showMenu = true },
@@ -905,7 +920,15 @@ fun MobileLabOrderQueueCard(
               )
               if (!order.isPaid) {
                 DropdownMenuItem(
-                  text = { Text("🧾 ငွေရှင်းဘောင်ချာ ဖွင့်ရန်", fontSize = 11.5.sp) },
+                  text = { Text("🔬 စစ်ဆေးချက် အဖြေထည့်ရန်", fontSize = 11.5.sp) },
+                  onClick = {
+                    showMenu = false
+                    onEnterResults()
+                  }
+                )
+              } else {
+                DropdownMenuItem(
+                  text = { Text("🧾 ငွေရှင်းဘောင်ချာ ပြန်လည်ထုတ်ယူမည်", fontSize = 11.5.sp) },
                   onClick = {
                     showMenu = false
                     onCreateInvoice()
