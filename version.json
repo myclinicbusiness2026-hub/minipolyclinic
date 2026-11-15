@@ -1,12 +1,12 @@
 {
-  "versionCode": 59,
-  "versionName": "1.5.35",
+  "versionCode": 60,
+  "versionName": "1.5.36",
   "minSupportedVersion": 1,
-  "releaseNotes": "• Multiline Lab Reference Intervals: Support multiline normal ranges in lab templates (Male, Female, Child) with quick format helper chips [+ M/F/Child] and [+ M/F].\n• Clean Result Entry & A4 PDF Report: Enhanced result entry cards and A4 PDF printing with generous 35% reference interval column width and HTML line wrapping for multi-category normal ranges.",
-  "releaseNotesMm": "• ဓာတ်ခွဲခန်း ပုံမှန်ပမာဏ (Reference Range) စာကြောင်းအများကြီး ရိုက်ထည့်နိုင်ခြင်း - Lab Test Template များတွင် Male, Female, Child သီးသန့် ခွဲခြားရိုက်ထည့်နိုင်သော Multiline စနစ်နှင့် [+ M/F/Child], [+ M/F] အမြန်ဖြည့်ခလုတ်များ ထည့်သွင်းပေးထားခြင်း။\n• သွေးစစ်အဖြေထည့်သွင်းမှုနှင့် A4 Report ရှင်းလင်းလှပစေခြင်း - Result Entry ကတ်များတွင် သပ်ရပ်စွာ ပြသပေးပြီး A4 Lab Report PDF တွင် Reference Interval ကော်လံအား ကျယ်ပြန့်စွာ နေရာချထားပေးခြင်း။",
+  "releaseNotes": "• Preserved Lab Template Edits: Removed automatic auto-heal on startup so CBC & all test parameters, reference intervals, and prices remain permanently saved without reverting to presets.\n• Clean Single-Line CST: Clicking CST generates a clean single line '(သောက်နေကြဆေးများပုံမှန်သောက်ရန်)' without spilling into frequency or duration.\n• Removed Template Reset Button: Removed the preset reset button from lab templates tab to prevent accidental data loss.",
+  "releaseNotesMm": "• Lab စျေးနှုန်းနှင့် Parameter များ အမြဲတမ်း တည်မြဲနေစေခြင်း - App ပြန်ဖွင့်တိုင်း တန်ဖိုးဟောင်းများ ပြန်ဖုံးအုပ်သော Auto-heal စနစ်ကို ဖြုတ်ပစ်ထားသဖြင့် CBC အပါအဝင် ပြင်ဆင်ထားသမျှ အသစ်အတိုင်း အမြဲတမ်း တည်မြဲနေခြင်း။\n• CST ကို တစ်ကြောင်းတည်း သန့်ရှင်းစွာ ဖော်ပြခြင်း - CST နှိပ်ပါက '(သောက်နေကြဆေးများပုံမှန်သောက်ရန်)' ဟုသာ တစ်ကြောင်းတည်း ရှင်းလင်းစွာ ဖော်ပြခြင်း (Frequency/Duration များထဲ မရောတော့ပါ)။\n• Lab Template Reset ခလုတ်ကြီး ဖြုတ်ပေးထားခြင်း - မှားယွင်းနှိပ်မိ၍ မူလအခြေအနေ ပြန်မဖြစ်စေရန် Reset ခလုတ်အား လုံးဝ ဖြုတ်ပစ်ထားခြင်း။",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-15",
   "apkSizeBytes": 14900744,
-  "commitSha": "6d316a018760ef196b064c7ecf567ad0ef78f21d",
-  "updatedAt": "2026-11-15T02:00:00.000Z"
+  "commitSha": "HEAD",
+  "updatedAt": "2026-11-15T06:30:00.000Z"
 }

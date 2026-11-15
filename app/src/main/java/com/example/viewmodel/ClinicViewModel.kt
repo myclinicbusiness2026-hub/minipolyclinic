@@ -351,10 +351,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     _labInvoices.value = (ClinicDataPersistence.loadLabInvoices(ctx) ?: emptyList())
       .filterNot { delLabInvs.contains(it.id) || delPats.contains(it.patientId) }
 
-    // Auto-heal templates from past orders or procedures if templates lost customized parameters/prices
-    if (_labOrders.value.isNotEmpty() || _procedures.value.isNotEmpty()) {
-      restoreLabTemplatesFromOrders()
-    }
+    // Do not auto-heal templates on init so user customizations and edited prices/parameters are never overwritten
   }
 
   fun setTab(index: Int) {

@@ -1667,17 +1667,6 @@ fun MobileLabTemplatesTabContent(
           Text("🔄 ဆယ်ယူမည်", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
         }
 
-        OutlinedButton(
-          onClick = onResetPresets,
-          shape = RoundedCornerShape(4.dp),
-          contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-          modifier = Modifier.height(28.dp)
-        ) {
-          Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(11.dp))
-          Spacer(modifier = Modifier.width(2.dp))
-          Text("Reset", fontSize = 9.sp)
-        }
-
         Button(
           onClick = onAddNew,
           colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),

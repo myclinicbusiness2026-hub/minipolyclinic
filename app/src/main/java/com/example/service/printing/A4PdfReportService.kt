@@ -84,20 +84,20 @@ object A4PdfReportService {
       subjectiveNotes = consultation.subjective,
       doctorAdvice = consultation.plan,
       prescriptions = consultation.prescriptions.map { drug ->
-        val isCst = drug.isCst || drug.medicineId.startsWith("CST-") || drug.medicineId == "EXT-CST" || drug.name.startsWith("CST") || drug.instructions.contains("သောက်လက်စ")
+        val isCst = drug.isCst || drug.medicineId.startsWith("CST-") || drug.medicineId == "EXT-CST" || drug.name.startsWith("CST") || drug.name.contains("သောက်နေကြဆေး") || drug.instructions.contains("သောက်လက်စ")
         val isExt = drug.isExternal || drug.medicineId.startsWith("EXT-")
         val finalTitle = if (isCst) {
-          if (drug.name.startsWith("CST") || drug.name.contains("Continue Same Treatment")) drug.name else "${drug.name} [CST]"
+          "(သောက်နေကြဆေးများပုံမှန်သောက်ရန်)"
         } else if (isExt) "${drug.name} [External]" else drug.name
-        val cleanFreq = if (isCst && (drug.frequency.isBlank() || drug.frequency == "-" || drug.frequency.contains("ပုံမှန်အတိုင်း"))) "-" else drug.frequency
-        val cleanDuration = if (isCst && (drug.duration.isBlank() || drug.duration == "-" || drug.duration.contains("ပုံမှန်သောက်ရန်"))) "-" else drug.duration
+        val cleanFreq = if (isCst) "-" else drug.frequency
+        val cleanDuration = if (isCst) "-" else drug.duration
         A4PrescriptionLine(
           tradeName = finalTitle,
-          genericName = drug.name.split(" ").firstOrNull() ?: drug.name,
-          dosage = if (drug.dosage == "-") "" else drug.dosage,
+          genericName = if (isCst) "" else (drug.name.split(" ").firstOrNull() ?: drug.name),
+          dosage = if (isCst || drug.dosage == "-") "" else drug.dosage,
           frequency = cleanFreq,
           duration = cleanDuration,
-          instructions = if (isCst) "Continue previously prescribed treatment" else drug.instructions,
+          instructions = if (isCst) "" else drug.instructions,
           quantity = drug.quantity
         )
       },

@@ -1659,22 +1659,25 @@ object A4PdfNativeCanvasRenderer {
 
       // Drug Name & Strength (With [External] or CST tag)
       val medName = rx.fullDisplayName
-      val isCst = rx.isCst || rx.medicineId.startsWith("CST-") || rx.medicineId == "EXT-CST" || rx.name.startsWith("CST") || rx.instructions.contains("သောက်လက်စ")
-      val externalPrefix = if (isCst) {
-        if (medName.startsWith("CST") || medName.contains("Continue Same Treatment")) "" else "[CST] "
-      } else if (rx.isExternal) "[External] " else ""
-      val baseDrug = if (rx.dosage.isNotBlank() && rx.dosage != "-" && !medName.contains(rx.dosage)) "$medName (${rx.dosage})" else medName
-      val fullDrug = "$externalPrefix$baseDrug"
-      canvas.drawText(fullDrug.take(65), 52f, textRowY, paint)
+      val isCst = rx.isCst || rx.medicineId.startsWith("CST-") || rx.medicineId == "EXT-CST" || rx.name.startsWith("CST") || rx.name.contains("သောက်နေကြဆေး") || rx.instructions.contains("သောက်လက်စ")
+      if (isCst) {
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        canvas.drawText("(သောက်နေကြဆေးများပုံမှန်သောက်ရန်)", 52f, textRowY, paint)
+      } else {
+        val externalPrefix = if (rx.isExternal) "[External] " else ""
+        val baseDrug = if (rx.dosage.isNotBlank() && rx.dosage != "-" && !medName.contains(rx.dosage)) "$medName (${rx.dosage})" else medName
+        val fullDrug = "$externalPrefix$baseDrug"
+        canvas.drawText(fullDrug.take(65), 52f, textRowY, paint)
 
-      // Dosage & Direction (Include doctor's notes if external)
-      paint.typeface = Typeface.DEFAULT
-      val directionText = if (isCst && (rx.frequency.isBlank() || rx.frequency == "-" || rx.frequency.contains("ပုံမှန်အတိုင်း"))) "-" else formatDosageAndDirection(rx)
-      canvas.drawText(directionText.take(28), 380f, textRowY, paint)
+        // Dosage & Direction (Include doctor's notes if external)
+        paint.typeface = Typeface.DEFAULT
+        val directionText = formatDosageAndDirection(rx)
+        canvas.drawText(directionText.take(28), 380f, textRowY, paint)
 
-      // Duration
-      val durationText = if (isCst && (rx.duration.isBlank() || rx.duration == "-" || rx.duration.contains("ပုံမှန်သောက်ရန်"))) "-" else rx.duration.ifBlank { "5 Days" }
-      canvas.drawText(durationText, width - 62f, textRowY, paint)
+        // Duration
+        val durationText = rx.duration.ifBlank { "5 Days" }
+        canvas.drawText(durationText, width - 62f, textRowY, paint)
+      }
 
       currentY += rowH
     }

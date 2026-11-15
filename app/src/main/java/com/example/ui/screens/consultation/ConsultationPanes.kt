@@ -289,7 +289,7 @@ fun ConsultationPrescriptionAndBillingPane(
       onAddCstDrug = if (!isReadOnly) {
         {
           val existingIdx = prescribedDrugs.indexOfFirst {
-            it.name.startsWith("CST") || it.instructions.contains("သောက်လက်စသောက်ဆေးများ")
+            it.isCst || it.medicineId == "EXT-CST" || it.name.startsWith("CST") || it.name.contains("သောက်နေကြဆေး") || it.instructions.contains("သောက်လက်စ")
           }
           if (existingIdx >= 0) {
             prescribedDrugs.removeAt(existingIdx)
@@ -297,15 +297,15 @@ fun ConsultationPrescriptionAndBillingPane(
             prescribedDrugs.add(
               com.example.model.PrescribedDrug(
                 medicineId = "EXT-CST",
-                medicineName = "CST (Continue Same Treatment)",
-                name = "CST (Continue Same Treatment)",
+                medicineName = "(သောက်နေကြဆေးများပုံမှန်သောက်ရန်)",
+                name = "(သောက်နေကြဆေးများပုံမှန်သောက်ရန်)",
                 genericName = "",
                 dosage = "",
-                frequency = "-",
-                duration = "-",
+                frequency = "",
+                duration = "",
                 quantity = 0,
                 unitPrice = 0.0,
-                instructions = "Continue previously prescribed treatment",
+                instructions = "",
                 isExternal = true,
                 isCst = true
               )

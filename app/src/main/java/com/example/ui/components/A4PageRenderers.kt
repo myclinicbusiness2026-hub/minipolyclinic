@@ -607,7 +607,7 @@ fun A4PrescriptionTable(
       }
       HorizontalDivider(thickness = 0.8.dp, color = BorderGray)
       consultation.prescriptions.forEachIndexed { idx, drug ->
-        val isCst = drug.isCst || drug.medicineId.startsWith("CST-") || drug.medicineId == "EXT-CST" || drug.name.startsWith("CST") || drug.instructions.contains("သောက်လက်စ")
+        val isCst = drug.isCst || drug.medicineId.startsWith("CST-") || drug.medicineId == "EXT-CST" || drug.name.startsWith("CST") || drug.name.contains("သောက်နေကြဆေး") || drug.instructions.contains("သောက်လက်စ")
         val isExt = drug.isExternal || drug.medicineId.startsWith("EXT-")
         val effectiveDrugName = drug.effectiveName.ifBlank { drug.name.ifBlank { drug.medicineName } }
         val baseTitle = if (drug.dosage.isNotBlank() && drug.dosage != "-" && !effectiveDrugName.contains(drug.dosage, ignoreCase = true)) {
@@ -616,7 +616,7 @@ fun A4PrescriptionTable(
           effectiveDrugName
         }
         val drugTitle = if (isCst) {
-          if (baseTitle.startsWith("CST") || baseTitle.contains("Continue Same Treatment")) baseTitle else "$baseTitle  [CST]"
+          "(သောက်နေကြဆေးများပုံမှန်သောက်ရန်)"
         } else if (isExt) {
           "$baseTitle  [External]"
         } else {
@@ -630,28 +630,38 @@ fun A4PrescriptionTable(
           verticalAlignment = Alignment.CenterVertically
         ) {
           Text("${idx + 1}", modifier = Modifier.weight(0.22f), fontSize = 9.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
-          Text(
-            drugTitle,
-            modifier = Modifier.weight(3.68f),
-            fontWeight = FontWeight.Bold,
-            fontSize = 10.5.sp,
-            color = DarkGrayText,
-            softWrap = true
-          )
-          Text(
-            formatDosageAndDirection(drug),
-            modifier = Modifier.weight(1.35f),
-            fontSize = 10.sp,
-            color = DarkGrayText,
-            lineHeight = 16.sp
-          )
-          Text(
-            drug.duration,
-            modifier = Modifier.weight(0.65f),
-            fontSize = 9.5.sp,
-            color = DarkGrayText,
-            textAlign = TextAlign.End
-          )
+          if (isCst) {
+            Text(
+              "(သောက်နေကြဆေးများပုံမှန်သောက်ရန်)",
+              modifier = Modifier.weight(5.68f),
+              fontWeight = FontWeight.Bold,
+              fontSize = 10.sp,
+              color = DarkGrayText
+            )
+          } else {
+            Text(
+              drugTitle,
+              modifier = Modifier.weight(3.68f),
+              fontWeight = FontWeight.Bold,
+              fontSize = 10.5.sp,
+              color = DarkGrayText,
+              softWrap = true
+            )
+            Text(
+              formatDosageAndDirection(drug),
+              modifier = Modifier.weight(1.35f),
+              fontSize = 10.sp,
+              color = DarkGrayText,
+              lineHeight = 16.sp
+            )
+            Text(
+              drug.duration,
+              modifier = Modifier.weight(0.65f),
+              fontSize = 9.5.sp,
+              color = DarkGrayText,
+              textAlign = TextAlign.End
+            )
+          }
         }
         if (idx < consultation.prescriptions.size - 1) {
           HorizontalDivider(thickness = 0.5.dp, color = Color(0xFFE2E8F0))

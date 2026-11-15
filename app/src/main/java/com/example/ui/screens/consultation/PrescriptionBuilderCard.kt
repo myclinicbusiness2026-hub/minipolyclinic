@@ -50,7 +50,7 @@ fun PrescriptionBuilderCard(
 
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
           if (onAddCstDrug != null) {
-            val hasCst = prescribedDrugs.any { it.instructions.contains("သောက်လက်စသောက်ဆေးများ") || it.name.startsWith("CST") }
+            val hasCst = prescribedDrugs.any { it.isCst || it.medicineId == "EXT-CST" || it.name.contains("သောက်နေကြဆေး") || it.name.startsWith("CST") || it.instructions.contains("သောက်လက်စ") }
             Surface(
               shape = RoundedCornerShape(6.dp),
               color = if (hasCst) Color(0xFFDBEAFE) else Color(0xFFEFF6FF),
@@ -119,27 +119,37 @@ fun PrescriptionBuilderCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
           ) {
+            val isCst = drug.isCst || drug.medicineId.startsWith("CST-") || drug.medicineId == "EXT-CST" || drug.name.contains("သောက်နေကြဆေး") || drug.name.startsWith("CST") || drug.instructions.contains("သောက်လက်စ")
+            val isExt = drug.isExternal || drug.medicineId.startsWith("EXT-")
+
             Column(modifier = Modifier.weight(1f)) {
-              Text(
-                "${index + 1}. ${drug.name} (${drug.dosage})",
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.sp,
-                color = SlateDark,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-              )
-              Text(
-                "${drug.frequency} • ${drug.instructions} x ${drug.duration} • Total Qty: ${drug.quantity}",
-                fontSize = 10.sp,
-                color = SlateMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-              )
+              if (isCst) {
+                Text(
+                  "${index + 1}. (သောက်နေကြဆေးများပုံမှန်သောက်ရန်)",
+                  fontWeight = FontWeight.Bold,
+                  fontSize = 11.5.sp,
+                  color = Color(0xFF0369A1)
+                )
+              } else {
+                Text(
+                  "${index + 1}. ${drug.name}${if (drug.dosage.isNotBlank()) " (${drug.dosage})" else ""}",
+                  fontWeight = FontWeight.Bold,
+                  fontSize = 11.sp,
+                  color = SlateDark,
+                  maxLines = 1,
+                  overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                  "${drug.frequency} • ${drug.instructions} x ${drug.duration} • Total Qty: ${drug.quantity}",
+                  fontSize = 10.sp,
+                  color = SlateMedium,
+                  maxLines = 1,
+                  overflow = TextOverflow.Ellipsis
+                )
+              }
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-              val isCst = drug.isCst || drug.medicineId.startsWith("CST-")
-              val isExt = drug.isExternal || drug.medicineId.startsWith("EXT-")
               if (isCst) {
                 Surface(
                   color = Color(0xFFE0F2FE),
