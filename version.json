@@ -6,7 +6,7 @@
   "releaseNotesMm": "• ဓာတ်ခွဲခန်း ပုံမှန်ပမာဏ (Reference Range) စာကြောင်းအများကြီး ရိုက်ထည့်နိုင်ခြင်း - Lab Test Template များတွင် Male, Female, Child သီးသန့် ခွဲခြားရိုက်ထည့်နိုင်သော Multiline စနစ်နှင့် [+ M/F/Child], [+ M/F] အမြန်ဖြည့်ခလုတ်များ ထည့်သွင်းပေးထားခြင်း။\n• သွေးစစ်အဖြေထည့်သွင်းမှုနှင့် A4 Report ရှင်းလင်းလှပစေခြင်း - Result Entry ကတ်များတွင် သပ်ရပ်စွာ ပြသပေးပြီး A4 Lab Report PDF တွင် Reference Interval ကော်လံအား ကျယ်ပြန့်စွာ နေရာချထားပေးခြင်း။",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-15",
-  "apkSizeBytes": 14900733,
-  "commitSha": "HEAD",
-  "updatedAt": "2026-11-15T01:45:00.000Z"
+  "apkSizeBytes": 14900744,
+  "commitSha": "6d316a018760ef196b064c7ecf567ad0ef78f21d",
+  "updatedAt": "2026-11-15T02:00:00.000Z"
 }
