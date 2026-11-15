@@ -6,7 +6,7 @@
   "releaseNotesMm": "• Lab စျေးနှုန်းနှင့် Parameter များ အမြဲတမ်း တည်မြဲနေစေခြင်း - App ပြန်ဖွင့်တိုင်း တန်ဖိုးဟောင်းများ ပြန်ဖုံးအုပ်သော Auto-heal စနစ်ကို ဖြုတ်ပစ်ထားသဖြင့် CBC အပါအဝင် ပြင်ဆင်ထားသမျှ အသစ်အတိုင်း အမြဲတမ်း တည်မြဲနေခြင်း။\n• CST ကို တစ်ကြောင်းတည်း သန့်ရှင်းစွာ ဖော်ပြခြင်း - CST နှိပ်ပါက '(သောက်နေကြဆေးများပုံမှန်သောက်ရန်)' ဟုသာ တစ်ကြောင်းတည်း ရှင်းလင်းစွာ ဖော်ပြခြင်း (Frequency/Duration များထဲ မရောတော့ပါ)။\n• Lab Template Reset ခလုတ်ကြီး ဖြုတ်ပေးထားခြင်း - မှားယွင်းနှိပ်မိ၍ မူလအခြေအနေ ပြန်မဖြစ်စေရန် Reset ခလုတ်အား လုံးဝ ဖြုတ်ပစ်ထားခြင်း။",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-15",
-  "apkSizeBytes": 14900744,
-  "commitSha": "HEAD",
-  "updatedAt": "2026-11-15T06:30:00.000Z"
+  "apkSizeBytes": 14900731,
+  "commitSha": "d2e065842d45cb323cdb1d4a795bb489738728a8",
+  "updatedAt": "2026-11-15T06:40:00.000Z"
 }
