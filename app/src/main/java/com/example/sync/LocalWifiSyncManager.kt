@@ -666,8 +666,12 @@ class LocalWifiSyncManager(
             val ex = labMap[inc.id]
             if (ex == null) {
               labMap[inc.id] = inc
-            } else {
-              if (inc.status == LabOrderStatus.COMPLETED || ex.status != LabOrderStatus.COMPLETED) {
+            } else if (inc.updatedAt > ex.updatedAt) {
+              labMap[inc.id] = inc
+            } else if (inc.updatedAt == ex.updatedAt) {
+              val incHasResults = inc.items.any { item -> item.parameters.any { it.result.isNotBlank() } }
+              val exHasResults = ex.items.any { item -> item.parameters.any { it.result.isNotBlank() } }
+              if (incHasResults && !exHasResults) {
                 labMap[inc.id] = inc
               }
             }

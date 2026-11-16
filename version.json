@@ -1,12 +1,12 @@
 {
-  "versionCode": 64,
-  "versionName": "1.5.40",
+  "versionCode": 65,
+  "versionName": "1.5.41",
   "minSupportedVersion": 1,
-  "releaseNotes": "• Fixed Lab Invoice Grand Total & Thermal Print: Full serialization of netTotal, discount, changeAmount, and items in Lab Invoices ensuring Grand Total never displays 0 when paid amount or subtotal exists.\n• Self-healing Lab Invoices: Legacy saved invoices without items automatically restore test descriptions and prices from linked Lab Orders.\n• Enlarged Doctor Seal in A4 Lab Reports: Doctor name, medical degree, and S.A.M.A number font sizes enlarged for clear, professional readability.\n• Lab Service Footer Divider: Added a clean, full-width dividing line directly above 'This investigation is processed by the Laboratory Services at Shwe Khit'.",
-  "releaseNotesMm": "• Lab Invoice နှင့် Print တွင် Grand Total 0 ပြဿနာ အပြီးတိုင်ဖြေရှင်းခြင်း - Lab Invoice များတွင် netTotal, discount, changeAmount နှင့် စစ်ဆေးချက် Items စာရင်းများကို အပြည့်အစုံ သိမ်းဆည်း/ဖတ်ယူစေပြီး ပုံနှိပ်ရာတွင် သို့မဟုတ် ပြန်လည်ကြည့်ရှုရာတွင် Grand Total 0 ပြခြင်းကို လုံးဝ ပပျောက်စေခြင်း။\n• ယခင်ဘောင်ချာဟောင်းများအား အလိုအလျောက် ပြန်လည်ဖြည့်စွက်ပေးခြင်း - စာရင်းထဲရှိ ယခင် Lab Invoice များတွင် စစ်ဆေးချက်များ ပျောက်ဆုံးမနေစေရန် သက်ဆိုင်ရာ Lab Order မှ စစ်ဆေးချက်များနှင့် ဈေးနှုန်းများကို Auto-restore ပြုလုပ်ပေးခြင်း။\n• A4 Lab Report ရှိ Doctor Seal, Degree, Sama အား ပိုမိုကြီးမားထင်ရှားစေခြင်း - ဆရာဝန်/Pathologist အမည်၊ ဘွဲ့နှင့် ဆမ နံပါတ်များကို ယခင်ထက် အရွယ်အစားကြီးပြီး သပ်ရပ်ထင်ရှားစွာ ပုံနှိပ်ပေးခြင်း။\n• Footer စာကြောင်းအပေါ် မျဉ်းရှည်ကြီး ထည့်သွင်းခြင်း - 'This investigation is processed by the Laboratory Services at ရွှေခေတ်' စာကြောင်းအပေါ်တွင် စာရွက်အပြည့် ကန့်လန့်ဖြတ် မျဉ်းရှည်ကြီး (Divider Line) ထည့်သွင်းပေးထားခြင်း။",
+  "releaseNotes": "• Fixed Lab Results Disappearing Bug: Added updatedAt timestamp to LabOrder model, local storage persistence, and implemented robust newest-wins merge resolution in Local WiFi Sync and Cloud Sync, guaranteeing that peer devices with empty/unentered results never overwrite freshly entered lab test results.\n• Dynamic A4 Prescription Page Flow: Removed artificial 4/5 medicine limit from A4 print calculation; prescriptions naturally fill Page 1 space and dynamically flow to Page 2 only when real vertical physical space overflows.\n• Clear Lab Result Save Toast: Displays confirmation that completed lab results are saved and moved to the 'Completed Results' tab.",
+  "releaseNotesMm": "• ဓာတ်ခွဲအဖြေများ ရိုက်ထည့်ပြီးမှ ပြန်ပျောက်သွားသော ပြဿနာအား အပြီးတိုင်ဖြေရှင်းခြင်း - LabOrder တွင် updatedAt အချိန်တံဆိပ် ထည့်သွင်းပြီး Local WiFi Sync နှင့် Cloud Sync တွင် အသစ်ဆုံးဒေတာကိုသာ ဦးစားပေးထိန်းသိမ်းမည့် (Newest-Wins & Data-Safety Merge) စနစ် သတ်မှတ်လိုက်သောကြောင့် အခြား Device များမှ အဖြေမပါသော အဟောင်းများဖြင့် အစားထိုးဖျက်ပစ်ခြင်း လုံးဝ မဖြစ်ပေါ်တော့ခြင်း။\n• A4 Prescription ဆေးစာရွက်တွင် ဆေး ၅ မျိုးကျော်လည်း သဘာဝကျကျ အပြည့်အစုံဖော်ပြခြင်း - ဆေး ၄/၅ မျိုးကျော်တိုင်း မလိုအပ်ဘဲ အတင်းအကျပ် စာမျက်နှာ ၂ ရွက်ခွဲထုတ်နေသော Code ကို ဖယ်ရှားပြီး စာရွက်ပေါ်ရှိ နေရာဆံ့သမျှ ဆေးအားလုံးကို Page 1 တွင် အပြည့်အစုံ ပေါ်စေပြီး အမှန်တကယ် နေရာမဆံ့တော့မှသာ စာမျက်နှာ ၂ သို့ Dynamic စီးဆင်းစေခြင်း။\n• အဖြေသိမ်းဆည်းမှု အသိပေးချက် ပိုမိုရှင်းလင်းစေခြင်း - အဖြေများ ရိုက်ထည့်ပြီးပါက 'ပြီးစီးပြီး စာရင်း Tab သို့ ရောက်ရှိသွားပါပြီ' ဟု တိကျစွာ အသိပေးပြသခြင်း။",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-16",
   "apkSizeBytes": 14933501,
-  "commitSha": "34893dc7f9b023c957018331fad30e80cac96206",
-  "updatedAt": "2026-11-16T01:25:00.000Z"
+  "commitSha": "11dcac0",
+  "updatedAt": "2026-11-16T18:30:00.000Z"
 }

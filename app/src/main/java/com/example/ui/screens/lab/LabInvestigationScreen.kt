@@ -589,7 +589,7 @@ fun LabInvestigationScreen(
       onSave = { updatedItems, tech, notes, pName, pDegree, pSama, pTitle, showDocSeal, showTechSign, refDoc ->
         viewModel.saveLabOrderResults(order.id, updatedItems, tech, notes, pName, pDegree, pSama, pTitle, showDocSeal, showTechSign, refDoc)
         orderToEnterResults = null
-        Toast.makeText(context, "ဓာတ်ခွဲအဖြေများ မှတ်တမ်းတင်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "ဓာတ်ခွဲအဖြေများ မှတ်တမ်းတင်ပြီးပါပြီ (ပြီးစီးပြီး စာရင်း Tab သို့ ရောက်ရှိသွားပါပြီ)", Toast.LENGTH_SHORT).show()
       }
     )
   }
@@ -2366,7 +2366,7 @@ fun MobileLabResultEntryDialog(
   var generalNotes by remember { mutableStateOf(order.notes) }
 
   // Working state for items and parameters
-  val itemsState = remember {
+  val itemsState = remember(order.id) {
     order.items.map { item ->
       item.copy(parameters = item.parameters.map { it.copy() })
     }.toMutableStateList()

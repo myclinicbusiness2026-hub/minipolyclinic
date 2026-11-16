@@ -4022,8 +4022,16 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         parsedLabOrders.forEach { o ->
           if (!allDeletedLabOrderIds.contains(o.id) && !allDeletedPatientIds.contains(o.patientId)) {
             val ex = currentLabOrderMap[o.id]
-            if (ex == null || o.status == LabOrderStatus.COMPLETED || ex.status != LabOrderStatus.COMPLETED) {
+            if (ex == null) {
               currentLabOrderMap[o.id] = o
+            } else if (o.updatedAt > ex.updatedAt) {
+              currentLabOrderMap[o.id] = o
+            } else if (o.updatedAt == ex.updatedAt) {
+              val incHasResults = o.items.any { item -> item.parameters.any { it.result.isNotBlank() } }
+              val exHasResults = ex.items.any { item -> item.parameters.any { it.result.isNotBlank() } }
+              if (incHasResults && !exHasResults) {
+                currentLabOrderMap[o.id] = o
+              }
             }
           }
         }
@@ -4471,7 +4479,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
   fun updateLabOrder(order: LabOrder) {
     val ctx = getApplication<Application>()
-    val updated = _labOrders.value.map { if (it.id == order.id) order else it }
+    val now = System.currentTimeMillis()
+    val updated = _labOrders.value.map { if (it.id == order.id) order.copy(updatedAt = now) else it }
     _labOrders.value = updated
     ClinicDataPersistence.saveLabOrders(ctx, updated)
   }
@@ -4479,11 +4488,13 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   fun updateLabOrderStatus(orderId: String, newStatus: LabOrderStatus) {
     val ctx = getApplication<Application>()
     val completedAtStr = if (newStatus == LabOrderStatus.COMPLETED) BurmeseDateUtils.getNowFormatted() else null
+    val now = System.currentTimeMillis()
     val updated = _labOrders.value.map { ord ->
       if (ord.id == orderId) {
         ord.copy(
           status = newStatus,
-          completedAt = completedAtStr ?: ord.completedAt
+          completedAt = completedAtStr ?: ord.completedAt,
+          updatedAt = now
         )
       } else ord
     }
@@ -4507,6 +4518,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val ctx = getApplication<Application>()
     val isAllCompleted = updatedItems.all { it.isCompleted }
     val completedAtStr = if (isAllCompleted) BurmeseDateUtils.getNowFormatted() else null
+    val now = System.currentTimeMillis()
     val updated = _labOrders.value.map { ord ->
       if (ord.id == orderId) {
         ord.copy(
@@ -4521,7 +4533,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           showDoctorSeal = showDoctorSeal,
           showTechnicianSign = showTechnicianSign,
           status = if (isAllCompleted) LabOrderStatus.COMPLETED else ord.status,
-          completedAt = completedAtStr ?: ord.completedAt
+          completedAt = completedAtStr ?: ord.completedAt,
+          updatedAt = now
         )
       } else ord
     }

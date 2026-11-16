@@ -572,8 +572,16 @@ END $$;
               if (ex == null) {
                 labOrdersMap[lid] = o
               } else {
-                if (o.optString("status") == "COMPLETED" || ex.optString("status") != "COMPLETED") {
+                val oUpdated = o.optLong("updatedAt", 0L)
+                val exUpdated = ex.optLong("updatedAt", 0L)
+                if (oUpdated > exUpdated) {
                   labOrdersMap[lid] = o
+                } else if (oUpdated == exUpdated) {
+                  val oCompleted = o.optString("status") == "COMPLETED"
+                  val exCompleted = ex.optString("status") == "COMPLETED"
+                  if (oCompleted && !exCompleted) {
+                    labOrdersMap[lid] = o
+                  }
                 }
               }
             }

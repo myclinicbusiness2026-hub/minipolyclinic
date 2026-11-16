@@ -2110,6 +2110,7 @@ object ClinicDataPersistence {
       oo.put("pathologistTitle", ord.pathologistTitle)
       oo.put("showDoctorSeal", ord.showDoctorSeal)
       oo.put("showTechnicianSign", ord.showTechnicianSign)
+      oo.put("updatedAt", ord.updatedAt)
 
       val iArr = JSONArray()
       ord.items.forEach { item ->
@@ -2225,6 +2226,7 @@ object ClinicDataPersistence {
             pathologistTitle = o.optString("pathologistTitle", "Consultant Pathologist"),
             showDoctorSeal = o.optBoolean("showDoctorSeal", true),
             showTechnicianSign = o.optBoolean("showTechnicianSign", false),
+            updatedAt = o.optLong("updatedAt", System.currentTimeMillis()),
             items = items
           )
         )
@@ -2471,6 +2473,7 @@ object ClinicDataPersistence {
             pathologistTitle = o.optString("pathologistTitle", "Consultant Pathologist"),
             showDoctorSeal = o.optBoolean("showDoctorSeal", true),
             showTechnicianSign = o.optBoolean("showTechnicianSign", false),
+            updatedAt = o.optLong("updatedAt", System.currentTimeMillis()),
             items = items
           )
         )

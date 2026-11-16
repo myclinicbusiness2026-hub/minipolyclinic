@@ -105,12 +105,6 @@ object A4PdfNativeCanvasRenderer {
     if (oralRx.isEmpty() || spaceLeft < 18f) return 0
     val maxCanFit = ((spaceLeft) / 18.5f).toInt().coerceIn(0, oralRx.size)
 
-    val validProcs = consultation.selectedProcedures.filter { it.name.isNotBlank() }
-
-    if (validProcs.isEmpty() && maxCanFit == oralRx.size && oralRx.size > 4) {
-      return (oralRx.size / 2).coerceAtLeast(3)
-    }
-
     return maxCanFit
   }
 
