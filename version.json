@@ -1,12 +1,12 @@
 {
-  "versionCode": 63,
-  "versionName": "1.5.39",
+  "versionCode": 64,
+  "versionName": "1.5.40",
   "minSupportedVersion": 1,
-  "releaseNotes": "• Dedicated Referred Dr. Name Input: Added explicit input field for referring doctor name with quick-select chips (Clinic Doctor, Self-request, Outside Doctor Dr.) and recent doctor pills in Lab Order creation.\n• Referred Dr. Tracking Across Queue & Reports: Referring doctor is prominently displayed on Lab Queue order cards, Completed Result cards, Thermal POS Cash Vouchers, and A4 Lab Investigation Reports.\n• Result Entry Referring Dr. Editor: Technologists can review or edit the referring doctor name directly in the Result Entry modal before finalizing or printing.\n• Clean Doctor Prefix Handling: Fixed prefix formatting to prevent 'Dr. Self-request' and display 'Self-request' cleanly.",
-  "releaseNotesMm": "• ညွှန်းပို့သည့် ဆရာဝန် (Referred Dr. Name) ထည့်သွင်းနိုင်ခြင်း - Lab Order အသစ်တင်ရာတွင် ညွှန်းပို့သည့် ဆရာဝန် အမည်အား တိုက်ရိုက်ရိုက်ထည့်နိုင်သည့် input field နှင့်အတူ အမြန်ရွေးချယ်နိုင်သော Shortcut Chip များ (ဆေးခန်းဆရာဝန်၊ လူနာကိုယ်တိုင်/Self-request၊ အပြင်ဆရာဝန် Dr.) ပါဝင်ခြင်း။\n• Lab Queue နှင့် Report များတွင် ညွှန်းပို့ဆရာဝန် ဖော်ပြခြင်း - သွေးစစ်စောင့်ဆိုင်း Queue Card၊ ပြီးစီးသည့် Card၊ Thermal POS ငွေရှင်းဘောင်ချာ နှင့် A4 Lab Report များတွင် ညွှန်းပို့သည့်ဆရာဝန် (Ref. Dr) အမည်အား ရှင်းလင်းစွာ ဖော်ပြပေးခြင်း။\n• အဖြေထည့်သွင်းချိန်တွင် ညွှန်းပို့ဆရာဝန် ပြန်လည်ပြင်ဆင်နိုင်ခြင်း - Result Entry Form တွင် ညွှန်းပို့သည့် ဆရာဝန် အမည်အား စစ်ဆေးပြင်ဆင်ပြီး သိမ်းဆည်းနိုင်ခြင်း။",
+  "releaseNotes": "• Fixed Lab Invoice Grand Total & Thermal Print: Full serialization of netTotal, discount, changeAmount, and items in Lab Invoices ensuring Grand Total never displays 0 when paid amount or subtotal exists.\n• Self-healing Lab Invoices: Legacy saved invoices without items automatically restore test descriptions and prices from linked Lab Orders.\n• Enlarged Doctor Seal in A4 Lab Reports: Doctor name, medical degree, and S.A.M.A number font sizes enlarged for clear, professional readability.\n• Lab Service Footer Divider: Added a clean, full-width dividing line directly above 'This investigation is processed by the Laboratory Services at Shwe Khit'.",
+  "releaseNotesMm": "• Lab Invoice နှင့် Print တွင် Grand Total 0 ပြဿနာ အပြီးတိုင်ဖြေရှင်းခြင်း - Lab Invoice များတွင် netTotal, discount, changeAmount နှင့် စစ်ဆေးချက် Items စာရင်းများကို အပြည့်အစုံ သိမ်းဆည်း/ဖတ်ယူစေပြီး ပုံနှိပ်ရာတွင် သို့မဟုတ် ပြန်လည်ကြည့်ရှုရာတွင် Grand Total 0 ပြခြင်းကို လုံးဝ ပပျောက်စေခြင်း။\n• ယခင်ဘောင်ချာဟောင်းများအား အလိုအလျောက် ပြန်လည်ဖြည့်စွက်ပေးခြင်း - စာရင်းထဲရှိ ယခင် Lab Invoice များတွင် စစ်ဆေးချက်များ ပျောက်ဆုံးမနေစေရန် သက်ဆိုင်ရာ Lab Order မှ စစ်ဆေးချက်များနှင့် ဈေးနှုန်းများကို Auto-restore ပြုလုပ်ပေးခြင်း။\n• A4 Lab Report ရှိ Doctor Seal, Degree, Sama အား ပိုမိုကြီးမားထင်ရှားစေခြင်း - ဆရာဝန်/Pathologist အမည်၊ ဘွဲ့နှင့် ဆမ နံပါတ်များကို ယခင်ထက် အရွယ်အစားကြီးပြီး သပ်ရပ်ထင်ရှားစွာ ပုံနှိပ်ပေးခြင်း။\n• Footer စာကြောင်းအပေါ် မျဉ်းရှည်ကြီး ထည့်သွင်းခြင်း - 'This investigation is processed by the Laboratory Services at ရွှေခေတ်' စာကြောင်းအပေါ်တွင် စာရွက်အပြည့် ကန့်လန့်ဖြတ် မျဉ်းရှည်ကြီး (Divider Line) ထည့်သွင်းပေးထားခြင်း။",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
-  "publishedAt": "2026-11-15",
-  "apkSizeBytes": 14933503,
-  "commitSha": "7610500b55650cc4b87f5fc72a62c7e0d21e998f",
-  "updatedAt": "2026-11-15T14:40:00.000Z"
+  "publishedAt": "2026-11-16",
+  "apkSizeBytes": 14933501,
+  "commitSha": "34893dc7f9b023c957018331fad30e80cac96206",
+  "updatedAt": "2026-11-16T01:25:00.000Z"
 }
