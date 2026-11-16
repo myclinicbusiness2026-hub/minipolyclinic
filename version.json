@@ -6,7 +6,7 @@
   "releaseNotesMm": "• ရောဂါရာဇဝင် (Clinical History) ကဏ္ဍအားလုံးကို Default Conceal (အလိုအလျောက် ခေါက်သိမ်းထားပေးခြင်း) - Past Medical History အပြင် Past Surgical History၊ ဆေးဓာတ်မတည့်မှု (Drug Allergies)၊ ပုံမှန်သောက်ဆေးများ (Regular Daily Medications)၊ မီးယပ်ရာဇဝင် (Menstrual & OBGYN)၊ လူမှုရေးအလေ့အထ (Personal & Social Habits)၊ ထိခိုက်ဒဏ်ရာ (Trauma History) အားလုံးကို မျက်စိရှင်းလင်းစေရန် default ခေါက်သိမ်းပေးထားပြီး အချက်အလက်ရှိပါက Badge ပြသကာ နှိပ်၍ အဖွင့်/အပိတ် (👁️ Eye Toggle) လွယ်ကူစွာ ပြုလုပ်နိုင်ခြင်း။",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-16",
-  "apkSizeBytes": 14933500,
-  "commitSha": "634e812d6a5c2d3a33995585b9991823eb52f447",
-  "updatedAt": "2026-11-16T19:35:00.000Z"
+  "apkSizeBytes": 14933513,
+  "commitSha": "976a439d42315c93ac2cb9cbbfdb5c22f934e286",
+  "updatedAt": "2026-11-16T19:40:00.000Z"
 }
