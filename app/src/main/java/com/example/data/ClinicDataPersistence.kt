@@ -2248,10 +2248,26 @@ object ClinicDataPersistence {
       io.put("patientHn", inv.patientHn)
       io.put("referringDoctorName", inv.referringDoctorName)
       io.put("totalAmount", inv.totalAmount)
+      io.put("discount", inv.discount)
+      io.put("netTotal", if (inv.netTotal > 0.0) inv.netTotal else (inv.totalAmount - inv.discount).coerceAtLeast(0.0))
       io.put("paidAmount", inv.paidAmount)
+      io.put("changeAmount", inv.changeAmount)
       io.put("paymentMethod", inv.paymentMethod.name)
       io.put("cashierName", inv.cashierName)
       io.put("timestamp", inv.timestamp)
+
+      val iArr = JSONArray()
+      inv.items.forEach { item ->
+        val itemObj = JSONObject()
+        itemObj.put("testId", item.testId)
+        itemObj.put("testName", item.testName)
+        itemObj.put("category", item.category)
+        itemObj.put("price", item.price)
+        itemObj.put("specimenType", item.specimenType)
+        itemObj.put("remarks", item.remarks)
+        iArr.put(itemObj)
+      }
+      io.put("items", iArr)
       arr.put(io)
     }
     getPrefs(context).edit().putString(KEY_LAB_INVOICES, arr.toString()).apply()
@@ -2269,6 +2285,31 @@ object ClinicDataPersistence {
         } catch (_: Exception) {
           PaymentMethod.CASH
         }
+        val totalAmt = o.optDouble("totalAmount", 0.0)
+        val disc = o.optDouble("discount", 0.0)
+        val defaultNet = (totalAmt - disc).coerceAtLeast(0.0)
+        val net = o.optDouble("netTotal", defaultNet)
+        val paid = o.optDouble("paidAmount", 0.0)
+        val change = o.optDouble("changeAmount", 0.0)
+
+        val itemsArr = o.optJSONArray("items")
+        val itemsList = mutableListOf<LabOrderItem>()
+        if (itemsArr != null) {
+          for (j in 0 until itemsArr.length()) {
+            val itemObj = itemsArr.getJSONObject(j)
+            itemsList.add(
+              LabOrderItem(
+                testId = itemObj.optString("testId"),
+                testName = itemObj.optString("testName"),
+                category = itemObj.optString("category"),
+                price = itemObj.optDouble("price", 0.0),
+                specimenType = itemObj.optString("specimenType"),
+                remarks = itemObj.optString("remarks")
+              )
+            )
+          }
+        }
+
         list.add(
           LabInvoice(
             id = o.optString("id", UUID.randomUUID().toString()),
@@ -2278,11 +2319,15 @@ object ClinicDataPersistence {
             patientName = o.optString("patientName"),
             patientHn = o.optString("patientHn"),
             referringDoctorName = o.optString("referringDoctorName"),
-            totalAmount = o.optDouble("totalAmount", 0.0),
-            paidAmount = o.optDouble("paidAmount", 0.0),
+            totalAmount = totalAmt,
+            discount = disc,
+            netTotal = if (net > 0.0) net else defaultNet,
+            paidAmount = paid,
+            changeAmount = change,
             paymentMethod = pm,
             cashierName = o.optString("cashierName", "Cashier"),
-            timestamp = o.optString("timestamp")
+            timestamp = o.optString("timestamp"),
+            items = itemsList
           )
         )
       }
@@ -2447,6 +2492,31 @@ object ClinicDataPersistence {
         } catch (_: Exception) {
           PaymentMethod.CASH
         }
+        val totalAmt = o.optDouble("totalAmount", 0.0)
+        val disc = o.optDouble("discount", 0.0)
+        val defaultNet = (totalAmt - disc).coerceAtLeast(0.0)
+        val net = o.optDouble("netTotal", defaultNet)
+        val paid = o.optDouble("paidAmount", 0.0)
+        val change = o.optDouble("changeAmount", 0.0)
+
+        val itemsArr = o.optJSONArray("items")
+        val itemsList = mutableListOf<LabOrderItem>()
+        if (itemsArr != null) {
+          for (j in 0 until itemsArr.length()) {
+            val itemObj = itemsArr.getJSONObject(j)
+            itemsList.add(
+              LabOrderItem(
+                testId = itemObj.optString("testId"),
+                testName = itemObj.optString("testName"),
+                category = itemObj.optString("category"),
+                price = itemObj.optDouble("price", 0.0),
+                specimenType = itemObj.optString("specimenType"),
+                remarks = itemObj.optString("remarks")
+              )
+            )
+          }
+        }
+
         list.add(
           LabInvoice(
             id = o.optString("id", UUID.randomUUID().toString()),
@@ -2456,11 +2526,15 @@ object ClinicDataPersistence {
             patientName = o.optString("patientName"),
             patientHn = o.optString("patientHn"),
             referringDoctorName = o.optString("referringDoctorName"),
-            totalAmount = o.optDouble("totalAmount", 0.0),
-            paidAmount = o.optDouble("paidAmount", 0.0),
+            totalAmount = totalAmt,
+            discount = disc,
+            netTotal = if (net > 0.0) net else defaultNet,
+            paidAmount = paid,
+            changeAmount = change,
             paymentMethod = pm,
             cashierName = o.optString("cashierName", "Cashier"),
-            timestamp = o.optString("timestamp")
+            timestamp = o.optString("timestamp"),
+            items = itemsList
           )
         )
       }

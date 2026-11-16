@@ -485,9 +485,10 @@ fun LabInvestigationScreen(
                     )
                   },
                   onPrintVoucher = {
-                    val linkedInv = labInvoices.find { it.orderId == order.id || it.orderId == order.orderNumber || it.invoiceNumber == order.invoiceNumber }
+                    val linkedInv = labInvoices.find { it.orderId == order.id || it.orderId == order.orderNumber || (order.invoiceNumber.isNotBlank() && it.invoiceNumber == order.invoiceNumber) }
                     if (linkedInv != null) {
-                      previewLabThermalSlip = linkedInv
+                      val fullInv = if (linkedInv.items.isEmpty() && order.items.isNotEmpty()) linkedInv.copy(items = order.items) else linkedInv
+                      previewLabThermalSlip = fullInv
                     } else {
                       orderToInvoice = order
                     }
@@ -512,7 +513,13 @@ fun LabInvestigationScreen(
             expenses = filteredExpenses,
             clinicSettings = clinicSettings,
             currencyFmt = currencyFmt,
-            onPrintVoucher = { previewLabThermalSlip = it },
+            onPrintVoucher = { inv ->
+              val fullInv = if (inv.items.isEmpty()) {
+                val matchingOrder = labOrders.find { it.id == inv.orderId || it.orderNumber == inv.orderId || (inv.invoiceNumber.isNotBlank() && it.invoiceNumber == inv.invoiceNumber) }
+                if (matchingOrder != null && matchingOrder.items.isNotEmpty()) inv.copy(items = matchingOrder.items) else inv
+              } else inv
+              previewLabThermalSlip = fullInv
+            },
             onAddExpense = { showLabExpenseDialog = true },
             onDeleteInvoice = { inv ->
               viewModel.deleteLabInvoice(inv.id)
@@ -603,7 +610,11 @@ fun LabInvestigationScreen(
   }
 
   // 3.2 Bluetooth Thermal POS Slip Studio Modal
-  previewLabThermalSlip?.let { labInv ->
+  previewLabThermalSlip?.let { rawLabInv ->
+    val labInv = if (rawLabInv.items.isEmpty()) {
+      val matchingOrder = labOrders.find { it.id == rawLabInv.orderId || it.orderNumber == rawLabInv.orderId || (rawLabInv.invoiceNumber.isNotBlank() && it.invoiceNumber == rawLabInv.invoiceNumber) }
+      if (matchingOrder != null && matchingOrder.items.isNotEmpty()) rawLabInv.copy(items = matchingOrder.items) else rawLabInv
+    } else rawLabInv
     PosThermalSlipDialog(
       invoice = labInv.toClinicInvoice(),
       patientHn = labInv.patientHn,

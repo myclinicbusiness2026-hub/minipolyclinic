@@ -118,9 +118,13 @@ data class LabInvoice(
 ) {
   val subtotal: Double get() = totalAmount
   val date: String get() = timestamp
+  val effectiveNetTotal: Double get() = if (netTotal > 0.0) netTotal else if (totalAmount > 0.0) (totalAmount - discount).coerceAtLeast(0.0) else paidAmount
 }
 
 fun LabInvoice.toClinicInvoice(): Invoice {
+  val finalNet = if (this.netTotal > 0.0) this.netTotal else if (this.totalAmount > 0.0) (this.totalAmount - this.discount).coerceAtLeast(0.0) else this.paidAmount
+  val finalPaid = if (this.paidAmount > 0.0) this.paidAmount else finalNet
+  val finalChange = if (this.changeAmount > 0.0) this.changeAmount else (finalPaid - finalNet).coerceAtLeast(0.0)
   return Invoice(
     id = this.id,
     invoiceNumber = this.invoiceNumber,
@@ -138,11 +142,11 @@ fun LabInvoice.toClinicInvoice(): Invoice {
     consultationFee = 0.0,
     serviceFee = 0.0,
     discount = this.discount,
-    totalAmount = this.netTotal,
-    paidAmount = this.paidAmount,
-    changeAmount = this.changeAmount,
+    totalAmount = finalNet,
+    paidAmount = finalPaid,
+    changeAmount = finalChange,
     paymentMethod = this.paymentMethod,
-    paymentStatus = if (this.paidAmount >= this.netTotal) "Paid" else "Unpaid",
+    paymentStatus = if (finalPaid >= finalNet && finalNet > 0.0) "Paid" else if (finalPaid > 0.0) "Paid" else "Unpaid",
     timestamp = this.timestamp,
     cashierName = this.cashierName
   )

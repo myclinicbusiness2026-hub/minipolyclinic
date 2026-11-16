@@ -334,23 +334,35 @@ object LabPrintHelper {
           .page-footer {
             flex-shrink: 0;
             margin-top: auto;
-            padding-top: 4px;
-            border-top: 1px solid #e2e8f0;
+            padding-top: 6px;
           }
           .sign-table {
             width: 100%;
-            margin-top: 4px;
+            margin-top: 2px;
+            margin-bottom: 6px;
           }
           .sign-cell {
             width: 50%;
             text-align: center;
             vertical-align: bottom;
-            font-size: 10px;
+            font-size: 11px;
           }
           .sign-line {
-            width: 60%;
-            margin: 0 auto 3px auto;
-            border-bottom: 1px solid #334155;
+            width: 65%;
+            margin: 0 auto 5px auto;
+            border-bottom: 1.2px solid #334155;
+          }
+          .footer-divider-line {
+            width: 100%;
+            border-top: 1.2px solid #94a3b8;
+            margin: 8px 0 4px 0;
+          }
+          .footer-statement {
+            text-align: center;
+            margin-top: 3px;
+            font-size: 9.5px;
+            color: #64748b;
+            letter-spacing: 0.2px;
           }
           .remark-box {
             border: 1px solid #e2e8f0;
@@ -541,8 +553,8 @@ object LabPrintHelper {
               ${if (!isBlankLetterhead && order.showTechnicianSign && order.technicianName.isNotBlank()) """
               <td class="sign-cell">
                 <div class="sign-line"></div>
-                <strong>${order.technicianName}</strong><br/>
-                <span style="color: #64748b; font-size: 9px;">Medical Laboratory Technologist</span>
+                <strong style="color: #0f172a; font-size: 12.5px; line-height: 1.4;">${order.technicianName}</strong><br/>
+                <span style="color: #475569; font-size: 10px; font-weight: 500;">Medical Laboratory Technologist</span>
               </td>
               """ else """
               <td class="sign-cell" style="width: 50%;"></td>
@@ -550,20 +562,21 @@ object LabPrintHelper {
               ${if (isBlankLetterhead || order.showDoctorSeal) """
               <td class="sign-cell" style="${if (!order.showTechnicianSign || isBlankLetterhead) "width: 50%; float: right;" else ""}">
                 <div class="sign-line"></div>
-                <strong style="color: #0f172a;">$effectivePathologistName</strong><br/>
-                ${if (effectivePathologistDegree.isNotBlank()) "<span style='font-size: 9.5px; color: #334155;'>$effectivePathologistDegree</span><br/>" else ""}
-                ${if (effectivePathologistSama.isNotBlank()) "<span style='color: #475569; font-size: 9px;'>(S.A.M.A: $effectivePathologistSama)</span><br/>" else ""}
-                ${if (effectivePathologistTitle.isNotBlank()) "<span style='color: #0f172a; font-size: 9px; font-weight: 500;'>$effectivePathologistTitle</span>" else ""}
+                <strong style="color: #0f172a; font-size: 13.5px; line-height: 1.4;">$effectivePathologistName</strong><br/>
+                ${if (effectivePathologistDegree.isNotBlank()) "<span style='font-size: 11px; color: #1e293b; font-weight: 500; line-height: 1.3;'>$effectivePathologistDegree</span><br/>" else ""}
+                ${if (effectivePathologistSama.isNotBlank()) "<span style='color: #334155; font-size: 10.5px; font-weight: 600; line-height: 1.3;'>(S.A.M.A: $effectivePathologistSama)</span><br/>" else ""}
+                ${if (effectivePathologistTitle.isNotBlank()) "<span style='color: #0f172a; font-size: 10.5px; font-weight: 600; line-height: 1.3;'>$effectivePathologistTitle</span>" else ""}
               </td>
               """ else """
               <td class="sign-cell" style="${if (!order.showTechnicianSign) "width: 50%; float: right;" else ""}">
                 <div class="sign-line" style="border-bottom: 1px dashed #94a3b8;"></div>
-                <span style="color: #94a3b8; font-size: 9.5px;">(Attending Doctor Signature & Seal)</span>
+                <span style="color: #94a3b8; font-size: 10.5px;">(Attending Doctor Signature & Seal)</span>
               </td>
               """}
             </tr>
           </table>
-          <div style="text-align: center; margin-top: 5px; font-size: 8.5px; color: #94a3b8;">
+          <div class="footer-divider-line"></div>
+          <div class="footer-statement">
             This investigation is processed by the Laboratory Services at ${clinic.clinicNameMm}.
           </div>
         </div>
@@ -860,10 +873,15 @@ class LabThermalReceiptPrintAdapter(
     y += 12f
 
     // Summary Financials
+    val effectiveNetAmt = if (invoice.netTotal > 0.0) invoice.netTotal else if (invoice.totalAmount > 0.0) (invoice.totalAmount - invoice.discount).coerceAtLeast(0.0) else invoice.paidAmount
+    val effectiveSubtotal = if (invoice.subtotal > 0.0) invoice.subtotal else effectiveNetAmt
+    val effectivePaid = if (invoice.paidAmount > 0.0) invoice.paidAmount else effectiveNetAmt
+    val effectiveChange = if (invoice.changeAmount > 0.0) invoice.changeAmount else (effectivePaid - effectiveNetAmt).coerceAtLeast(0.0)
+
     paint.textAlign = Paint.Align.LEFT
     canvas.drawText("Subtotal:", margin, y, paint)
     paint.textAlign = Paint.Align.RIGHT
-    canvas.drawText("${currencyFmt.format(invoice.subtotal.toInt())} Ks", width - margin, y, paint)
+    canvas.drawText("${currencyFmt.format(effectiveSubtotal.toInt())} Ks", width - margin, y, paint)
     y += 12f
 
     if (invoice.discount > 0.0) {
@@ -879,7 +897,7 @@ class LabThermalReceiptPrintAdapter(
     paint.textAlign = Paint.Align.LEFT
     canvas.drawText("Net Total:", margin, y, paint)
     paint.textAlign = Paint.Align.RIGHT
-    canvas.drawText("${currencyFmt.format(invoice.netTotal.toInt())} Ks", width - margin, y, paint)
+    canvas.drawText("${currencyFmt.format(effectiveNetAmt.toInt())} Ks", width - margin, y, paint)
     y += 13f
 
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
@@ -887,14 +905,14 @@ class LabThermalReceiptPrintAdapter(
     paint.textAlign = Paint.Align.LEFT
     canvas.drawText("Paid (${invoice.paymentMethod}):", margin, y, paint)
     paint.textAlign = Paint.Align.RIGHT
-    canvas.drawText("${currencyFmt.format(invoice.paidAmount.toInt())} Ks", width - margin, y, paint)
+    canvas.drawText("${currencyFmt.format(effectivePaid.toInt())} Ks", width - margin, y, paint)
     y += 12f
 
-    if (invoice.changeAmount > 0.0) {
+    if (effectiveChange > 0.0) {
       paint.textAlign = Paint.Align.LEFT
-      canvas.drawText("Change:", margin, y, paint)
+      canvas.drawText("Change (ပြန်အမ်းငွေ):", margin, y, paint)
       paint.textAlign = Paint.Align.RIGHT
-      canvas.drawText("${currencyFmt.format(invoice.changeAmount.toInt())} Ks", width - margin, y, paint)
+      canvas.drawText("${currencyFmt.format(effectiveChange.toInt())} Ks", width - margin, y, paint)
       y += 12f
     }
 
