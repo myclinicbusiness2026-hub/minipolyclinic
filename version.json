@@ -1,12 +1,12 @@
 {
-  "versionCode": 65,
-  "versionName": "1.5.41",
+  "versionCode": 66,
+  "versionName": "1.5.42",
   "minSupportedVersion": 1,
-  "releaseNotes": "• Fixed Lab Results Disappearing Bug: Added updatedAt timestamp to LabOrder model, local storage persistence, and implemented robust newest-wins merge resolution in Local WiFi Sync and Cloud Sync, guaranteeing that peer devices with empty/unentered results never overwrite freshly entered lab test results.\n• Dynamic A4 Prescription Page Flow: Removed artificial 4/5 medicine limit from A4 print calculation; prescriptions naturally fill Page 1 space and dynamically flow to Page 2 only when real vertical physical space overflows.\n• Clear Lab Result Save Toast: Displays confirmation that completed lab results are saved and moved to the 'Completed Results' tab.",
-  "releaseNotesMm": "• ဓာတ်ခွဲအဖြေများ ရိုက်ထည့်ပြီးမှ ပြန်ပျောက်သွားသော ပြဿနာအား အပြီးတိုင်ဖြေရှင်းခြင်း - LabOrder တွင် updatedAt အချိန်တံဆိပ် ထည့်သွင်းပြီး Local WiFi Sync နှင့် Cloud Sync တွင် အသစ်ဆုံးဒေတာကိုသာ ဦးစားပေးထိန်းသိမ်းမည့် (Newest-Wins & Data-Safety Merge) စနစ် သတ်မှတ်လိုက်သောကြောင့် အခြား Device များမှ အဖြေမပါသော အဟောင်းများဖြင့် အစားထိုးဖျက်ပစ်ခြင်း လုံးဝ မဖြစ်ပေါ်တော့ခြင်း။\n• A4 Prescription ဆေးစာရွက်တွင် ဆေး ၅ မျိုးကျော်လည်း သဘာဝကျကျ အပြည့်အစုံဖော်ပြခြင်း - ဆေး ၄/၅ မျိုးကျော်တိုင်း မလိုအပ်ဘဲ အတင်းအကျပ် စာမျက်နှာ ၂ ရွက်ခွဲထုတ်နေသော Code ကို ဖယ်ရှားပြီး စာရွက်ပေါ်ရှိ နေရာဆံ့သမျှ ဆေးအားလုံးကို Page 1 တွင် အပြည့်အစုံ ပေါ်စေပြီး အမှန်တကယ် နေရာမဆံ့တော့မှသာ စာမျက်နှာ ၂ သို့ Dynamic စီးဆင်းစေခြင်း။\n• အဖြေသိမ်းဆည်းမှု အသိပေးချက် ပိုမိုရှင်းလင်းစေခြင်း - အဖြေများ ရိုက်ထည့်ပြီးပါက 'ပြီးစီးပြီး စာရင်း Tab သို့ ရောက်ရှိသွားပါပြီ' ဟု တိကျစွာ အသိပေးပြသခြင်း။",
+  "releaseNotes": "• Default Conceal for All Background Clinical History: All history sections (Past Medical History, Past Surgical History, Drug Allergies, Regular Daily Medications, Menstrual & OBGYN History, Personal & Social Habits, Trauma & Injury History) are now default concealed/collapsed with tap-to-toggle visibility, eye icons, and recorded badge counters for a clean and focused consultation workspace.",
+  "releaseNotesMm": "• ရောဂါရာဇဝင် (Clinical History) ကဏ္ဍအားလုံးကို Default Conceal (အလိုအလျောက် ခေါက်သိမ်းထားပေးခြင်း) - Past Medical History အပြင် Past Surgical History၊ ဆေးဓာတ်မတည့်မှု (Drug Allergies)၊ ပုံမှန်သောက်ဆေးများ (Regular Daily Medications)၊ မီးယပ်ရာဇဝင် (Menstrual & OBGYN)၊ လူမှုရေးအလေ့အထ (Personal & Social Habits)၊ ထိခိုက်ဒဏ်ရာ (Trauma History) အားလုံးကို မျက်စိရှင်းလင်းစေရန် default ခေါက်သိမ်းပေးထားပြီး အချက်အလက်ရှိပါက Badge ပြသကာ နှိပ်၍ အဖွင့်/အပိတ် (👁️ Eye Toggle) လွယ်ကူစွာ ပြုလုပ်နိုင်ခြင်း။",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-16",
   "apkSizeBytes": 14933500,
-  "commitSha": "cc2da5b4ce36f375b1df7789cbbd0f87afe2fd66",
-  "updatedAt": "2026-11-16T18:38:00.000Z"
+  "commitSha": "634e812d6a5c2d3a33995585b9991823eb52f447",
+  "updatedAt": "2026-11-16T19:35:00.000Z"
 }

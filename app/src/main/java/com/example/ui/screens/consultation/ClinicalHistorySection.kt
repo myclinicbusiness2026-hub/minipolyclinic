@@ -1,4 +1,4 @@
-﻿package com.example.ui.screens.consultation
+package com.example.ui.screens.consultation
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -58,13 +58,21 @@ fun ClinicalHistorySection(
   var customTrauma by remember(patientId) { mutableStateOf("") }
 
   // Section Conceal / Expand states (Default Concealed 👁️)
-  var isPmhxExpanded by remember(patientId) { mutableStateOf(false) }
-  var isPshxExpanded by remember(patientId) { mutableStateOf(false) }
-  var isAllergiesExpanded by remember(patientId) { mutableStateOf(false) }
-  var isRegularMedsExpanded by remember(patientId) { mutableStateOf(false) }
-  var isObgynExpanded by remember(patientId) { mutableStateOf(false) }
-  var isSocialExpanded by remember(patientId) { mutableStateOf(false) }
-  var isTraumaExpanded by remember(patientId) { mutableStateOf(false) }
+  var isPmhxExpanded by remember(patientId) { mutableStateOf<Boolean?>(null) }
+  var isPshxExpanded by remember(patientId) { mutableStateOf<Boolean?>(null) }
+  var isAllergiesExpanded by remember(patientId) { mutableStateOf<Boolean?>(null) }
+  var isRegularMedsExpanded by remember(patientId) { mutableStateOf<Boolean?>(null) }
+  var isObgynExpanded by remember(patientId) { mutableStateOf<Boolean?>(null) }
+  var isSocialExpanded by remember(patientId) { mutableStateOf<Boolean?>(null) }
+  var isTraumaExpanded by remember(patientId) { mutableStateOf<Boolean?>(null) }
+
+  val showPmhx = isPmhxExpanded ?: pastMedicalHistory.isNotEmpty()
+  val showPshx = isPshxExpanded ?: pastSurgicalHistory.isNotEmpty()
+  val showAllergies = isAllergiesExpanded ?: drugAllergies.isNotEmpty()
+  val showRegularMeds = isRegularMedsExpanded ?: regularMedicationsList.isNotEmpty()
+  val showObgyn = isObgynExpanded ?: menstrualHistory.isNotBlank()
+  val showSocial = isSocialExpanded ?: socialHabits.isNotEmpty()
+  val showTrauma = isTraumaExpanded ?: traumaHistory.isNotEmpty()
 
   var saveFeedbackMessage by remember { mutableStateOf<String?>(null) }
   var initializedFromExisting by remember(patientId) { mutableStateOf(false) }
@@ -604,7 +612,7 @@ fun ClinicalHistorySection(
               Row(
                 modifier = Modifier
                   .fillMaxWidth()
-                  .clickable { isPmhxExpanded = !isPmhxExpanded },
+                  .clickable { isPmhxExpanded = !showPmhx },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
               ) {
@@ -632,15 +640,15 @@ fun ClinicalHistorySection(
                     Spacer(modifier = Modifier.width(6.dp))
                   }
                   Icon(
-                    if (isPmhxExpanded || pastMedicalHistory.isNotEmpty()) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                    if (showPmhx) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                     contentDescription = null,
-                    tint = if (isPmhxExpanded || pastMedicalHistory.isNotEmpty()) Color(0xFF1976D2) else SlateMuted,
+                    tint = if (showPmhx) Color(0xFF1976D2) else SlateMuted,
                     modifier = Modifier.size(18.dp)
                   )
                 }
               }
 
-              if (isPmhxExpanded || pastMedicalHistory.isNotEmpty()) {
+              if (showPmhx) {
                 Spacer(modifier = Modifier.height(6.dp))
                 val defaultPmhxList = listOf("None", "Hypertension (HTN)", "Diabetes Mellitus (T2DM)", "Asthma / COPD", "IHD / CAD", "CKD", "Dyslipidemia", "Stroke / CVA", "GERD / Gastritis", "Thyroid disorder", "Gout", "Epilepsy")
                 val customPmhxList = pastMedicalHistory.filter { it !in defaultPmhxList }
@@ -736,7 +744,9 @@ fun ClinicalHistorySection(
           ) {
             Column(modifier = Modifier.padding(10.dp)) {
               Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .clickable { isPshxExpanded = !showPshx },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
               ) {
@@ -756,91 +766,102 @@ fun ClinicalHistorySection(
                     Text("ယခင်ခွဲစိတ်ကုသမှု ခံယူခဲ့ဖူးသော ရာဇဝင်", fontSize = 9.sp, color = SlateMedium)
                   }
                 }
-                if (pastSurgicalHistory.isNotEmpty()) {
-                  Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFE1BEE7)) {
-                    Text("${pastSurgicalHistory.size} selected", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4A148C), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                  if (pastSurgicalHistory.isNotEmpty()) {
+                    Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFE1BEE7)) {
+                      Text("${pastSurgicalHistory.size} selected", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4A148C), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                  }
+                  Icon(
+                    if (showPshx) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                    contentDescription = null,
+                    tint = if (showPshx) Color(0xFF7B1FA2) else SlateMuted,
+                    modifier = Modifier.size(18.dp)
+                  )
+                }
+              }
+
+              if (showPshx) {
+                Spacer(modifier = Modifier.height(6.dp))
+                val defaultPshxList = listOf("None", "Appendectomy", "Cholecystectomy", "C-Section (LSCS)", "Herniorrhaphy", "Orthopedic Fixation", "Cataract Surgery", "Tonsillectomy")
+                val customPshxList = pastSurgicalHistory.filter { it !in defaultPshxList }
+
+                FlowRow(
+                  horizontalArrangement = Arrangement.spacedBy(4.dp),
+                  verticalArrangement = Arrangement.spacedBy(3.dp),
+                  modifier = Modifier.fillMaxWidth()
+                ) {
+                  defaultPshxList.forEach { surg ->
+                    val isPicked = pastSurgicalHistory.contains(surg)
+                    FilterChip(
+                      selected = isPicked,
+                      onClick = {
+                        if (isPicked) {
+                          pastSurgicalHistory.remove(surg)
+                        } else {
+                          if (surg == "None") pastSurgicalHistory.clear()
+                          else pastSurgicalHistory.remove("None")
+                          pastSurgicalHistory.add(surg)
+                        }
+                        syncHistory()
+                      },
+                      label = { Text(surg, fontSize = 9.sp, fontWeight = if (isPicked) FontWeight.Bold else FontWeight.Normal) },
+                      colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFF7B1FA2),
+                        selectedLabelColor = PureWhite
+                      )
+                    )
+                  }
+                  customPshxList.forEach { customSurg ->
+                    FilterChip(
+                      selected = true,
+                      onClick = {
+                        pastSurgicalHistory.remove(customSurg)
+                        syncHistory()
+                      },
+                      label = { Text("$customSurg \u2715", fontSize = 9.sp, fontWeight = FontWeight.Bold) },
+                      colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFF4A148C),
+                        selectedLabelColor = PureWhite
+                      )
+                    )
                   }
                 }
-              }
-
-              Spacer(modifier = Modifier.height(6.dp))
-              val defaultPshxList = listOf("None", "Appendectomy", "Cholecystectomy", "C-Section (LSCS)", "Herniorrhaphy", "Orthopedic Fixation", "Cataract Surgery", "Tonsillectomy")
-              val customPshxList = pastSurgicalHistory.filter { it !in defaultPshxList }
-
-              FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalArrangement = Arrangement.spacedBy(3.dp),
-                modifier = Modifier.fillMaxWidth()
-              ) {
-                defaultPshxList.forEach { surg ->
-                  val isPicked = pastSurgicalHistory.contains(surg)
-                  FilterChip(
-                    selected = isPicked,
-                    onClick = {
-                      if (isPicked) {
-                        pastSurgicalHistory.remove(surg)
-                      } else {
-                        if (surg == "None") pastSurgicalHistory.clear()
-                        else pastSurgicalHistory.remove("None")
-                        pastSurgicalHistory.add(surg)
-                      }
-                      syncHistory()
-                    },
-                    label = { Text(surg, fontSize = 9.sp, fontWeight = if (isPicked) FontWeight.Bold else FontWeight.Normal) },
-                    colors = FilterChipDefaults.filterChipColors(
-                      selectedContainerColor = Color(0xFF7B1FA2),
-                      selectedLabelColor = PureWhite
-                    )
-                  )
-                }
-                customPshxList.forEach { customSurg ->
-                  FilterChip(
-                    selected = true,
-                    onClick = {
-                      pastSurgicalHistory.remove(customSurg)
-                      syncHistory()
-                    },
-                    label = { Text("$customSurg \u2715", fontSize = 9.sp, fontWeight = FontWeight.Bold) },
-                    colors = FilterChipDefaults.filterChipColors(
-                      selectedContainerColor = Color(0xFF4A148C),
-                      selectedLabelColor = PureWhite
-                    )
-                  )
-                }
-              }
-              Spacer(modifier = Modifier.height(4.dp))
-              Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-              ) {
-                OutlinedTextField(
-                  value = customPshx,
-                  onValueChange = { customPshx = it },
-                  placeholder = { Text("Custom surgical details (e.g. Laparoscopic Appendectomy 2021...)", fontSize = 9.5.sp, color = SlateMuted) },
-                  modifier = Modifier.weight(1f),
-                  textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
-                  shape = RoundedCornerShape(4.dp),
-                  keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
-                  singleLine = true
-                )
-                Button(
-                  onClick = {
-                    if (customPshx.isNotBlank()) {
-                      pastSurgicalHistory.remove("None")
-                      pastSurgicalHistory.add(customPshx.trim())
-                      customPshx = ""
-                      syncHistory()
-                    }
-                  },
-                  colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7B1FA2)),
-                  shape = RoundedCornerShape(4.dp),
-                  contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                  modifier = Modifier.height(36.dp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.spacedBy(6.dp),
+                  verticalAlignment = Alignment.CenterVertically
                 ) {
-                  Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
-                  Spacer(modifier = Modifier.width(2.dp))
-                  Text("Add", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                  OutlinedTextField(
+                    value = customPshx,
+                    onValueChange = { customPshx = it },
+                    placeholder = { Text("Custom surgical details (e.g. Laparoscopic Appendectomy 2021...)", fontSize = 9.5.sp, color = SlateMuted) },
+                    modifier = Modifier.weight(1f),
+                    textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
+                    shape = RoundedCornerShape(4.dp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
+                    singleLine = true
+                  )
+                  Button(
+                    onClick = {
+                      if (customPshx.isNotBlank()) {
+                        pastSurgicalHistory.remove("None")
+                        pastSurgicalHistory.add(customPshx.trim())
+                        customPshx = ""
+                        syncHistory()
+                      }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7B1FA2)),
+                    shape = RoundedCornerShape(4.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                    modifier = Modifier.height(36.dp)
+                  ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text("Add", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                  }
                 }
               }
             }
@@ -857,7 +878,9 @@ fun ClinicalHistorySection(
           ) {
             Column(modifier = Modifier.padding(10.dp)) {
               Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .clickable { isAllergiesExpanded = !showAllergies },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
               ) {
@@ -877,91 +900,102 @@ fun ClinicalHistorySection(
                     Text("လူနာနှင့် ဓါတ်မတည့်သော ဆေးဝါးများ (အရေးကြီး)", fontSize = 9.sp, color = Color(0xFFC62828))
                   }
                 }
-                if (drugAllergies.isNotEmpty()) {
-                  Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFFFCDD2)) {
-                    Text("${drugAllergies.size} recorded", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFFB71C1C), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                  if (drugAllergies.isNotEmpty()) {
+                    Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFFFCDD2)) {
+                      Text("${drugAllergies.size} recorded", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFFB71C1C), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                  }
+                  Icon(
+                    if (showAllergies) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                    contentDescription = null,
+                    tint = if (showAllergies) Color(0xFFC62828) else SlateMuted,
+                    modifier = Modifier.size(18.dp)
+                  )
+                }
+              }
+
+              if (showAllergies) {
+                Spacer(modifier = Modifier.height(6.dp))
+                val defaultAllergyList = listOf("NKDA (No Known Allergies)", "Penicillin", "Cephalosporins", "NSAIDs / Ibuprofen", "Sulfa drugs", "Aspirin", "Paracetamol", "Ciprofloxacin")
+                val customAllergyList = drugAllergies.filter { it !in defaultAllergyList }
+
+                FlowRow(
+                  horizontalArrangement = Arrangement.spacedBy(4.dp),
+                  verticalArrangement = Arrangement.spacedBy(3.dp),
+                  modifier = Modifier.fillMaxWidth()
+                ) {
+                  defaultAllergyList.forEach { alg ->
+                    val isPicked = drugAllergies.contains(alg)
+                    FilterChip(
+                      selected = isPicked,
+                      onClick = {
+                        if (isPicked) {
+                          drugAllergies.remove(alg)
+                        } else {
+                          if (alg.startsWith("NKDA")) drugAllergies.clear()
+                          else drugAllergies.removeAll { it.startsWith("NKDA") }
+                          drugAllergies.add(alg)
+                        }
+                        syncHistory()
+                      },
+                      label = { Text(alg, fontSize = 9.sp, fontWeight = if (isPicked) FontWeight.Bold else FontWeight.Normal) },
+                      colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFFC62828),
+                        selectedLabelColor = PureWhite
+                      )
+                    )
+                  }
+                  customAllergyList.forEach { customAlg ->
+                    FilterChip(
+                      selected = true,
+                      onClick = {
+                        drugAllergies.remove(customAlg)
+                        syncHistory()
+                      },
+                      label = { Text("$customAlg \u2715", fontSize = 9.sp, fontWeight = FontWeight.Bold) },
+                      colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFFB71C1C),
+                        selectedLabelColor = PureWhite
+                      )
+                    )
                   }
                 }
-              }
-
-              Spacer(modifier = Modifier.height(6.dp))
-              val defaultAllergyList = listOf("NKDA (No Known Allergies)", "Penicillin", "Cephalosporins", "NSAIDs / Ibuprofen", "Sulfa drugs", "Aspirin", "Paracetamol", "Ciprofloxacin")
-              val customAllergyList = drugAllergies.filter { it !in defaultAllergyList }
-
-              FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalArrangement = Arrangement.spacedBy(3.dp),
-                modifier = Modifier.fillMaxWidth()
-              ) {
-                defaultAllergyList.forEach { alg ->
-                  val isPicked = drugAllergies.contains(alg)
-                  FilterChip(
-                    selected = isPicked,
-                    onClick = {
-                      if (isPicked) {
-                        drugAllergies.remove(alg)
-                      } else {
-                        if (alg.startsWith("NKDA")) drugAllergies.clear()
-                        else drugAllergies.removeAll { it.startsWith("NKDA") }
-                        drugAllergies.add(alg)
-                      }
-                      syncHistory()
-                    },
-                    label = { Text(alg, fontSize = 9.sp, fontWeight = if (isPicked) FontWeight.Bold else FontWeight.Normal) },
-                    colors = FilterChipDefaults.filterChipColors(
-                      selectedContainerColor = Color(0xFFC62828),
-                      selectedLabelColor = PureWhite
-                    )
-                  )
-                }
-                customAllergyList.forEach { customAlg ->
-                  FilterChip(
-                    selected = true,
-                    onClick = {
-                      drugAllergies.remove(customAlg)
-                      syncHistory()
-                    },
-                    label = { Text("$customAlg \u2715", fontSize = 9.sp, fontWeight = FontWeight.Bold) },
-                    colors = FilterChipDefaults.filterChipColors(
-                      selectedContainerColor = Color(0xFFB71C1C),
-                      selectedLabelColor = PureWhite
-                    )
-                  )
-                }
-              }
-              Spacer(modifier = Modifier.height(4.dp))
-              Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-              ) {
-                OutlinedTextField(
-                  value = customDrugAllergy,
-                  onValueChange = { customDrugAllergy = it },
-                  placeholder = { Text("Custom allergy (e.g. Paracetamol severe urticaria, Augmentin rash...)", fontSize = 9.5.sp, color = SlateMuted) },
-                  modifier = Modifier.weight(1f),
-                  textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
-                  shape = RoundedCornerShape(4.dp),
-                  keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
-                  singleLine = true
-                )
-                Button(
-                  onClick = {
-                    if (customDrugAllergy.isNotBlank()) {
-                      drugAllergies.removeAll { it.startsWith("NKDA") }
-                      drugAllergies.add(customDrugAllergy.trim())
-                      customDrugAllergy = ""
-                      syncHistory()
-                    }
-                  },
-                  colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828)),
-                  shape = RoundedCornerShape(4.dp),
-                  contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                  modifier = Modifier.height(36.dp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.spacedBy(6.dp),
+                  verticalAlignment = Alignment.CenterVertically
                 ) {
-                  Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
-                  Spacer(modifier = Modifier.width(2.dp))
-                  Text("Add", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                  OutlinedTextField(
+                    value = customDrugAllergy,
+                    onValueChange = { customDrugAllergy = it },
+                    placeholder = { Text("Custom allergy (e.g. Paracetamol severe urticaria, Augmentin rash...)", fontSize = 9.5.sp, color = SlateMuted) },
+                    modifier = Modifier.weight(1f),
+                    textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
+                    shape = RoundedCornerShape(4.dp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
+                    singleLine = true
+                  )
+                  Button(
+                    onClick = {
+                      if (customDrugAllergy.isNotBlank()) {
+                        drugAllergies.removeAll { it.startsWith("NKDA") }
+                        drugAllergies.add(customDrugAllergy.trim())
+                        customDrugAllergy = ""
+                        syncHistory()
+                      }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828)),
+                    shape = RoundedCornerShape(4.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                    modifier = Modifier.height(36.dp)
+                  ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text("Add", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                  }
                 }
               }
             }
@@ -978,7 +1012,9 @@ fun ClinicalHistorySection(
           ) {
             Column(modifier = Modifier.padding(10.dp)) {
               Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .clickable { isRegularMedsExpanded = !showRegularMeds },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
               ) {
@@ -998,126 +1034,137 @@ fun ClinicalHistorySection(
                     Text("လက်ရှိနေ့စဉ် သောက်သုံးနေသော ဆေးဝါးများ (တမျိုးမက ထည့်သွင်းနိုင်ပါသည်)", fontSize = 9.sp, color = SlateMedium)
                   }
                 }
-                if (regularMedicationsList.isNotEmpty()) {
-                  Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFA7F3D0)) {
-                    Text("${regularMedicationsList.size} meds", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF004D40), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                  if (regularMedicationsList.isNotEmpty()) {
+                    Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFA7F3D0)) {
+                      Text("${regularMedicationsList.size} meds", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF004D40), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
                   }
-                }
-              }
-
-              Spacer(modifier = Modifier.height(6.dp))
-
-              Text("အသုံးများသော ပုံမှန်သောက်ဆေးများ (နှိပ်၍ ထည့်နိုင်ပါသည်):", fontSize = 9.5.sp, color = SlateDark)
-              Spacer(modifier = Modifier.height(3.dp))
-              FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalArrangement = Arrangement.spacedBy(3.dp),
-                modifier = Modifier.fillMaxWidth()
-              ) {
-                listOf(
-                  "Amlodipine 5mg OD",
-                  "Metformin 500mg BD",
-                  "Losartan 50mg OD",
-                  "Telmisartan 40mg OD",
-                  "Atorvastatin 20mg ON",
-                  "Aspirin 75mg OD",
-                  "Omeprazole 20mg AC",
-                  "Glimepiride 2mg OD",
-                  "Salbutamol Inhaler PRN",
-                  "Levothyroxine 50mcg OD"
-                ).forEach { medPreset ->
-                  val isAdded = regularMedicationsList.contains(medPreset)
-                  FilterChip(
-                    selected = isAdded,
-                    onClick = {
-                      if (isAdded) {
-                        regularMedicationsList.remove(medPreset)
-                      } else {
-                        regularMedicationsList.add(medPreset)
-                      }
-                      syncHistory()
-                    },
-                    label = { Text(medPreset, fontSize = 8.5.sp) },
-                    colors = FilterChipDefaults.filterChipColors(
-                      selectedContainerColor = Color(0xFF00796B),
-                      selectedLabelColor = PureWhite
-                    )
+                  Icon(
+                    if (showRegularMeds) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                    contentDescription = null,
+                    tint = if (showRegularMeds) Color(0xFF00796B) else SlateMuted,
+                    modifier = Modifier.size(18.dp)
                   )
                 }
               }
 
-              Spacer(modifier = Modifier.height(6.dp))
+              if (showRegularMeds) {
+                Spacer(modifier = Modifier.height(6.dp))
 
-              if (regularMedicationsList.isNotEmpty()) {
-                Text("လက်ရှိ သောက်နေသော ဆေးစာရင်း:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF004D40))
-                Spacer(modifier = Modifier.height(4.dp))
+                Text("အသုံးများသော ပုံမှန်သောက်ဆေးများ (နှိပ်၍ ထည့်နိုင်ပါသည်):", fontSize = 9.5.sp, color = SlateDark)
+                Spacer(modifier = Modifier.height(3.dp))
                 FlowRow(
                   horizontalArrangement = Arrangement.spacedBy(4.dp),
-                  verticalArrangement = Arrangement.spacedBy(4.dp),
+                  verticalArrangement = Arrangement.spacedBy(3.dp),
                   modifier = Modifier.fillMaxWidth()
                 ) {
-                  regularMedicationsList.forEachIndexed { idx, med ->
-                    Surface(
-                      shape = RoundedCornerShape(12.dp),
-                      color = PureWhite,
-                      border = BorderStroke(1.dp, Color(0xFF00796B))
-                    ) {
-                      Row(
-                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                  listOf(
+                    "Amlodipine 5mg OD",
+                    "Metformin 500mg BD",
+                    "Losartan 50mg OD",
+                    "Telmisartan 40mg OD",
+                    "Atorvastatin 20mg ON",
+                    "Aspirin 75mg OD",
+                    "Omeprazole 20mg AC",
+                    "Glimepiride 2mg OD",
+                    "Salbutamol Inhaler PRN",
+                    "Levothyroxine 50mcg OD"
+                  ).forEach { medPreset ->
+                    val isAdded = regularMedicationsList.contains(medPreset)
+                    FilterChip(
+                      selected = isAdded,
+                      onClick = {
+                        if (isAdded) {
+                          regularMedicationsList.remove(medPreset)
+                        } else {
+                          regularMedicationsList.add(medPreset)
+                        }
+                        syncHistory()
+                      },
+                      label = { Text(medPreset, fontSize = 8.5.sp) },
+                      colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFF00796B),
+                        selectedLabelColor = PureWhite
+                      )
+                    )
+                  }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                if (regularMedicationsList.isNotEmpty()) {
+                  Text("လက်ရှိ သောက်နေသော ဆေးစာရင်း:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF004D40))
+                  Spacer(modifier = Modifier.height(4.dp))
+                  FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.fillMaxWidth()
+                  ) {
+                    regularMedicationsList.forEachIndexed { idx, med ->
+                      Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = PureWhite,
+                        border = BorderStroke(1.dp, Color(0xFF00796B))
                       ) {
-                        Icon(Icons.Default.Medication, contentDescription = null, tint = Color(0xFF00796B), modifier = Modifier.size(12.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(med, fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, color = DarkGrayText)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        IconButton(
-                          onClick = {
-                            regularMedicationsList.removeAt(idx)
-                            syncHistory()
-                          },
-                          modifier = Modifier.size(14.dp)
+                        Row(
+                          modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                          verticalAlignment = Alignment.CenterVertically
                         ) {
-                          Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color(0xFFD32F2F), modifier = Modifier.size(10.dp))
+                          Icon(Icons.Default.Medication, contentDescription = null, tint = Color(0xFF00796B), modifier = Modifier.size(12.dp))
+                          Spacer(modifier = Modifier.width(4.dp))
+                          Text(med, fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, color = DarkGrayText)
+                          Spacer(modifier = Modifier.width(4.dp))
+                          IconButton(
+                            onClick = {
+                              regularMedicationsList.removeAt(idx)
+                              syncHistory()
+                            },
+                            modifier = Modifier.size(14.dp)
+                          ) {
+                            Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color(0xFFD32F2F), modifier = Modifier.size(10.dp))
+                          }
                         }
                       }
                     }
                   }
+                  Spacer(modifier = Modifier.height(6.dp))
                 }
-                Spacer(modifier = Modifier.height(6.dp))
-              }
 
-              Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-              ) {
-                OutlinedTextField(
-                  value = customRegularMedInput,
-                  onValueChange = { customRegularMedInput = it },
-                  placeholder = { Text("ဆေးအမည်၊ ပမာဏနှင့် သောက်ရမည့်အကြိမ် ရိုက်ထည့်ပါ (ဥပမာ- Enalapril 5mg 1 tab OD)...", fontSize = 9.5.sp, color = SlateMuted) },
-                  modifier = Modifier.weight(1f),
-                  textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
-                  shape = RoundedCornerShape(4.dp),
-                  keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default),
-                  singleLine = false, minLines = 1, maxLines = 3
-                )
-
-                Button(
-                  onClick = {
-                    if (customRegularMedInput.isNotBlank()) {
-                      regularMedicationsList.add(customRegularMedInput.trim())
-                      customRegularMedInput = ""
-                      syncHistory()
-                    }
-                  },
-                  colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00796B)),
-                  shape = RoundedCornerShape(4.dp),
-                  contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                  modifier = Modifier.height(34.dp)
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.spacedBy(6.dp),
+                  verticalAlignment = Alignment.CenterVertically
                 ) {
-                  Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
-                  Spacer(modifier = Modifier.width(2.dp))
-                  Text("Add Med", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                  OutlinedTextField(
+                    value = customRegularMedInput,
+                    onValueChange = { customRegularMedInput = it },
+                    placeholder = { Text("ဆေးအမည်၊ ပမာဏနှင့် သောက်ရမည့်အကြိမ် ရိုက်ထည့်ပါ (ဥပမာ- Enalapril 5mg 1 tab OD)...", fontSize = 9.5.sp, color = SlateMuted) },
+                    modifier = Modifier.weight(1f),
+                    textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
+                    shape = RoundedCornerShape(4.dp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default),
+                    singleLine = false, minLines = 1, maxLines = 3
+                  )
+
+                  Button(
+                    onClick = {
+                      if (customRegularMedInput.isNotBlank()) {
+                        regularMedicationsList.add(customRegularMedInput.trim())
+                        customRegularMedInput = ""
+                        syncHistory()
+                      }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00796B)),
+                    shape = RoundedCornerShape(4.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                    modifier = Modifier.height(34.dp)
+                  ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text("Add Med", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                  }
                 }
               }
             }
@@ -1134,7 +1181,9 @@ fun ClinicalHistorySection(
           ) {
             Column(modifier = Modifier.padding(10.dp)) {
               Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .clickable { isObgynExpanded = !showObgyn },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
               ) {
@@ -1154,27 +1203,38 @@ fun ClinicalHistorySection(
                     Text("ရာသီလာမှုရက်စွဲ (LMP)၊ စက်ဝန်းမှန်/မမှန် နှင့် သားဖွားမှတ်တမ်း", fontSize = 9.sp, color = SlateMedium)
                   }
                 }
-                if (menstrualHistory.isNotBlank()) {
-                  Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFFBCFE8)) {
-                    Text("Noted", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF880E4F), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                  if (menstrualHistory.isNotBlank()) {
+                    Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFFBCFE8)) {
+                      Text("Noted", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF880E4F), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
                   }
+                  Icon(
+                    if (showObgyn) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                    contentDescription = null,
+                    tint = if (showObgyn) Color(0xFFC2185B) else SlateMuted,
+                    modifier = Modifier.size(18.dp)
+                  )
                 }
               }
 
-              Spacer(modifier = Modifier.height(6.dp))
-              OutlinedTextField(
-                value = menstrualHistory,
-                onValueChange = { 
-                  menstrualHistory = it
-                  syncHistory()
-                },
-                placeholder = { Text("e.g. LMP: 05/10/2026, Regular 28-day cycle, G2P1, No dysmenorrhea...", fontSize = 9.5.sp, color = SlateMuted) },
-                modifier = Modifier.fillMaxWidth(),
-                textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
-                shape = RoundedCornerShape(4.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default),
-                singleLine = false, minLines = 1, maxLines = 3
-              )
+              if (showObgyn) {
+                Spacer(modifier = Modifier.height(6.dp))
+                OutlinedTextField(
+                  value = menstrualHistory,
+                  onValueChange = { 
+                    menstrualHistory = it
+                    syncHistory()
+                  },
+                  placeholder = { Text("e.g. LMP: 05/10/2026, Regular 28-day cycle, G2P1, No dysmenorrhea...", fontSize = 9.5.sp, color = SlateMuted) },
+                  modifier = Modifier.fillMaxWidth(),
+                  textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
+                  shape = RoundedCornerShape(4.dp),
+                  keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default),
+                  singleLine = false, minLines = 1, maxLines = 3
+                )
+              }
             }
           }
 
@@ -1189,7 +1249,9 @@ fun ClinicalHistorySection(
           ) {
             Column(modifier = Modifier.padding(10.dp)) {
               Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .clickable { isSocialExpanded = !showSocial },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
               ) {
@@ -1209,84 +1271,95 @@ fun ClinicalHistorySection(
                     Text("ဆေးလိပ်၊ အရက်၊ ကွမ်းစားခြင်းနှင့် နေထိုင်မှုပုံစံ", fontSize = 9.sp, color = SlateMedium)
                   }
                 }
-                if (socialHabits.isNotEmpty()) {
-                  Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFCFD8DC)) {
-                    Text("${socialHabits.size} selected", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF263238), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                  if (socialHabits.isNotEmpty()) {
+                    Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFCFD8DC)) {
+                      Text("${socialHabits.size} selected", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF263238), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                  }
+                  Icon(
+                    if (showSocial) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                    contentDescription = null,
+                    tint = if (showSocial) Color(0xFF455A64) else SlateMuted,
+                    modifier = Modifier.size(18.dp)
+                  )
+                }
+              }
+
+              if (showSocial) {
+                Spacer(modifier = Modifier.height(6.dp))
+                val defaultSocialList = listOf("Non-smoker", "Current Smoker", "Ex-smoker", "Non-drinker", "Social Alcohol", "Regular Alcohol", "Betel Chewer", "Sedentary", "Active Exercise")
+                val customSocialList = socialHabits.filter { it !in defaultSocialList }
+
+                FlowRow(
+                  horizontalArrangement = Arrangement.spacedBy(4.dp),
+                  verticalArrangement = Arrangement.spacedBy(3.dp),
+                  modifier = Modifier.fillMaxWidth()
+                ) {
+                  defaultSocialList.forEach { habit ->
+                    val isPicked = socialHabits.contains(habit)
+                    FilterChip(
+                      selected = isPicked,
+                      onClick = {
+                        if (isPicked) socialHabits.remove(habit) else socialHabits.add(habit)
+                        syncHistory()
+                      },
+                      label = { Text(habit, fontSize = 9.sp, fontWeight = if (isPicked) FontWeight.Bold else FontWeight.Normal) },
+                      colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFF455A64),
+                        selectedLabelColor = PureWhite
+                      )
+                    )
+                  }
+                  customSocialList.forEach { customHabit ->
+                    FilterChip(
+                      selected = true,
+                      onClick = {
+                        socialHabits.remove(customHabit)
+                        syncHistory()
+                      },
+                      label = { Text("$customHabit \u2715", fontSize = 9.sp, fontWeight = FontWeight.Bold) },
+                      colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFF263238),
+                        selectedLabelColor = PureWhite
+                      )
+                    )
                   }
                 }
-              }
-
-              Spacer(modifier = Modifier.height(6.dp))
-              val defaultSocialList = listOf("Non-smoker", "Current Smoker", "Ex-smoker", "Non-drinker", "Social Alcohol", "Regular Alcohol", "Betel Chewer", "Sedentary", "Active Exercise")
-              val customSocialList = socialHabits.filter { it !in defaultSocialList }
-
-              FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalArrangement = Arrangement.spacedBy(3.dp),
-                modifier = Modifier.fillMaxWidth()
-              ) {
-                defaultSocialList.forEach { habit ->
-                  val isPicked = socialHabits.contains(habit)
-                  FilterChip(
-                    selected = isPicked,
-                    onClick = {
-                      if (isPicked) socialHabits.remove(habit) else socialHabits.add(habit)
-                      syncHistory()
-                    },
-                    label = { Text(habit, fontSize = 9.sp, fontWeight = if (isPicked) FontWeight.Bold else FontWeight.Normal) },
-                    colors = FilterChipDefaults.filterChipColors(
-                      selectedContainerColor = Color(0xFF455A64),
-                      selectedLabelColor = PureWhite
-                    )
-                  )
-                }
-                customSocialList.forEach { customHabit ->
-                  FilterChip(
-                    selected = true,
-                    onClick = {
-                      socialHabits.remove(customHabit)
-                      syncHistory()
-                    },
-                    label = { Text("$customHabit \u2715", fontSize = 9.sp, fontWeight = FontWeight.Bold) },
-                    colors = FilterChipDefaults.filterChipColors(
-                      selectedContainerColor = Color(0xFF263238),
-                      selectedLabelColor = PureWhite
-                    )
-                  )
-                }
-              }
-              Spacer(modifier = Modifier.height(4.dp))
-              Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-              ) {
-                OutlinedTextField(
-                  value = customSocial,
-                  onValueChange = { customSocial = it },
-                  placeholder = { Text("Custom social history (e.g. 10 pack-years, office worker...)", fontSize = 9.5.sp, color = SlateMuted) },
-                  modifier = Modifier.weight(1f),
-                  textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
-                  shape = RoundedCornerShape(4.dp),
-                  keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
-                  singleLine = true
-                )
-                Button(
-                  onClick = {
-                    if (customSocial.isNotBlank()) {
-                      socialHabits.add(customSocial.trim())
-                      customSocial = ""
-                      syncHistory()
-                    }
-                  },
-                  colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF455A64)),
-                  shape = RoundedCornerShape(4.dp),
-                  contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                  modifier = Modifier.height(36.dp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.spacedBy(6.dp),
+                  verticalAlignment = Alignment.CenterVertically
                 ) {
-                  Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
-                  Spacer(modifier = Modifier.width(2.dp))
-                  Text("Add", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                  OutlinedTextField(
+                    value = customSocial,
+                    onValueChange = { customSocial = it },
+                    placeholder = { Text("Custom social history (e.g. 10 pack-years, office worker...)", fontSize = 9.5.sp, color = SlateMuted) },
+                    modifier = Modifier.weight(1f),
+                    textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
+                    shape = RoundedCornerShape(4.dp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
+                    singleLine = true
+                  )
+                  Button(
+                    onClick = {
+                      if (customSocial.isNotBlank()) {
+                        socialHabits.add(customSocial.trim())
+                        customSocial = ""
+                        syncHistory()
+                      }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF455A64)),
+                    shape = RoundedCornerShape(4.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                    modifier = Modifier.height(36.dp)
+                  ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text("Add", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                  }
                 }
               }
             }
@@ -1303,7 +1376,9 @@ fun ClinicalHistorySection(
           ) {
             Column(modifier = Modifier.padding(10.dp)) {
               Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .clickable { isTraumaExpanded = !showTrauma },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
               ) {
@@ -1323,84 +1398,95 @@ fun ClinicalHistorySection(
                     Text("ယခင်နှင့် လတ်တလော မတော်တဆ ထိခိုက်မှုရာဇဝင်", fontSize = 9.sp, color = SlateMedium)
                   }
                 }
-                if (traumaHistory.isNotEmpty()) {
-                  Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFFFE082)) {
-                    Text("${traumaHistory.size} recorded", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFFBF360C), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                  if (traumaHistory.isNotEmpty()) {
+                    Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFFFE082)) {
+                      Text("${traumaHistory.size} recorded", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFFBF360C), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                  }
+                  Icon(
+                    if (showTrauma) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                    contentDescription = null,
+                    tint = if (showTrauma) Color(0xFFE65100) else SlateMuted,
+                    modifier = Modifier.size(18.dp)
+                  )
+                }
+              }
+
+              if (showTrauma) {
+                Spacer(modifier = Modifier.height(6.dp))
+                val defaultTraumaList = listOf("No trauma", "RTA (Road Traffic Accident)", "Slip & Fall", "Blunt Trauma", "Laceration / Cut", "Burn / Scald", "Head Injury (No LOC)", "Fracture history")
+                val customTraumaList = traumaHistory.filter { it !in defaultTraumaList }
+
+                FlowRow(
+                  horizontalArrangement = Arrangement.spacedBy(4.dp),
+                  verticalArrangement = Arrangement.spacedBy(3.dp),
+                  modifier = Modifier.fillMaxWidth()
+                ) {
+                  defaultTraumaList.forEach { tr ->
+                    val isPicked = traumaHistory.contains(tr)
+                    FilterChip(
+                      selected = isPicked,
+                      onClick = {
+                        if (isPicked) traumaHistory.remove(tr) else traumaHistory.add(tr)
+                        syncHistory()
+                      },
+                      label = { Text(tr, fontSize = 9.sp, fontWeight = if (isPicked) FontWeight.Bold else FontWeight.Normal) },
+                      colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFFE65100),
+                        selectedLabelColor = PureWhite
+                      )
+                    )
+                  }
+                  customTraumaList.forEach { customTr ->
+                    FilterChip(
+                      selected = true,
+                      onClick = {
+                        traumaHistory.remove(customTr)
+                        syncHistory()
+                      },
+                      label = { Text("$customTr \u2715", fontSize = 9.sp, fontWeight = FontWeight.Bold) },
+                      colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFFBF360C),
+                        selectedLabelColor = PureWhite
+                      )
+                    )
                   }
                 }
-              }
-
-              Spacer(modifier = Modifier.height(6.dp))
-              val defaultTraumaList = listOf("No trauma", "RTA (Road Traffic Accident)", "Slip & Fall", "Blunt Trauma", "Laceration / Cut", "Burn / Scald", "Head Injury (No LOC)", "Fracture history")
-              val customTraumaList = traumaHistory.filter { it !in defaultTraumaList }
-
-              FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalArrangement = Arrangement.spacedBy(3.dp),
-                modifier = Modifier.fillMaxWidth()
-              ) {
-                defaultTraumaList.forEach { tr ->
-                  val isPicked = traumaHistory.contains(tr)
-                  FilterChip(
-                    selected = isPicked,
-                    onClick = {
-                      if (isPicked) traumaHistory.remove(tr) else traumaHistory.add(tr)
-                      syncHistory()
-                    },
-                    label = { Text(tr, fontSize = 9.sp, fontWeight = if (isPicked) FontWeight.Bold else FontWeight.Normal) },
-                    colors = FilterChipDefaults.filterChipColors(
-                      selectedContainerColor = Color(0xFFE65100),
-                      selectedLabelColor = PureWhite
-                    )
-                  )
-                }
-                customTraumaList.forEach { customTr ->
-                  FilterChip(
-                    selected = true,
-                    onClick = {
-                      traumaHistory.remove(customTr)
-                      syncHistory()
-                    },
-                    label = { Text("$customTr \u2715", fontSize = 9.sp, fontWeight = FontWeight.Bold) },
-                    colors = FilterChipDefaults.filterChipColors(
-                      selectedContainerColor = Color(0xFFBF360C),
-                      selectedLabelColor = PureWhite
-                    )
-                  )
-                }
-              }
-              Spacer(modifier = Modifier.height(4.dp))
-              Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-              ) {
-                OutlinedTextField(
-                  value = customTrauma,
-                  onValueChange = { customTrauma = it },
-                  placeholder = { Text("Injury details (e.g. yesterday motorcycle slip, knee abrasion...)", fontSize = 9.5.sp, color = SlateMuted) },
-                  modifier = Modifier.weight(1f),
-                  textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
-                  shape = RoundedCornerShape(4.dp),
-                  keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
-                  singleLine = true
-                )
-                Button(
-                  onClick = {
-                    if (customTrauma.isNotBlank()) {
-                      traumaHistory.add(customTrauma.trim())
-                      customTrauma = ""
-                      syncHistory()
-                    }
-                  },
-                  colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE65100)),
-                  shape = RoundedCornerShape(4.dp),
-                  contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                  modifier = Modifier.height(36.dp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.spacedBy(6.dp),
+                  verticalAlignment = Alignment.CenterVertically
                 ) {
-                  Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
-                  Spacer(modifier = Modifier.width(2.dp))
-                  Text("Add", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                  OutlinedTextField(
+                    value = customTrauma,
+                    onValueChange = { customTrauma = it },
+                    placeholder = { Text("Injury details (e.g. yesterday motorcycle slip, knee abrasion...)", fontSize = 9.5.sp, color = SlateMuted) },
+                    modifier = Modifier.weight(1f),
+                    textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
+                    shape = RoundedCornerShape(4.dp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
+                    singleLine = true
+                  )
+                  Button(
+                    onClick = {
+                      if (customTrauma.isNotBlank()) {
+                        traumaHistory.add(customTrauma.trim())
+                        customTrauma = ""
+                        syncHistory()
+                      }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE65100)),
+                    shape = RoundedCornerShape(4.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                    modifier = Modifier.height(36.dp)
+                  ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text("Add", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                  }
                 }
               }
             }
