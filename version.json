@@ -6,7 +6,7 @@
   "releaseNotesMm": "• A4 ဆေးစာရွက်တွင် ဆေးအားလုံး ၁၀၀% မပျောက်မပျက် ပေါ်စေခြင်း (Montimax 10 ပျောက်သည့် bug အပြီးတိုင်ဖြေရှင်းပြီး)\n• Procedure ကို Prescription အပေါ်သို့ ရွှေ့ပြောင်းပြီး [Minor Surgery/Nursing] ကဲ့သို့သော Category အညွှန်းများ ဖြုတ်ပယ်ပေးခြင်း\n• Chief Complaint တွင် Duration, Severity, Character ပြီးသည်နှင့် Free Text Box တင်ပေးပြီး Factors များကို Default Conceal လုပ်ပေးခြင်း\n• History Additional remarks တွင် လူနာစာရင်းသွင်း complaint မပါစေဘဲ အလွတ်ထားပေးခြင်း\n• Physical Examination တွင် General Appearance အလွတ်ရိုက်အကွက် ထည့်ပေးပြီး Cardinal Signs တွင် Pallor, Jaundice, Cyanosis သာ ထားရှိခြင်း\n• Follow-up လူနာများအတွက် BP Trends နှင့် Vaccines ကို HN ဖြင့် ချိတ်ဆက်ပေးခြင်း\n• Injection / Treatment Frequency ကို 'Stat' သို့ Default သတ်မှတ်ပေးခြင်း",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-17",
-  "apkSizeBytes": 14933513,
-  "commitSha": "43300ed6c4974f260bcce25ce8d5cff9cb7e7ce9",
-  "updatedAt": "2026-11-17T18:50:00.000Z"
+  "apkSizeBytes": 14933503,
+  "commitSha": "5c7632da9faa7dd0af2c790d3da951141b4b84c7",
+  "updatedAt": "2026-11-17T19:15:00.000Z"
 }
