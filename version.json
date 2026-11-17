@@ -1,12 +1,12 @@
 {
-  "versionCode": 67,
-  "versionName": "1.5.43",
+  "versionCode": 68,
+  "versionName": "1.5.44",
   "minSupportedVersion": 1,
-  "releaseNotes": "• Complete Prescription Preservation: All prescribed drugs are guaranteed to appear on A4 printout (fixed Montimax 10 substring filter bug).\n• Clinical Procedures Reordering: Procedures moved above Prescriptions and category labels removed.\n• Complaint Workflow: Free text notes placed immediately after character; aggravating/relieving/associated factors default concealed.\n• Additional Remarks Clean Start: Removed automatic Burmese complaint prefill.\n• Physical Exam Enhancements: Custom appearance text box added; Cardinal signs focused strictly on Pallor, Jaundice, Cyanosis.\n• Historical BP Trends & Vaccines: Unified by patient HN across all follow-up visits.\n• Treatment Default Frequency: Changed default to 'Stat'.",
-  "releaseNotesMm": "• A4 ဆေးစာရွက်တွင် ဆေးအားလုံး ၁၀၀% မပျောက်မပျက် ပေါ်စေခြင်း (Montimax 10 ပျောက်သည့် bug အပြီးတိုင်ဖြေရှင်းပြီး)\n• Procedure ကို Prescription အပေါ်သို့ ရွှေ့ပြောင်းပြီး [Minor Surgery/Nursing] ကဲ့သို့သော Category အညွှန်းများ ဖြုတ်ပယ်ပေးခြင်း\n• Chief Complaint တွင် Duration, Severity, Character ပြီးသည်နှင့် Free Text Box တင်ပေးပြီး Factors များကို Default Conceal လုပ်ပေးခြင်း\n• History Additional remarks တွင် လူနာစာရင်းသွင်း complaint မပါစေဘဲ အလွတ်ထားပေးခြင်း\n• Physical Examination တွင် General Appearance အလွတ်ရိုက်အကွက် ထည့်ပေးပြီး Cardinal Signs တွင် Pallor, Jaundice, Cyanosis သာ ထားရှိခြင်း\n• Follow-up လူနာများအတွက် BP Trends နှင့် Vaccines ကို HN ဖြင့် ချိတ်ဆက်ပေးခြင်း\n• Injection / Treatment Frequency ကို 'Stat' သို့ Default သတ်မှတ်ပေးခြင်း",
+  "releaseNotes": "• Sticky Vitals & Allergy Alert Header: Vitals strip and drug allergy alert banner are always visible at the top of consultation screen regardless of scrolling or pane switching.\n• Patient Address on A4 Printouts: Patient address added to both Doctor Consultation EMR A4 print and Laboratory Investigation Report A4 print.\n• Lab Invoice Discount Enhancement: Paid amount auto-updates on discount; added Quick Discount chips (FOC, 5%-20%, 3000-5000 Ks); order marked as 'Paid' when fully paid with discount.\n• RBS Trend & Glucose Visualization: Single reading evaluation badge (Normal/Pre-diabetes/High) for single readings; completed Lab Orders for Glucose/RBS auto-integrated into Vitals Trends.\n• Drug Allergies Auto-Sync: Registration drug allergies automatically loaded into Clinical History accordion and highlighted in top sticky header.",
+  "releaseNotesMm": "• Sticky Vitals & Allergy Alert: Consultation မျက်နှာပြင်တွင် မည်သည့်နေရာသို့ ရွှေ့သွားသွား အမြဲမြင်နေရမည့် Vitals Bar နှင့် မတည့်သောဆေး အနီရောင် Alert Bar ထည့်သွင်းပေးခြင်း\n• A4 စာရွက်များတွင် လူနာလိပ်စာ ထည့်သွင်းခြင်း: Doctor Consultation A4 Print နှင့် Lab Investigation Report A4 နှစ်မျိုးစလုံးတွင် လူနာလိပ်စာ စနစ်တကျ ထည့်သွင်းပေးခြင်း\n• Lab Invoice Discount ပြင်ဆင်ချက်: Discount ရိုက်လျှင် လက်ခံရရှိငွေ auto ပြောင်းလဲပေးခြင်း၊ FOC နှင့် % Quick Chips များ ထည့်ပေးခြင်း၊ Discount ဖြင့် ကျသင့်ငွေပြည့်ပါက Order Status ကို Paid အဖြစ် သတ်မှတ်ပေးခြင်း\n• RBS Trend & Glucose Visualization: RBS ၁ ကြိမ်တည်း စစ်ထားလျှင်လည်း အဖြေတန်ဖိုးနှင့် Normal/High status ပြသပေးခြင်း၊ Lab မှ စစ်ထားသော Glucose/RBS အဖြေများကိုပါ Trend သမိုင်းမှတ်တမ်းထဲ auto ပေါင်းစပ်ပေးခြင်း\n• Drug Allergies Auto-Sync: Registration တွင် ဖြည့်ခဲ့သော မတည့်သည့်ဆေးများကို Clinical History ရှိ Drug Allergies ကဏ္ဍထဲသို့ auto ရွေးချယ်ပေးခြင်း",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-17",
-  "apkSizeBytes": 14933503,
-  "commitSha": "5c7632da9faa7dd0af2c790d3da951141b4b84c7",
-  "updatedAt": "2026-11-17T19:15:00.000Z"
+  "apkSizeBytes": 14949899,
+  "commitSha": "b57dd7a8fb02dfcf2ffc1ffd365c6de088fb5d2e",
+  "updatedAt": "2026-11-17T21:02:00.000Z"
 }
