@@ -146,18 +146,6 @@ object A4PdfNativeCanvasRenderer {
     val estEndP1 = p1Top + clinicalH + diagH + invH + injH + procH
     return estEndP1 <= 680f
   }
-    val injItemsCount = injItems.size
-    val injH = if (injItemsCount > 0) 16f + (injItemsCount * 21f) else 0f
-    val rxH = if (oralRx.isNotEmpty()) 24f + (oralRx.size * 18.5f) else 0f
-
-    val procH = 16f + validProcs.sumOf { p ->
-      val noteLines = if (p.notes.isNotBlank()) wrapTextIntoLines("Notes: ${p.notes}", PAGE_WIDTH - 68f, dummyPaint).size.coerceAtLeast(1) else 0
-      (18.0 + (noteLines * 11.5) + 8.0)
-    }.toFloat()
-
-    val estEndP1 = p1Top + clinicalH + diagH + invH + injH + rxH
-    return (estEndP1 + procH <= 680f)
-  }
 
   /**
    * Dynamically calculate how many A4 pages are needed strictly for the base EMR consultation.
