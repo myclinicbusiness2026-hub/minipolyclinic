@@ -1396,7 +1396,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val matchingIds = _patients.value.filter {
       (targetHn.isNotBlank() && it.hn.equals(targetHn, ignoreCase = true)) || it.id == patientId
     }.map { it.id }.toSet()
-    return _vaccines.value.filter { it.patientId in matchingIds || (targetHn.isNotBlank() && it.patientHn.equals(targetHn, ignoreCase = true)) }
+    return _vaccines.value.filter { it.patientId in matchingIds }
   }
 
   fun addVaccineRecord(record: VaccineRecord) {
