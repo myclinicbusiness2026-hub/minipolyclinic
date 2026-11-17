@@ -1433,7 +1433,7 @@ fun CreateTreatmentCardModal(
   var selectedSingleMedicine by remember { mutableStateOf<Medicine?>(null) }
   var selectedRoute by remember { mutableStateOf(TreatmentRoute.IV_PUSH) }
   var customRouteText by remember { mutableStateOf("") }
-  var frequency by remember { mutableStateOf("12 hrly") }
+  var frequency by remember { mutableStateOf("Stat") }
   var totalDaysText by remember { mutableStateOf("3") }
   var medFeeText by remember { mutableStateOf("0") }
   var sessionFeeText by remember(selectedRoute) { mutableStateOf(selectedRoute.getDefaultFee(clinicSettings).toInt().toString()) }
@@ -2034,7 +2034,7 @@ fun CreateTreatmentCardModal(
               .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
           ) {
-            listOf("12 hrly", "BD (2 times/day)", "TDS (3 times/day)", "Daily (OD)", "Stat (1 time)").forEach { f ->
+            listOf("Stat (1 time)", "12 hrly", "BD (2 times/day)", "TDS (3 times/day)", "Daily (OD)").forEach { f ->
               ElevatedAssistChip(
                 onClick = {
                   frequency = f.split(" ").first()
@@ -2223,7 +2223,7 @@ fun CreateTreatmentCardModal(
 
             val sessions = TreatmentCardFactory.generateSessions(
               startDateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
-              frequency = frequency.ifBlank { "12 hrly" },
+              frequency = frequency.ifBlank { "Stat" },
               days = days,
               medicationFee = medFee,
               sessionFee = sessionFee,
@@ -2238,7 +2238,7 @@ fun CreateTreatmentCardModal(
               dosage = finalDosage,
               route = selectedRoute,
               customRoute = if (selectedRoute == TreatmentRoute.CUSTOM) customRouteText.trim() else "",
-              frequency = frequency.ifBlank { "12 hrly" },
+              frequency = frequency.ifBlank { "Stat" },
               totalDays = days,
               totalSessions = sessions.size,
               sessions = sessions.mapIndexed { idx, s ->

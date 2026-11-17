@@ -447,7 +447,7 @@ fun DoctorConsultationScreen(
             val effectiveRouteFee = route.getEffectiveFee(clinicSettings, procedures)
             val sessions = TreatmentCardFactory.generateSessions(
               startDateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
-              frequency = drug.frequency.ifBlank { "12 hrly" },
+              frequency = drug.frequency.ifBlank { "Stat" },
               days = days,
               medicationFee = drug.unitPrice,
               sessionFee = effectiveRouteFee
@@ -461,7 +461,7 @@ fun DoctorConsultationScreen(
               medicationName = drug.effectiveName.ifBlank { drug.name.ifBlank { drug.medicineName } },
               dosage = drug.dosage,
               route = route,
-              frequency = drug.frequency.ifBlank { "12 hrly" },
+              frequency = drug.frequency.ifBlank { "Stat" },
               totalDays = days,
               totalSessions = sessions.size,
               sessions = sessions,
@@ -1566,7 +1566,7 @@ fun DoctorConsultationScreen(
 
   if (showVaccinesModal && activePatient != null) {
     val patientVaccines = remember(vaccineRecords, activePatient.id) {
-      vaccineRecords.filter { it.patientId == activePatient.id }
+      viewModel.getVaccinesForPatient(activePatient.id)
     }
     VaccinationTrackerDialog(
       patient = activePatient,

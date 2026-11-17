@@ -277,7 +277,7 @@ fun AddTreatmentOrderModal(
   var dosage by remember(initialCard) { mutableStateOf(initialCard?.dosage ?: "") }
   var selectedRoute by remember(initialCard) { mutableStateOf(initialCard?.route ?: TreatmentRoute.IV_PUSH) }
   var customRouteText by remember(initialCard) { mutableStateOf(initialCard?.customRoute ?: "") }
-  var frequency by remember(initialCard) { mutableStateOf(initialCard?.frequency ?: "12 hrly") }
+  var frequency by remember(initialCard) { mutableStateOf(initialCard?.frequency ?: "Stat") }
   var totalDaysText by remember(initialCard) { mutableStateOf((initialCard?.totalDays ?: 3).toString()) }
   var medFeeText by remember(initialCard) { mutableStateOf((initialCard?.medicationFee?.toInt() ?: 0).toString()) }
   var sessionFeeText by remember(initialCard, selectedRoute) {
@@ -934,7 +934,7 @@ fun AddTreatmentOrderModal(
               .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
           ) {
-            listOf("12 hrly", "BD (2 times/day)", "TDS (3 times/day)", "Daily (OD)", "Stat (1 time)").forEach { f ->
+            listOf("Stat (1 time)", "12 hrly", "BD (2 times/day)", "TDS (3 times/day)", "Daily (OD)").forEach { f ->
               ElevatedAssistChip(
                 onClick = {
                   frequency = f.split(" ").first()
@@ -1153,7 +1153,7 @@ fun AddTreatmentOrderModal(
 
               val sessions = TreatmentCardFactory.generateSessions(
                 startDateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
-                frequency = frequency.ifBlank { "12 hrly" },
+                frequency = frequency.ifBlank { "Stat" },
                 days = days,
                 medicationFee = medFee,
                 sessionFee = sessionFee,
@@ -1183,7 +1183,7 @@ fun AddTreatmentOrderModal(
                 dosage = finalDosage,
                 route = selectedRoute,
                 customRoute = if (selectedRoute == TreatmentRoute.CUSTOM) customRouteText.trim() else "",
-                frequency = frequency.ifBlank { "12 hrly" },
+                frequency = frequency.ifBlank { "Stat" },
                 totalDays = days,
                 totalSessions = finalSessions.size,
                 sessions = finalSessions,

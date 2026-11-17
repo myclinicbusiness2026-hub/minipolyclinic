@@ -1302,26 +1302,40 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
   fun getPatientVitalsHistory(patientId: String): List<VitalHistoryPoint> {
     val list = mutableListOf<VitalHistoryPoint>()
-    val pat = _patients.value.find { it.id == patientId }
-    if (pat != null) {
+    val currentPat = _patients.value.find { it.id == patientId }
+    val patientHn = currentPat?.hn?.trim() ?: ""
+
+    val matchingPatientIds = _patients.value.filter {
+      (patientHn.isNotBlank() && it.hn.equals(patientHn, ignoreCase = true)) || it.id == patientId
+    }.map { it.id }.toSet()
+
+    // Add registered vitals from matching patient visits
+    _patients.value.filter { it.id in matchingPatientIds }.forEach { pat ->
       val (sys, dia) = parseBp(pat.vitals.bloodPressure)
       list.add(
         VitalHistoryPoint(
-          date = pat.registrationDate.ifBlank { "Today" },
+          date = pat.registrationDate.ifBlank { "Registered" },
           bpSystolic = sys,
           bpDiastolic = dia,
           pulse = pat.vitals.pulseRate,
           rbs = pat.vitals.rbs,
           weightKg = pat.vitals.weightKg,
-          notes = "Registered vitals"
+          notes = "Registration Vitals"
         )
       )
     }
-    _consultations.value.filter { it.patientId == patientId }.forEach { c ->
+
+    // Add vitals from all historical consultations matching patientId or patientHn
+    _consultations.value.filter {
+      it.patientId in matchingPatientIds ||
+      (patientHn.isNotBlank() && it.patientHn.equals(patientHn, ignoreCase = true)) ||
+      (patientHn.isNotBlank() && it.patientId.equals(patientHn, ignoreCase = true))
+    }.forEach { c ->
       val (sys, dia) = parseBp(c.vitals.bloodPressure)
+      val visitDate = if (c.timestamp.length >= 10) c.timestamp.take(10) else "Visit"
       list.add(
         VitalHistoryPoint(
-          date = if (c.timestamp.length >= 10) c.timestamp.take(10) else "Visit",
+          date = visitDate,
           bpSystolic = sys,
           bpDiastolic = dia,
           pulse = c.vitals.pulseRate,
@@ -1331,7 +1345,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         )
       )
     }
-    return list
+
+    return list.distinctBy { "${it.date}_${it.bpSystolic}_${it.bpDiastolic}_${it.pulse}_${it.rbs}" }
+      .sortedBy { it.date }
   }
 
   private fun parseBp(bp: String): Pair<Int, Int> {
@@ -1375,7 +1391,12 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   }
 
   fun getVaccinesForPatient(patientId: String): List<VaccineRecord> {
-    return _vaccines.value.filter { it.patientId == patientId }
+    val pat = _patients.value.find { it.id == patientId }
+    val targetHn = pat?.hn?.trim() ?: ""
+    val matchingIds = _patients.value.filter {
+      (targetHn.isNotBlank() && it.hn.equals(targetHn, ignoreCase = true)) || it.id == patientId
+    }.map { it.id }.toSet()
+    return _vaccines.value.filter { it.patientId in matchingIds || (targetHn.isNotBlank() && it.patientHn.equals(targetHn, ignoreCase = true)) }
   }
 
   fun addVaccineRecord(record: VaccineRecord) {

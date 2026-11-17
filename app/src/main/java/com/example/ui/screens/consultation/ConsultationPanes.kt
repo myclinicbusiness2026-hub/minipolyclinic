@@ -283,7 +283,16 @@ fun ConsultationPrescriptionAndBillingPane(
       currencyFmt = currencyFmt
     )
 
-    // 2. Prescription Builder & FEFO Search (Oral Take-Home Prescriptions)
+    // 2. 1-Tap Procedure Presets & Custom Procedure Builder (Placed above Prescriptions)
+    ProcedureManagementCard(
+      procedures = procedures,
+      selectedProcedures = selectedProcedures,
+      medicines = medicines,
+      onOpenCustomProcedure = { if (!isReadOnly) onOpenCustomProcedure() },
+      currencyFmt = currencyFmt
+    )
+
+    // 3. Prescription Builder & FEFO Search (Oral Take-Home Prescriptions)
     PrescriptionBuilderCard(
       prescribedDrugs = prescribedDrugs,
       onOpenAddDrug = { if (!isReadOnly) onOpenAddDrug() },
@@ -316,15 +325,6 @@ fun ConsultationPrescriptionAndBillingPane(
           }
         }
       } else null
-    )
-
-    // 3. 1-Tap Procedure Presets & Custom Procedure Builder
-    ProcedureManagementCard(
-      procedures = procedures,
-      selectedProcedures = selectedProcedures,
-      medicines = medicines,
-      onOpenCustomProcedure = { if (!isReadOnly) onOpenCustomProcedure() },
-      currencyFmt = currencyFmt
     )
 
     // 3. Consultation Fee & Complete Action Card

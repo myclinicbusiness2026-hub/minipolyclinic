@@ -218,19 +218,6 @@ fun ProcedureManagementCard(
                         fontSize = 12.sp,
                         color = SlateDark
                       )
-                      Spacer(modifier = Modifier.width(6.dp))
-                      Surface(
-                        shape = RoundedCornerShape(3.dp),
-                        color = SkyBlueLight
-                      ) {
-                        Text(
-                          proc.category,
-                          fontSize = 8.5.sp,
-                          fontWeight = FontWeight.SemiBold,
-                          color = SkyBlueDark,
-                          modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                        )
-                      }
                     }
                     if (proc.myanmarName.isNotBlank() && proc.myanmarName != proc.name) {
                       Text(proc.myanmarName, fontSize = 9.5.sp, color = SlateMuted)

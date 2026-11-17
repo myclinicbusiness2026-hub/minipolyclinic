@@ -127,7 +127,7 @@ data class TreatmentCard(
   val dosage: String = "",
   val route: TreatmentRoute = TreatmentRoute.IM,
   val customRoute: String = "",
-  val frequency: String = "12 hrly", // e.g. "12 hrly", "Daily", "Stat"
+  val frequency: String = "Stat", // e.g. "Stat", "12 hrly", "Daily"
   val totalDays: Int = 3,
   val totalSessions: Int = 6,
   val sessions: List<TreatmentSession> = emptyList(),

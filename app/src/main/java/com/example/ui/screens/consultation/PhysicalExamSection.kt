@@ -1,4 +1,4 @@
-﻿package com.example.ui.screens.consultation
+package com.example.ui.screens.consultation
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -40,6 +40,7 @@ fun PhysicalExamSection(
 
   // General Condition Assessment State
   var genAppearance by remember(patientId) { mutableStateOf<String?>("Alert, conscious & oriented") }
+  var customGenAppearance by remember(patientId) { mutableStateOf("") }
   var genBuildNutrition by remember(patientId) { mutableStateOf<String?>("Well-nourished") }
   var genPallor by remember(patientId) { mutableStateOf("No pallor (-)") }
   var genJaundice by remember(patientId) { mutableStateOf("No jaundice (-)") }
@@ -85,18 +86,21 @@ fun PhysicalExamSection(
 
     // 1. General Condition Assessment
     val genLines = mutableListOf<String>()
-    if (!genAppearance.isNullOrBlank()) genLines.add("• Appearance: $genAppearance")
+    val effAppearance = when {
+      customGenAppearance.isNotBlank() && !genAppearance.isNullOrBlank() -> "$genAppearance (${customGenAppearance.trim()})"
+      customGenAppearance.isNotBlank() -> customGenAppearance.trim()
+      !genAppearance.isNullOrBlank() -> genAppearance
+      else -> null
+    }
+    if (!effAppearance.isNullOrBlank()) genLines.add("• Appearance: $effAppearance")
     if (!genBuildNutrition.isNullOrBlank()) genLines.add("• Build & Nutrition: $genBuildNutrition")
     val cardinalSigns = listOfNotNull(
       genPallor.ifBlank { null },
       genJaundice.ifBlank { null },
-      genCyanosis.ifBlank { null },
-      genClubbing.ifBlank { null },
-      genEdema.ifBlank { null },
-      genLAP.ifBlank { null }
+      genCyanosis.ifBlank { null }
     )
     if (cardinalSigns.isNotEmpty()) {
-      genLines.add("• 6 Cardinal Signs: ${cardinalSigns.joinToString(", ")}")
+      genLines.add("• Cardinal Signs: ${cardinalSigns.joinToString(", ")}")
     }
     if (genHydration.isNotBlank() || genPerfusion.isNotBlank()) {
       genLines.add("• Perfusion & Hydration: ${listOfNotNull(genHydration.ifBlank { null }, genPerfusion.ifBlank { null }).joinToString(", ")}")
@@ -600,6 +604,19 @@ fun PhysicalExamSection(
                 )
               }
             }
+            Spacer(modifier = Modifier.height(4.dp))
+            OutlinedTextField(
+              value = customGenAppearance,
+              onValueChange = {
+                customGenAppearance = it
+                syncExamFindings()
+              },
+              placeholder = { Text("Custom appearance (e.g. pale, anxious, diaphoretic, lying still...)", fontSize = 9.sp, color = SlateMuted) },
+              modifier = Modifier.fillMaxWidth(),
+              textStyle = TextStyle(fontSize = 9.5.sp, color = DarkGrayText),
+              shape = RoundedCornerShape(4.dp),
+              singleLine = true
+            )
           }
         }
 
@@ -630,7 +647,7 @@ fun PhysicalExamSection(
           }
         }
 
-        // 3. The 6 Cardinal General Signs
+        // 3. The Cardinal General Signs (Pallor, Jaundice, Cyanosis)
         Surface(
           modifier = Modifier.fillMaxWidth(),
           shape = RoundedCornerShape(8.dp),
@@ -638,7 +655,7 @@ fun PhysicalExamSection(
           border = BorderStroke(1.dp, Color(0xFFBBF7D0))
         ) {
           Column(modifier = Modifier.padding(8.dp)) {
-            Text("The 6 Cardinal Clinical Signs (အဓိက စမ်းသပ်ချက် ၆ ချက်):", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
+            Text("Cardinal Clinical Signs (အဓိက စမ်းသပ်ချက်များ - Pallor, Jaundice, Cyanosis):", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
             Spacer(modifier = Modifier.height(4.dp))
 
             Text("• Pallor (သွေးအားနည်း / ဖြူဖျော့ခြင်း):", fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = SlateDark)
@@ -675,45 +692,6 @@ fun PhysicalExamSection(
                   onClick = { genCyanosis = cya; syncExamFindings() },
                   label = { Text(cya, fontSize = 8.sp) },
                   colors = FilterChipDefaults.filterChipColors(selectedContainerColor = if (cya.contains("No")) SoftGreenContainer else Color(0xFFE0F7FA), selectedLabelColor = if (cya.contains("No")) MedicalGreenDark else Color(0xFF006064))
-                )
-              }
-            }
-
-            Spacer(modifier = Modifier.height(3.dp))
-            Text("• Clubbing (လက်သည်းခွံ ကွေးညွှတ်ထူထဲခြင်း):", fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = SlateDark)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-              listOf("No clubbing (-)", "Finger clubbing (+)").forEach { clb ->
-                FilterChip(
-                  selected = genClubbing == clb,
-                  onClick = { genClubbing = clb; syncExamFindings() },
-                  label = { Text(clb, fontSize = 8.sp) },
-                  colors = FilterChipDefaults.filterChipColors(selectedContainerColor = SoftGreenContainer, selectedLabelColor = MedicalGreenDark)
-                )
-              }
-            }
-
-            Spacer(modifier = Modifier.height(3.dp))
-            Text("• Edema (ခြေထောက် / ခန္ဓာကိုယ် ဖောရောင်ခြင်း):", fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = SlateDark)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-              listOf("No pedal edema (-)", "Pitting edema (+) ankle", "Pitting edema (++) tibia", "Generalized edema (Anasarca)").forEach { edm ->
-                FilterChip(
-                  selected = genEdema == edm,
-                  onClick = { genEdema = edm; syncExamFindings() },
-                  label = { Text(edm, fontSize = 8.sp) },
-                  colors = FilterChipDefaults.filterChipColors(selectedContainerColor = if (edm.contains("No")) SoftGreenContainer else Color(0xFFEDE7F6), selectedLabelColor = if (edm.contains("No")) MedicalGreenDark else Color(0xFF512DA8))
-                )
-              }
-            }
-
-            Spacer(modifier = Modifier.height(3.dp))
-            Text("• Lymphadenopathy (ပြန်ရည်ကျိတ်များ):", fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = SlateDark)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-              listOf("No palpable LAP (-)", "Cervical LAP (+)", "Axillary LAP (+)", "Inguinal LAP (+)", "Generalized LAP (+)").forEach { lap ->
-                FilterChip(
-                  selected = genLAP == lap,
-                  onClick = { genLAP = lap; syncExamFindings() },
-                  label = { Text(lap, fontSize = 8.sp) },
-                  colors = FilterChipDefaults.filterChipColors(selectedContainerColor = if (lap.contains("No")) SoftGreenContainer else Color(0xFFFFEBEE), selectedLabelColor = if (lap.contains("No")) MedicalGreenDark else Color(0xFFC62828))
                 )
               }
             }

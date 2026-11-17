@@ -227,10 +227,6 @@ fun ClinicalHistorySection(
           historyRemarks = subjectiveNotes
         }
       }
-    } else if (patientChiefComplaint.isNotBlank()) {
-      if (historyRemarks.isBlank() || historyRemarks == "General clinical consultation") {
-        historyRemarks = patientChiefComplaint
-      }
     }
     initializedFromExisting = true
   }
@@ -1597,6 +1593,7 @@ private fun ComplaintDetailCard(
   var localAggravating by remember(complaint.id) { mutableStateOf(complaint.customAggravating) }
   var localAssociated by remember(complaint.id) { mutableStateOf(complaint.customAssociated) }
   var localNotes by remember(complaint.id) { mutableStateOf(complaint.notes) }
+  var isFactorsExpanded by remember(complaint.id) { mutableStateOf(false) }
 
   Card(
     modifier = Modifier.fillMaxWidth(),
@@ -1821,143 +1818,8 @@ private fun ComplaintDetailCard(
 
       Spacer(modifier = Modifier.height(6.dp))
 
-      // 4. Relieving Factors
-      Text("Relieving Factors:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
-      Spacer(modifier = Modifier.height(3.dp))
-      FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
-        modifier = Modifier.fillMaxWidth()
-      ) {
-        listOf("Rest", "Medication / Analgesic", "Sitting forward", "Food / Eating", "Fasting", "Warm compress", "Lying flat").forEach { factor ->
-          val isPicked = relievingList.contains(factor)
-          FilterChip(
-            selected = isPicked,
-            onClick = {
-              if (isPicked) {
-                relievingList.remove(factor)
-                complaint.relievingFactors.remove(factor)
-              } else {
-                relievingList.add(factor)
-                if (!complaint.relievingFactors.contains(factor)) complaint.relievingFactors.add(factor)
-              }
-              onSync()
-            },
-            label = { Text(factor, fontSize = 9.sp) },
-            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFE8F5E9), selectedLabelColor = MedicalGreenDark)
-          )
-        }
-      }
-      Spacer(modifier = Modifier.height(3.dp))
-      OutlinedTextField(
-        value = localRelieving,
-        onValueChange = {
-          localRelieving = it
-          complaint.customRelieving = it
-          onSync()
-        },
-        placeholder = { Text("Custom relieving factor (e.g. Antacids, cool air, cold drink...)", fontSize = 9.5.sp, color = SlateMuted) },
-        modifier = Modifier.fillMaxWidth(),
-        textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
-        shape = RoundedCornerShape(4.dp),
-        singleLine = false, minLines = 1, maxLines = 3,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
-      )
-
-      Spacer(modifier = Modifier.height(6.dp))
-
-      // 5. Aggravating Factors
-      Text("Aggravating Factors:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFFC62828))
-      Spacer(modifier = Modifier.height(3.dp))
-      FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
-        modifier = Modifier.fillMaxWidth()
-      ) {
-        listOf("Movement / Exertion", "Deep breathing", "After meals", "Night / Cold air", "Stress", "Palpation / Pressure", "Walking").forEach { factor ->
-          val isPicked = aggravatingList.contains(factor)
-          FilterChip(
-            selected = isPicked,
-            onClick = {
-              if (isPicked) {
-                aggravatingList.remove(factor)
-                complaint.aggravatingFactors.remove(factor)
-              } else {
-                aggravatingList.add(factor)
-                if (!complaint.aggravatingFactors.contains(factor)) complaint.aggravatingFactors.add(factor)
-              }
-              onSync()
-            },
-            label = { Text(factor, fontSize = 9.sp) },
-            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFFFEBEE), selectedLabelColor = Color(0xFFC62828))
-          )
-        }
-      }
-      Spacer(modifier = Modifier.height(3.dp))
-      OutlinedTextField(
-        value = localAggravating,
-        onValueChange = {
-          localAggravating = it
-          complaint.customAggravating = it
-          onSync()
-        },
-        placeholder = { Text("Custom aggravating factor (e.g. oily food, bending forward...)", fontSize = 9.5.sp, color = SlateMuted) },
-        modifier = Modifier.fillMaxWidth(),
-        textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
-        shape = RoundedCornerShape(4.dp),
-        singleLine = false, minLines = 1, maxLines = 3,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
-      )
-
-      Spacer(modifier = Modifier.height(6.dp))
-
-      // 6. Associated Symptoms
-      Text("Associated Symptoms:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0277BD))
-      Spacer(modifier = Modifier.height(3.dp))
-      FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
-        modifier = Modifier.fillMaxWidth()
-      ) {
-        listOf("Nausea / Vomiting", "Fever", "Chills & Rigors", "Sweating (+)", "Radiation", "Dizziness", "Diarrhea", "Anorexia", "Palpitations").forEach { factor ->
-          val isPicked = associatedList.contains(factor)
-          FilterChip(
-            selected = isPicked,
-            onClick = {
-              if (isPicked) {
-                associatedList.remove(factor)
-                complaint.associatedSymptoms.remove(factor)
-              } else {
-                associatedList.add(factor)
-                if (!complaint.associatedSymptoms.contains(factor)) complaint.associatedSymptoms.add(factor)
-              }
-              onSync()
-            },
-            label = { Text(factor, fontSize = 9.sp) },
-            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFE1F5FE), selectedLabelColor = Color(0xFF0277BD))
-          )
-        }
-      }
-      Spacer(modifier = Modifier.height(3.dp))
-      OutlinedTextField(
-        value = localAssociated,
-        onValueChange = {
-          localAssociated = it
-          complaint.customAssociated = it
-          onSync()
-        },
-        placeholder = { Text("Custom associated symptom (e.g. radiates to back, yellowish sputum...)", fontSize = 9.5.sp, color = SlateMuted) },
-        modifier = Modifier.fillMaxWidth(),
-        textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
-        shape = RoundedCornerShape(4.dp),
-        singleLine = false, minLines = 1, maxLines = 3,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
-      )
-
-      Spacer(modifier = Modifier.height(6.dp))
-
-      // 7. Complaint Specific Notes
-      Text("Complaint Specific Notes (မှတ်ချက်):", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+      // 4. Complaint Specific Notes / Free text (Placed immediately after Character)
+      Text("Complaint Notes / Specific Details (မှတ်ချက်):", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
       Spacer(modifier = Modifier.height(3.dp))
       OutlinedTextField(
         value = localNotes,
@@ -1973,6 +1835,187 @@ private fun ComplaintDetailCard(
         singleLine = false, minLines = 2, maxLines = 4,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
       )
+
+      Spacer(modifier = Modifier.height(6.dp))
+
+      // 5. Aggravating, Relieving & Associated Factors (Default Concealed 👁️‍🗨️)
+      val factorsCount = relievingList.size + aggravatingList.size + associatedList.size +
+        (if (localRelieving.isNotBlank()) 1 else 0) + (if (localAggravating.isNotBlank()) 1 else 0) + (if (localAssociated.isNotBlank()) 1 else 0)
+
+      Surface(
+        modifier = Modifier
+          .fillMaxWidth()
+          .clip(RoundedCornerShape(6.dp))
+          .clickable { isFactorsExpanded = !isFactorsExpanded },
+        color = if (isFactorsExpanded) Color(0xFFF1F5F9) else Color(0xFFF8FAFC),
+        border = BorderStroke(0.8.dp, Color(0xFFE2E8F0))
+      ) {
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Text(
+            "Aggravating, Relieving & Associated Factors (သက်သာစေ/ဆိုးစေ/တွဲဖက်လက္ခဏာများ)",
+            fontSize = 9.5.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = SlateDark
+          )
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            if (factorsCount > 0) {
+              Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFE0F2FE)) {
+                Text("$factorsCount recorded", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0369A1), modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp))
+              }
+              Spacer(modifier = Modifier.width(4.dp))
+            }
+            Icon(
+              if (isFactorsExpanded) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+              contentDescription = null,
+              tint = if (isFactorsExpanded) MedicalGreenDark else SlateMuted,
+              modifier = Modifier.size(16.dp)
+            )
+          }
+        }
+      }
+
+      if (isFactorsExpanded) {
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Relieving Factors
+        Text("Relieving Factors:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+        Spacer(modifier = Modifier.height(3.dp))
+        FlowRow(
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
+          verticalArrangement = Arrangement.spacedBy(3.dp),
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          listOf("Rest", "Medication / Analgesic", "Sitting forward", "Food / Eating", "Fasting", "Warm compress", "Lying flat").forEach { factor ->
+            val isPicked = relievingList.contains(factor)
+            FilterChip(
+              selected = isPicked,
+              onClick = {
+                if (isPicked) {
+                  relievingList.remove(factor)
+                  complaint.relievingFactors.remove(factor)
+                } else {
+                  relievingList.add(factor)
+                  if (!complaint.relievingFactors.contains(factor)) complaint.relievingFactors.add(factor)
+                }
+                onSync()
+              },
+              label = { Text(factor, fontSize = 9.sp) },
+              colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFE8F5E9), selectedLabelColor = MedicalGreenDark)
+            )
+          }
+        }
+        Spacer(modifier = Modifier.height(3.dp))
+        OutlinedTextField(
+          value = localRelieving,
+          onValueChange = {
+            localRelieving = it
+            complaint.customRelieving = it
+            onSync()
+          },
+          placeholder = { Text("Custom relieving factor (e.g. Antacids, cool air, cold drink...)", fontSize = 9.5.sp, color = SlateMuted) },
+          modifier = Modifier.fillMaxWidth(),
+          textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
+          shape = RoundedCornerShape(4.dp),
+          singleLine = false, minLines = 1, maxLines = 3,
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Aggravating Factors
+        Text("Aggravating Factors:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFFC62828))
+        Spacer(modifier = Modifier.height(3.dp))
+        FlowRow(
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
+          verticalArrangement = Arrangement.spacedBy(3.dp),
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          listOf("Movement / Exertion", "Deep breathing", "After meals", "Night / Cold air", "Stress", "Palpation / Pressure", "Walking").forEach { factor ->
+            val isPicked = aggravatingList.contains(factor)
+            FilterChip(
+              selected = isPicked,
+              onClick = {
+                if (isPicked) {
+                  aggravatingList.remove(factor)
+                  complaint.aggravatingFactors.remove(factor)
+                } else {
+                  aggravatingList.add(factor)
+                  if (!complaint.aggravatingFactors.contains(factor)) complaint.aggravatingFactors.add(factor)
+                }
+                onSync()
+              },
+              label = { Text(factor, fontSize = 9.sp) },
+              colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFFFEBEE), selectedLabelColor = Color(0xFFC62828))
+            )
+          }
+        }
+        Spacer(modifier = Modifier.height(3.dp))
+        OutlinedTextField(
+          value = localAggravating,
+          onValueChange = {
+            localAggravating = it
+            complaint.customAggravating = it
+            onSync()
+          },
+          placeholder = { Text("Custom aggravating factor (e.g. oily food, bending forward...)", fontSize = 9.5.sp, color = SlateMuted) },
+          modifier = Modifier.fillMaxWidth(),
+          textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
+          shape = RoundedCornerShape(4.dp),
+          singleLine = false, minLines = 1, maxLines = 3,
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Associated Symptoms
+        Text("Associated Symptoms:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0277BD))
+        Spacer(modifier = Modifier.height(3.dp))
+        FlowRow(
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
+          verticalArrangement = Arrangement.spacedBy(3.dp),
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          listOf("Nausea / Vomiting", "Fever", "Chills & Rigors", "Sweating (+)", "Radiation", "Dizziness", "Diarrhea", "Anorexia", "Palpitations").forEach { factor ->
+            val isPicked = associatedList.contains(factor)
+            FilterChip(
+              selected = isPicked,
+              onClick = {
+                if (isPicked) {
+                  associatedList.remove(factor)
+                  complaint.associatedSymptoms.remove(factor)
+                } else {
+                  associatedList.add(factor)
+                  if (!complaint.associatedSymptoms.contains(factor)) complaint.associatedSymptoms.add(factor)
+                }
+                onSync()
+              },
+              label = { Text(factor, fontSize = 9.sp) },
+              colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFE1F5FE), selectedLabelColor = Color(0xFF0277BD))
+            )
+          }
+        }
+        Spacer(modifier = Modifier.height(3.dp))
+        OutlinedTextField(
+          value = localAssociated,
+          onValueChange = {
+            localAssociated = it
+            complaint.customAssociated = it
+            onSync()
+          },
+          placeholder = { Text("Custom associated symptom (e.g. radiates to back, yellowish sputum...)", fontSize = 9.5.sp, color = SlateMuted) },
+          modifier = Modifier.fillMaxWidth(),
+          textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
+          shape = RoundedCornerShape(4.dp),
+          singleLine = false, minLines = 1, maxLines = 3,
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
+        )
+      }
     }
   }
 }
