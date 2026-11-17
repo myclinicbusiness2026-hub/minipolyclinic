@@ -2234,6 +2234,7 @@ fun MobileNewLabOrderDialog(
                 val pAge = if (isWalkIn) walkInAge.toIntOrNull() ?: 30 else selectedPatient!!.age
                 val pGender = if (isWalkIn) walkInGender else selectedPatient!!.gender
                 val pId = if (isWalkIn) UUID.randomUUID().toString() else selectedPatient!!.id
+                val pAddress = if (isWalkIn) "Walk-in" else (selectedPatient?.address ?: "မန္တလေးမြို့")
 
                 val items = selectedTemplates.map { t ->
                   LabOrderItem(
@@ -2262,6 +2263,7 @@ fun MobileNewLabOrderDialog(
                   patientId = pId,
                   patientName = pName,
                   patientHn = pHn,
+                  patientAddress = pAddress,
                   patientAge = pAge,
                   patientGender = pGender,
                   doctorName = doctorName.trim().ifBlank { if (isWalkIn) "Self-request" else attendingDoctor.ifBlank { "Clinic Doctor" } },
@@ -2954,13 +2956,18 @@ fun MobileCreateLabInvoiceDialog(
           horizontalArrangement = Arrangement.SpaceBetween,
           verticalAlignment = Alignment.CenterVertically
         ) {
-          Text("Discount (Ks):", fontSize = 11.sp)
+          Text("Discount (လျှော့ငွေ Ks):", fontSize = 11.sp, fontWeight = FontWeight.Medium)
           OutlinedTextField(
             value = discountText,
-            onValueChange = { discountText = it },
+            onValueChange = {
+              discountText = it
+              val d = it.toDoubleOrNull() ?: 0.0
+              val newNet = (subtotal - d).coerceAtLeast(0.0)
+              paidAmountText = newNet.toInt().toString()
+            },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
-            modifier = Modifier.width(120.dp),
+            modifier = Modifier.width(130.dp),
             shape = RoundedCornerShape(6.dp),
             textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = Color(0xFF0F172A), fontWeight = FontWeight.SemiBold),
             colors = OutlinedTextFieldDefaults.colors(
@@ -2975,8 +2982,39 @@ fun MobileCreateLabInvoiceDialog(
         }
         Spacer(modifier = Modifier.height(4.dp))
 
+        // Quick Discount Chips
+        Row(
+          modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          listOf(
+            "Clear" to 0.0,
+            "5%" to subtotal * 0.05,
+            "10%" to subtotal * 0.10,
+            "15%" to subtotal * 0.15,
+            "20%" to subtotal * 0.20,
+            "3,000 Ks" to 3000.0,
+            "5,000 Ks" to 5000.0,
+            "FOC (100%)" to subtotal
+          ).forEach { (label, discVal) ->
+            val isCurrent = (discountText.toDoubleOrNull() ?: 0.0).toInt() == discVal.toInt() && (discVal > 0 || discountText == "0")
+            FilterChip(
+              selected = isCurrent,
+              onClick = {
+                discountText = discVal.toInt().toString()
+                val newNet = (subtotal - discVal).coerceAtLeast(0.0)
+                paidAmountText = newNet.toInt().toString()
+              },
+              label = { Text(label, fontSize = 9.sp, fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal) },
+              modifier = Modifier.height(24.dp)
+            )
+          }
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-          Text("Net Total:", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+          Text("Net Total (ကျသင့်ငွေ):", fontSize = 12.sp, fontWeight = FontWeight.Bold)
           Text("${currencyFmt.format(netTotal.toInt())} Ks", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF7C3AED))
         }
 

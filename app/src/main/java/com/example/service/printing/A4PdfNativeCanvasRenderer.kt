@@ -1126,7 +1126,7 @@ object A4PdfNativeCanvasRenderer {
     consultation: ConsultationRecord
   ): Float {
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    val barHeight = 22f
+    val barHeight = 32f
 
     paint.color = Color.rgb(0xF8, 0xF9, 0xFA)
     canvas.drawRect(20f, topY, width - 20f, topY + barHeight, paint)
@@ -1142,49 +1142,56 @@ object A4PdfNativeCanvasRenderer {
     val pGender = patient?.gender?.name
     val gender = if (pGender == "FEMALE") "F" else "M"
     val phone = patient?.phone ?: "09-123456789"
+    val rawAddress = patient?.address?.takeIf { it.isNotBlank() } ?: consultation.patientAddress.takeIf { it.isNotBlank() } ?: "မန္တလေးမြို့"
+    val address = if (rawAddress.length > 55) rawAddress.take(52) + "..." else rawAddress
     val date = consultation.timestamp.ifBlank { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date()) }
 
-    paint.textSize = 9.5f
-    val textY = topY + 15f
+    paint.textSize = 9.2f
+    val textY1 = topY + 13f
+    val textY2 = topY + 26f
 
-    // HN
+    // Line 1: HN, Name, Age/Sex, Date
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     paint.color = Color.rgb(0x61, 0x61, 0x61)
-    canvas.drawText("HN: ", 26f, textY, paint)
+    canvas.drawText("HN: ", 26f, textY1, paint)
     paint.typeface = Typeface.DEFAULT
     paint.color = Color.BLACK
-    canvas.drawText(hn, 48f, textY, paint)
+    canvas.drawText(hn, 48f, textY1, paint)
 
-    // Name
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     paint.color = Color.rgb(0x61, 0x61, 0x61)
-    canvas.drawText("Name: ", 120f, textY, paint)
+    canvas.drawText("Name: ", 120f, textY1, paint)
     paint.color = Color.rgb(0x1B, 0x5E, 0x20)
-    canvas.drawText(name, 155f, textY, paint)
+    canvas.drawText(name, 155f, textY1, paint)
 
-    // Age / Sex
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     paint.color = Color.rgb(0x61, 0x61, 0x61)
-    canvas.drawText("Age/Sex: ", 250f, textY, paint)
+    canvas.drawText("Age/Sex: ", 260f, textY1, paint)
     paint.typeface = Typeface.DEFAULT
     paint.color = Color.BLACK
-    canvas.drawText("${age}y/$gender", 298f, textY, paint)
+    canvas.drawText("${age}y/$gender", 308f, textY1, paint)
 
-    // Date
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     paint.color = Color.rgb(0x61, 0x61, 0x61)
-    canvas.drawText("Date: ", 355f, textY, paint)
+    canvas.drawText("Date: ", 380f, textY1, paint)
     paint.typeface = Typeface.DEFAULT
     paint.color = Color.BLACK
-    canvas.drawText(date.take(16), 382f, textY, paint)
+    canvas.drawText(date.take(16), 408f, textY1, paint)
 
-    // Phone
+    // Line 2: Phone, Address
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     paint.color = Color.rgb(0x61, 0x61, 0x61)
-    canvas.drawText("Phone: ", 470f, textY, paint)
+    canvas.drawText("Phone: ", 26f, textY2, paint)
     paint.typeface = Typeface.DEFAULT
     paint.color = Color.BLACK
-    canvas.drawText(phone, 508f, textY, paint)
+    canvas.drawText(phone, 64f, textY2, paint)
+
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    paint.color = Color.rgb(0x61, 0x61, 0x61)
+    canvas.drawText("Address: ", 160f, textY2, paint)
+    paint.typeface = Typeface.DEFAULT
+    paint.color = Color.BLACK
+    canvas.drawText(address, 208f, textY2, paint)
 
     return topY + barHeight + 5f
   }

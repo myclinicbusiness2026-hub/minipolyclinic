@@ -25,6 +25,7 @@ import com.example.ui.theme.*
 fun ClinicalHistorySection(
   patientId: String?,
   patientChiefComplaint: String,
+  patientAllergies: List<String> = emptyList(),
   subjectiveNotes: String,
   onSubjectiveNotesChange: (String) -> Unit,
   onActiveComplaintsCountChange: (Int) -> Unit = {}
@@ -44,7 +45,15 @@ fun ClinicalHistorySection(
   val pastSurgicalHistory = remember(patientId) { mutableStateListOf<String>() }
   var customPshx by remember(patientId) { mutableStateOf("") }
 
-  val drugAllergies = remember(patientId) { mutableStateListOf<String>() }
+  val drugAllergies = remember(patientId, patientAllergies) {
+    mutableStateListOf<String>().apply {
+      patientAllergies.forEach { alg ->
+        if (alg.isNotBlank() && !contains(alg.trim())) {
+          add(alg.trim())
+        }
+      }
+    }
+  }
   var customDrugAllergy by remember(patientId) { mutableStateOf("") }
 
   val regularMedicationsList = remember(patientId) { mutableStateListOf<String>() }

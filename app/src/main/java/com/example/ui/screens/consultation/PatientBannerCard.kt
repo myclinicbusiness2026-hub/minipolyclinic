@@ -96,7 +96,8 @@ fun PatientBannerCard(
       }
 
       // Allergies Alert
-      if (patient.knownAllergies.isNotEmpty()) {
+      val effectiveAllergies = patient.effectiveAllergies
+      if (effectiveAllergies.isNotEmpty()) {
         Spacer(modifier = Modifier.height(6.dp))
         Surface(
           shape = RoundedCornerShape(6.dp),
@@ -111,7 +112,7 @@ fun PatientBannerCard(
             Icon(Icons.Default.Warning, contentDescription = null, tint = RedAlert, modifier = Modifier.size(14.dp))
             Spacer(modifier = Modifier.width(4.dp))
             Text(
-              "မတည့်သောဆေးများ (Allergies): ${patient.knownAllergies.joinToString(", ")}",
+              "မတည့်သောဆေးများ (Allergies): ${effectiveAllergies.joinToString(", ")}",
               color = RedAlert,
               fontSize = 10.sp,
               fontWeight = FontWeight.Bold

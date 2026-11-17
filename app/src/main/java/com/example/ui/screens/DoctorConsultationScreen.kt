@@ -547,13 +547,14 @@ fun DoctorConsultationScreen(
         color = PureWhite,
         border = androidx.compose.foundation.BorderStroke(1.dp, BorderGray)
       ) {
-        Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-          horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.CenterVertically
-        ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(horizontal = 8.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
           if (activePatient != null) {
             Row(
               modifier = Modifier.weight(1f),
@@ -806,7 +807,94 @@ fun DoctorConsultationScreen(
             }
           }
         }
+
+        // Sticky Allergy Alert Banner (Always visible in Header!)
+        if (activePatient != null && activePatient.effectiveAllergies.isNotEmpty()) {
+          Surface(
+            shape = RoundedCornerShape(4.dp),
+            color = Color(0xFFFEF2F2),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFCA5A5)),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp)
+          ) {
+            Row(
+              modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFDC2626), modifier = Modifier.size(13.dp))
+              Spacer(modifier = Modifier.width(5.dp))
+              Text(
+                "⚠️ မတည့်သောဆေးများ (Drug Allergies): ${activePatient.effectiveAllergies.joinToString(", ")}",
+                color = Color(0xFFDC2626),
+                fontSize = 10.5.sp,
+                fontWeight = FontWeight.Bold
+              )
+            }
+          }
+        }
+
+        // Sticky Vitals Strip (Always visible in Header!)
+        if (activePatient != null) {
+          Surface(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
+            shape = RoundedCornerShape(4.dp),
+            color = Color(0xFFF1F5F9),
+            border = androidx.compose.foundation.BorderStroke(0.6.dp, Color(0xFFCBD5E1))
+          ) {
+            Row(
+              modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 3.dp),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Row(
+                modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Surface(shape = RoundedCornerShape(3.dp), color = Color(0xFFE2E8F0)) {
+                  Text("Vitals", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF475569), modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
+                }
+                Text("BP: $bpText", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                Text("PR: $pulseText bpm", fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF334155))
+                Text("Temp: ${tempText}°F", fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF334155))
+                Text("SpO2: $spo2Text%", fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF334155))
+                Text("Wt: ${weightText}kg", fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF334155))
+                if (rbsText.isNotBlank() && (rbsText.toDoubleOrNull() ?: 0.0) > 0) {
+                  Surface(shape = RoundedCornerShape(3.dp), color = Color(0xFFFEF3C7)) {
+                    Text("RBS: $rbsText mg/dL", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFFB45309), modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
+                  }
+                }
+              }
+              Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                OutlinedButton(
+                  onClick = { showTrendsModal = true },
+                  shape = RoundedCornerShape(3.dp),
+                  contentPadding = PaddingValues(horizontal = 5.dp, vertical = 0.dp),
+                  border = androidx.compose.foundation.BorderStroke(0.8.dp, Color(0xFF0284C7)),
+                  modifier = Modifier.height(22.dp)
+                ) {
+                  Icon(Icons.Default.ShowChart, contentDescription = null, modifier = Modifier.size(11.dp), tint = Color(0xFF0284C7))
+                  Spacer(modifier = Modifier.width(2.dp))
+                  Text("Trends", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0284C7))
+                }
+                OutlinedButton(
+                  onClick = { isEditingVitals = !isEditingVitals },
+                  shape = RoundedCornerShape(3.dp),
+                  contentPadding = PaddingValues(horizontal = 5.dp, vertical = 0.dp),
+                  border = androidx.compose.foundation.BorderStroke(0.8.dp, MedicalGreen),
+                  modifier = Modifier.height(22.dp)
+                ) {
+                  Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(11.dp), tint = MedicalGreen)
+                  Spacer(modifier = Modifier.width(2.dp))
+                  Text("Edit", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MedicalGreen)
+                }
+              }
+            }
+          }
+        }
       }
+    }
 
       // Quick Horizontal Queue Strip for 1-Tap Switching (Active Queue only)
       if (consultationQueuePatients.isNotEmpty()) {
@@ -895,7 +983,9 @@ fun DoctorConsultationScreen(
 
           val previewRecord = ConsultationRecord(
             patientId = activePatient.id,
+            patientHn = activePatient.hn,
             patientName = activePatient.name,
+            patientAddress = activePatient.address,
             doctorName = docFullName,
             doctorDegree = effectiveDoctor.second,
             doctorSama = effectiveDoctor.third,

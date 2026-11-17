@@ -431,6 +431,10 @@ object LabPrintHelper {
                 <div class="patient-cell"><strong>Age / Gender:</strong> ${order.patientAge} / ${order.patientGender}</div>
                 <div class="patient-cell"><strong>Referring Doctor:</strong> $refDocDisplay</div>
               </div>
+              <div class="patient-row">
+                <div class="patient-cell" style="width: 50%;"><strong>Address:</strong> ${order.patientAddress.ifBlank { "မန္တလေးမြို့" }}</div>
+                <div class="patient-cell" style="width: 50%;"><strong>Status:</strong> ${order.status.name}</div>
+              </div>
             </div>
           </div>
         """.trimIndent())

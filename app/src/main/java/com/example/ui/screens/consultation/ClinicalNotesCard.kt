@@ -21,6 +21,7 @@ import com.example.ui.theme.*
 fun ClinicalNotesCard(
   patientId: String? = null,
   patientChiefComplaint: String = "",
+  patientAllergies: List<String> = emptyList(),
   subjectiveNotes: String,
   onSubjectiveNotesChange: (String) -> Unit,
   strokes: MutableList<DrawStroke>,
@@ -286,6 +287,7 @@ fun ClinicalNotesCard(
         ClinicalHistorySection(
           patientId = patientId,
           patientChiefComplaint = patientChiefComplaint,
+          patientAllergies = patientAllergies,
           subjectiveNotes = subjectiveNotes,
           onSubjectiveNotesChange = onSubjectiveNotesChange,
           onActiveComplaintsCountChange = { historyCount = it }

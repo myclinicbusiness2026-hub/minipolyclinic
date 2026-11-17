@@ -185,6 +185,7 @@ fun ConsultationClinicalRecordPane(
     ClinicalNotesCard(
       patientId = patient.id,
       patientChiefComplaint = activeComplaint,
+      patientAllergies = patient.effectiveAllergies,
       subjectiveNotes = subjective,
       onSubjectiveNotesChange = onSubjectiveChange,
       strokes = anatomyStrokes,

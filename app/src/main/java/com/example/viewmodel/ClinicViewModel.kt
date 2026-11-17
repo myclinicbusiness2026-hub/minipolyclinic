@@ -1346,6 +1346,37 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       )
     }
 
+    // 3. Add blood glucose / RBS test results from completed Lab Orders
+    _labOrders.value.filter { ord ->
+      (ord.patientId in matchingPatientIds || (patientHn.isNotBlank() && ord.patientHn.equals(patientHn, ignoreCase = true))) &&
+      ord.status == LabOrderStatus.COMPLETED
+    }.forEach { ord ->
+      ord.items.forEach { item ->
+        val isGlucoseTest = item.testName.contains("Glucose", ignoreCase = true) ||
+          item.testName.contains("RBS", ignoreCase = true) ||
+          item.testName.contains("FBS", ignoreCase = true) ||
+          item.testName.contains("Sugar", ignoreCase = true)
+        if (isGlucoseTest) {
+          item.parameters.forEach { param ->
+            val numRes = param.result.trim().toDoubleOrNull()
+            if (numRes != null && numRes > 0.0) {
+              list.add(
+                VitalHistoryPoint(
+                  date = ord.orderDate.ifBlank { "Lab Result" },
+                  bpSystolic = 120,
+                  bpDiastolic = 80,
+                  pulse = 76,
+                  rbs = numRes,
+                  weightKg = 0.0,
+                  notes = "Lab: ${item.testName}"
+                )
+              )
+            }
+          }
+        }
+      }
+    }
+
     return list.distinctBy { "${it.date}_${it.bpSystolic}_${it.bpDiastolic}_${it.pulse}_${it.rbs}" }
       .sortedBy { it.date }
   }
@@ -1572,6 +1603,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
     val consultation = if (existingConsultation != null) {
       existingConsultation.copy(
+        patientHn = patient.hn,
+        patientAddress = patient.address,
         doctorName = doctorNameOverride.ifBlank { _currentUser.value?.fullName ?: clinicSettings.value.doctorName },
         doctorDegree = doctorDegreeOverride.ifBlank { clinicSettings.value.doctorDegree },
         doctorSama = doctorSamaOverride.ifBlank { clinicSettings.value.doctorSama },
@@ -1600,7 +1633,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       ConsultationRecord(
         id = "CONS-${UUID.randomUUID().toString().take(8)}",
         patientId = patientId,
+        patientHn = patient.hn,
         patientName = patient.name,
+        patientAddress = patient.address,
         doctorName = doctorNameOverride.ifBlank { _currentUser.value?.fullName ?: clinicSettings.value.doctorName },
         doctorDegree = doctorDegreeOverride.ifBlank { clinicSettings.value.doctorDegree },
         doctorSama = doctorSamaOverride.ifBlank { clinicSettings.value.doctorSama },
@@ -4750,9 +4785,11 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     // Mark corresponding LabOrder as paid
     val updatedOrders = _labOrders.value.map { ord ->
       if (ord.id == invoice.orderId || ord.orderNumber == invoice.orderId) {
+        val effectiveNet = if (invoice.discount > 0.0) (ord.totalAmount - invoice.discount).coerceAtLeast(0.0) else ord.totalAmount
+        val isPaid = invoice.paidAmount >= effectiveNet && effectiveNet >= 0.0
         ord.copy(
           paidAmount = invoice.paidAmount,
-          paymentStatus = if (invoice.paidAmount >= ord.totalAmount) "Paid" else "Partial",
+          paymentStatus = if (isPaid) "Paid" else "Partial",
           invoiceNumber = invoice.invoiceNumber
         )
       } else ord
@@ -4826,6 +4863,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       patientId = patient.id,
       patientName = patient.name,
       patientHn = patient.hn,
+      patientAddress = patient.address,
       patientAge = patient.age,
       patientGender = patient.gender,
       doctorName = doctorName,

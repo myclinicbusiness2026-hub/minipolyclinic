@@ -314,6 +314,7 @@ data class ConsultationRecord(
   val patientId: String,
   val patientHn: String = "",
   val patientName: String,
+  val patientAddress: String = "",
   val clinicName: String = "Shwe Khit Clinic",
   val doctorName: String = "Dr. Nyan Kaung Sett M.B.,B.S(MDY)",
   val doctorDegree: String = "M.B.,B.S(MDY)",

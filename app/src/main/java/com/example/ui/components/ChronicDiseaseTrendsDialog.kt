@@ -503,9 +503,31 @@ private fun BloodSugarTrendView(vitalHistory: List<VitalHistoryPoint>) {
             }
             drawPath(path, Color(0xFFEA580C), style = Stroke(width = 3.5f))
           }
+        } else if (rbsPoints.size == 1) {
+          val pt = rbsPoints.first()
+          val valRbs = pt.rbs!!
+          val isHigh = valRbs >= 200.0
+          val isPre = valRbs >= 140.0 && valRbs < 200.0
+          val evalColor = if (isHigh) Color(0xFFDC2626) else if (isPre) Color(0xFFEA580C) else Color(0xFF10B981)
+          val evalText = if (isHigh) "High / Diabetes (သွေးချို မြင့်မားနေပါသည်)" else if (isPre) "Pre-diabetes (သတိပြုရန် လိုအပ်ပါသည်)" else "Normal (ပုံမှန် အတိုင်းအတာအတွင်း ရှိပါသည်)"
+
+          Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.Center
+          ) {
+            Text("${valRbs.toInt()} mg/dL", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = evalColor)
+            Spacer(modifier = Modifier.height(2.dp))
+            Surface(shape = RoundedCornerShape(3.dp), color = evalColor.copy(alpha = 0.12f)) {
+              Text(evalText, fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = evalColor, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+            }
+            Spacer(modifier = Modifier.height(3.dp))
+            Text("Date: ${pt.date} • ${pt.notes}", fontSize = 9.sp, color = SlateMedium)
+            Text("(နောက်တစ်ကြိမ် စစ်ဆေးချက် ထပ်မံထည့်သွင်းပါက Trend မျဉ်း ဆွဲ၍ ပြသပေးမည် ဖြစ်ပါသည်)", fontSize = 8.5.sp, color = SlateMuted)
+          }
         } else {
           Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No multiple glucose readings recorded yet.", fontSize = 11.sp, color = SlateMedium)
+            Text("သွေးချိုစစ်ဆေးချက် (RBS) မှတ်တမ်း မရှိသေးပါ။ (Registration သို့မဟုတ် Vitals တွင် ထည့်သွင်းနိုင်ပါသည်)", fontSize = 10.5.sp, color = SlateMedium)
           }
         }
       }

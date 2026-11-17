@@ -66,6 +66,7 @@ data class LabOrder(
   val patientId: String,
   val patientName: String,
   val patientHn: String = "",
+  val patientAddress: String = "",
   val patientAge: Int = 0,
   val patientGender: Gender = Gender.MALE,
   val doctorName: String = "",

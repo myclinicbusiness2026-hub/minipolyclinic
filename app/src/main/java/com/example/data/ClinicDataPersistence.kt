@@ -776,6 +776,7 @@ object ClinicDataPersistence {
       put("patientId", c.patientId)
       put("patientHn", c.patientHn)
       put("patientName", c.patientName)
+      put("patientAddress", c.patientAddress)
       put("doctorName", c.doctorName)
       put("doctorDegree", c.doctorDegree)
       put("doctorSama", c.doctorSama)
@@ -1019,6 +1020,7 @@ object ClinicDataPersistence {
       id = o.optString("id"),
       patientId = o.optString("patientId"),
       patientName = o.optString("patientName"),
+      patientAddress = o.optString("patientAddress"),
       doctorName = o.optString("doctorName"),
       doctorDegree = o.optString("doctorDegree"),
       doctorSama = o.optString("doctorSama"),
@@ -2091,6 +2093,7 @@ object ClinicDataPersistence {
       oo.put("patientId", ord.patientId)
       oo.put("patientName", ord.patientName)
       oo.put("patientHn", ord.patientHn)
+      oo.put("patientAddress", ord.patientAddress)
       oo.put("patientAge", ord.patientAge)
       oo.put("patientGender", ord.patientGender.name)
       oo.put("doctorName", ord.doctorName)
@@ -2207,6 +2210,7 @@ object ClinicDataPersistence {
             patientId = o.optString("patientId"),
             patientName = o.optString("patientName"),
             patientHn = o.optString("patientHn"),
+            patientAddress = o.optString("patientAddress"),
             patientAge = o.optInt("patientAge", 0),
             patientGender = gender,
             doctorName = o.optString("doctorName"),
@@ -2454,6 +2458,7 @@ object ClinicDataPersistence {
             patientId = o.optString("patientId"),
             patientName = o.optString("patientName"),
             patientHn = o.optString("patientHn"),
+            patientAddress = o.optString("patientAddress"),
             patientAge = o.optInt("patientAge", 0),
             patientGender = gender,
             doctorName = o.optString("doctorName"),

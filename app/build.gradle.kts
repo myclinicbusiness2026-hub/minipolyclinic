@@ -17,8 +17,8 @@ android {
         applicationId = "com.aistudio.shwekhitclinic.vxqmp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 67
-        versionName = "1.5.43"
+        versionCode = 68
+        versionName = "1.5.44"
     }
 
     signingConfigs {
