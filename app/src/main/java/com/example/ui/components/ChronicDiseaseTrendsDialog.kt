@@ -513,7 +513,7 @@ private fun BloodSugarTrendView(vitalHistory: List<VitalHistoryPoint>) {
 
           Column(
             modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterVertically,
+            horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
           ) {
             Text("${valRbs.toInt()} mg/dL", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = evalColor)
