@@ -107,7 +107,7 @@ fun LabInvestigationScreen(
 
   // Auto-sync with local Wi-Fi peers and Supabase Cloud when opening screen
   LaunchedEffect(Unit) {
-    viewModel.syncWithAllPeers()
+    viewModel.triggerWifiSync()
     if (clinicSettings.enableSupabaseSync && clinicSettings.supabaseUrl.isNotBlank() && clinicSettings.supabaseAnonKey.isNotBlank()) {
       viewModel.autoSyncToSupabaseIfEnabled()
     }
@@ -247,7 +247,7 @@ fun LabInvestigationScreen(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
               IconButton(
                 onClick = {
-                  viewModel.syncWithAllPeers()
+                  viewModel.triggerWifiSync()
                   if (clinicSettings.enableSupabaseSync && clinicSettings.supabaseUrl.isNotBlank() && clinicSettings.supabaseAnonKey.isNotBlank()) {
                     viewModel.autoSyncToSupabaseIfEnabled()
                     Toast.makeText(context, "Local & Cloud Sync စတင်နေပါသည်...", Toast.LENGTH_SHORT).show()
