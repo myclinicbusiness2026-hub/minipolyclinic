@@ -2115,6 +2115,7 @@ fun MobileNewLabOrderDialog(
                 focusedBorderColor = Color(0xFF0284C7)
               )
             )
+          }
 
           Spacer(modifier = Modifier.height(10.dp))
           HorizontalDivider(color = Color(0xFFF1F5F9))
