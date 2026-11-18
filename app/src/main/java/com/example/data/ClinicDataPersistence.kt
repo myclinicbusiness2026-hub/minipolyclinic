@@ -2093,6 +2093,7 @@ object ClinicDataPersistence {
       oo.put("patientId", ord.patientId)
       oo.put("patientName", ord.patientName)
       oo.put("patientHn", ord.patientHn)
+      oo.put("patientPhone", ord.patientPhone)
       oo.put("patientAddress", ord.patientAddress)
       oo.put("patientAge", ord.patientAge)
       oo.put("patientGender", ord.patientGender.name)
@@ -2210,6 +2211,7 @@ object ClinicDataPersistence {
             patientId = o.optString("patientId"),
             patientName = o.optString("patientName"),
             patientHn = o.optString("patientHn"),
+            patientPhone = o.optString("patientPhone"),
             patientAddress = o.optString("patientAddress"),
             patientAge = o.optInt("patientAge", 0),
             patientGender = gender,
@@ -2252,6 +2254,8 @@ object ClinicDataPersistence {
       io.put("patientId", inv.patientId)
       io.put("patientName", inv.patientName)
       io.put("patientHn", inv.patientHn)
+      io.put("patientPhone", inv.patientPhone)
+      io.put("patientAddress", inv.patientAddress)
       io.put("referringDoctorName", inv.referringDoctorName)
       io.put("totalAmount", inv.totalAmount)
       io.put("discount", inv.discount)
@@ -2324,6 +2328,8 @@ object ClinicDataPersistence {
             patientId = o.optString("patientId"),
             patientName = o.optString("patientName"),
             patientHn = o.optString("patientHn"),
+            patientPhone = o.optString("patientPhone"),
+            patientAddress = o.optString("patientAddress"),
             referringDoctorName = o.optString("referringDoctorName"),
             totalAmount = totalAmt,
             discount = disc,
@@ -2458,6 +2464,7 @@ object ClinicDataPersistence {
             patientId = o.optString("patientId"),
             patientName = o.optString("patientName"),
             patientHn = o.optString("patientHn"),
+            patientPhone = o.optString("patientPhone"),
             patientAddress = o.optString("patientAddress"),
             patientAge = o.optInt("patientAge", 0),
             patientGender = gender,
@@ -2533,6 +2540,8 @@ object ClinicDataPersistence {
             patientId = o.optString("patientId"),
             patientName = o.optString("patientName"),
             patientHn = o.optString("patientHn"),
+            patientPhone = o.optString("patientPhone"),
+            patientAddress = o.optString("patientAddress"),
             referringDoctorName = o.optString("referringDoctorName"),
             totalAmount = totalAmt,
             discount = disc,

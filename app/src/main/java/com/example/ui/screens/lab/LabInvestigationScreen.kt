@@ -808,6 +808,21 @@ fun MobileLabOrderQueueCard(
         }
       }
 
+      val queueContact = listOfNotNull(
+        order.patientPhone.takeIf { it.isNotBlank() }?.let { "📞 $it" },
+        order.patientAddress.takeIf { it.isNotBlank() }?.let { "🏠 $it" }
+      ).joinToString("  •  ")
+      if (queueContact.isNotBlank()) {
+        Text(
+          queueContact,
+          fontSize = 9.5.sp,
+          color = Color(0xFF0369A1),
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+          modifier = Modifier.padding(top = 2.dp)
+        )
+      }
+
       val refDocQueue = order.referringDoctorName.ifBlank { "Direct / Self-request" }
       Row(
         modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
@@ -1148,6 +1163,21 @@ fun MobileLabCompletedResultCard(
         }
       }
 
+      val completedContact = listOfNotNull(
+        order.patientPhone.takeIf { it.isNotBlank() }?.let { "📞 $it" },
+        order.patientAddress.takeIf { it.isNotBlank() }?.let { "🏠 $it" }
+      ).joinToString("  •  ")
+      if (completedContact.isNotBlank()) {
+        Text(
+          completedContact,
+          fontSize = 9.5.sp,
+          color = Color(0xFF0369A1),
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+          modifier = Modifier.padding(top = 2.dp)
+        )
+      }
+
       Spacer(modifier = Modifier.height(6.dp))
 
       // Expand / Collapse Result Details Toggle
@@ -1380,7 +1410,14 @@ fun MobileLabInvoicesTabContent(
             isIncome = true,
             timestamp = inv.timestamp,
             title = inv.invoiceNumber,
-            subtitle = "${inv.patientName} (${inv.patientHn})",
+            subtitle = buildString {
+              append("${inv.patientName} (${inv.patientHn})")
+              val extra = listOfNotNull(
+                inv.patientPhone.takeIf { it.isNotBlank() }?.let { "📞 $it" },
+                inv.patientAddress.takeIf { it.isNotBlank() }?.let { "🏠 $it" }
+              ).joinToString(" • ")
+              if (extra.isNotBlank()) append(" • $extra")
+            },
             tag = inv.paymentMethod.label,
             amount = inv.paidAmount,
             invoice = inv
@@ -1831,6 +1868,7 @@ fun MobileNewLabOrderDialog(
   var walkInAge by remember { mutableStateOf("30") }
   var walkInGender by remember { mutableStateOf(Gender.MALE) }
   var walkInPhone by remember { mutableStateOf("") }
+  var walkInAddress by remember { mutableStateOf("") }
 
   var doctorName by remember { mutableStateOf(attendingDoctor) }
   var clinicalNotes by remember { mutableStateOf("") }
@@ -1917,9 +1955,16 @@ fun MobileNewLabOrderDialog(
                   horizontalArrangement = Arrangement.SpaceBetween,
                   verticalAlignment = Alignment.CenterVertically
                 ) {
-                  Column {
+                  Column(modifier = Modifier.weight(1f)) {
                     Text(selectedPatient!!.name, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0369A1))
                     Text("HN: ${selectedPatient!!.hn} • Age: ${selectedPatient!!.age} • ${selectedPatient!!.gender.name}", fontSize = 10.sp, color = Color(0xFF0284C7))
+                    val patContact = listOfNotNull(
+                      selectedPatient!!.phone.takeIf { it.isNotBlank() }?.let { "📞 $it" },
+                      selectedPatient!!.address.takeIf { it.isNotBlank() }?.let { "🏠 $it" }
+                    ).joinToString("  •  ")
+                    if (patContact.isNotBlank()) {
+                      Text(patContact, fontSize = 9.5.sp, color = Color(0xFF0369A1))
+                    }
                   }
                   TextButton(
                     onClick = { selectedPatient = null },
@@ -1958,9 +2003,19 @@ fun MobileNewLabOrderDialog(
                   ) {
                     Row(
                       modifier = Modifier.padding(6.dp).fillMaxWidth(),
-                      horizontalArrangement = Arrangement.SpaceBetween
+                      horizontalArrangement = Arrangement.SpaceBetween,
+                      verticalAlignment = Alignment.CenterVertically
                     ) {
-                      Text("${pat.name} (${pat.hn})", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                      Column(modifier = Modifier.weight(1f)) {
+                        Text("${pat.name} (${pat.hn})", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                        val patContact = listOfNotNull(
+                          pat.phone.takeIf { it.isNotBlank() }?.let { "📞 $it" },
+                          pat.address.takeIf { it.isNotBlank() }?.let { "🏠 $it" }
+                        ).joinToString(" • ")
+                        if (patContact.isNotBlank()) {
+                          Text(patContact, fontSize = 9.sp, color = SlateMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                      }
                       Text("Age ${pat.age} • ${pat.gender.name}", fontSize = 10.sp, color = SlateMuted)
                     }
                   }
@@ -2021,7 +2076,45 @@ fun MobileNewLabOrderDialog(
                 )
               }
             }
-          }
+            Spacer(modifier = Modifier.height(6.dp))
+            OutlinedTextField(
+              value = walkInPhone,
+              onValueChange = { walkInPhone = it },
+              label = { Text("ဖုန်းနံပါတ် (Phone Number)", fontSize = 11.sp) },
+              placeholder = { Text("09xxxxxxxxx", fontSize = 11.sp, color = SlateMuted) },
+              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+              singleLine = true,
+              modifier = Modifier.fillMaxWidth(),
+              shape = RoundedCornerShape(8.dp),
+              textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = Color(0xFF0F172A)),
+              colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color(0xFF0F172A),
+                unfocusedTextColor = Color(0xFF0F172A),
+                focusedContainerColor = PureWhite,
+                unfocusedContainerColor = PureWhite,
+                unfocusedBorderColor = BorderGray,
+                focusedBorderColor = Color(0xFF0284C7)
+              )
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            OutlinedTextField(
+              value = walkInAddress,
+              onValueChange = { walkInAddress = it },
+              label = { Text("နေရပ်လိပ်စာ (Address)", fontSize = 11.sp) },
+              placeholder = { Text("မြို့နယ် / လိပ်စာအသေးစိတ်", fontSize = 11.sp, color = SlateMuted) },
+              singleLine = true,
+              modifier = Modifier.fillMaxWidth(),
+              shape = RoundedCornerShape(8.dp),
+              textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = Color(0xFF0F172A)),
+              colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color(0xFF0F172A),
+                unfocusedTextColor = Color(0xFF0F172A),
+                focusedContainerColor = PureWhite,
+                unfocusedContainerColor = PureWhite,
+                unfocusedBorderColor = BorderGray,
+                focusedBorderColor = Color(0xFF0284C7)
+              )
+            )
 
           Spacer(modifier = Modifier.height(10.dp))
           HorizontalDivider(color = Color(0xFFF1F5F9))
@@ -2234,7 +2327,8 @@ fun MobileNewLabOrderDialog(
                 val pAge = if (isWalkIn) walkInAge.toIntOrNull() ?: 30 else selectedPatient!!.age
                 val pGender = if (isWalkIn) walkInGender else selectedPatient!!.gender
                 val pId = if (isWalkIn) UUID.randomUUID().toString() else selectedPatient!!.id
-                val pAddress = if (isWalkIn) "Walk-in" else (selectedPatient?.address ?: "မန္တလေးမြို့")
+                val pPhone = if (isWalkIn) walkInPhone.trim() else (selectedPatient?.phone ?: "")
+                val pAddress = if (isWalkIn) walkInAddress.trim().ifBlank { "ပြင်ပလူနာ (Walk-in)" } else (selectedPatient?.address?.ifBlank { "မန္တလေးမြို့" } ?: "မန္တလေးမြို့")
 
                 val items = selectedTemplates.map { t ->
                   LabOrderItem(
@@ -2263,6 +2357,7 @@ fun MobileNewLabOrderDialog(
                   patientId = pId,
                   patientName = pName,
                   patientHn = pHn,
+                  patientPhone = pPhone,
                   patientAddress = pAddress,
                   patientAge = pAge,
                   patientGender = pGender,
@@ -2395,6 +2490,13 @@ fun MobileLabResultEntryDialog(
           Column(modifier = Modifier.weight(1f)) {
             Text("ဓာတ်ခွဲအဖြေ ထည့်သွင်းခြင်း", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = SlateDark)
             Text("${order.patientName} (${order.patientHn}) • ${order.orderNumber}", fontSize = 10.5.sp, color = SlateMuted)
+            val resultContact = listOfNotNull(
+              order.patientPhone.takeIf { it.isNotBlank() }?.let { "📞 $it" },
+              order.patientAddress.takeIf { it.isNotBlank() }?.let { "🏠 $it" }
+            ).joinToString("  •  ")
+            if (resultContact.isNotBlank()) {
+              Text(resultContact, fontSize = 9.5.sp, color = Color(0xFF0369A1))
+            }
           }
           IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
             Icon(Icons.Default.Close, contentDescription = "Close", modifier = Modifier.size(18.dp))
@@ -2941,6 +3043,13 @@ fun MobileCreateLabInvoiceDialog(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text("${order.patientName} (${order.patientHn})", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        val invoiceContact = listOfNotNull(
+          order.patientPhone.takeIf { it.isNotBlank() }?.let { "📞 $it" },
+          order.patientAddress.takeIf { it.isNotBlank() }?.let { "🏠 $it" }
+        ).joinToString("  •  ")
+        if (invoiceContact.isNotBlank()) {
+          Text(invoiceContact, fontSize = 9.5.sp, color = SlateMuted)
+        }
         Text("ညွှန်းပို့ဆရာဝန်: ${order.referringDoctorName.ifBlank { "လူနာကိုယ်တိုင် / Direct" }}", fontSize = 10.sp, color = Color(0xFF0369A1), fontWeight = FontWeight.Medium)
         Text("Tests: " + order.items.joinToString(", ") { it.testName }, fontSize = 10.sp, color = SlateMuted)
         Spacer(modifier = Modifier.height(8.dp))
@@ -3093,6 +3202,8 @@ fun MobileCreateLabInvoiceDialog(
                 patientId = order.patientId,
                 patientName = order.patientName,
                 patientHn = order.patientHn,
+                patientPhone = order.patientPhone,
+                patientAddress = order.patientAddress,
                 referringDoctorName = order.referringDoctorName,
                 totalAmount = subtotal,
                 discount = discount,

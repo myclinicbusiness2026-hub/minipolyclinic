@@ -4863,6 +4863,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       patientId = patient.id,
       patientName = patient.name,
       patientHn = patient.hn,
+      patientPhone = patient.phone,
       patientAddress = patient.address,
       patientAge = patient.age,
       patientGender = patient.gender,
