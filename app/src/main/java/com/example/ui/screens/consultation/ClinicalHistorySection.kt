@@ -221,7 +221,10 @@ fun ClinicalHistorySection(
             }
             else -> {
               if (!subjectiveNotes.contains("[CHIEF COMPLAINTS & HPI]") && !subjectiveNotes.contains("[BACKGROUND MEDICAL HISTORY]")) {
-                historyRemarks = subjectiveNotes.trim()
+                val trimmed = subjectiveNotes.trim()
+                if (trimmed.isNotBlank() && trimmed != patientChiefComplaint.trim() && !trimmed.startsWith("Follow-up visit:")) {
+                  historyRemarks = trimmed
+                }
                 break
               }
             }
@@ -232,8 +235,9 @@ fun ClinicalHistorySection(
           activeComplaints.add(currentComplaint)
         }
       } catch (e: Exception) {
-        if (historyRemarks.isBlank() && subjectiveNotes.isNotBlank()) {
-          historyRemarks = subjectiveNotes
+        val trimmed = subjectiveNotes.trim()
+        if (historyRemarks.isBlank() && trimmed.isNotBlank() && trimmed != patientChiefComplaint.trim()) {
+          historyRemarks = trimmed
         }
       }
     }

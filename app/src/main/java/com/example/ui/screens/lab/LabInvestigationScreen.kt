@@ -105,6 +105,14 @@ fun LabInvestigationScreen(
   var previewLabThermalSlip by remember { mutableStateOf<LabInvoice?>(null) }
   var showLabExpenseDialog by remember { mutableStateOf(false) }
 
+  // Auto-sync with local Wi-Fi peers and Supabase Cloud when opening screen
+  LaunchedEffect(Unit) {
+    viewModel.syncWithAllPeers()
+    if (clinicSettings.enableSupabaseSync && clinicSettings.supabaseUrl.isNotBlank() && clinicSettings.supabaseAnonKey.isNotBlank()) {
+      viewModel.autoSyncToSupabaseIfEnabled()
+    }
+  }
+
   // Filtered orders
   val queueOrders = remember(labOrders, searchQuery, selectedDateFilter) {
     labOrders.filter { it.status == LabOrderStatus.ORDERED || it.status == LabOrderStatus.SAMPLE_COLLECTED }
@@ -235,8 +243,22 @@ fun LabInvestigationScreen(
               }
             }
 
-            // Mobile Action Buttons: Blank Letterhead, Lab Expense & New Order
+            // Mobile Action Buttons: Sync, Blank Letterhead, Lab Expense & New Order
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+              IconButton(
+                onClick = {
+                  viewModel.syncWithAllPeers()
+                  if (clinicSettings.enableSupabaseSync && clinicSettings.supabaseUrl.isNotBlank() && clinicSettings.supabaseAnonKey.isNotBlank()) {
+                    viewModel.autoSyncToSupabaseIfEnabled()
+                    Toast.makeText(context, "Local & Cloud Sync စတင်နေပါသည်...", Toast.LENGTH_SHORT).show()
+                  } else {
+                    Toast.makeText(context, "Local Sync ပြုလုပ်နေပါသည်...", Toast.LENGTH_SHORT).show()
+                  }
+                },
+                modifier = Modifier.size(34.dp)
+              ) {
+                Icon(Icons.Default.Sync, contentDescription = "Sync", tint = Color(0xFF0284C7), modifier = Modifier.size(19.dp))
+              }
               OutlinedButton(
                 onClick = {
                   LabPrintHelper.printBlankLetterheadA4(context, clinicSettings)

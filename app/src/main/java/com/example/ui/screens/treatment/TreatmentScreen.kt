@@ -1434,7 +1434,7 @@ fun CreateTreatmentCardModal(
   var selectedRoute by remember { mutableStateOf(TreatmentRoute.IV_PUSH) }
   var customRouteText by remember { mutableStateOf("") }
   var frequency by remember { mutableStateOf("Stat") }
-  var totalDaysText by remember { mutableStateOf("3") }
+  var totalDaysText by remember { mutableStateOf("1") }
   var medFeeText by remember { mutableStateOf("0") }
   var sessionFeeText by remember(selectedRoute) { mutableStateOf(selectedRoute.getDefaultFee(clinicSettings).toInt().toString()) }
   var instructions by remember { mutableStateOf("") }
@@ -1451,7 +1451,7 @@ fun CreateTreatmentCardModal(
     }.take(8)
   }
 
-  val days = totalDaysText.toIntOrNull() ?: 3
+  val days = totalDaysText.toIntOrNull() ?: 1
   val medFee = if (isPatientSupplied) 0.0 else (medFeeText.toDoubleOrNull() ?: 0.0)
   val sessionFee = sessionFeeText.toDoubleOrNull() ?: selectedRoute.getDefaultFee(clinicSettings)
 

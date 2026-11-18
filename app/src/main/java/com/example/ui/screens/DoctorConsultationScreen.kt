@@ -177,10 +177,8 @@ fun DoctorConsultationScreen(
   var subjective by remember(patientId) {
     val initialComplaint = if (activeDraft != null && activeDraft.subjective.isNotBlank()) {
       activeDraft.subjective
-    } else if (activePatient != null && activePatient.isFollowUp && activePatient.followUpReason.isNotBlank()) {
-      "Follow-up visit: ${activePatient.followUpReason}"
     } else {
-      activePatient?.chiefComplaint ?: ""
+      ""
     }
     mutableStateOf(initialComplaint)
   }
@@ -443,7 +441,7 @@ fun DoctorConsultationScreen(
               drug.instructions.contains("Neb", ignoreCase = true) -> TreatmentRoute.NEBULIZATION
               else -> TreatmentRoute.IM
             }
-            val days = drug.duration.filter { it.isDigit() }.toIntOrNull() ?: 3
+            val days = drug.duration.filter { it.isDigit() }.toIntOrNull() ?: 1
             val effectiveRouteFee = route.getEffectiveFee(clinicSettings, procedures)
             val sessions = TreatmentCardFactory.generateSessions(
               startDateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),

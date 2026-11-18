@@ -1737,12 +1737,13 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       }
     }
     selectedProcedures.forEach { proc ->
+      val isInjectionProc = proc.name.contains("Injection", ignoreCase = true) || proc.name.contains("ဆေးထိုး", ignoreCase = true) || proc.name.contains("IV", ignoreCase = true) || proc.name.contains("IM", ignoreCase = true)
       val consText = if (proc.consumableItems.isNotEmpty()) {
         proc.consumableItems.joinToString(", ") { "${it.name} x ${it.quantity}" }
       } else if (proc.consumables.isNotEmpty()) {
         proc.consumables.joinToString(", ") { "$it x 1" }
       } else ""
-      val procDisplayName = if (consText.isNotBlank()) {
+      val procDisplayName = if (consText.isNotBlank() && !isInjectionProc) {
         "${proc.name}\n  • Consumables: $consText"
       } else {
         proc.name
@@ -1785,12 +1786,13 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         }
         val freq = if (card.frequency.isNotBlank()) " ${card.frequency}" else ""
         val dosesSuffix = if (isFullCourse) " x $numDoses Doses" else ""
-        "$routeCode $drugNames$freq$dosesSuffix (Cocktail)".trim()
+        "$routeCode Cocktail: $drugNames$freq$dosesSuffix".trim()
       } else {
-        val dose = if (card.dosage.isNotBlank()) " ${card.dosage}" else ""
+        val medName = card.medicationName.trim()
+        val dose = if (card.dosage.isNotBlank() && !medName.contains(card.dosage, ignoreCase = true)) " ${card.dosage}" else ""
         val freq = if (card.frequency.isNotBlank()) " ${card.frequency}" else ""
         val dosesSuffix = if (isFullCourse) " x $numDoses Doses" else ""
-        "$routeCode ${card.medicationName}$dose$freq$dosesSuffix (Single drug)".trim()
+        "$routeCode $medName$dose$freq$dosesSuffix".trim()
       }
 
       invoiceItems.add(
@@ -4531,6 +4533,10 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     current.add(0, order)
     _labOrders.value = current
     ClinicDataPersistence.saveLabOrders(ctx, current)
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+      autoSyncToSupabaseIfEnabled()
+    }
   }
 
   fun updateLabOrder(order: LabOrder) {
@@ -4539,6 +4545,10 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val updated = _labOrders.value.map { if (it.id == order.id) order.copy(updatedAt = now) else it }
     _labOrders.value = updated
     ClinicDataPersistence.saveLabOrders(ctx, updated)
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+      autoSyncToSupabaseIfEnabled()
+    }
   }
 
   fun updateLabOrderStatus(orderId: String, newStatus: LabOrderStatus) {
@@ -4556,6 +4566,10 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
     _labOrders.value = updated
     ClinicDataPersistence.saveLabOrders(ctx, updated)
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+      autoSyncToSupabaseIfEnabled()
+    }
   }
 
   fun saveLabOrderResults(
@@ -4608,6 +4622,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
+      autoSyncToSupabaseIfEnabled()
     }
   }
 
@@ -4638,6 +4653,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
+      autoSyncToSupabaseIfEnabled()
     }
   }
 
@@ -4796,6 +4812,11 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
     _labOrders.value = updatedOrders
     ClinicDataPersistence.saveLabOrders(ctx, updatedOrders)
+
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+      autoSyncToSupabaseIfEnabled()
+    }
   }
 
   fun deleteLabInvoice(invoiceId: String) {
@@ -4821,6 +4842,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
+      autoSyncToSupabaseIfEnabled()
     }
   }
 

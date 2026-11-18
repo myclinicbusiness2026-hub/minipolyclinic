@@ -278,7 +278,7 @@ fun AddTreatmentOrderModal(
   var selectedRoute by remember(initialCard) { mutableStateOf(initialCard?.route ?: TreatmentRoute.IV_PUSH) }
   var customRouteText by remember(initialCard) { mutableStateOf(initialCard?.customRoute ?: "") }
   var frequency by remember(initialCard) { mutableStateOf(initialCard?.frequency ?: "Stat") }
-  var totalDaysText by remember(initialCard) { mutableStateOf((initialCard?.totalDays ?: 3).toString()) }
+  var totalDaysText by remember(initialCard) { mutableStateOf((initialCard?.totalDays ?: 1).toString()) }
   var medFeeText by remember(initialCard) { mutableStateOf((initialCard?.medicationFee?.toInt() ?: 0).toString()) }
   var sessionFeeText by remember(initialCard, selectedRoute) {
     mutableStateOf(initialCard?.sessionFee?.toInt()?.toString() ?: selectedRoute.getDefaultFee(clinicSettings).toInt().toString())

@@ -301,6 +301,18 @@ fun DrugPickerModal(
                     .clickable {
                       selectedMedicine = med
                       dosage = med.standardDosage
+                      val isInj = med.effectiveMedicineType.equals("Injection", ignoreCase = true) ||
+                                  med.dosageForm.contains("Inj", ignoreCase = true) ||
+                                  med.name.startsWith("Inj", ignoreCase = true) ||
+                                  med.name.contains("IV", ignoreCase = true) ||
+                                  med.name.contains("IM", ignoreCase = true)
+                      if (isInj) {
+                        frequency = "Stat"
+                        durationNum = 1
+                        durationUnit = "Days"
+                        duration = "1 Day"
+                        quantityText = "1"
+                      }
                     },
                   shape = RoundedCornerShape(6.dp),
                   colors = CardDefaults.cardColors(

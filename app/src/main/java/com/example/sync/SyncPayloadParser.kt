@@ -28,6 +28,20 @@ object SyncPayloadParser {
         )
       } else VitalSigns()
 
+      val aArr = o.optJSONArray("knownAllergies") ?: o.optJSONArray("allergies")
+      val allergies = if (aArr != null) {
+        val aList = mutableListOf<String>()
+        for (j in 0 until aArr.length()) aList.add(aArr.optString(j))
+        aList
+      } else emptyList()
+
+      val cdArr = o.optJSONArray("chronicDiseases")
+      val chronics = if (cdArr != null) {
+        val cdList = mutableListOf<String>()
+        for (j in 0 until cdArr.length()) cdList.add(cdArr.optString(j))
+        cdList
+      } else emptyList()
+
       list.add(
         Patient(
           id = o.optString("id", UUID.randomUUID().toString()),
@@ -42,6 +56,9 @@ object SyncPayloadParser {
           status = try { QueueStatus.valueOf(o.optString("status", "WAITING")) } catch (_: Exception) { QueueStatus.WAITING },
           registrationTime = o.optString("registrationTime", ""),
           vitals = vitals,
+          knownAllergies = allergies,
+          allergies = allergies,
+          chronicDiseases = chronics,
           notes = o.optString("notes", ""),
           chiefComplaint = o.optString("chiefComplaint", ""),
           followUpDueDate = o.optString("followUpDueDate").ifBlank { null },
