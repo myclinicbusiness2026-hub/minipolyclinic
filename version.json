@@ -1,12 +1,12 @@
 {
-  "versionCode": 69,
-  "versionName": "1.5.45",
+  "versionCode": 70,
+  "versionName": "1.5.46",
   "minSupportedVersion": 1,
-  "releaseNotes": "• Lab Investigation Detail Info: Added patient phone number and address fields for both Walk-in and Clinic registered patients.\n• Lab Order Management: Display patient phone and address on Lab Queue Cards, Completed Cards, Result Entry dialog, and Invoice modal.\n• Lab A4 Report Print: Patient phone and address properly rendered in patient demographic table.\n• Lab Invoice & Ledger: Phone number and address linked to vouchers and ledger records.",
-  "releaseNotesMm": "• Lab Investigation Detail Info: ပြင်ပလူနာ (Walk-in) နှင့် ဆေးခန်းလူနာများအတွက် ဖုန်းနံပါတ် နှင့် နေရပ်လိပ်စာ အပြည့်အစုံ ထည့်သွင်းနိုင်ခြင်း\n• Lab Orders & Cards: Queue ကတ်၊ Completed ကတ်၊ အဖြေသွင်း Dialog နှင့် ဘောင်ချာ modal တို့တွင် လူနာဖုန်းနံပါတ်နှင့် လိပ်စာ အပြည့်အစုံ ဖော်ပြပေးခြင်း\n• Lab A4 Report Print: A4 စာရွက်ထုတ်ယူရာတွင် လူနာဖုန်းနံပါတ်နှင့် လိပ်စာ စနစ်တကျ ပါဝင်ဖော်ပြပေးခြင်း\n• Lab Invoice & Ledger: ဘောင်ချာစာရင်းနှင့် ငွေစာရင်း Ledger တွင် ဖုန်းနံပါတ်နှင့် လိပ်စာ ချိတ်ဆက်သိမ်းဆည်းပေးခြင်း",
+  "releaseNotes": "• Injection Orders Default Stat & 1 Day: All IV/IM/SC injections now default to Stat frequency and 1 Day duration across consultation prescription picker and treatment cards.\n• Invoice Injection Display: Single & cocktail injections display unified title matching A4 prescription without itemized drug/session breakdown; total consolidated price shown directly.\n• Blank History Additional Remarks: Chief complaint is no longer prefilled into the free text remarks box, keeping it blank by default.\n• Drug Allergies Peer Sync: Fixed peer Wi-Fi synchronization parsing so reception-entered drug allergies and chronic diseases reliably sync to doctor devices.\n• Lab Supabase Cloud Sync: Lab orders and completed results auto-sync to Supabase Cloud on every change; added screen-open auto-sync and manual Sync button for remote doctors outside local Wi-Fi range.",
+  "releaseNotesMm": "• ထိုးဆေးများ Default Stat & 1 Day: IV/IM/SC ထိုးဆေးများအတွက် Consultation နှင့် Day-Care ကတ်များတွင် Default အား Stat နှင့် 1 Day အဖြစ် အလိုအလျောက် သတ်မှတ်ပေးခြင်း\n• Invoice ထိုးဆေးဖော်ပြမှု ရှင်းလင်းခြင်း: Single နှင့် Cocktail ထိုးဆေးများတွင် ဆေးဖိုး/ဆေးထိုးခ/ပစ္စည်းဖိုး ခွဲမပြဘဲ A4 Print တွင် ပေါ်စေချင်သည့် ခေါင်းစဉ်အတိုင်း Total အသားတင် ကျသင့်ငွေတစ်ခုတည်းသာ တိုက်ရိုက်ဖော်ပြပေးခြင်း\n• History အောက်ဆုံး မှတ်ချက် Blank ဖြစ်ခြင်း: Additional Remarks / Free Text အကွက်ထဲသို့ လူနာစာရင်းသွင်း Complaint မရောက်စေဘဲ Default အလွတ်ထားပေးခြင်း\n• Drug Allergies စက်အချင်းချင်း Sync ဝင်ခြင်း: Reception စက်မှ သွင်းလိုက်သော ဆေးမတည့်မှုများနှင့် နာတာရှည်ရောဂါများ ဆရာဝန်စက်သို့ Wi-Fi Sync ဖြင့် အပြည့်အစုံ ရောက်ရှိစေရန် ပြုပြင်ခြင်း\n• Lab Supabase Cloud Auto-Sync: ဓာတ်ခွဲအဖြေများ သိမ်းဆည်းတိုင်း Supabase Cloud သို့ အလိုအလျောက် တင်ပေးခြင်းနှင့် ဆရာဝန် အပြင်ရောက်နေချိန် Cloud မှ အဖြေများကို အလိုအလျောက် ဆွဲယူနိုင်မည့် Sync စနစ် ထည့်သွင်းခြင်း",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-18",
-  "apkSizeBytes": 14949887,
-  "commitSha": "949e993805fb0d59f916aab1108e436783323c26",
-  "updatedAt": "2026-11-18T07:01:00.000Z"
+  "apkSizeBytes": 14949876,
+  "commitSha": "7e47bea2135361bfcf24da785aaad374fb5af989",
+  "updatedAt": "2026-11-18T12:16:00.000Z"
 }
