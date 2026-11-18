@@ -1,12 +1,12 @@
 {
-  "versionCode": 68,
-  "versionName": "1.5.44",
+  "versionCode": 69,
+  "versionName": "1.5.45",
   "minSupportedVersion": 1,
-  "releaseNotes": "• Sticky Vitals & Allergy Alert Header: Vitals strip and drug allergy alert banner are always visible at the top of consultation screen regardless of scrolling or pane switching.\n• Patient Address on A4 Printouts: Patient address added to both Doctor Consultation EMR A4 print and Laboratory Investigation Report A4 print.\n• Lab Invoice Discount Enhancement: Paid amount auto-updates on discount; added Quick Discount chips (FOC, 5%-20%, 3000-5000 Ks); order marked as 'Paid' when fully paid with discount.\n• RBS Trend & Glucose Visualization: Single reading evaluation badge (Normal/Pre-diabetes/High) for single readings; completed Lab Orders for Glucose/RBS auto-integrated into Vitals Trends.\n• Drug Allergies Auto-Sync: Registration drug allergies automatically loaded into Clinical History accordion and highlighted in top sticky header.",
-  "releaseNotesMm": "• Sticky Vitals & Allergy Alert: Consultation မျက်နှာပြင်တွင် မည်သည့်နေရာသို့ ရွှေ့သွားသွား အမြဲမြင်နေရမည့် Vitals Bar နှင့် မတည့်သောဆေး အနီရောင် Alert Bar ထည့်သွင်းပေးခြင်း\n• A4 စာရွက်များတွင် လူနာလိပ်စာ ထည့်သွင်းခြင်း: Doctor Consultation A4 Print နှင့် Lab Investigation Report A4 နှစ်မျိုးစလုံးတွင် လူနာလိပ်စာ စနစ်တကျ ထည့်သွင်းပေးခြင်း\n• Lab Invoice Discount ပြင်ဆင်ချက်: Discount ရိုက်လျှင် လက်ခံရရှိငွေ auto ပြောင်းလဲပေးခြင်း၊ FOC နှင့် % Quick Chips များ ထည့်ပေးခြင်း၊ Discount ဖြင့် ကျသင့်ငွေပြည့်ပါက Order Status ကို Paid အဖြစ် သတ်မှတ်ပေးခြင်း\n• RBS Trend & Glucose Visualization: RBS ၁ ကြိမ်တည်း စစ်ထားလျှင်လည်း အဖြေတန်ဖိုးနှင့် Normal/High status ပြသပေးခြင်း၊ Lab မှ စစ်ထားသော Glucose/RBS အဖြေများကိုပါ Trend သမိုင်းမှတ်တမ်းထဲ auto ပေါင်းစပ်ပေးခြင်း\n• Drug Allergies Auto-Sync: Registration တွင် ဖြည့်ခဲ့သော မတည့်သည့်ဆေးများကို Clinical History ရှိ Drug Allergies ကဏ္ဍထဲသို့ auto ရွေးချယ်ပေးခြင်း",
+  "releaseNotes": "• Lab Investigation Detail Info: Added patient phone number and address fields for both Walk-in and Clinic registered patients.\n• Lab Order Management: Display patient phone and address on Lab Queue Cards, Completed Cards, Result Entry dialog, and Invoice modal.\n• Lab A4 Report Print: Patient phone and address properly rendered in patient demographic table.\n• Lab Invoice & Ledger: Phone number and address linked to vouchers and ledger records.",
+  "releaseNotesMm": "• Lab Investigation Detail Info: ပြင်ပလူနာ (Walk-in) နှင့် ဆေးခန်းလူနာများအတွက် ဖုန်းနံပါတ် နှင့် နေရပ်လိပ်စာ အပြည့်အစုံ ထည့်သွင်းနိုင်ခြင်း\n• Lab Orders & Cards: Queue ကတ်၊ Completed ကတ်၊ အဖြေသွင်း Dialog နှင့် ဘောင်ချာ modal တို့တွင် လူနာဖုန်းနံပါတ်နှင့် လိပ်စာ အပြည့်အစုံ ဖော်ပြပေးခြင်း\n• Lab A4 Report Print: A4 စာရွက်ထုတ်ယူရာတွင် လူနာဖုန်းနံပါတ်နှင့် လိပ်စာ စနစ်တကျ ပါဝင်ဖော်ပြပေးခြင်း\n• Lab Invoice & Ledger: ဘောင်ချာစာရင်းနှင့် ငွေစာရင်း Ledger တွင် ဖုန်းနံပါတ်နှင့် လိပ်စာ ချိတ်ဆက်သိမ်းဆည်းပေးခြင်း",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
-  "publishedAt": "2026-11-17",
-  "apkSizeBytes": 14949899,
-  "commitSha": "b57dd7a8fb02dfcf2ffc1ffd365c6de088fb5d2e",
-  "updatedAt": "2026-11-17T21:02:00.000Z"
+  "publishedAt": "2026-11-18",
+  "apkSizeBytes": 14949887,
+  "commitSha": "949e993805fb0d59f916aab1108e436783323c26",
+  "updatedAt": "2026-11-18T07:01:00.000Z"
 }
