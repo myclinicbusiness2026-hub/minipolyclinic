@@ -32,7 +32,8 @@ enum class PatientQueueFilter(val label: String) {
   ALL("All"),
   WAITING("Waiting"),
   IN_CONSULTATION("In Progress"),
-  FOLLOW_UP("Follow-up")
+  FOLLOW_UP("Follow-up"),
+  COMPLETED("Completed / Billing")
 }
 
 @Composable
@@ -58,6 +59,7 @@ fun PatientSelectorDialog(
       PatientQueueFilter.WAITING -> p.status == QueueStatus.WAITING
       PatientQueueFilter.IN_CONSULTATION -> p.status == QueueStatus.IN_CONSULTATION
       PatientQueueFilter.FOLLOW_UP -> p.isFollowUp
+      PatientQueueFilter.COMPLETED -> p.status == QueueStatus.COMPLETED || p.status == QueueStatus.AT_BILLING || p.status == QueueStatus.AT_PHARMACY
     }
 
     matchesSearch && matchesFilter

@@ -232,7 +232,7 @@ class A4PrinterSettingsActivity : ComponentActivity() {
     )
 
     val printSettings = A4PrintSettings(
-      clinicNameEn = "Shwe Khit General Clinic",
+      clinicNameEn = "Shwe Khit General Medicine Clinic",
       clinicNameMm = "“ရွှေခေတ်” အထွေထွေရောဂါကုဆေးခန်း",
       clinicAddress = "အမှတ်(၁၂)၊ လမ်းမတော်လမ်း၊ မန္တလေးမြို့",
       clinicPhone = "09-421001122, 09-790112233",

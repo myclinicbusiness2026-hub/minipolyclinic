@@ -21,7 +21,7 @@ data class A4PrintOptions(
  * Clinic branding, credentials, and print options for A4 clinical documents.
  */
 data class A4PrintSettings(
-  val clinicNameEn: String = "Shwe Khit General Clinic",
+  val clinicNameEn: String = "Shwe Khit General Medicine Clinic",
   val clinicNameMm: String = "“ရွှေခေတ်” အထွေထွေရောဂါကုဆေးခန်း",
   val clinicSubtitleMm: String = "အထွေထွေရောဂါကုဆေးခန်း",
   val clinicAddress: String = "အမှတ်(၁၂)၊ လမ်းမတော်လမ်း၊ မန္တလေးမြို့",

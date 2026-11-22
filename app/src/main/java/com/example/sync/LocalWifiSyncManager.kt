@@ -569,15 +569,17 @@ class LocalWifiSyncManager(
               batchMap[key] = winner
             }
           }
+          val isRemoteNewer = rm.updatedAt > existing.updatedAt
           medMap[existing.id] = existing.copy(
-            name = if (rm.name.isNotBlank()) rm.name else existing.name,
-            genericName = if (rm.genericName.isNotBlank()) rm.genericName else existing.genericName,
-            category = if (rm.category.isNotBlank()) rm.category else existing.category,
-            dosageForm = if (rm.dosageForm.isNotBlank()) rm.dosageForm else existing.dosageForm,
-            unitType = if (rm.unitType.isNotBlank()) rm.unitType else existing.unitType,
-            profitMarginPercent = if (rm.profitMarginPercent > 0) rm.profitMarginPercent else existing.profitMarginPercent,
-            minStockThreshold = if (rm.minStockThreshold > 0) rm.minStockThreshold else existing.minStockThreshold,
-            batches = batchMap.values.toList()
+            name = if (isRemoteNewer && rm.name.isNotBlank()) rm.name else existing.name,
+            genericName = if (isRemoteNewer && rm.genericName.isNotBlank()) rm.genericName else existing.genericName,
+            category = if (isRemoteNewer && rm.category.isNotBlank()) rm.category else existing.category,
+            dosageForm = if (isRemoteNewer && rm.dosageForm.isNotBlank()) rm.dosageForm else existing.dosageForm,
+            unitType = if (isRemoteNewer && rm.unitType.isNotBlank()) rm.unitType else existing.unitType,
+            profitMarginPercent = if (isRemoteNewer && rm.profitMarginPercent > 0) rm.profitMarginPercent else existing.profitMarginPercent,
+            minStockThreshold = if (isRemoteNewer && rm.minStockThreshold > 0) rm.minStockThreshold else existing.minStockThreshold,
+            batches = batchMap.values.toList(),
+            updatedAt = maxOf(rm.updatedAt, existing.updatedAt)
           )
         }
       }

@@ -117,7 +117,8 @@ data class Medicine(
   val primarySupplier: String = "",
   val standardDosage: String = "",
   val medicineType: String = "", // "Oral", "Injection", "Topical", "Consumables"
-  val customSellingPrice: Double? = null
+  val customSellingPrice: Double? = null,
+  val updatedAt: Long = System.currentTimeMillis()
 ) {
   val supplierName: String get() = primarySupplier
   val effectiveMedicineType: String get() {

@@ -294,6 +294,7 @@ data class SyncDataPayload(
       mo.put("primarySupplier", m.primarySupplier)
       mo.put("standardDosage", m.standardDosage)
       mo.put("isAllergyWarning", m.isAllergyWarning)
+      mo.put("updatedAt", m.updatedAt)
       if (m.customSellingPrice != null && m.customSellingPrice > 0.0) {
         mo.put("customSellingPrice", m.customSellingPrice)
       }
@@ -562,6 +563,8 @@ data class SyncDataPayload(
             put("patientId", ord.patientId)
             put("patientName", ord.patientName)
             put("patientHn", ord.patientHn)
+            put("patientPhone", ord.patientPhone)
+            put("patientAddress", ord.patientAddress)
             put("patientAge", ord.patientAge)
             put("patientGender", ord.patientGender.name)
             put("doctorName", ord.doctorName)
@@ -656,6 +659,11 @@ data class SyncDataPayload(
             put("patientId", inv.patientId)
             put("patientName", inv.patientName)
             put("patientHn", inv.patientHn)
+            put("patientPhone", inv.patientPhone)
+            put("patientAddress", inv.patientAddress)
+            put("referringDoctorName", inv.referringDoctorName)
+            put("discount", inv.discount)
+            put("netTotal", inv.netTotal)
             put("totalAmount", inv.totalAmount)
             put("paidAmount", inv.paidAmount)
             put("paymentMethod", inv.paymentMethod.name)

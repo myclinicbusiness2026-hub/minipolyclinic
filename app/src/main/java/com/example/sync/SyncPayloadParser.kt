@@ -335,7 +335,8 @@ object SyncPayloadParser {
           primarySupplier = o.optString("primarySupplier", ""),
           isAllergyWarning = o.optBoolean("isAllergyWarning", false),
           medicineType = o.optString("medicineType", ""),
-          customSellingPrice = if (o.has("customSellingPrice") && !o.isNull("customSellingPrice")) o.getDouble("customSellingPrice") else null
+          customSellingPrice = if (o.has("customSellingPrice") && !o.isNull("customSellingPrice")) o.getDouble("customSellingPrice") else null,
+          updatedAt = o.optLong("updatedAt", System.currentTimeMillis())
         )
       )
     }

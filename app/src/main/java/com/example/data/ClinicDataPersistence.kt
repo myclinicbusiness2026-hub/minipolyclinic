@@ -467,6 +467,7 @@ object ClinicDataPersistence {
         put("profitMarginPercent", m.profitMarginPercent)
         put("isAllergyWarning", m.isAllergyWarning)
         put("primarySupplier", m.primarySupplier)
+        put("updatedAt", m.updatedAt)
         if (m.customSellingPrice != null && m.customSellingPrice > 0.0) {
           put("customSellingPrice", m.customSellingPrice)
         }
@@ -528,7 +529,8 @@ object ClinicDataPersistence {
             isAllergyWarning = o.optBoolean("isAllergyWarning", false),
             primarySupplier = o.optString("primarySupplier", ""),
             medicineType = o.optString("medicineType", ""),
-            customSellingPrice = if (o.has("customSellingPrice") && !o.isNull("customSellingPrice")) o.getDouble("customSellingPrice") else null
+            customSellingPrice = if (o.has("customSellingPrice") && !o.isNull("customSellingPrice")) o.getDouble("customSellingPrice") else null,
+            updatedAt = o.optLong("updatedAt", System.currentTimeMillis())
           )
         )
       }

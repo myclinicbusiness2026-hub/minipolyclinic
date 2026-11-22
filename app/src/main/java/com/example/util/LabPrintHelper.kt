@@ -386,7 +386,7 @@ object LabPrintHelper {
           <tr>
             <td style="width: 72%; vertical-align: top;">
               <div class="clinic-name-mm">“${clinic.clinicNameMm.replace("“", "").replace("”", "").ifBlank { "ရွှေခေတ်" }}” ${clinic.clinicSubtitleMm.ifBlank { "အထွေထွေရောဂါကုဆေးခန်း" }}</div>
-              <div class="clinic-name-en">${clinic.clinicNameEn.ifBlank { "Shwe Khit General Clinic & Diagnostic Lab" }}</div>
+              <div class="clinic-name-en">${clinic.clinicNameEn.replace("General Clinic", "General Medicine Clinic").ifBlank { "Shwe Khit General Medicine Clinic" }}</div>
               <div class="clinic-contact">${clinic.clinicAddress.ifBlank { "အမှတ်(၁၂)၊ လမ်းမတော်လမ်း၊ မန္တလေးမြို့" }} • Ph: ${clinic.clinicPhone.ifBlank { "09-421001122, 09-790112233" }}</div>
             </td>
             <td style="width: 25%; text-align: right; vertical-align: middle;">
@@ -407,14 +407,22 @@ object LabPrintHelper {
           val clean = order.referringDoctorName.trim()
           if (clean.equals("Self-request", ignoreCase = true) || clean.equals("Self", ignoreCase = true) || clean.contains("ကိုယ်တိုင်")) {
             clean
+          } else if (clean.contains("NKS", ignoreCase = true) || clean.equals("nks", ignoreCase = true)) {
+            "Dr. Nyan Kaung Sett"
           } else if (clean.startsWith("Dr", ignoreCase = true) || clean.startsWith("ဒေါက်တာ", ignoreCase = true)) {
             clean
           } else {
             "Dr. $clean"
           }
         } else {
-          if (clinic.doctorName.startsWith("Dr", ignoreCase = true)) clinic.doctorName
-          else "Dr. ${clinic.doctorName}"
+          val fallbackDoc = clinic.doctorName.trim()
+          if (fallbackDoc.contains("NKS", ignoreCase = true) || fallbackDoc.equals("nks", ignoreCase = true)) {
+            "Dr. Nyan Kaung Sett"
+          } else if (fallbackDoc.startsWith("Dr", ignoreCase = true)) {
+            fallbackDoc
+          } else {
+            "Dr. $fallbackDoc"
+          }
         }
         sb.append("""
           <div class="patient-box">
@@ -568,7 +576,10 @@ object LabPrintHelper {
                 <div class="sign-line"></div>
                 <strong style="color: #0f172a; font-size: 13.5px; line-height: 1.4;">$effectivePathologistName</strong><br/>
                 ${if (effectivePathologistDegree.isNotBlank()) "<span style='font-size: 11px; color: #1e293b; font-weight: 500; line-height: 1.3;'>$effectivePathologistDegree</span><br/>" else ""}
-                ${if (effectivePathologistSama.isNotBlank()) "<span style='color: #334155; font-size: 10.5px; font-weight: 600; line-height: 1.3;'>(S.A.M.A: $effectivePathologistSama)</span><br/>" else ""}
+                ${if (effectivePathologistSama.isNotBlank()) {
+                  val cleanSama = effectivePathologistSama.replace("S.A.M.A", "SAMA").replace("SAMA:", "").replace("SAMA", "").replace(":", "").trim()
+                  "<span style='color: #334155; font-size: 10.5px; font-weight: 600; line-height: 1.3;'>(SAMA: $cleanSama)</span><br/>"
+                } else ""}
                 ${if (effectivePathologistTitle.isNotBlank()) "<span style='color: #0f172a; font-size: 10.5px; font-weight: 600; line-height: 1.3;'>$effectivePathologistTitle</span>" else ""}
               </td>
               """ else """

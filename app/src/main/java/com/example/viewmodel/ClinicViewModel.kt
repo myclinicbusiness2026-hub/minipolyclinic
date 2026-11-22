@@ -3412,7 +3412,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
             b.copy(lastUpdated = now)
           } else b
         }
-        updatedMedicine.copy(batches = updatedBatches)
+        updatedMedicine.copy(batches = updatedBatches, updatedAt = now)
       } else med
     }
     _medicines.value = updatedList
@@ -3939,24 +3939,26 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                     batchMap[b.batchNumber] = b
                   }
                 }
+                val isIncomingNewer = m.updatedAt > existing.updatedAt
                 currentMedMap[m.id] = existing.copy(
-                  name = m.name,
-                  genericName = m.genericName,
-                  category = m.category,
-                  dosageForm = m.dosageForm,
-                  unitType = m.unitType,
-                  medicineType = if (m.medicineType.isNotBlank()) m.medicineType else existing.medicineType,
-                  minStockThreshold = if (m.minStockThreshold > 0) m.minStockThreshold else existing.minStockThreshold,
-                  profitMarginPercent = if (m.profitMarginPercent > 0.0) m.profitMarginPercent else existing.profitMarginPercent,
-                  customSellingPrice = if (m.customSellingPrice != null && m.customSellingPrice > 0.0) m.customSellingPrice else existing.customSellingPrice,
+                  name = if (isIncomingNewer && m.name.isNotBlank()) m.name else existing.name,
+                  genericName = if (isIncomingNewer && m.genericName.isNotBlank()) m.genericName else existing.genericName,
+                  category = if (isIncomingNewer && m.category.isNotBlank()) m.category else existing.category,
+                  dosageForm = if (isIncomingNewer && m.dosageForm.isNotBlank()) m.dosageForm else existing.dosageForm,
+                  unitType = if (isIncomingNewer && m.unitType.isNotBlank()) m.unitType else existing.unitType,
+                  medicineType = if (isIncomingNewer && m.medicineType.isNotBlank()) m.medicineType else existing.medicineType,
+                  minStockThreshold = if (isIncomingNewer && m.minStockThreshold > 0) m.minStockThreshold else existing.minStockThreshold,
+                  profitMarginPercent = if (isIncomingNewer && m.profitMarginPercent > 0.0) m.profitMarginPercent else existing.profitMarginPercent,
+                  customSellingPrice = if (isIncomingNewer && m.customSellingPrice != null && m.customSellingPrice > 0.0) m.customSellingPrice else existing.customSellingPrice,
                   primarySupplier = when {
                     existing.primarySupplier.isNotBlank() && !existing.primarySupplier.contains("AA Medical", ignoreCase = true) -> existing.primarySupplier
                     m.primarySupplier.isNotBlank() && !m.primarySupplier.contains("AA Medical", ignoreCase = true) -> m.primarySupplier
                     else -> ""
                   },
                   isAllergyWarning = m.isAllergyWarning || existing.isAllergyWarning,
-                  standardDosage = if (m.standardDosage.isNotBlank()) m.standardDosage else existing.standardDosage,
-                  batches = batchMap.values.toList()
+                  standardDosage = if (isIncomingNewer && m.standardDosage.isNotBlank()) m.standardDosage else existing.standardDosage,
+                  batches = batchMap.values.toList(),
+                  updatedAt = maxOf(m.updatedAt, existing.updatedAt)
                 )
               }
             }
@@ -4856,6 +4858,15 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val nowTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
     val orderNumber = "LAB-${SimpleDateFormat("yyMMdd-HHmm", Locale.getDefault()).format(Date())}-${(100..999).random()}"
 
+    val cleanDoc = if (doctorName.contains("NKS", ignoreCase = true) || doctorName.equals("nks", ignoreCase = true)) {
+      "Dr. Nyan Kaung Sett"
+    } else if (doctorName.isNotBlank()) {
+      if (doctorName.startsWith("Dr", ignoreCase = true) || doctorName.startsWith("ဒေါက်တာ", ignoreCase = true)) doctorName else "Dr. $doctorName"
+    } else {
+      val clinicDoc = clinicSettings.value.doctorName.ifBlank { "Dr. Nyan Kaung Sett" }
+      if (clinicDoc.contains("NKS", ignoreCase = true)) "Dr. Nyan Kaung Sett" else clinicDoc
+    }
+
     val items = selectedTemplates.map { t ->
       LabOrderItem(
         testId = t.id,
@@ -4889,7 +4900,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       patientAddress = patient.address,
       patientAge = patient.age,
       patientGender = patient.gender,
-      doctorName = doctorName,
+      doctorName = cleanDoc,
       orderDate = now,
       orderTime = nowTime,
       status = LabOrderStatus.ORDERED,
@@ -4904,5 +4915,84 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
     createLabOrder(order)
     return order
+  }
+
+  fun recreateInvoiceForConsultation(consultationId: String): Invoice? {
+    val consultation = _consultations.value.find { it.id == consultationId } ?: return null
+    val patient = _patients.value.find { it.id == consultation.patientId } ?: return null
+    
+    val existing = _invoices.value.find { it.consultationId == consultationId }
+    if (existing != null) return existing
+
+    val invoiceItems = mutableListOf<InvoiceItem>()
+    consultation.prescriptions.forEach { drug ->
+      if (!drug.isCst && !drug.isExternal) {
+        val drugName = drug.fullDisplayName
+        val displayName = if (drug.dosage.isNotBlank() && !drugName.contains(drug.dosage, ignoreCase = true)) {
+          "$drugName (${drug.dosage}) x ${drug.quantity}"
+        } else {
+          "$drugName x ${drug.quantity}"
+        }
+        invoiceItems.add(
+          InvoiceItem(
+            name = displayName,
+            quantity = drug.quantity,
+            unitPrice = drug.unitPrice,
+            totalPrice = drug.totalPrice,
+            isProcedure = false
+          )
+        )
+      }
+    }
+
+    consultation.selectedProcedures.forEach { proc ->
+      val isInjectionProc = proc.name.contains("Injection", ignoreCase = true) || proc.name.contains("ဆေးထိုး", ignoreCase = true) || proc.name.contains("IV", ignoreCase = true) || proc.name.contains("IM", ignoreCase = true)
+      val consText = if (proc.consumableItems.isNotEmpty()) {
+        proc.consumableItems.joinToString(", ") { "${it.name} x ${it.quantity}" }
+      } else if (proc.consumables.isNotEmpty()) {
+        proc.consumables.joinToString(", ") { "$it x 1" }
+      } else ""
+      val procDisplayName = if (consText.isNotBlank() && !isInjectionProc) {
+        "${proc.name}\n  • Consumables: $consText"
+      } else {
+        proc.name
+      }
+      invoiceItems.add(
+        InvoiceItem(
+          name = procDisplayName,
+          quantity = 1,
+          unitPrice = proc.totalProcedureFee.coerceAtLeast(proc.price),
+          totalPrice = proc.totalProcedureFee.coerceAtLeast(proc.price),
+          isProcedure = true
+        )
+      )
+    }
+
+    val totalItemsPrice = invoiceItems.sumOf { it.totalPrice }
+    val calculatedTotal = consultation.consultationFee + consultation.serviceFee + totalItemsPrice
+
+    val newInvoice = Invoice(
+      id = "INV-${UUID.randomUUID().toString().take(8)}",
+      invoiceNumber = "INV-${(1000 + _invoices.value.size + 1)}",
+      consultationId = consultation.id,
+      patientId = patient.id,
+      patientName = patient.name,
+      items = invoiceItems,
+      consultationFee = consultation.consultationFee,
+      serviceFee = consultation.serviceFee,
+      totalAmount = calculatedTotal,
+      paidAmount = 0.0,
+      paymentStatus = "Unpaid",
+      cashierName = _currentUser.value?.fullName ?: "Counter Cashier",
+      timestamp = BurmeseDateUtils.getNowFormatted()
+    )
+
+    val updatedInvoices = _invoices.value + newInvoice
+    _invoices.value = updatedInvoices
+    ClinicDataPersistence.saveInvoices(getApplication(), updatedInvoices)
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
+    return newInvoice
   }
 }

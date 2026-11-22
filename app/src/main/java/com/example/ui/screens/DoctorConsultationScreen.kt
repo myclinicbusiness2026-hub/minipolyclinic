@@ -134,6 +134,8 @@ fun DoctorConsultationScreen(
   val currentUser by viewModel.currentUser.collectAsState()
   val selectedAttendingDoctor by viewModel.selectedAttendingDoctor.collectAsState()
   val labOrders by viewModel.labOrders.collectAsState()
+  val invoices by viewModel.invoices.collectAsState()
+  val lastConsultedPatientId by viewModel.lastConsultedPatientId.collectAsState()
   val customAttendingDoctor by viewModel.customAttendingDoctor.collectAsState()
   var showAttendingDoctorDialog by remember { mutableStateOf(false) }
 
@@ -145,8 +147,12 @@ fun DoctorConsultationScreen(
     patients.filter { it.status == QueueStatus.IN_CONSULTATION || it.status == QueueStatus.WAITING }
   }
 
-  val activePatient = remember(consultationQueuePatients, selectedPatientId) {
-    consultationQueuePatients.find { it.id == selectedPatientId } ?: consultationQueuePatients.firstOrNull()
+  val activePatient = remember(patients, consultationQueuePatients, selectedPatientId) {
+    if (!selectedPatientId.isNullOrBlank()) {
+      patients.find { it.id == selectedPatientId } ?: consultationQueuePatients.firstOrNull()
+    } else {
+      consultationQueuePatients.firstOrNull()
+    }
   }
 
   val patientId = activePatient?.id
@@ -712,12 +718,12 @@ fun DoctorConsultationScreen(
 
             // Recall Completed Patient Button
             var showRecallMenu by remember { mutableStateOf(false) }
-            val completedPatientsToday = remember(patients, consultations) {
+            val completedPatientsToday = remember(patients, consultations, lastConsultedPatientId) {
               val todayKey = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
               patients.filter { p ->
                 p.status != QueueStatus.IN_CONSULTATION && p.status != QueueStatus.WAITING &&
-                (p.registrationDate == todayKey || consultations.any { c -> c.patientId == p.id && c.timestamp.startsWith(todayKey) })
-              }.take(8)
+                (p.id == lastConsultedPatientId || p.registrationDate == todayKey || consultations.any { c -> c.patientId == p.id && c.timestamp.startsWith(todayKey) })
+              }.sortedByDescending { if (it.id == lastConsultedPatientId) 1 else 0 }.take(15)
             }
 
             Box {
@@ -759,7 +765,14 @@ fun DoctorConsultationScreen(
                     DropdownMenuItem(
                       text = {
                         Column {
-                          Text("${p.name} (${p.hn})", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = DarkGrayText)
+                          val isLast = p.id == lastConsultedPatientId
+                          Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("${p.name} (${p.hn})", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = DarkGrayText)
+                            if (isLast) {
+                              Spacer(modifier = Modifier.width(4.dp))
+                              Text("(နောက်ဆုံးကြည့်)", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFFD97706))
+                            }
+                          }
                           Text("အခြေအနေ: ${p.status.myanmarName}", fontSize = 9.5.sp, color = SlateMuted)
                         }
                       },
@@ -801,6 +814,50 @@ fun DoctorConsultationScreen(
                 }
                 Spacer(modifier = Modifier.width(2.dp))
                 Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(12.dp), tint = SkyBluePrimary)
+              }
+            }
+          }
+        }
+
+        // Missing / Deleted Invoice Restore Banner
+        val activePatientCons = remember(consultations, activePatient?.id) {
+          if (activePatient != null) consultations.filter { it.patientId == activePatient.id }.maxByOrNull { it.timestamp }
+          else null
+        }
+        val hasInvoiceForActive = remember(invoices, activePatientCons) {
+          activePatientCons != null && invoices.any { it.consultationId == activePatientCons.id }
+        }
+
+        if (activePatient != null && activePatientCons != null && !hasInvoiceForActive) {
+          Surface(
+            shape = RoundedCornerShape(4.dp),
+            color = Color(0xFFFEF2F2),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFCA5A5)),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp)
+          ) {
+            Row(
+              modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp).fillMaxWidth(),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                Icon(Icons.Default.ReceiptLong, contentDescription = null, tint = Color(0xFFDC2626), modifier = Modifier.size(14.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("⚠️ ဤလူနာ၏ ငွေတောင်းခံလွှာ (Invoice) မရှိသေးပါ (သို့မဟုတ် ဖျက်မိထားပါသည်)", fontSize = 10.sp, color = Color(0xFF991B1B), fontWeight = FontWeight.SemiBold)
+              }
+              Button(
+                onClick = {
+                  viewModel.recreateInvoiceForConsultation(activePatientCons.id)
+                  Toast.makeText(context, "ဘောင်ချာ အသစ် ပြန်လည်ထုတ်ပေးပြီးပါပြီ (Invoice Re-created)", Toast.LENGTH_SHORT).show()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                shape = RoundedCornerShape(4.dp),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                modifier = Modifier.height(24.dp)
+              ) {
+                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(11.dp))
+                Spacer(modifier = Modifier.width(2.dp))
+                Text("ဘောင်ချာ အသစ် ပြန်ဖွင့်မည် (Re-open)", fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
               }
             }
           }
@@ -1414,11 +1471,14 @@ fun DoctorConsultationScreen(
   // Modals
   if (showPatientSelectorDialog) {
     PatientSelectorDialog(
-      patients = consultationQueuePatients,
+      patients = patients,
       activePatientId = activePatient?.id,
       onSelectPatient = { patientId ->
         viewModel.selectPatient(patientId)
-        viewModel.updatePatientStatus(patientId, QueueStatus.IN_CONSULTATION)
+        val p = patients.find { it.id == patientId }
+        if (p != null && (p.status == QueueStatus.WAITING || p.status == QueueStatus.IN_CONSULTATION)) {
+          viewModel.updatePatientStatus(patientId, QueueStatus.IN_CONSULTATION)
+        }
       },
       onDismiss = { showPatientSelectorDialog = false }
     )

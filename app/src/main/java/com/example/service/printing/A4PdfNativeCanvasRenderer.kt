@@ -1056,7 +1056,7 @@ object A4PdfNativeCanvasRenderer {
     paint.color = Color.rgb(0x2E, 0x7D, 0x32)
     paint.textSize = 10.5f
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    val clinicTitleEn = printSettings.clinicNameEn.ifBlank { "Shwe Khit General Clinic" }
+    val clinicTitleEn = printSettings.clinicNameEn.replace("General Clinic", "General Medicine Clinic").ifBlank { "Shwe Khit General Medicine Clinic" }
     canvas.drawText(clinicTitleEn, textStartX, 51f, paint)
 
     paint.color = Color.rgb(0x61, 0x61, 0x61)

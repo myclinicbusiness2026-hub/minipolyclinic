@@ -209,10 +209,15 @@ fun ConsultationClinicalRecordPane(
 
     // 4. Suggested Diagnostic Investigations (Labs, Imaging & Tests)
     val labTemplates by viewModel.labTemplates.collectAsState()
+    val labOrders by viewModel.labOrders.collectAsState()
+    val existingLabOrder = remember(labOrders, patient.id) {
+      labOrders.find { it.patientId == patient.id && it.status != LabOrderStatus.CANCELLED }
+    }
     val context = androidx.compose.ui.platform.LocalContext.current
     SuggestedInvestigationsCard(
       selectedInvestigations = selectedInvestigations,
       labTemplates = labTemplates,
+      existingLabOrder = existingLabOrder,
       onOrderToLab = { templates ->
         val (effDocName, _, _) = viewModel.getEffectiveDoctor()
         val docName = effDocName.ifBlank { viewModel.currentUser.value?.displayName ?: viewModel.clinicSettings.value.doctorName }
@@ -355,6 +360,7 @@ fun ConsultationPrescriptionAndBillingPane(
 fun SuggestedInvestigationsCard(
   selectedInvestigations: SnapshotStateList<String>,
   labTemplates: List<LabTestTemplate> = emptyList(),
+  existingLabOrder: LabOrder? = null,
   onOrderToLab: ((List<LabTestTemplate>) -> Unit)? = null
 ) {
   var customInvestigationText by remember { mutableStateOf("") }
@@ -711,16 +717,26 @@ fun SuggestedInvestigationsCard(
               }
 
               Spacer(modifier = Modifier.height(6.dp))
+              val isSent = existingLabOrder != null
               Button(
                 onClick = { onOrderToLab(matchedTemplates) },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
+                colors = ButtonDefaults.buttonColors(containerColor = if (isSent) Color(0xFF0D9488) else Color(0xFF16A34A)),
                 shape = RoundedCornerShape(6.dp),
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                 modifier = Modifier.fillMaxWidth().height(32.dp)
               ) {
-                Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(13.dp))
+                Icon(
+                  if (isSent) Icons.Default.CheckCircle else Icons.Default.Send,
+                  contentDescription = null,
+                  modifier = Modifier.size(13.dp)
+                )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("ဓာတ်ခွဲခန်းသို့ တိုက်ရိုက် Order ပို့မည် (Send to Lab Queue)", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+                val btnText = if (isSent) {
+                  "✅ ဓာတ်ခွဲခန်းသို့ ပို့ပြီးပါပြီ (${existingLabOrder.orderTime}) - ထပ်မံပေးပို့လိုပါက နှိပ်ပါ"
+                } else {
+                  "ဓာတ်ခွဲခန်းသို့ တိုက်ရိုက် Order ပို့မည် (Send to Lab Queue)"
+                }
+                Text(btnText, fontSize = 10.sp, fontWeight = FontWeight.Bold)
               }
             }
           }

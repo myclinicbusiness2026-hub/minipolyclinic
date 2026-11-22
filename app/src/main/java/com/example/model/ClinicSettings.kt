@@ -6,7 +6,7 @@ package com.example.model
  * Eliminates all hardcoded clinic and physician branding throughout the app.
  */
 data class ClinicSettings(
-  val clinicNameEn: String = "Shwe Khit General Clinic",
+  val clinicNameEn: String = "Shwe Khit General Medicine Clinic",
   val clinicNameMm: String = "ရွှေခေတ်",
   val clinicSubtitleMm: String = "အထွေထွေရောဂါကုဆေးခန်း",
   val addressMm: String = "အမှတ်(၁၂)၊ လမ်းမတော်လမ်း၊ မန္တလေးမြို့",
