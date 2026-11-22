@@ -4969,7 +4969,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     val totalItemsPrice = invoiceItems.sumOf { it.totalPrice }
-    val calculatedTotal = consultation.consultationFee + consultation.serviceFee + totalItemsPrice
+    val calculatedTotal = consultation.consultationFee + totalItemsPrice
 
     val newInvoice = Invoice(
       id = "INV-${UUID.randomUUID().toString().take(8)}",
@@ -4979,7 +4979,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       patientName = patient.name,
       items = invoiceItems,
       consultationFee = consultation.consultationFee,
-      serviceFee = consultation.serviceFee,
+      serviceFee = 0.0,
       totalAmount = calculatedTotal,
       paidAmount = 0.0,
       paymentStatus = "Unpaid",

@@ -144,6 +144,7 @@ fun PatientSelectorDialog(
               PatientQueueFilter.WAITING -> patients.count { it.status == QueueStatus.WAITING }
               PatientQueueFilter.IN_CONSULTATION -> patients.count { it.status == QueueStatus.IN_CONSULTATION }
               PatientQueueFilter.FOLLOW_UP -> patients.count { it.isFollowUp }
+              PatientQueueFilter.COMPLETED -> patients.count { it.status == QueueStatus.COMPLETED || it.status == QueueStatus.AT_BILLING || it.status == QueueStatus.AT_PHARMACY }
             }
             val isSel = activeFilter == filter
             FilterChip(
