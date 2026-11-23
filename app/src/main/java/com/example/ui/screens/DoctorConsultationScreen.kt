@@ -1230,7 +1230,7 @@ fun DoctorConsultationScreen(
                 currencyFmt = currencyFmt,
                 patient = activePatient,
                 pastConsultations = pastConsultations,
-                subjective = subjectiveNotes,
+                subjective = subjective,
                 isReadOnly = isReadOnly
               )
             }
@@ -1329,7 +1329,7 @@ fun DoctorConsultationScreen(
               currencyFmt = currencyFmt,
               patient = activePatient,
               pastConsultations = pastConsultations,
-              subjective = subjectiveNotes,
+              subjective = subjective,
               isReadOnly = isReadOnly
             )
           }
