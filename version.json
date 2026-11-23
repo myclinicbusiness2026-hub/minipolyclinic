@@ -1,12 +1,12 @@
 {
-  "versionCode": 72,
-  "versionName": "1.5.48",
+  "versionCode": 73,
+  "versionName": "1.5.49",
   "minSupportedVersion": 1,
-  "releaseNotes": "• Lab Order Sync Safeguard: Added updatedAt to labOrders sync serialization and safeguarded results against being overwritten by empty orders from peer devices.\n• Streamlined Pathologist Input: Pathologist signature & seal inputs are now auto-filled with Dr. Nyan Kaung Sett (SAMA: 47414) and collapsed by default under a neat summary badge, removing the need to re-enter them each time.\n• Clean IV Cocktail & Injection Invoice Display: Simplified single injection and cocktail display names on invoices to show clean doctor order titles or generic names without redundant Brand (Generic) repetitions.\n• Default Documentation Fee: Medical Certificate / Documentation Fee (1,000 Ks) is now automatically included and default-selected on invoices.",
-  "releaseNotesMm": "• ဓာတ်ခွဲခန်းရလဒ်များ Sync ကြောင့် ပျောက်ဆုံးခြင်း ကာကွယ်ပေးခြင်း: Local Wi-Fi Sync တွင် labOrders ၏ updatedAt အချိန်ကို ထည့်သွင်းပေးပြီး အဖြေဖြည့်ထားပြီးသော order များအား အခြားစက်မှ အဖြေမရှိသော order အဟောင်းဖြင့် Overwrite မဖြစ်စေရန် Safeguard ထည့်သွင်းခြင်း\n• Pathologist အချက်အလက်များ အမြဲရိုက်ထည့်ရခြင်း မလိုတော့ခြင်း: Result ထည့်သည့် screen တွင် ဒေါက်တာဉာဏ်ကောင်းဆက် (ဆမ: ၄၇၄၁၄) ဖြင့် Auto-fill ချိတ်ဆက်ထားပြီး အချက်အလက် (၄) ခုအား Accordion Badge အောက်တွင် default ဝှက်ထားပေးခြင်းဖြင့် တစ်ခါထည့်တိုင်း လိုက်ရိုက်နေရခြင်း မရှိတော့ဘဲ သန့်ရှင်းသွားစေခြင်း\n• Invoice တွင် IV Cocktail ဆေးအမည်များ သန့်ရှင်းစွာ ပေါ်စေခြင်း: ဆရာဝန်ရေးသည့် Title (သို့မဟုတ် Generic Name သီးသန့်) အတိုင်းသာ ဖော်ပြပေးပြီး Brand (Generic) ထပ်ခါတလဲလဲ ပေါ်နေခြင်းကို ရှင်းလင်းပေးခြင်း\n• Document Fee (စာရွက်စာတမ်းကြေး ၁,၀၀၀ ကျပ်) Default Select ဖြစ်စေခြင်း: Consultation ပြီးဆုံးချိန်နှင့် Invoice ထုတ်ယူချိန်တိုင်းတွင် Document Fee အား အလိုအလျောက် ရွေးချယ် (Checked) ပေးထားခြင်း",
+  "releaseNotes": "• Clinic Settings Sync Safeguard: Fixed clinic settings revert on new device setup by extracting large Base64 logos to disk file storage, eliminating Android SharedPreferences size limits.\n• Protected Remote Clinic Profile: Prevented fresh default devices from overwriting customized cloud or Wi-Fi clinic profile data via timestamp-based sync validation.\n• 2-Tier Responsive Patient Bar: Redesigned the top patient header in Consultation Screen into a two-tier layout, ensuring patient name, HN, age/gender, clickable phone number, and chief complaint are fully visible without being clipped by queue controls.",
+  "releaseNotesMm": "• စက်အသစ်တွင် Clinic Settings တိမ်တိုက်မှ ဆွဲယူရာတွင် Default ပြန်ဖြစ်သွားခြင်းကို ဖြေရှင်းခြင်း: 5MB ကျော်ရှိသော Logo ပုံရိပ်အား SharedPreferences ကန့်သတ်ချက်ကြောင့် Error မဖြစ်စေရန် ဖုန်းသိုလှောင်ခန်း (Disk file) သို့ အလိုအလျောက် ရေးသွင်းသိမ်းဆည်းပေးခြင်းနှင့် Settings merge တွင် အဟောင်း/Default ဖြင့် Overwrite မဖြစ်စေရန် Safeguard ပြုလုပ်ထားခြင်း\n• Consultation Screen အပေါ်ဘား လူနာအချက်အလက် မပြည့်စုံခြင်းကို ဖြေရှင်းခြင်း: အပေါ်ဘားအား ၂ ထပ် (Two-Tier Layout) အဖြစ် အဆင့်မြှင့်တင်ပြီး ပထမအထပ်တွင် လူနာအမည်၊ HN၊ အသက်/ကျားမ၊ ဖုန်းနံပါတ်ခေါ်ဆိုခလုတ်နှင့် တာဝန်ကျဆရာဝန်ကို အပြည့်အစုံဖော်ပြကာ ဒုတိယအထပ်တွင် ခံစားရသော ရောဂါလက္ခဏာ (Chief Complaint) နှင့် Queue ခလုတ်များ၊ Recall ခလုတ်များကို သပ်ရပ်စွာ ခွဲထုတ်နေရာချထားပေးခြင်း",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-23",
-  "apkSizeBytes": 14949882,
-  "commitSha": "93b58387f37ca8f55922c5045ff8ab5cc8b8a76e",
-  "updatedAt": "2026-11-23T07:24:00.000Z"
+  "apkSizeBytes": 14949885,
+  "commitSha": "652a61b4fe7fdbafa1bb19241df0fed9c54c2d27",
+  "updatedAt": "2026-11-23T13:25:00.000Z"
 }

@@ -10,6 +10,8 @@ jobs:
     name: Build Release APK
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Code
@@ -44,3 +46,12 @@ jobs:
           name: minipolyclinic-apk
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
+
+      - name: Deploy Release APK to Repository
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk ShweKhitClinic-debug.apk
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add ShweKhitClinic-debug.apk version.json
+          git commit -m "chore(release): update APK and version.json to v1.5.49 [skip ci]" || echo "No changes to commit"
+          git push origin HEAD:main
