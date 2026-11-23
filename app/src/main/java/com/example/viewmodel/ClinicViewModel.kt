@@ -1822,7 +1822,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     // Auto-include Documentation Fee by default (1,000 Ks)
-    val defaultDocFee = _clinicSettings.value.defaultDocumentationFee.coerceAtLeast(1000.0)
+    val defaultDocFee = clinicSettings.value.defaultDocumentationFee.coerceAtLeast(1000.0)
     invoiceItems.add(
       InvoiceItem(
         name = "Medical Certificate / Documentation Fee",
@@ -4996,7 +4996,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     // Auto-include Documentation Fee by default (1,000 Ks)
-    val defaultDocFee = _clinicSettings.value.defaultDocumentationFee.coerceAtLeast(1000.0)
+    val defaultDocFee = clinicSettings.value.defaultDocumentationFee.coerceAtLeast(1000.0)
     invoiceItems.add(
       InvoiceItem(
         name = "Medical Certificate / Documentation Fee",
