@@ -584,6 +584,7 @@ data class SyncDataPayload(
             put("pathologistTitle", ord.pathologistTitle)
             put("showDoctorSeal", ord.showDoctorSeal)
             put("showTechnicianSign", ord.showTechnicianSign)
+            put("updatedAt", ord.updatedAt)
             val iArr = JSONArray()
             ord.items.forEach { item ->
               val io = JSONObject().apply {

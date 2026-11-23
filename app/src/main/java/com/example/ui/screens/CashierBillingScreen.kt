@@ -985,14 +985,24 @@ private fun BillingCheckoutPane(
 
   // Check if active invoice already has documentation fee line item
   val hasDocFeeItem = activeInvoice.items.any {
-    it.description.contains("Documentation Fee", ignoreCase = true) || it.description.contains("Document Fee", ignoreCase = true)
+    it.name.contains("Documentation Fee", ignoreCase = true) || it.name.contains("Document Fee", ignoreCase = true)
   }
   val existingDocFeeAmount = activeInvoice.items.find {
-    it.description.contains("Documentation Fee", ignoreCase = true) || it.description.contains("Document Fee", ignoreCase = true)
+    it.name.contains("Documentation Fee", ignoreCase = true) || it.name.contains("Document Fee", ignoreCase = true)
   }?.unitPrice ?: 1000.0
 
-  var wantsDocument by remember(activeInvoice.id, hasDocFeeItem) { mutableStateOf(hasDocFeeItem) }
+  // Default to true for unpaid invoices (User requested default select)
+  var wantsDocument by remember(activeInvoice.id, hasDocFeeItem) {
+    mutableStateOf(if (activeInvoice.isPaid) hasDocFeeItem else true)
+  }
   var docFeeAmountText by remember(activeInvoice.id) { mutableStateOf(existingDocFeeAmount.toInt().toString()) }
+
+  // Auto-apply documentation fee if invoice is unpaid and doesn't have it yet
+  LaunchedEffect(activeInvoice.id) {
+    if (!activeInvoice.isPaid && !hasDocFeeItem) {
+      onToggleDocFee(activeInvoice, true, existingDocFeeAmount)
+    }
+  }
 
   val pharmacySubtotal = remember(activeInvoice.items) {
     activeInvoice.items.filter { !it.isProcedure }.sumOf { it.totalPrice }

@@ -1779,20 +1779,35 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       }
 
       val itemDisplayName = if (card.isCocktail) {
-        val drugNames = if (card.cocktailItems.isNotEmpty()) {
-          card.cocktailItems.joinToString(" + ") { "${it.name}${if (it.dosage.isNotBlank()) " " + it.dosage else ""}".trim() }
+        val baseTitle = if (card.medicationName.isNotBlank() && card.medicationName != "IV Cocktail Mix") {
+          card.medicationName.trim()
+        } else if (card.cocktailItems.isNotEmpty()) {
+          card.cocktailItems.joinToString(" + ") { item ->
+            val cleanItem = item.name.replace(Regex("\\s*\\([^)]*\\)"), "").trim()
+            if (item.dosage.isNotBlank() && !cleanItem.contains(item.dosage, ignoreCase = true)) {
+              "$cleanItem ${item.dosage}".trim()
+            } else {
+              cleanItem
+            }
+          }
         } else {
-          card.medicationName
+          "Cocktail Mix"
         }
-        val freq = if (card.frequency.isNotBlank()) " ${card.frequency}" else ""
+        val prefix = if (baseTitle.startsWith(routeCode, ignoreCase = true) || baseTitle.contains("Cocktail", ignoreCase = true)) {
+          baseTitle
+        } else {
+          "$routeCode Cocktail: $baseTitle"
+        }
+        val freq = if (card.frequency.isNotBlank() && !prefix.contains(card.frequency, ignoreCase = true)) " ${card.frequency}" else ""
         val dosesSuffix = if (isFullCourse) " x $numDoses Doses" else ""
-        "$routeCode Cocktail: $drugNames$freq$dosesSuffix".trim()
+        "$prefix$freq$dosesSuffix".trim()
       } else {
         val medName = card.medicationName.trim()
         val dose = if (card.dosage.isNotBlank() && !medName.contains(card.dosage, ignoreCase = true)) " ${card.dosage}" else ""
-        val freq = if (card.frequency.isNotBlank()) " ${card.frequency}" else ""
+        val freq = if (card.frequency.isNotBlank() && !medName.contains(card.frequency, ignoreCase = true)) " ${card.frequency}" else ""
         val dosesSuffix = if (isFullCourse) " x $numDoses Doses" else ""
-        "$routeCode $medName$dose$freq$dosesSuffix".trim()
+        val prefix = if (medName.startsWith(routeCode, ignoreCase = true)) medName else "$routeCode $medName"
+        "$prefix$dose$freq$dosesSuffix".trim()
       }
 
       invoiceItems.add(
@@ -1805,6 +1820,18 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         )
       )
     }
+
+    // Auto-include Documentation Fee by default (1,000 Ks)
+    val defaultDocFee = _clinicSettings.value.defaultDocumentationFee.coerceAtLeast(1000.0)
+    invoiceItems.add(
+      InvoiceItem(
+        name = "Medical Certificate / Documentation Fee",
+        quantity = 1,
+        unitPrice = defaultDocFee,
+        totalPrice = defaultDocFee,
+        isProcedure = false
+      )
+    )
 
     val totalItemsPrice = invoiceItems.sumOf { it.totalPrice }
     val calculatedTotal = consultationFee + serviceFee + totalItemsPrice
@@ -4967,6 +4994,18 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         )
       )
     }
+
+    // Auto-include Documentation Fee by default (1,000 Ks)
+    val defaultDocFee = _clinicSettings.value.defaultDocumentationFee.coerceAtLeast(1000.0)
+    invoiceItems.add(
+      InvoiceItem(
+        name = "Medical Certificate / Documentation Fee",
+        quantity = 1,
+        unitPrice = defaultDocFee,
+        totalPrice = defaultDocFee,
+        isProcedure = false
+      )
+    )
 
     val totalItemsPrice = invoiceItems.sumOf { it.totalPrice }
     val calculatedTotal = consultation.consultationFee + totalItemsPrice

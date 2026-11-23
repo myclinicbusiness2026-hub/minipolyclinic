@@ -2477,13 +2477,18 @@ fun MobileLabResultEntryDialog(
   val context = LocalContext.current
   var referringDoctor by remember { mutableStateOf(order.referringDoctorName) }
   var techName by remember { mutableStateOf(order.technicianName.ifBlank { technicianName }) }
-  var pathologistName by remember { mutableStateOf(order.pathologistName.ifBlank { defaultPathologistName }) }
-  var pathologistDegree by remember { mutableStateOf(order.pathologistDegree.ifBlank { defaultPathologistDegree }) }
-  var pathologistSama by remember { mutableStateOf(order.pathologistSama.ifBlank { defaultPathologistSama }) }
-  var pathologistTitle by remember { mutableStateOf(order.pathologistTitle.ifBlank { defaultPathologistTitle }) }
+  val effDefaultName = defaultPathologistName.ifBlank { "Dr. Nyan Kaung Sett" }
+  val effDefaultDegree = defaultPathologistDegree.ifBlank { "M.B.,B.S (MDY)" }
+  val effDefaultSama = defaultPathologistSama.ifBlank { "47414" }
+  val effDefaultTitle = defaultPathologistTitle.ifBlank { "Consultant Pathologist" }
+  var pathologistName by remember { mutableStateOf(order.pathologistName.ifBlank { effDefaultName }) }
+  var pathologistDegree by remember { mutableStateOf(order.pathologistDegree.ifBlank { effDefaultDegree }) }
+  var pathologistSama by remember { mutableStateOf(order.pathologistSama.ifBlank { effDefaultSama }) }
+  var pathologistTitle by remember { mutableStateOf(order.pathologistTitle.ifBlank { effDefaultTitle }) }
   var showDoctorSeal by remember { mutableStateOf(order.showDoctorSeal) }
   var showTechnicianSign by remember { mutableStateOf(order.showTechnicianSign) }
   var generalNotes by remember { mutableStateOf(order.notes) }
+  var showPathologistDetails by remember { mutableStateOf(false) }
 
   // Working state for items and parameters
   val itemsState = remember(order.id) {
@@ -2540,61 +2545,100 @@ fun MobileLabResultEntryDialog(
             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
           ) {
             Column(modifier = Modifier.padding(10.dp)) {
-              Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(
-                  checked = showDoctorSeal,
-                  onCheckedChange = { showDoctorSeal = it },
-                  modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("A4 Report တွင် ဆရာဝန်/Pathologist Seal ထည့်သွင်းမည်", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
+              Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+              ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                  Checkbox(
+                    checked = showDoctorSeal,
+                    onCheckedChange = { showDoctorSeal = it },
+                    modifier = Modifier.size(24.dp)
+                  )
+                  Spacer(modifier = Modifier.width(6.dp))
+                  Text("A4 Report တွင် ဆရာဝန်/Pathologist Seal ထည့်သွင်းမည်", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
+                }
+                if (showDoctorSeal) {
+                  TextButton(
+                    onClick = { showPathologistDetails = !showPathologistDetails },
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                  ) {
+                    Text(
+                      if (showPathologistDetails) "▲ ဝှက်မည်" else "▼ ပြင်ဆင်ရန် (Optional)",
+                      fontSize = 10.5.sp,
+                      color = Color(0xFF15803D),
+                      fontWeight = FontWeight.SemiBold
+                    )
+                  }
+                }
               }
 
               if (showDoctorSeal) {
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Surface(
+                  shape = RoundedCornerShape(6.dp),
+                  color = Color(0xFFDCFCE7),
+                  modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                ) {
+                  Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                  ) {
+                    Text(
+                      text = "ဆရာဝန်/Pathologist: $pathologistName ${if (pathologistSama.isNotBlank()) "(ဆမ: $pathologistSama)" else ""}${if (pathologistDegree.isNotBlank()) " • $pathologistDegree" else ""}",
+                      fontSize = 10.5.sp,
+                      color = Color(0xFF14532D),
+                      fontWeight = FontWeight.Medium
+                    )
+                  }
+                }
+
+                if (showPathologistDetails) {
+                  Spacer(modifier = Modifier.height(6.dp))
+                  Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedTextField(
+                      value = pathologistName,
+                      onValueChange = { pathologistName = it },
+                      label = { Text("Pathologist အမည်", fontSize = 10.sp) },
+                      placeholder = { Text("Dr. ...") },
+                      modifier = Modifier.weight(1.3f),
+                      singleLine = true,
+                      shape = RoundedCornerShape(6.dp),
+                      textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
+                    )
+                    OutlinedTextField(
+                      value = pathologistSama,
+                      onValueChange = { pathologistSama = it },
+                      label = { Text("ဆမ (SAMA)", fontSize = 10.sp) },
+                      modifier = Modifier.weight(0.7f),
+                      singleLine = true,
+                      shape = RoundedCornerShape(6.dp),
+                      textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
+                    )
+                  }
+                  Spacer(modifier = Modifier.height(6.dp))
                   OutlinedTextField(
-                    value = pathologistName,
-                    onValueChange = { pathologistName = it },
-                    label = { Text("Pathologist အမည်", fontSize = 10.sp) },
-                    placeholder = { Text("Dr. ...") },
-                    modifier = Modifier.weight(1.3f),
+                    value = pathologistDegree,
+                    onValueChange = { pathologistDegree = it },
+                    label = { Text("ဘွဲ့ (Medical Degree)", fontSize = 10.sp) },
+                    placeholder = { Text("M.B.,B.S, M.Med.Sc (Pathology)") },
+                    modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     shape = RoundedCornerShape(6.dp),
                     textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
                   )
+                  Spacer(modifier = Modifier.height(6.dp))
                   OutlinedTextField(
-                    value = pathologistSama,
-                    onValueChange = { pathologistSama = it },
-                    label = { Text("ဆမ (S.A.M.A)", fontSize = 10.sp) },
-                    modifier = Modifier.weight(0.7f),
+                    value = pathologistTitle,
+                    onValueChange = { pathologistTitle = it },
+                    label = { Text("ရာထူး (Title / Position - e.g. Consultant Pathologist)", fontSize = 10.sp) },
+                    placeholder = { Text("မလိုပါက ကွက်လပ်ထားနိုင်ပါသည်") },
+                    modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     shape = RoundedCornerShape(6.dp),
                     textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
                   )
                 }
-                Spacer(modifier = Modifier.height(6.dp))
-                OutlinedTextField(
-                  value = pathologistDegree,
-                  onValueChange = { pathologistDegree = it },
-                  label = { Text("ဘွဲ့ (Medical Degree)", fontSize = 10.sp) },
-                  placeholder = { Text("M.B.,B.S, M.Med.Sc (Pathology)") },
-                  modifier = Modifier.fillMaxWidth(),
-                  singleLine = true,
-                  shape = RoundedCornerShape(6.dp),
-                  textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                OutlinedTextField(
-                  value = pathologistTitle,
-                  onValueChange = { pathologistTitle = it },
-                  label = { Text("ရာထူး (Title / Position - e.g. Consultant Pathologist)", fontSize = 10.sp) },
-                  placeholder = { Text("မလိုပါက ကွက်လပ်ထားနိုင်ပါသည်") },
-                  modifier = Modifier.fillMaxWidth(),
-                  singleLine = true,
-                  shape = RoundedCornerShape(6.dp),
-                  textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp)
-                )
               }
             }
           }

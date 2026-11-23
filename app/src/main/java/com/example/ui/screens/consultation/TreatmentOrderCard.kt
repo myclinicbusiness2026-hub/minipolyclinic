@@ -520,7 +520,7 @@ fun AddTreatmentOrderModal(
                         .fillMaxWidth()
                         .clickable {
                           val gen = med.genericName.trim()
-                          medicationName = if (gen.isNotBlank() && !med.name.contains(gen, ignoreCase = true)) "${med.name} ($gen)" else med.name
+                          medicationName = if (gen.isNotBlank()) gen else med.name
                           selectedMedId = med.id
                           if (!isPatientSupplied) {
                             medFeeText = med.sellingPrice.toInt().toString()
@@ -619,10 +619,12 @@ fun AddTreatmentOrderModal(
                       modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
+                          val gen = med.genericName.trim()
+                          val cleanName = if (gen.isNotBlank()) gen else med.name
                           cocktailItems.add(
                             CocktailDrugItem(
                               medicineId = med.id,
-                              name = if (med.genericName.isNotBlank() && !med.name.contains(med.genericName.trim(), ignoreCase = true)) "${med.name} (${med.genericName.trim()})" else med.name,
+                              name = cleanName,
                               dosage = med.standardDosage.ifBlank { "1 amp" },
                               quantity = 1,
                               unitPrice = med.sellingPrice

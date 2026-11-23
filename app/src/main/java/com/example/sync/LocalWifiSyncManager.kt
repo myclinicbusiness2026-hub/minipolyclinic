@@ -668,13 +668,21 @@ class LocalWifiSyncManager(
             val ex = labMap[inc.id]
             if (ex == null) {
               labMap[inc.id] = inc
-            } else if (inc.updatedAt > ex.updatedAt) {
-              labMap[inc.id] = inc
-            } else if (inc.updatedAt == ex.updatedAt) {
+            } else {
               val incHasResults = inc.items.any { item -> item.parameters.any { it.result.isNotBlank() } }
               val exHasResults = ex.items.any { item -> item.parameters.any { it.result.isNotBlank() } }
-              if (incHasResults && !exHasResults) {
+              if (exHasResults && !incHasResults) {
+                // Safeguard: Local device already has results entered while incoming has none.
+                // Keep local to prevent overwriting entered results with empty order.
+              } else if (!exHasResults && incHasResults) {
+                // Incoming has results, local does not: accept incoming
                 labMap[inc.id] = inc
+              } else if (inc.updatedAt > ex.updatedAt) {
+                labMap[inc.id] = inc
+              } else if (inc.updatedAt == ex.updatedAt) {
+                if (incHasResults && !exHasResults) {
+                  labMap[inc.id] = inc
+                }
               }
             }
           }
