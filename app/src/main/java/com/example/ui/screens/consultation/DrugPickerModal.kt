@@ -41,7 +41,9 @@ fun DrugPickerModal(
   var searchQuery by remember { mutableStateOf("") }
   var selectedMedicine by remember { mutableStateOf<Medicine?>(medicines.firstOrNull()) }
   var dosage by remember { mutableStateOf(medicines.firstOrNull()?.standardDosage ?: "500 mg") }
-  var dosePerTime by remember { mutableStateOf("1") } // "1/2", "1", "1.5", "2", or custom
+  var dosePerTime by remember { mutableStateOf("1") } // "1/2", "1", "1.5", "2", "5 ml", or custom
+  var isCustomDose by remember { mutableStateOf(false) }
+  var customDoseText by remember { mutableStateOf("") }
   var frequency by remember { mutableStateOf("1-0-1") }
   var customFrequencyText by remember { mutableStateOf("") }
   var isCustomFreq by remember { mutableStateOf(false) }
@@ -55,6 +57,8 @@ fun DrugPickerModal(
   var extDrugName by remember { mutableStateOf("") }
   var extDosage by remember { mutableStateOf("1 Tab") }
   var extDosePerTime by remember { mutableStateOf("1") }
+  var isExtCustomDose by remember { mutableStateOf(false) }
+  var extCustomDoseText by remember { mutableStateOf("") }
   var extFrequency by remember { mutableStateOf("1-0-1") }
   var extCustomFrequencyText by remember { mutableStateOf("") }
   var isExtCustomFreq by remember { mutableStateOf(false) }
@@ -63,10 +67,31 @@ fun DrugPickerModal(
   var extDuration by remember { mutableStateOf("5 Days") }
   var extQuantityText by remember { mutableStateOf("10") }
   var extInstructions by remember { mutableStateOf("") }
-  var extNotes by remember { mutableStateOf("ပြင်ပဆေးဆိုင်တွင် ဝယ်ယူရန်") }
+  var extNotes by remember { mutableStateOf("") }
+
+  // Stock warning dialog state
+  var showOutOfStockDialog by remember { mutableStateOf(false) }
+  var showQuantityExceedsStockWarning by remember { mutableStateOf<String?>(null) }
+
+  // Helper to detect if medicine is liquid / syrup / cream / inhaler / bottle where quantity is measured per bottle/tube
+  fun isLiquidOrNonUnit(med: Medicine?, drugName: String = ""): Boolean {
+    val name = (med?.name ?: drugName).lowercase()
+    val df = (med?.dosageForm ?: "").lowercase()
+    val ut = (med?.unitType ?: "").lowercase()
+    return name.contains("syrup") || name.contains("susp") || name.contains("liquid") ||
+           name.contains("mixture") || name.contains("linctus") || name.contains("drops") ||
+           name.contains("lotion") || name.contains("cream") || name.contains("ointment") ||
+           name.contains("gel") || name.contains("spray") || name.contains("inhaler") ||
+           df.contains("syrup") || df.contains("susp") || df.contains("liquid") ||
+           df.contains("cream") || df.contains("ointment") || df.contains("drop") ||
+           df.contains("inhaler") || df.contains("spray") ||
+           ut.contains("bottle") || ut.contains("bot") || ut.contains("tube") ||
+           ut.contains("vial") || ut.contains("can") || ut.contains("puff")
+  }
 
   // Calculation helper to auto-estimate recommended quantity based on frequency and duration
-  fun calculateAutoQty(freq: String, durNum: Int, unit: String): Int {
+  fun calculateAutoQty(freq: String, durNum: Int, unit: String, isLiquid: Boolean = false): Int {
+    if (isLiquid) return 1 // Syrups, creams, inhalers default to 1 bottle/tube!
     if (unit == "ပုံမှန်သောက်ရန်" || unit == "Regular") {
       return (durNum * 30).coerceAtLeast(30)
     }
@@ -102,11 +127,16 @@ fun DrugPickerModal(
   }
 
   fun applyDoseToFreq(dose: String, basePattern: String): String {
+    if (dose.contains("ml", ignoreCase = true) || dose.contains("drop", ignoreCase = true) ||
+        dose.contains("puff", ignoreCase = true) || dose.contains("tsp", ignoreCase = true) ||
+        dose.contains("ဇွန်း") || dose.contains("sachet", ignoreCase = true)) {
+      return if (basePattern == "လိုအပ်ပါက") "$dose လိုအပ်ပါက" else "$dose ($basePattern)"
+    }
     val prefix = when (dose) {
       "1/2", "½" -> "½"
       "2" -> "2"
       "1.5", "1½" -> "1½"
-      else -> "1"
+      else -> dose
     }
     return when (basePattern) {
       "1-0-1" -> "$prefix-0-$prefix"
@@ -114,7 +144,7 @@ fun DrugPickerModal(
       "1-0-0" -> "$prefix-0-0"
       "0-0-1" -> "0-0-$prefix"
       "1-1-1-1" -> "$prefix-$prefix-$prefix-$prefix"
-      else -> basePattern
+      else -> if (basePattern == "လိုအပ်ပါက") "$prefix လိုအပ်ပါက" else "$prefix ($basePattern)"
     }
   }
 
@@ -134,10 +164,19 @@ fun DrugPickerModal(
     "လိုအပ်ပါက"
   )
 
-  val dosePresets = listOf(
+  val tabletDosePresets = listOf(
     Pair("½", "½ Tab (တဝက်)"),
     Pair("1", "1 Tab (၁ လုံး)"),
+    Pair("1.5", "1½ Tabs (၁ လုံးခွဲ)"),
     Pair("2", "2 Tabs (၂ လုံး)")
+  )
+
+  val liquidDosePresets = listOf(
+    Pair("2.5 ml", "2.5 ml (½ ဇွန်း)"),
+    Pair("5 ml", "5 ml (၁ ဇွန်း)"),
+    Pair("10 ml", "10 ml (၂ ဇွန်း)"),
+    Pair("15 ml", "15 ml (၁ စားပွဲဇွန်း)")
+  )
   )
 
   val durationQuickNums = listOf(3, 5, 7, 10, 14, 30)
@@ -306,12 +345,21 @@ fun DrugPickerModal(
                                   med.name.startsWith("Inj", ignoreCase = true) ||
                                   med.name.contains("IV", ignoreCase = true) ||
                                   med.name.contains("IM", ignoreCase = true)
+                      val isLiquid = isLiquidOrNonUnit(med)
                       if (isInj) {
                         frequency = "Stat"
                         durationNum = 1
                         durationUnit = "Days"
                         duration = "1 Day"
                         quantityText = "1"
+                      } else if (isLiquid) {
+                        dosePerTime = "5 ml"
+                        frequency = "5 ml (1-1-1)"
+                        quantityText = "1"
+                      } else {
+                        dosePerTime = "1"
+                        frequency = "1-0-1"
+                        quantityText = calculateAutoQty(frequency, durationNum, durationUnit, isLiquid = false).toString()
                       }
                     },
                   shape = RoundedCornerShape(6.dp),
@@ -436,34 +484,80 @@ fun DrugPickerModal(
               }
             }
 
-            // Dose per time (½, 1, 2)
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-              Text("တစ်ကြိမ်သောက် (Dose):", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
-              Spacer(modifier = Modifier.width(6.dp))
-              dosePresets.forEach { (dVal, dLabel) ->
-                val isSel = dosePerTime == dVal
-                FilterChip(
-                  selected = isSel,
-                  onClick = {
-                    dosePerTime = dVal
-                    isCustomFreq = false
-                    val base = when {
-                      frequency.contains("-0-") && frequency.endsWith("-0") -> "1-0-0"
-                      frequency.startsWith("0-0-") -> "0-0-1"
-                      frequency.split("-").size == 4 -> "1-1-1-1"
-                      frequency.split("-").size == 3 && !frequency.contains("0") -> "1-1-1"
-                      else -> "1-0-1"
-                    }
-                    frequency = applyDoseToFreq(dVal, base)
-                    quantityText = calculateAutoQty(frequency, durationNum, durationUnit).toString()
-                  },
-                  label = { Text(dLabel, fontSize = 9.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
-                  shape = RoundedCornerShape(4.dp),
-                  modifier = Modifier.height(24.dp).padding(end = 4.dp),
-                  colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = if (dVal == "½") Color(0xFFFEF3C7) else SoftGreenContainer,
-                    selectedLabelColor = if (dVal == "½") Color(0xFFB45309) else MedicalGreenDark
+            val isLiquid = isLiquidOrNonUnit(med)
+            val currentDosePresets = if (isLiquid) liquidDosePresets else tabletDosePresets
+
+            // Dose per time
+            Column(modifier = Modifier.fillMaxWidth()) {
+              Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("တစ်ကြိမ်သောက် (Dose):", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+                Spacer(modifier = Modifier.width(6.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                  currentDosePresets.forEach { (dVal, dLabel) ->
+                    val isSel = !isCustomDose && dosePerTime == dVal
+                    FilterChip(
+                      selected = isSel,
+                      onClick = {
+                        isCustomDose = false
+                        dosePerTime = dVal
+                        isCustomFreq = false
+                        val base = when {
+                          frequency.contains("-0-") && frequency.endsWith("-0") -> "1-0-0"
+                          frequency.startsWith("0-0-") -> "0-0-1"
+                          frequency.split("-").size == 4 -> "1-1-1-1"
+                          frequency.split("-").size == 3 && !frequency.contains("0") -> "1-1-1"
+                          else -> "1-0-1"
+                        }
+                        frequency = applyDoseToFreq(dVal, base)
+                        quantityText = calculateAutoQty(frequency, durationNum, durationUnit, isLiquid = isLiquid).toString()
+                      },
+                      label = { Text(dLabel, fontSize = 9.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
+                      shape = RoundedCornerShape(4.dp),
+                      modifier = Modifier.height(24.dp),
+                      colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = if (dVal == "½") Color(0xFFFEF3C7) else SoftGreenContainer,
+                        selectedLabelColor = if (dVal == "½") Color(0xFFB45309) else MedicalGreenDark
+                      )
+                    )
+                  }
+
+                  // Custom Dose Chip
+                  FilterChip(
+                    selected = isCustomDose,
+                    onClick = {
+                      isCustomDose = !isCustomDose
+                      if (isCustomDose && customDoseText.isNotBlank()) {
+                        dosePerTime = customDoseText
+                        val base = "1-0-1"
+                        frequency = applyDoseToFreq(customDoseText, base)
+                      }
+                    },
+                    label = { Text("+ စိတ်ကြိုက် (Custom)", fontSize = 9.sp, fontWeight = if (isCustomDose) FontWeight.Bold else FontWeight.Normal) },
+                    shape = RoundedCornerShape(4.dp),
+                    modifier = Modifier.height(24.dp)
                   )
+                }
+              }
+
+              if (isCustomDose) {
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                  value = customDoseText,
+                  onValueChange = {
+                    customDoseText = it
+                    dosePerTime = it
+                    if (it.isNotBlank()) {
+                      val base = if (frequency.contains("-")) frequency.replace(Regex("""^[^\(]*\("""), "").replace(")", "").trim() else "1-0-1"
+                      frequency = applyDoseToFreq(it, if (base.isNotBlank()) base else "1-0-1")
+                      quantityText = calculateAutoQty(frequency, durationNum, durationUnit, isLiquid = isLiquid).toString()
+                    }
+                  },
+                  label = { Text("စိတ်ကြိုက် Dose ရိုက်ထည့်ပါ (e.g. 1/4 tab, 1½ tab, 7.5 ml, 1 drop, 1 puff)", fontSize = 9.5.sp) },
+                  singleLine = true,
+                  modifier = Modifier.fillMaxWidth(),
+                  shape = RoundedCornerShape(6.dp),
+                  colors = clinicTextFieldColors(),
+                  textStyle = LocalTextStyle.current.copy(fontSize = 11.sp, color = DarkGrayText)
                 )
               }
             }
@@ -481,7 +575,7 @@ fun DrugPickerModal(
                   onClick = {
                     isCustomFreq = false
                     frequency = calculatedFreq
-                    quantityText = calculateAutoQty(frequency, durationNum, durationUnit).toString()
+                    quantityText = calculateAutoQty(frequency, durationNum, durationUnit, isLiquid = isLiquid).toString()
                   },
                   label = { Text(calculatedFreq, fontSize = 9.5.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
                   shape = RoundedCornerShape(4.dp),
@@ -576,7 +670,7 @@ fun DrugPickerModal(
                     .clickable {
                       durationNum = n
                       duration = "$n $durationUnit"
-                      quantityText = calculateAutoQty(frequency, n, durationUnit).toString()
+                      quantityText = calculateAutoQty(frequency, n, durationUnit, isLiquid = isLiquid).toString()
                     },
                   color = if (isSel) MedicalGreen else BackgroundSurface,
                   shape = RoundedCornerShape(4.dp),
@@ -602,7 +696,7 @@ fun DrugPickerModal(
                     if (durationNum > 1) {
                       durationNum -= 1
                       duration = "$durationNum $durationUnit"
-                      quantityText = calculateAutoQty(frequency, durationNum, durationUnit).toString()
+                      quantityText = calculateAutoQty(frequency, durationNum, durationUnit, isLiquid = isLiquid).toString()
                     }
                   },
                 color = BackgroundSurface,
@@ -620,7 +714,7 @@ fun DrugPickerModal(
                   .clickable {
                     durationNum += 1
                     duration = "$durationNum $durationUnit"
-                    quantityText = calculateAutoQty(frequency, durationNum, durationUnit).toString()
+                    quantityText = calculateAutoQty(frequency, durationNum, durationUnit, isLiquid = isLiquid).toString()
                   },
                 color = BackgroundSurface,
                 shape = RoundedCornerShape(4.dp),
@@ -641,7 +735,7 @@ fun DrugPickerModal(
                   onClick = {
                     durationUnit = uKey
                     duration = if (uKey == "ပုံမှန်သောက်ရန်") "ပုံမှန်သောက်ရန်" else "$durationNum $uKey"
-                    quantityText = calculateAutoQty(frequency, durationNum, uKey).toString()
+                    quantityText = calculateAutoQty(frequency, durationNum, uKey, isLiquid = isLiquid).toString()
                   },
                   label = { Text(uLabel, fontSize = 9.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
                   shape = RoundedCornerShape(4.dp),
@@ -778,6 +872,19 @@ fun DrugPickerModal(
                 selectedMedicine?.let { med ->
                   val isCst = instructions.contains("သောက်လက်စ") || instructions.contains("CST", ignoreCase = true)
                   val qty = if (isCst) 0 else (quantityText.toIntOrNull() ?: 10)
+                  
+                  // Check stock out
+                  if (!isCst && med.isOutOfStock) {
+                    showOutOfStockDialog = true
+                    return@Button
+                  }
+                  
+                  // Check stock insufficient
+                  if (!isCst && qty > med.totalStock) {
+                    showQuantityExceedsStockWarning = "$qty"
+                    return@Button
+                  }
+
                   val finalUnitPrice = if (isCst) 0.0 else med.calculatedSellingPrice
                   onDrugAdded(
                     PrescribedDrug(
@@ -880,33 +987,89 @@ fun DrugPickerModal(
           Spacer(modifier = Modifier.height(6.dp))
 
           // Dose per time for External Rx
-          Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("တစ်ကြိမ်သောက် (Dose):", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
-            Spacer(modifier = Modifier.width(6.dp))
-            dosePresets.forEach { (dVal, dLabel) ->
-              val isSel = extDosePerTime == dVal
-              FilterChip(
-                selected = isSel,
-                onClick = {
-                  extDosePerTime = dVal
-                  isExtCustomFreq = false
-                  val base = when {
-                    extFrequency.contains("-0-") && extFrequency.endsWith("-0") -> "1-0-0"
-                    extFrequency.startsWith("0-0-") -> "0-0-1"
-                    extFrequency.split("-").size == 4 -> "1-1-1-1"
-                    extFrequency.split("-").size == 3 && !extFrequency.contains("0") -> "1-1-1"
-                    else -> "1-0-1"
-                  }
-                  extFrequency = applyDoseToFreq(dVal, base)
-                  extQuantityText = calculateAutoQty(extFrequency, extDurationNum, extDurationUnit).toString()
-                },
-                label = { Text(dLabel, fontSize = 9.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
-                shape = RoundedCornerShape(4.dp),
-                modifier = Modifier.height(24.dp).padding(end = 4.dp),
-                colors = FilterChipDefaults.filterChipColors(
-                  selectedContainerColor = if (dVal == "½") Color(0xFFFEF3C7) else SoftGreenContainer,
-                  selectedLabelColor = if (dVal == "½") Color(0xFFB45309) else MedicalGreenDark
+          val isExtLiquid = isLiquidOrNonUnit(null, extDrugName)
+          val activeExtDosePresets = if (isExtLiquid) liquidDosePresets else tabletDosePresets
+
+          Column(modifier = Modifier.fillMaxWidth()) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+              Text(
+                if (isExtLiquid) "တစ်ကြိမ်သောက် (Liquid Dose):" else "တစ်ကြိမ်သောက် (Dose):",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = DarkGrayText
+              )
+              Spacer(modifier = Modifier.width(6.dp))
+              activeExtDosePresets.forEach { (dVal, dLabel) ->
+                val isSel = !isExtCustomDose && extDosePerTime == dVal
+                FilterChip(
+                  selected = isSel,
+                  onClick = {
+                    isExtCustomDose = false
+                    extDosePerTime = dVal
+                    isExtCustomFreq = false
+                    val base = when {
+                      extFrequency.contains("-0-") && extFrequency.endsWith("-0") -> "1-0-0"
+                      extFrequency.startsWith("0-0-") -> "0-0-1"
+                      extFrequency.split("-").size == 4 -> "1-1-1-1"
+                      extFrequency.split("-").size == 3 && !extFrequency.contains("0") -> "1-1-1"
+                      else -> "1-0-1"
+                    }
+                    extFrequency = applyDoseToFreq(dVal, base)
+                    extQuantityText = calculateAutoQty(extFrequency, extDurationNum, extDurationUnit, isLiquid = isExtLiquid).toString()
+                  },
+                  label = { Text(dLabel, fontSize = 9.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
+                  shape = RoundedCornerShape(4.dp),
+                  modifier = Modifier.height(24.dp).padding(end = 4.dp),
+                  colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = if (dVal == "½") Color(0xFFFEF3C7) else SoftGreenContainer,
+                    selectedLabelColor = if (dVal == "½") Color(0xFFB45309) else MedicalGreenDark
+                  )
                 )
+              }
+
+              // Custom Dose Chip
+              FilterChip(
+                selected = isExtCustomDose,
+                onClick = {
+                  isExtCustomDose = !isExtCustomDose
+                  if (isExtCustomDose && extCustomDoseText.isNotBlank()) {
+                    extDosePerTime = extCustomDoseText
+                    val base = when {
+                      extFrequency.contains("-0-") && extFrequency.endsWith("-0") -> "1-0-0"
+                      extFrequency.startsWith("0-0-") -> "0-0-1"
+                      extFrequency.split("-").size == 4 -> "1-1-1-1"
+                      extFrequency.split("-").size == 3 && !extFrequency.contains("0") -> "1-1-1"
+                      else -> "1-0-1"
+                    }
+                    extFrequency = applyDoseToFreq(extCustomDoseText, base)
+                    extQuantityText = calculateAutoQty(extFrequency, extDurationNum, extDurationUnit, isLiquid = isExtLiquid).toString()
+                  }
+                },
+                label = { Text("+ စိတ်ကြိုက်", fontSize = 9.sp, fontWeight = if (isExtCustomDose) FontWeight.Bold else FontWeight.Normal) },
+                shape = RoundedCornerShape(4.dp),
+                modifier = Modifier.height(24.dp)
+              )
+            }
+
+            if (isExtCustomDose) {
+              Spacer(modifier = Modifier.height(4.dp))
+              OutlinedTextField(
+                value = extCustomDoseText,
+                onValueChange = {
+                  extCustomDoseText = it
+                  extDosePerTime = it
+                  if (it.isNotBlank()) {
+                    val base = if (extFrequency.contains("-")) extFrequency.replace(Regex("""^[^\(]*\("""), "").replace(")", "").trim() else "1-0-1"
+                    extFrequency = applyDoseToFreq(it, if (base.isNotBlank()) base else "1-0-1")
+                    extQuantityText = calculateAutoQty(extFrequency, extDurationNum, extDurationUnit, isLiquid = isExtLiquid).toString()
+                  }
+                },
+                label = { Text("စိတ်ကြိုက် Dose ရိုက်ထည့်ပါ (e.g. 1/4 tab, 1½ tab, 7.5 ml, 1 drop, 1 puff)", fontSize = 9.5.sp) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(6.dp),
+                colors = clinicTextFieldColors(),
+                textStyle = LocalTextStyle.current.copy(fontSize = 11.sp, color = DarkGrayText)
               )
             }
           }
@@ -924,7 +1087,7 @@ fun DrugPickerModal(
                 onClick = {
                   isExtCustomFreq = false
                   extFrequency = calculatedFreq
-                  extQuantityText = calculateAutoQty(extFrequency, extDurationNum, extDurationUnit).toString()
+                  extQuantityText = calculateAutoQty(extFrequency, extDurationNum, extDurationUnit, isLiquid = isExtLiquid).toString()
                 },
                 label = { Text(calculatedFreq, fontSize = 9.5.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
                 shape = RoundedCornerShape(4.dp),
@@ -1018,7 +1181,7 @@ fun DrugPickerModal(
                   .clickable {
                     extDurationNum = n
                     extDuration = "$n $extDurationUnit"
-                    extQuantityText = calculateAutoQty(extFrequency, n, extDurationUnit).toString()
+                    extQuantityText = calculateAutoQty(extFrequency, n, extDurationUnit, isLiquid = isExtLiquid).toString()
                   },
                 color = if (isSel) MedicalGreen else BackgroundSurface,
                 shape = RoundedCornerShape(4.dp),
@@ -1043,7 +1206,7 @@ fun DrugPickerModal(
                   if (extDurationNum > 1) {
                     extDurationNum -= 1
                     extDuration = "$extDurationNum $extDurationUnit"
-                    extQuantityText = calculateAutoQty(extFrequency, extDurationNum, extDurationUnit).toString()
+                    extQuantityText = calculateAutoQty(extFrequency, extDurationNum, extDurationUnit, isLiquid = isExtLiquid).toString()
                   }
                 },
               color = BackgroundSurface,
@@ -1061,7 +1224,7 @@ fun DrugPickerModal(
                 .clickable {
                   extDurationNum += 1
                   extDuration = "$extDurationNum $extDurationUnit"
-                  extQuantityText = calculateAutoQty(extFrequency, extDurationNum, extDurationUnit).toString()
+                  extQuantityText = calculateAutoQty(extFrequency, extDurationNum, extDurationUnit, isLiquid = isExtLiquid).toString()
                 },
               color = BackgroundSurface,
               shape = RoundedCornerShape(4.dp),
@@ -1081,7 +1244,7 @@ fun DrugPickerModal(
                 onClick = {
                   extDurationUnit = uKey
                   extDuration = if (uKey == "ပုံမှန်သောက်ရန်") "ပုံမှန်သောက်ရန်" else "$extDurationNum $uKey"
-                  extQuantityText = calculateAutoQty(extFrequency, extDurationNum, uKey).toString()
+                  extQuantityText = calculateAutoQty(extFrequency, extDurationNum, uKey, isLiquid = isExtLiquid).toString()
                 },
                 label = { Text(uLabel, fontSize = 9.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
                 shape = RoundedCornerShape(4.dp),
@@ -1268,6 +1431,102 @@ fun DrugPickerModal(
           }
         }
       }
+    }
+
+    // Out of Stock Dialog
+    if (showOutOfStockDialog && selectedMedicine != null) {
+      val med = selectedMedicine!!
+      AlertDialog(
+        onDismissRequest = { showOutOfStockDialog = false },
+        icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFDC2626), modifier = Modifier.size(28.dp)) },
+        title = { Text("လက်ကျန်စတော့ မရှိပါ (Stock Out)", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = DarkGrayText) },
+        text = {
+          Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("ဤဆေး (${med.name}) သည် ဆေးခန်းစတိုးတွင် လက်ကျန် (0) ဖြစ်နေပါသည်။ ဆေးခန်းဘောက်ချာတွင် စတော့နှုတ်ပြီး ထည့်သွင်း၍ မရနိုင်ပါ။", fontSize = 11.5.sp, color = SlateDark)
+            Text("လူနာအား ဆေးခန်းပြင်ပ ဆေးဆိုင်တွင် ဝယ်ယူရန် 'ပြင်ပဆေးညွှန်း (External Rx)' အဖြစ် ပြောင်းလဲထည့်သွင်းလိုပါသလား?", fontSize = 11.sp, color = Color(0xFFB45309), fontWeight = FontWeight.SemiBold)
+          }
+        },
+        confirmButton = {
+          Button(
+            onClick = {
+              showOutOfStockDialog = false
+              selectedTab = 1
+              extDrugName = med.name
+              extDosage = dosage
+              extFrequency = frequency
+              extDuration = duration
+              extQuantityText = quantityText
+              extInstructions = instructions
+            },
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)),
+            shape = RoundedCornerShape(6.dp)
+          ) {
+            Text("ပြင်ပဆေးညွှန်းသို့ ပြောင်းမည် (Switch to External)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+          }
+        },
+        dismissButton = {
+          OutlinedButton(
+            onClick = { showOutOfStockDialog = false },
+            shape = RoundedCornerShape(6.dp)
+          ) {
+            Text("Cancel", fontSize = 11.sp)
+          }
+        }
+      )
+    }
+
+    // Quantity Exceeds Stock Warning Dialog
+    if (showQuantityExceedsStockWarning != null && selectedMedicine != null) {
+      val med = selectedMedicine!!
+      val qty = quantityText.toIntOrNull() ?: 10
+      AlertDialog(
+        onDismissRequest = { showQuantityExceedsStockWarning = null },
+        icon = { Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFFD97706), modifier = Modifier.size(28.dp)) },
+        title = { Text("စတော့လက်ကျန် မလုံလောက်ပါ", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = DarkGrayText) },
+        text = {
+          Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("ရွေးချယ်ထားသော အရေအတွက် ($qty) သည် လက်ရှိစတော့ (${med.totalStockDisplay}) ထက် ကျော်လွန်နေပါသည်။", fontSize = 11.5.sp, color = SlateDark)
+            Text("ဆေးညွှန်းထဲသို့ ဆက်လက်ထည့်သွင်းမည်လား?", fontSize = 11.sp, color = DarkGrayText)
+          }
+        },
+        confirmButton = {
+          Button(
+            onClick = {
+              showQuantityExceedsStockWarning = null
+              val isCst = instructions.contains("သောက်လက်စ") || instructions.contains("CST", ignoreCase = true)
+              val finalUnitPrice = if (isCst) 0.0 else med.calculatedSellingPrice
+              onDrugAdded(
+                PrescribedDrug(
+                  medicineId = if (isCst) "CST-${med.id}" else med.id,
+                  medicineName = med.name,
+                  name = med.name,
+                  genericName = med.genericName,
+                  dosage = dosage,
+                  frequency = frequency,
+                  duration = duration,
+                  quantity = qty,
+                  unitPrice = finalUnitPrice,
+                  instructions = instructions,
+                  isExternal = isCst,
+                  isCst = isCst
+                )
+              )
+            },
+            colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+            shape = RoundedCornerShape(6.dp)
+          ) {
+            Text("ဆက်ထည့်မည် (Proceed)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+          }
+        },
+        dismissButton = {
+          OutlinedButton(
+            onClick = { showQuantityExceedsStockWarning = null },
+            shape = RoundedCornerShape(6.dp)
+          ) {
+            Text("Cancel", fontSize = 11.sp)
+          }
+        }
+      )
     }
   }
 }

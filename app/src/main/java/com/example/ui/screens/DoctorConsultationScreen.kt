@@ -1741,8 +1741,18 @@ fun DoctorConsultationScreen(
       patient = activePatient,
       vaccines = patientVaccines,
       onDismiss = { showVaccinesModal = false },
-      onAddVaccine = { rec -> viewModel.addVaccineRecord(rec) },
-      onUpdateVaccine = { rec -> viewModel.saveOrUpdateVaccineRecord(rec) },
+      onAddVaccine = { rec ->
+        viewModel.addVaccineRecord(rec)
+        if (!rec.nextDueDate.isNullOrBlank()) {
+          followUpAppointmentText = rec.nextDueDate
+        }
+      },
+      onUpdateVaccine = { rec ->
+        viewModel.saveOrUpdateVaccineRecord(rec)
+        if (!rec.nextDueDate.isNullOrBlank()) {
+          followUpAppointmentText = rec.nextDueDate
+        }
+      },
       onDeleteVaccine = { id -> viewModel.deleteVaccineRecord(id) }
     )
   }

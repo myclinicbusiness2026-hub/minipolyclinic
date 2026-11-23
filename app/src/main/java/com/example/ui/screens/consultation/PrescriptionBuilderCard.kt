@@ -121,14 +121,36 @@ fun PrescriptionBuilderCard(
           ) {
             val isCst = drug.isCst || drug.medicineId.startsWith("CST-") || drug.medicineId == "EXT-CST" || drug.name.contains("သောက်နေကြဆေး") || drug.name.startsWith("CST") || drug.instructions.contains("သောက်လက်စ")
             val isExt = drug.isExternal || drug.medicineId.startsWith("EXT-")
+            val hasSpecificName = drug.name.isNotBlank() && !drug.name.contains("သောက်နေကြဆေးများပုံမှန်သောက်ရန်") && drug.name != "CST (Continue Same Treatment)"
 
             Column(modifier = Modifier.weight(1f)) {
-              if (isCst) {
+              if (isCst && !hasSpecificName) {
                 Text(
-                  "${index + 1}. (သောက်နေကြဆေးများပုံမှန်သောက်ရန်)",
+                  "${index + 1}. သောက်လက်စသောက်ဆေးများ ပုံမှန်အတိုင်းဆက်သောက်ရန်",
                   fontWeight = FontWeight.Bold,
                   fontSize = 11.5.sp,
                   color = Color(0xFF0369A1)
+                )
+                Text(
+                  "ပုံမှန်အတိုင်း ဆက်လက်သောက်သုံးရန် • (Stock မနှုတ်ပါ)",
+                  fontSize = 10.sp,
+                  color = SlateMedium
+                )
+              } else if (isCst && hasSpecificName) {
+                Text(
+                  "${index + 1}. ${drug.name}${if (drug.dosage.isNotBlank() && !drug.name.contains(drug.dosage)) " (${drug.dosage})" else ""}",
+                  fontWeight = FontWeight.Bold,
+                  fontSize = 11.sp,
+                  color = Color(0xFF1D4ED8),
+                  maxLines = 1,
+                  overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                  "${drug.frequency} • ${drug.instructions} • (ပုံမှန်သောက်ရန် / 0 Ks)",
+                  fontSize = 10.sp,
+                  color = SlateMedium,
+                  maxLines = 1,
+                  overflow = TextOverflow.Ellipsis
                 )
               } else {
                 Text(
@@ -157,7 +179,7 @@ fun PrescriptionBuilderCard(
                   border = BorderStroke(0.8.dp, Color(0xFF0284C7))
                 ) {
                   Text(
-                    "CST (သောက်လက်စ)",
+                    "CST (ဆက်သောက်ရန်)",
                     fontSize = 9.sp,
                     color = Color(0xFF0369A1),
                     fontWeight = FontWeight.Bold,

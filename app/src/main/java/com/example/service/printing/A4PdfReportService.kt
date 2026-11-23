@@ -86,18 +86,23 @@ object A4PdfReportService {
       prescriptions = consultation.prescriptions.map { drug ->
         val isCst = drug.isCst || drug.medicineId.startsWith("CST-") || drug.medicineId == "EXT-CST" || drug.name.startsWith("CST") || drug.name.contains("သောက်နေကြဆေး") || drug.instructions.contains("သောက်လက်စ")
         val isExt = drug.isExternal || drug.medicineId.startsWith("EXT-")
+        val hasSpecificName = drug.name.isNotBlank() &&
+          !drug.name.contains("သောက်နေကြဆေးများပုံမှန်သောက်ရန်") &&
+          drug.name != "CST (Continue Same Treatment)" &&
+          drug.name != "(သောက်နေကြဆေးများပုံမှန်သောက်ရန်)"
+
         val finalTitle = if (isCst) {
-          "(သောက်နေကြဆေးများပုံမှန်သောက်ရန်)"
-        } else if (isExt) "${drug.name} [External]" else drug.name
-        val cleanFreq = if (isCst) "-" else drug.frequency
-        val cleanDuration = if (isCst) "-" else drug.duration
+          if (hasSpecificName) "${drug.name} [CST ဆက်သောက်ရန်]" else "သောက်လက်စသောက်ဆေးများ ပုံမှန်အတိုင်း ဆက်သောက်ရန်"
+        } else if (isExt) "${drug.name} [External - ပြင်ပဝယ်]" else drug.name
+        val cleanFreq = if (isCst && !hasSpecificName) "-" else drug.frequency
+        val cleanDuration = if (isCst) (if (drug.duration.isNotBlank() && !drug.duration.contains("Day")) drug.duration else "Continuous") else drug.duration
         A4PrescriptionLine(
           tradeName = finalTitle,
-          genericName = if (isCst) "" else (drug.name.split(" ").firstOrNull() ?: drug.name),
-          dosage = if (isCst || drug.dosage == "-") "" else drug.dosage,
+          genericName = if (isCst && !hasSpecificName) "" else (drug.name.split(" ").firstOrNull() ?: drug.name),
+          dosage = if ((isCst && !hasSpecificName) || drug.dosage == "-") "" else drug.dosage,
           frequency = cleanFreq,
           duration = cleanDuration,
-          instructions = if (isCst) "" else drug.instructions,
+          instructions = if (isCst && !hasSpecificName) "" else drug.instructions,
           quantity = drug.quantity
         )
       },

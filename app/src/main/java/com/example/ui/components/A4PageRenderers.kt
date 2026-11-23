@@ -611,13 +611,18 @@ fun A4PrescriptionTable(
         val isCst = drug.isCst || drug.medicineId.startsWith("CST-") || drug.medicineId == "EXT-CST" || drug.name.startsWith("CST") || drug.name.contains("သောက်နေကြဆေး") || drug.instructions.contains("သောက်လက်စ")
         val isExt = drug.isExternal || drug.medicineId.startsWith("EXT-")
         val effectiveDrugName = drug.effectiveName.ifBlank { drug.name.ifBlank { drug.medicineName } }
+        val hasSpecificName = effectiveDrugName.isNotBlank() &&
+          !effectiveDrugName.contains("သောက်နေကြဆေးများပုံမှန်သောက်ရန်") &&
+          effectiveDrugName != "CST (Continue Same Treatment)" &&
+          effectiveDrugName != "(သောက်နေကြဆေးများပုံမှန်သောက်ရန်)"
+
         val baseTitle = if (drug.dosage.isNotBlank() && drug.dosage != "-" && !effectiveDrugName.contains(drug.dosage, ignoreCase = true)) {
           "${effectiveDrugName} (${drug.dosage})"
         } else {
           effectiveDrugName
         }
         val drugTitle = if (isCst) {
-          "(သောက်နေကြဆေးများပုံမှန်သောက်ရန်)"
+          if (hasSpecificName) "[CST ဆက်သောက်ရန်] $baseTitle" else "သောက်လက်စသောက်ဆေးများ ပုံမှန်အတိုင်း ဆက်သောက်ရန်"
         } else if (isExt) {
           "$baseTitle  [External]"
         } else {
@@ -631,13 +636,26 @@ fun A4PrescriptionTable(
           verticalAlignment = Alignment.CenterVertically
         ) {
           Text("${idx + 1}", modifier = Modifier.weight(0.22f), fontSize = 9.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
-          if (isCst) {
+          if (isCst && !hasSpecificName) {
             Text(
-              "(သောက်နေကြဆေးများပုံမှန်သောက်ရန်)",
-              modifier = Modifier.weight(5.68f),
+              "သောက်လက်စသောက်ဆေးများ ပုံမှန်အတိုင်း ဆက်သောက်ရန်",
+              modifier = Modifier.weight(3.68f),
               fontWeight = FontWeight.Bold,
               fontSize = 10.sp,
               color = DarkGrayText
+            )
+            Text(
+              "ပုံမှန်အတိုင်း",
+              modifier = Modifier.weight(1.35f),
+              fontSize = 10.sp,
+              color = DarkGrayText
+            )
+            Text(
+              "Continuous",
+              modifier = Modifier.weight(0.65f),
+              fontSize = 9.5.sp,
+              color = DarkGrayText,
+              textAlign = TextAlign.End
             )
           } else {
             Text(
@@ -656,7 +674,7 @@ fun A4PrescriptionTable(
               lineHeight = 16.sp
             )
             Text(
-              drug.duration,
+              if (isCst) (if (drug.duration.isNotBlank() && !drug.duration.contains("Day")) drug.duration else "Continuous") else drug.duration,
               modifier = Modifier.weight(0.65f),
               fontSize = 9.5.sp,
               color = DarkGrayText,

@@ -186,7 +186,14 @@ fun ClinicalHistorySection(
                   currentComplaint.associatedSymptoms.addAll(items)
                 }
                 if (clean.startsWith("Notes:")) {
-                  currentComplaint.notes = clean.substringAfter("Notes:").trim()
+                  currentComplaint.notes = clean.substringAfter("Notes:").replace("[BR]", "\n").trim()
+                }
+              } else if (currentComplaint != null && !rawLine.startsWith("#") && !rawLine.startsWith("[")) {
+                // Continuation line for multi-line notes (failsafe for unescaped newlines)
+                if (currentComplaint.notes.isNotBlank()) {
+                  currentComplaint.notes += "\n" + rawLine.trim()
+                } else {
+                  currentComplaint.notes = rawLine.trim()
                 }
               }
             }
@@ -278,7 +285,8 @@ fun ClinicalHistorySection(
         }
 
         if (c.notes.isNotBlank()) {
-          compLines.add("   → Notes: ${c.notes.trim()}")
+          val escapedNotes = c.notes.trim().replace("\r\n", "[BR]").replace("\n", "[BR]")
+          compLines.add("   → Notes: $escapedNotes")
         }
       }
       sections.add(compLines.joinToString("\n"))
@@ -1607,6 +1615,8 @@ private fun ComplaintDetailCard(
   var localAssociated by remember(complaint.id) { mutableStateOf(complaint.customAssociated) }
   var localNotes by remember(complaint.id) { mutableStateOf(complaint.notes) }
   var isFactorsExpanded by remember(complaint.id) { mutableStateOf(false) }
+  var showNotesPopup by remember { mutableStateOf(false) }
+  var tempNotesPopupText by remember { mutableStateOf("") }
 
   Card(
     modifier = Modifier.fillMaxWidth(),
@@ -1832,7 +1842,27 @@ private fun ComplaintDetailCard(
       Spacer(modifier = Modifier.height(6.dp))
 
       // 4. Complaint Specific Notes / Free text (Placed immediately after Character)
-      Text("Complaint Notes / Specific Details (မှတ်ချက်):", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Text("Complaint Notes / Specific Details (မှတ်ချက်):", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+        Row(
+          modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .clickable {
+              tempNotesPopupText = localNotes
+              showNotesPopup = true
+            }
+            .padding(horizontal = 4.dp, vertical = 2.dp),
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Icon(Icons.Default.Fullscreen, contentDescription = "Expand", tint = MedicalGreen, modifier = Modifier.size(13.dp))
+          Spacer(modifier = Modifier.width(3.dp))
+          Text("အကြီးချဲ့ရေးမည် (Pop-up)", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MedicalGreen)
+        }
+      }
       Spacer(modifier = Modifier.height(3.dp))
       OutlinedTextField(
         value = localNotes,
@@ -1845,9 +1875,56 @@ private fun ComplaintDetailCard(
         modifier = Modifier.fillMaxWidth(),
         textStyle = TextStyle(fontSize = 10.sp, color = DarkGrayText),
         shape = RoundedCornerShape(4.dp),
-        singleLine = false, minLines = 2, maxLines = 4,
+        singleLine = false, minLines = 2, maxLines = 6,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
       )
+
+      if (showNotesPopup) {
+        AlertDialog(
+          onDismissRequest = { showNotesPopup = false },
+          icon = { Icon(Icons.Default.EditNote, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(28.dp)) },
+          title = { Text("${complaint.name} - မှတ်ချက် အပြည့်အစုံ ရေးရန်", fontWeight = FontWeight.Bold, fontSize = 13.5.sp, color = DarkGrayText) },
+          text = {
+            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+              Text("လက္ခဏာအသေးစိတ်၊ စတင်ဖြစ်ပွားပုံနှင့် လူနာပြောပြချက်များကို နေရာကျယ်ကျယ်ဖြင့် စိတ်ကြိုက်ရိုက်ထည့်ပါ:", fontSize = 11.sp, color = SlateDark)
+              OutlinedTextField(
+                value = tempNotesPopupText,
+                onValueChange = { tempNotesPopupText = it },
+                placeholder = { Text("ဥပမာ- မနက်ပိုင်းတွင် ပိုဆိုးပြီး ချောင်းဆိုးလျှင် သလိပ်မထွက်ဘဲ အသံဝင်နေပါသည်...", fontSize = 11.sp, color = SlateMuted) },
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .heightIn(min = 140.dp, max = 260.dp),
+                shape = RoundedCornerShape(6.dp),
+                singleLine = false,
+                textStyle = TextStyle(fontSize = 11.5.sp, color = DarkGrayText),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
+              )
+            }
+          },
+          confirmButton = {
+            Button(
+              onClick = {
+                localNotes = tempNotesPopupText
+                complaint.notes = tempNotesPopupText
+                onSync()
+                showNotesPopup = false
+              },
+              colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+              shape = RoundedCornerShape(6.dp)
+            ) {
+              Text("သိမ်းဆည်းမည် (Save Notes)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+          },
+          dismissButton = {
+            OutlinedButton(
+              onClick = { showNotesPopup = false },
+              shape = RoundedCornerShape(6.dp)
+            ) {
+              Text("Cancel", fontSize = 11.sp)
+            }
+          }
+        )
+      }
 
       Spacer(modifier = Modifier.height(6.dp))
 

@@ -1649,22 +1649,57 @@ object A4PdfNativeCanvasRenderer {
       // Drug Name & Strength (With [External] or CST tag)
       val medName = rx.fullDisplayName
       val isCst = rx.isCst || rx.medicineId.startsWith("CST-") || rx.medicineId == "EXT-CST" || rx.name.startsWith("CST") || rx.name.contains("သောက်နေကြဆေး") || rx.instructions.contains("သောက်လက်စ")
-      if (isCst) {
+      val hasSpecificName = rx.name.isNotBlank() &&
+        !rx.name.contains("သောက်နေကြဆေးများပုံမှန်သောက်ရန်") &&
+        rx.name != "CST (Continue Same Treatment)" &&
+        rx.name != "(သောက်နေကြဆေးများပုံမှန်သောက်ရန်)"
+
+      val baseDrug = if (rx.dosage.isNotBlank() && rx.dosage != "-" && !medName.contains(rx.dosage)) "$medName (${rx.dosage})" else medName
+
+      if (isCst && !hasSpecificName) {
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        canvas.drawText("(သောက်နေကြဆေးများပုံမှန်သောက်ရန်)", 52f, textRowY, paint)
+        canvas.drawText("သောက်လက်စသောက်ဆေးများ ပုံမှန်အတိုင်း ဆက်သောက်ရန်", 52f, textRowY, paint)
+        paint.typeface = Typeface.DEFAULT
+        canvas.drawText("ပုံမှန်အတိုင်း", 380f, textRowY, paint)
+        canvas.drawText("Continuous", width - 62f, textRowY, paint)
       } else {
-        val externalPrefix = if (rx.isExternal) "[External] " else ""
-        val baseDrug = if (rx.dosage.isNotBlank() && rx.dosage != "-" && !medName.contains(rx.dosage)) "$medName (${rx.dosage})" else medName
-        val fullDrug = "$externalPrefix$baseDrug"
-        canvas.drawText(fullDrug.take(65), 52f, textRowY, paint)
+        val prefix = when {
+          isCst -> "[CST ဆက်သောက်ရန်] "
+          rx.isExternal -> "[External - ပြင်ပဝယ်] "
+          else -> ""
+        }
+        val fullDrug = "$prefix$baseDrug"
+        paint.typeface = if (isCst) Typeface.create(Typeface.DEFAULT, Typeface.BOLD) else Typeface.DEFAULT
+        canvas.drawText(fullDrug.take(55), 52f, textRowY, paint)
 
         // Dosage & Direction (Include doctor's notes if external)
         paint.typeface = Typeface.DEFAULT
-        val directionText = formatDosageAndDirection(rx)
-        canvas.drawText(directionText.take(28), 380f, textRowY, paint)
+        val rawDirection = formatDosageAndDirection(rx)
+        val directionText = rawDirection
+          .replace("ပြင်ပဆေးဆိုင်တွင် ဝယ်ယူရန်", "")
+          .replace("(ပြင်ပဆေးဆိုင်တွင် ဝယ်ယူရန်)", "")
+          .replace("သောက်လက်စသောက်ဆေးများ ပုံမှန်အတိုင်းဆက်သောက်ရန်", "")
+          .trim()
+          .ifBlank { if (isCst) "ပုံမှန်အတိုင်း" else "-" }
+
+        val maxDirWidth = (width - 66f) - 380f
+        val fittedDir = if (paint.measureText(directionText) > maxDirWidth) {
+          var trimmed = directionText
+          while (trimmed.isNotEmpty() && paint.measureText("$trimmed...") > maxDirWidth) {
+            trimmed = trimmed.dropLast(1)
+          }
+          "$trimmed..."
+        } else {
+          directionText
+        }
+        canvas.drawText(fittedDir, 380f, textRowY, paint)
 
         // Duration
-        val durationText = rx.duration.ifBlank { "5 Days" }
+        val durationText = if (isCst) {
+          if (rx.duration.isNotBlank() && !rx.duration.contains("Day")) rx.duration.take(15) else "Continuous"
+        } else {
+          rx.duration.ifBlank { "5 Days" }
+        }
         canvas.drawText(durationText, width - 62f, textRowY, paint)
       }
 

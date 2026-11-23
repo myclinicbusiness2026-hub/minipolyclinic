@@ -299,6 +299,8 @@ fun ConsultationPrescriptionAndBillingPane(
     )
 
     // 3. Prescription Builder & FEFO Search (Oral Take-Home Prescriptions)
+    var showCstImportModal by remember { mutableStateOf(false) }
+
     PrescriptionBuilderCard(
       prescribedDrugs = prescribedDrugs,
       onOpenAddDrug = { if (!isReadOnly) onOpenAddDrug() },
@@ -306,32 +308,32 @@ fun ConsultationPrescriptionAndBillingPane(
       currencyFmt = currencyFmt,
       onAddCstDrug = if (!isReadOnly) {
         {
-          val existingIdx = prescribedDrugs.indexOfFirst {
-            it.isCst || it.medicineId == "EXT-CST" || it.name.startsWith("CST") || it.name.contains("သောက်နေကြဆေး") || it.instructions.contains("သောက်လက်စ")
-          }
-          if (existingIdx >= 0) {
-            prescribedDrugs.removeAt(existingIdx)
-          } else {
-            prescribedDrugs.add(
-              com.example.model.PrescribedDrug(
-                medicineId = "EXT-CST",
-                medicineName = "(သောက်နေကြဆေးများပုံမှန်သောက်ရန်)",
-                name = "(သောက်နေကြဆေးများပုံမှန်သောက်ရန်)",
-                genericName = "",
-                dosage = "",
-                frequency = "",
-                duration = "",
-                quantity = 0,
-                unitPrice = 0.0,
-                instructions = "",
-                isExternal = true,
-                isCst = true
-              )
-            )
-          }
+          showCstImportModal = true
         }
       } else null
     )
+
+    if (showCstImportModal) {
+      val pastRxList = remember(pastConsultations) {
+        pastConsultations.flatMap { it.prescriptions }
+      }
+      CstMedicationsImportDialog(
+        patient = patient,
+        subjectiveNotes = subjective,
+        pastPrescriptions = pastRxList,
+        onDismiss = { showCstImportModal = false },
+        onImportCstDrugs = { importedDrugs ->
+          showCstImportModal = false
+          // If replacing generic dummy or adding specific regular drugs
+          prescribedDrugs.removeAll { it.medicineId == "EXT-CST" || it.name == "(သောက်နေကြဆေးများပုံမှန်သောက်ရန်)" }
+          for (d in importedDrugs) {
+            if (prescribedDrugs.none { it.name.equals(d.name, ignoreCase = true) }) {
+              prescribedDrugs.add(d)
+            }
+          }
+        }
+      )
+    }
 
     // 3. Consultation Fee & Complete Action Card
     ConsultationBillingActionCard(

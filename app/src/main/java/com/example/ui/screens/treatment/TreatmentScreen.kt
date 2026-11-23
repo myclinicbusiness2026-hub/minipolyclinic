@@ -36,6 +36,7 @@ import com.example.model.Medicine
 import com.example.model.Patient
 import com.example.ui.theme.*
 import com.example.ui.components.PosThermalTreatmentSlipDialog
+import com.example.ui.components.VaccinationTrackerDialog
 import com.example.viewmodel.ClinicViewModel
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -61,6 +62,9 @@ fun TreatmentScreen(
   var cardToDiscontinue by remember { mutableStateOf<TreatmentCard?>(null) }
   var sessionToAdminister by remember { mutableStateOf<Pair<TreatmentCard, TreatmentSession>?>(null) }
   var cardToPrint by remember { mutableStateOf<TreatmentCard?>(null) }
+  val vaccineRecords by viewModel.vaccineRecords.collectAsState()
+  var showVaccinePatientPicker by remember { mutableStateOf(false) }
+  var selectedVaccinePatient by remember { mutableStateOf<Patient?>(null) }
 
   val todayIso = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
   val currencyFmt = NumberFormat.getNumberInstance(Locale.US)
@@ -173,18 +177,32 @@ fun TreatmentScreen(
             }
           }
           if (!isReadOnly) {
-            Button(
-              onClick = { showCreateCardDialog = true },
-              colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
-              shape = RoundedCornerShape(6.dp),
-              contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-              modifier = Modifier
-                .fillMaxWidth()
-                .height(34.dp)
-            ) {
-              Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
-              Spacer(modifier = Modifier.width(4.dp))
-              Text("ကုသမှုကတ်အသစ် (New Card)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+              Button(
+                onClick = { showCreateCardDialog = true },
+                colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+                shape = RoundedCornerShape(6.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier
+                  .weight(1f)
+                  .height(34.dp)
+              ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("ကုသမှုကတ် (New)", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+              }
+              OutlinedButton(
+                onClick = { showVaccinePatientPicker = true },
+                shape = RoundedCornerShape(6.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier
+                  .weight(1f)
+                  .height(34.dp)
+              ) {
+                Icon(Icons.Default.Vaccines, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(14.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("ကာကွယ်ဆေး (Vaccines)", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = MedicalGreen)
+              }
             }
           }
         }
@@ -223,7 +241,17 @@ fun TreatmentScreen(
           }
 
           if (!isReadOnly) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+              OutlinedButton(
+                onClick = { showVaccinePatientPicker = true },
+                shape = RoundedCornerShape(6.dp),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                modifier = Modifier.height(32.dp)
+              ) {
+                Icon(Icons.Default.Vaccines, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(15.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("ကာကွယ်ဆေးထိုး မှတ်တမ်း (Vaccines)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MedicalGreen)
+              }
               Button(
                 onClick = { showCreateCardDialog = true },
                 colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
@@ -822,6 +850,103 @@ fun TreatmentScreen(
       card = card,
       clinicSettings = clinicSettings,
       onDismiss = { cardToPrint = null }
+    )
+  }
+
+  // 5. Vaccine Patient Picker & Direct Nurse Administration Dialog
+  if (showVaccinePatientPicker) {
+    var vaccineSearchQuery by remember { mutableStateOf("") }
+    val filteredVaccinePatients = remember(patients, vaccineSearchQuery) {
+      if (vaccineSearchQuery.isBlank()) patients.take(30)
+      else patients.filter {
+        it.name.contains(vaccineSearchQuery, ignoreCase = true) ||
+        it.phone.contains(vaccineSearchQuery, ignoreCase = true) ||
+        it.hn.contains(vaccineSearchQuery, ignoreCase = true)
+      }
+    }
+
+    AlertDialog(
+      onDismissRequest = { showVaccinePatientPicker = false },
+      icon = { Icon(Icons.Default.Vaccines, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(28.dp)) },
+      title = { Text("ကာကွယ်ဆေးထိုးမည့် လူနာ ရွေးချယ်ပါ", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = DarkGrayText) },
+      text = {
+        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Text("ရက်ချိန်းအတိုင်း ကာကွယ်ဆေးထိုးရန် လာရောက်သော လူနာများအား ဆရာဝန်စောင့်စရာမလိုဘဲ တိုက်ရိုက်ထိုးနှံပြီး EMR တွင် မှတ်တမ်းတင်နိုင်ပါသည်:", fontSize = 11.sp, color = SlateDark)
+          OutlinedTextField(
+            value = vaccineSearchQuery,
+            onValueChange = { vaccineSearchQuery = it },
+            placeholder = { Text("လူနာအမည်၊ ဖုန်း သို့မဟုတ် HN ဖြင့်ရှာပါ...", fontSize = 11.sp) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            shape = RoundedCornerShape(6.dp),
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp)) }
+          )
+
+          LazyColumn(
+            modifier = Modifier
+              .fillMaxWidth()
+              .heightIn(max = 280.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+          ) {
+            items(filteredVaccinePatients) { p ->
+              val pVaccines = vaccineRecords.filter { it.patientId == p.id }
+              Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = BackgroundSurface,
+                border = BorderStroke(0.6.dp, BorderGray),
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .clickable {
+                    selectedVaccinePatient = p
+                    showVaccinePatientPicker = false
+                  }
+              ) {
+                Row(
+                  modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                  horizontalArrangement = Arrangement.SpaceBetween,
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Column {
+                    Text(p.name, fontWeight = FontWeight.Bold, fontSize = 11.5.sp, color = DarkGrayText)
+                    Text("${p.hn} • ${p.gender.name.take(1)}/${p.age}y • ${p.phone.ifBlank { "ဖုန်းမရှိ" }}", fontSize = 9.5.sp, color = SlateMedium)
+                  }
+                  if (pVaccines.isNotEmpty()) {
+                    Surface(shape = RoundedCornerShape(4.dp), color = Color(0xFFDBEAFE)) {
+                      Text("${pVaccines.size} doses", fontSize = 9.sp, color = Color(0xFF1D4ED8), modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      confirmButton = {},
+      dismissButton = {
+        TextButton(onClick = { showVaccinePatientPicker = false }) {
+          Text("Cancel", fontSize = 11.sp)
+        }
+      }
+    )
+  }
+
+  selectedVaccinePatient?.let { p ->
+    val patientVaccines = remember(vaccineRecords, p.id) {
+      vaccineRecords.filter { it.patientId == p.id }
+    }
+    VaccinationTrackerDialog(
+      patient = p,
+      vaccines = patientVaccines,
+      onDismiss = { selectedVaccinePatient = null },
+      onAddVaccine = { rec ->
+        viewModel.addVaccineRecord(rec)
+        Toast.makeText(context, "${p.name} ၏ ${rec.vaccineName} (Dose ${rec.doseNumber}) EMR ထဲသို့ မှတ်တမ်းတင်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
+      },
+      onUpdateVaccine = { rec ->
+        viewModel.saveOrUpdateVaccineRecord(rec)
+        Toast.makeText(context, "${p.name} ၏ ကာကွယ်ဆေးမှတ်တမ်း ပြင်ဆင်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
+      },
+      onDeleteVaccine = { id -> viewModel.deleteVaccineRecord(id) }
     )
   }
 }
