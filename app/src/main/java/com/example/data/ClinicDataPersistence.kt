@@ -1807,7 +1807,28 @@ object ClinicDataPersistence {
       put("supabaseAnonKey", s.supabaseAnonKey)
       put("enableSupabaseSync", s.enableSupabaseSync)
       put("activeStationName", s.activeStationName)
+      put("updatedAt", if (s.updatedAt > 0L) s.updatedAt else System.currentTimeMillis())
     }
+  }
+
+  fun ensureLocalLogoFile(context: Context, logoBase64: String, existingUri: String): String {
+    if (existingUri.isNotBlank()) {
+      val f = java.io.File(existingUri)
+      if (f.exists() && f.length() > 0) return existingUri
+    }
+    val defaultFile = java.io.File(context.filesDir, "clinic_logo.png")
+    if (defaultFile.exists() && defaultFile.length() > 0 && logoBase64.isBlank()) {
+      return defaultFile.absolutePath
+    }
+    if (logoBase64.isNotBlank()) {
+      try {
+        val clean = if (logoBase64.contains(",")) logoBase64.substringAfter(",") else logoBase64
+        val bytes = android.util.Base64.decode(clean, android.util.Base64.DEFAULT)
+        defaultFile.writeBytes(bytes)
+        return defaultFile.absolutePath
+      } catch (_: Exception) {}
+    }
+    return existingUri
   }
 
   fun settingsFromJson(o: JSONObject, fallback: ClinicSettings = ClinicSettings()): ClinicSettings {
@@ -1851,18 +1872,31 @@ object ClinicDataPersistence {
       supabaseUrl = o.optString("supabaseUrl", fallback.supabaseUrl),
       supabaseAnonKey = o.optString("supabaseAnonKey", fallback.supabaseAnonKey),
       enableSupabaseSync = o.optBoolean("enableSupabaseSync", fallback.enableSupabaseSync),
-      activeStationName = o.optString("activeStationName", fallback.activeStationName)
+      activeStationName = o.optString("activeStationName", fallback.activeStationName),
+      updatedAt = o.optLong("updatedAt", fallback.updatedAt)
     )
   }
   fun saveClinicSettings(context: Context, s: ClinicSettings) {
-    val obj = settingsToJson(s)
+    val cleanLogoUri = ensureLocalLogoFile(context, s.clinicLogoBase64, s.clinicLogoUri)
+    val effectiveS = if (s.clinicLogoBase64.length > 200_000) {
+      s.copy(clinicLogoUri = cleanLogoUri, clinicLogoBase64 = "")
+    } else {
+      s.copy(clinicLogoUri = cleanLogoUri)
+    }
+    val obj = settingsToJson(effectiveS)
     getPrefs(context).edit().putString(KEY_CLINIC_SETTINGS, obj.toString()).apply()
   }
 
   fun loadClinicSettings(context: Context): ClinicSettings {
     val str = getPrefs(context).getString(KEY_CLINIC_SETTINGS, null) ?: return ClinicSettings()
     return try {
-      settingsFromJson(JSONObject(str))
+      val parsed = settingsFromJson(JSONObject(str))
+      val logoFile = java.io.File(context.filesDir, "clinic_logo.png")
+      if (logoFile.exists() && logoFile.length() > 0 && (parsed.clinicLogoUri.isBlank() || !java.io.File(parsed.clinicLogoUri).exists())) {
+        parsed.copy(clinicLogoUri = logoFile.absolutePath)
+      } else {
+        parsed
+      }
     } catch (_: Exception) {
       ClinicSettings()
     }

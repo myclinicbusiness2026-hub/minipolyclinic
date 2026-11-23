@@ -552,6 +552,7 @@ fun DoctorConsultationScreen(
         border = androidx.compose.foundation.BorderStroke(1.dp, BorderGray)
       ) {
         Column(modifier = Modifier.fillMaxWidth()) {
+          // Tier 1: Patient Identity & Contact (Left) + Attending Doctor Chip (Right)
           Row(
             modifier = Modifier
               .fillMaxWidth()
@@ -559,236 +560,94 @@ fun DoctorConsultationScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
           ) {
-          if (activePatient != null) {
-            Row(
-              modifier = Modifier.weight(1f),
-              verticalAlignment = Alignment.CenterVertically
-            ) {
-              // Queue Number badge
-              Box(
-                modifier = Modifier
-                  .clip(RoundedCornerShape(4.dp))
-                  .background(if (activePatient.isFollowUp) Color(0xFFF3E8FF) else SoftGreenContainer)
-                  .padding(horizontal = 6.dp, vertical = 3.dp)
+            if (activePatient != null) {
+              Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
               ) {
-                Text(
-                  if (activePatient.isFollowUp) "#${activePatient.queueNumber} Follow-up" else "#${activePatient.queueNumber}",
-                  fontWeight = FontWeight.Bold,
-                  fontSize = 11.sp,
-                  color = if (activePatient.isFollowUp) Color(0xFF7E22CE) else MedicalGreenDark
-                )
-              }
-
-              Spacer(modifier = Modifier.width(6.dp))
-
-              Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // Queue Number badge
+                Box(
+                  modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(if (activePatient.isFollowUp) Color(0xFFF3E8FF) else SoftGreenContainer)
+                    .padding(horizontal = 6.dp, vertical = 2.5.dp)
+                ) {
                   Text(
-                    activePatient.name,
+                    if (activePatient.isFollowUp) "#${activePatient.queueNumber} Follow-up" else "#${activePatient.queueNumber}",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    color = DarkGrayText,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    fontSize = 11.sp,
+                    color = if (activePatient.isFollowUp) Color(0xFF7E22CE) else MedicalGreenDark
                   )
-                  Spacer(modifier = Modifier.width(4.dp))
-                  Text(
-                    "• ${activePatient.hn} • ${activePatient.age}y/${activePatient.gender.name.first()}",
-                    fontSize = 10.5.sp,
-                    color = SlateMuted,
-                    maxLines = 1
-                  )
-                  if (activePatient.phone.isNotBlank()) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Row(
-                      verticalAlignment = Alignment.CenterVertically,
-                      modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .clickable {
-                          try {
-                            val cleanPhone = activePatient.phone.replace(Regex("[^0-9+]"), "")
-                            context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$cleanPhone")))
-                          } catch (e: Exception) {
-                            Toast.makeText(context, "Could not open dialer: ${e.message}", Toast.LENGTH_SHORT).show()
-                          }
-                        }
-                        .padding(horizontal = 2.dp, vertical = 1.dp)
-                    ) {
-                      Icon(
-                        Icons.Default.Phone,
-                        contentDescription = "Direct Call ${activePatient.phone}",
-                        tint = MedicalGreenDark,
-                        modifier = Modifier.size(11.dp)
-                      )
-                      Spacer(modifier = Modifier.width(2.dp))
-                      Text(
-                        activePatient.phone,
-                        fontSize = 10.5.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MedicalGreenDark,
-                        textDecoration = TextDecoration.Underline,
-                        maxLines = 1
-                      )
-                    }
-                  }
                 }
+
+                Spacer(modifier = Modifier.width(6.dp))
+
                 Text(
-                  if (activePatient.isFollowUp && activePatient.followUpReason.isNotBlank())
-                    "Follow-up: ${activePatient.followUpReason}"
-                  else
-                    "Chief Complaint: ${activePatient.chiefComplaint}",
-                  fontSize = 12.sp,
+                  activePatient.name,
                   fontWeight = FontWeight.Bold,
-                  color = if (activePatient.isFollowUp) Color(0xFF7E22CE) else MedicalGreenDark,
+                  fontSize = 13.5.sp,
+                  color = DarkGrayText,
                   maxLines = 1,
                   overflow = TextOverflow.Ellipsis
                 )
-              }
-            }
-          } else {
-            Row(
-              modifier = Modifier.weight(1f),
-              verticalAlignment = Alignment.CenterVertically
-            ) {
-              Icon(Icons.Default.PersonOff, contentDescription = null, tint = SlateMuted, modifier = Modifier.size(16.dp))
-              Spacer(modifier = Modifier.width(6.dp))
-              Text("Select Patient", fontSize = 11.5.sp, color = SlateMuted)
-            }
-          }
 
-          Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(4.dp))
 
-          // Compact Navigation & Select Dialog Controls
-          Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            val activePatId = activePatient?.id
-            val currentIndex = consultationQueuePatients.indexOfFirst { it.id == activePatId }
-
-            // Prev Patient Button
-            IconButton(
-              onClick = {
-                if (consultationQueuePatients.isNotEmpty()) {
-                  val prevIdx = if (currentIndex <= 0) consultationQueuePatients.size - 1 else currentIndex - 1
-                  val target = consultationQueuePatients[prevIdx]
-                  viewModel.selectPatient(target.id)
-                  viewModel.updatePatientStatus(target.id, QueueStatus.IN_CONSULTATION)
-                }
-              },
-              enabled = consultationQueuePatients.size > 1,
-              modifier = Modifier.size(26.dp)
-            ) {
-              Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Prev", modifier = Modifier.size(14.dp), tint = if (consultationQueuePatients.size > 1) DarkGrayText else SlateLight)
-            }
-
-            // Compact Select Button
-            OutlinedButton(
-              onClick = { showPatientSelectorDialog = true },
-              shape = RoundedCornerShape(4.dp),
-              contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-              modifier = Modifier.height(26.dp),
-              border = androidx.compose.foundation.BorderStroke(1.dp, MedicalGreen)
-            ) {
-              Icon(Icons.Default.People, contentDescription = null, modifier = Modifier.size(12.dp), tint = MedicalGreen)
-              Spacer(modifier = Modifier.width(2.dp))
-              Text(
-                "Queue (${if (currentIndex >= 0) currentIndex + 1 else 0}/${consultationQueuePatients.size})",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                color = MedicalGreen,
-                maxLines = 1
-              )
-            }
-
-            // Next Patient Button
-            IconButton(
-              onClick = {
-                if (consultationQueuePatients.isNotEmpty()) {
-                  val nextIdx = if (currentIndex < 0 || currentIndex >= consultationQueuePatients.size - 1) 0 else currentIndex + 1
-                  val target = consultationQueuePatients[nextIdx]
-                  viewModel.selectPatient(target.id)
-                  viewModel.updatePatientStatus(target.id, QueueStatus.IN_CONSULTATION)
-                }
-              },
-              enabled = consultationQueuePatients.size > 1,
-              modifier = Modifier.size(26.dp)
-            ) {
-              Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next", modifier = Modifier.size(14.dp), tint = if (consultationQueuePatients.size > 1) DarkGrayText else SlateLight)
-            }
-
-            Spacer(modifier = Modifier.width(4.dp))
-
-            // Recall Completed Patient Button
-            var showRecallMenu by remember { mutableStateOf(false) }
-            val completedPatientsToday = remember(patients, consultations, lastConsultedPatientId) {
-              val todayKey = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-              patients.filter { p ->
-                p.status != QueueStatus.IN_CONSULTATION && p.status != QueueStatus.WAITING &&
-                (p.id == lastConsultedPatientId || p.registrationDate == todayKey || consultations.any { c -> c.patientId == p.id && c.timestamp.startsWith(todayKey) })
-              }.sortedByDescending { if (it.id == lastConsultedPatientId) 1 else 0 }.take(15)
-            }
-
-            Box {
-              Surface(
-                modifier = Modifier
-                  .clip(RoundedCornerShape(4.dp))
-                  .clickable { showRecallMenu = true },
-                color = Color(0xFFFEF3C7),
-                border = BorderStroke(0.8.dp, Color(0xFFF59E0B))
-              ) {
-                Row(
-                  modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
-                  verticalAlignment = Alignment.CenterVertically
-                ) {
-                  Icon(Icons.Default.History, contentDescription = "Recall", modifier = Modifier.size(12.dp), tint = Color(0xFFD97706))
-                  Spacer(modifier = Modifier.width(3.dp))
-                  Text("ပြန်ခေါ်", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF92400E))
-                }
-              }
-              DropdownMenu(
-                expanded = showRecallMenu,
-                onDismissRequest = { showRecallMenu = false }
-              ) {
                 Text(
-                  "မကြာသေးမီကလူနာ ပြန်ခေါ်ရန် (Recall)",
+                  "• ${activePatient.hn} • ${activePatient.age}y/${activePatient.gender.name.first()}",
                   fontSize = 11.sp,
-                  fontWeight = FontWeight.Bold,
-                  color = SlateDark,
-                  modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                  color = SlateMuted,
+                  maxLines = 1
                 )
-                HorizontalDivider()
-                if (completedPatientsToday.isEmpty()) {
-                  DropdownMenuItem(
-                    text = { Text("ယနေ့ ပြီးဆုံးလူနာ မရှိသေးပါ", fontSize = 11.sp, color = SlateMuted) },
-                    onClick = { showRecallMenu = false }
-                  )
-                } else {
-                  completedPatientsToday.forEach { p ->
-                    DropdownMenuItem(
-                      text = {
-                        Column {
-                          val isLast = p.id == lastConsultedPatientId
-                          Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("${p.name} (${p.hn})", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = DarkGrayText)
-                            if (isLast) {
-                              Spacer(modifier = Modifier.width(4.dp))
-                              Text("(နောက်ဆုံးကြည့်)", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFFD97706))
-                            }
-                          }
-                          Text("အခြေအနေ: ${p.status.myanmarName}", fontSize = 9.5.sp, color = SlateMuted)
+
+                if (activePatient.phone.isNotBlank()) {
+                  Spacer(modifier = Modifier.width(6.dp))
+                  Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                      .clip(RoundedCornerShape(4.dp))
+                      .clickable {
+                        try {
+                          val cleanPhone = activePatient.phone.replace(Regex("[^0-9+]"), "")
+                          context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$cleanPhone")))
+                        } catch (e: Exception) {
+                          Toast.makeText(context, "Could not open dialer: ${e.message}", Toast.LENGTH_SHORT).show()
                         }
-                      },
-                      onClick = {
-                        showRecallMenu = false
-                        viewModel.recallPatientToConsultation(p.id)
                       }
+                      .padding(horizontal = 2.dp, vertical = 1.dp)
+                  ) {
+                    Icon(
+                      Icons.Default.Phone,
+                      contentDescription = "Direct Call ${activePatient.phone}",
+                      tint = MedicalGreenDark,
+                      modifier = Modifier.size(11.dp)
+                    )
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text(
+                      activePatient.phone,
+                      fontSize = 11.sp,
+                      fontWeight = FontWeight.SemiBold,
+                      color = MedicalGreenDark,
+                      textDecoration = TextDecoration.Underline,
+                      maxLines = 1
                     )
                   }
                 }
               }
+            } else {
+              Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Icon(Icons.Default.PersonOff, contentDescription = null, tint = SlateMuted, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("လူနာ ရွေးချယ်ပါ (Select Patient)", fontSize = 12.sp, color = SlateMuted, fontWeight = FontWeight.Medium)
+              }
             }
 
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(6.dp))
 
-            // Attending Doctor Selector Chip
+            // Attending Doctor Selector Chip (Top-Right)
             Surface(
               modifier = Modifier
                 .clip(RoundedCornerShape(4.dp))
@@ -817,7 +676,169 @@ fun DoctorConsultationScreen(
               }
             }
           }
-        }
+
+          HorizontalDivider(color = BorderGray.copy(alpha = 0.6f), thickness = 0.8.dp)
+
+          // Tier 2: Chief Complaint / Clinical Note (Left) + Queue Navigation & Recall (Right)
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(horizontal = 8.dp, vertical = 3.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            if (activePatient != null) {
+              Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Text(
+                  if (activePatient.isFollowUp && activePatient.followUpReason.isNotBlank())
+                    "Follow-up: ${activePatient.followUpReason}"
+                  else
+                    "Chief Complaint: ${activePatient.chiefComplaint.ifBlank { "မရှိပါ" }}",
+                  fontSize = 11.5.sp,
+                  fontWeight = FontWeight.SemiBold,
+                  color = if (activePatient.isFollowUp) Color(0xFF7E22CE) else MedicalGreenDark,
+                  maxLines = 1,
+                  overflow = TextOverflow.Ellipsis
+                )
+              }
+            } else {
+              Spacer(modifier = Modifier.weight(1f))
+            }
+
+            Spacer(modifier = Modifier.width(6.dp))
+
+            // Compact Navigation & Select Dialog Controls
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+              val activePatId = activePatient?.id
+              val currentIndex = consultationQueuePatients.indexOfFirst { it.id == activePatId }
+
+              // Prev Patient Button
+              IconButton(
+                onClick = {
+                  if (consultationQueuePatients.isNotEmpty()) {
+                    val prevIdx = if (currentIndex <= 0) consultationQueuePatients.size - 1 else currentIndex - 1
+                    val target = consultationQueuePatients[prevIdx]
+                    viewModel.selectPatient(target.id)
+                    viewModel.updatePatientStatus(target.id, QueueStatus.IN_CONSULTATION)
+                  }
+                },
+                enabled = consultationQueuePatients.size > 1,
+                modifier = Modifier.size(26.dp)
+              ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Prev", modifier = Modifier.size(14.dp), tint = if (consultationQueuePatients.size > 1) DarkGrayText else SlateLight)
+              }
+
+              // Compact Select Button
+              OutlinedButton(
+                onClick = { showPatientSelectorDialog = true },
+                shape = RoundedCornerShape(4.dp),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                modifier = Modifier.height(26.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MedicalGreen)
+              ) {
+                Icon(Icons.Default.People, contentDescription = null, modifier = Modifier.size(12.dp), tint = MedicalGreen)
+                Spacer(modifier = Modifier.width(2.dp))
+                Text(
+                  "Queue (${if (currentIndex >= 0) currentIndex + 1 else 0}/${consultationQueuePatients.size})",
+                  fontSize = 10.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = MedicalGreen,
+                  maxLines = 1
+                )
+              }
+
+              // Next Patient Button
+              IconButton(
+                onClick = {
+                  if (consultationQueuePatients.isNotEmpty()) {
+                    val nextIdx = if (currentIndex < 0 || currentIndex >= consultationQueuePatients.size - 1) 0 else currentIndex + 1
+                    val target = consultationQueuePatients[nextIdx]
+                    viewModel.selectPatient(target.id)
+                    viewModel.updatePatientStatus(target.id, QueueStatus.IN_CONSULTATION)
+                  }
+                },
+                enabled = consultationQueuePatients.size > 1,
+                modifier = Modifier.size(26.dp)
+              ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next", modifier = Modifier.size(14.dp), tint = if (consultationQueuePatients.size > 1) DarkGrayText else SlateLight)
+              }
+
+              Spacer(modifier = Modifier.width(4.dp))
+
+              // Recall Completed Patient Button
+              var showRecallMenu by remember { mutableStateOf(false) }
+              val completedPatientsToday = remember(patients, consultations, lastConsultedPatientId) {
+                val todayKey = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                patients.filter { p ->
+                  p.status != QueueStatus.IN_CONSULTATION && p.status != QueueStatus.WAITING &&
+                  (p.id == lastConsultedPatientId || p.registrationDate == todayKey || consultations.any { c -> c.patientId == p.id && c.timestamp.startsWith(todayKey) })
+                }.sortedByDescending { if (it.id == lastConsultedPatientId) 1 else 0 }.take(15)
+              }
+
+              Box {
+                Surface(
+                  modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .clickable { showRecallMenu = true },
+                  color = Color(0xFFFEF3C7),
+                  border = BorderStroke(0.8.dp, Color(0xFFF59E0B))
+                ) {
+                  Row(
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                  ) {
+                    Icon(Icons.Default.History, contentDescription = "Recall", modifier = Modifier.size(12.dp), tint = Color(0xFFD97706))
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text("ပြန်ခေါ်", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF92400E))
+                  }
+                }
+                DropdownMenu(
+                  expanded = showRecallMenu,
+                  onDismissRequest = { showRecallMenu = false }
+                ) {
+                  Text(
+                    "မကြာသေးမီကလူနာ ပြန်ခေါ်ရန် (Recall)",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = SlateDark,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                  )
+                  HorizontalDivider()
+                  if (completedPatientsToday.isEmpty()) {
+                    DropdownMenuItem(
+                      text = { Text("ယနေ့ ပြီးဆုံးလူနာ မရှိသေးပါ", fontSize = 11.sp, color = SlateMuted) },
+                      onClick = { showRecallMenu = false }
+                    )
+                  } else {
+                    completedPatientsToday.forEach { p ->
+                      DropdownMenuItem(
+                        text = {
+                          Column {
+                            val isLast = p.id == lastConsultedPatientId
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                              Text("${p.name} (${p.hn})", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = DarkGrayText)
+                              if (isLast) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("(နောက်ဆုံးကြည့်)", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFFD97706))
+                              }
+                            }
+                            Text("အခြေအနေ: ${p.status.myanmarName}", fontSize = 9.5.sp, color = SlateMuted)
+                          }
+                        },
+                        onClick = {
+                          showRecallMenu = false
+                          viewModel.recallPatientToConsultation(p.id)
+                        }
+                      )
+                    }
+                  }
+                }
+              }
+            }
+          }
 
         // Missing / Deleted Invoice Restore Banner
         val activePatientCons = remember(consultations, activePatient?.id) {

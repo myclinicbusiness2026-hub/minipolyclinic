@@ -44,7 +44,9 @@ data class ClinicSettings(
   val wifiSyncPort: Int = 8080,
   val lastSupabaseSyncTimestamp: String = "",
   val lastWifiSyncTimestamp: String = "",
-  val activeStationName: String = "Doctor Consultation Station"
+  val activeStationName: String = "Doctor Consultation Station",
+  val updatedAt: Long = 0L
 ) {
-  val effectiveLogo: String get() = clinicLogoBase64.ifBlank { clinicLogoUri }
+  val isDefault: Boolean get() = updatedAt == 0L
+  val effectiveLogo: String get() = clinicLogoUri.ifBlank { clinicLogoBase64 }
 }

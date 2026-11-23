@@ -620,14 +620,29 @@ class LocalWifiSyncManager(
       val remoteSettingsObj = root.optJSONObject("clinicSettings") ?: root.optJSONObject("settings")
       if (remoteSettingsObj != null) {
         val localSettings = ClinicDataPersistence.loadClinicSettings(context)
-        val mergedSettings = ClinicDataPersistence.settingsFromJson(remoteSettingsObj, fallback = localSettings)
-        val finalSettings = mergedSettings.copy(
-          activeStationName = localSettings.activeStationName.ifBlank { mergedSettings.activeStationName },
-          bluetoothPrinterMac = localSettings.bluetoothPrinterMac.ifBlank { mergedSettings.bluetoothPrinterMac },
-          preferredThermalPrinterAddress = localSettings.preferredThermalPrinterAddress.ifBlank { mergedSettings.preferredThermalPrinterAddress },
-          wifiHubHostIp = localSettings.wifiHubHostIp.ifBlank { mergedSettings.wifiHubHostIp }
-        )
-        ClinicDataPersistence.saveClinicSettings(context, finalSettings)
+        val incomingSettings = ClinicDataPersistence.settingsFromJson(remoteSettingsObj, fallback = localSettings)
+        
+        // Safeguard: Only accept incoming settings if incoming is newer,
+        // or if local device is still on uncustomized default!
+        val shouldAcceptIncoming = localSettings.isDefault || 
+            (incomingSettings.updatedAt > localSettings.updatedAt) ||
+            (!incomingSettings.isDefault && localSettings.isDefault)
+
+        if (shouldAcceptIncoming) {
+          val finalLogoUri = ClinicDataPersistence.ensureLocalLogoFile(
+            context = context,
+            logoBase64 = incomingSettings.clinicLogoBase64,
+            existingUri = incomingSettings.clinicLogoUri
+          )
+          val finalSettings = incomingSettings.copy(
+            clinicLogoUri = finalLogoUri,
+            activeStationName = localSettings.activeStationName.ifBlank { incomingSettings.activeStationName },
+            bluetoothPrinterMac = localSettings.bluetoothPrinterMac.ifBlank { incomingSettings.bluetoothPrinterMac },
+            preferredThermalPrinterAddress = localSettings.preferredThermalPrinterAddress.ifBlank { incomingSettings.preferredThermalPrinterAddress },
+            wifiHubHostIp = localSettings.wifiHubHostIp.ifBlank { incomingSettings.wifiHubHostIp }
+          )
+          ClinicDataPersistence.saveClinicSettings(context, finalSettings)
+        }
       }
 
       // Merge Expenses (Non-destructive ID-based merge)

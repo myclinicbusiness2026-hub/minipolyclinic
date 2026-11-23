@@ -4169,7 +4169,13 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       if (remoteSettingsObj != null) {
         val curSettings = clinicSettings.value
         val mergedSettings = ClinicDataPersistence.settingsFromJson(remoteSettingsObj, fallback = curSettings)
+        val finalLogoUri = ClinicDataPersistence.ensureLocalLogoFile(
+          context = ctx,
+          logoBase64 = mergedSettings.clinicLogoBase64,
+          existingUri = mergedSettings.clinicLogoUri
+        )
         val finalSettings = mergedSettings.copy(
+          clinicLogoUri = finalLogoUri,
           activeStationName = curSettings.activeStationName.ifBlank { mergedSettings.activeStationName },
           bluetoothPrinterMac = curSettings.bluetoothPrinterMac.ifBlank { mergedSettings.bluetoothPrinterMac },
           preferredThermalPrinterAddress = curSettings.preferredThermalPrinterAddress.ifBlank { mergedSettings.preferredThermalPrinterAddress },

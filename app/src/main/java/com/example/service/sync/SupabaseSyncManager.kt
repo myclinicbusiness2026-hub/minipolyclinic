@@ -619,9 +619,18 @@ END $$;
       val localSettingsObj = root.optJSONObject("clinicSettings") ?: root.optJSONObject("settings")
       val remoteSettingsObj = remoteDoc?.optJSONObject("settings") ?: remoteDoc?.optJSONObject("clinicSettings")
       val mergedSettingsObj = if (localSettingsObj != null && remoteSettingsObj != null) {
-        val s = com.example.data.ClinicDataPersistence.settingsFromJson(localSettingsObj)
-        val merged = com.example.data.ClinicDataPersistence.settingsFromJson(remoteSettingsObj, fallback = s)
-        com.example.data.ClinicDataPersistence.settingsToJson(merged)
+        val localS = com.example.data.ClinicDataPersistence.settingsFromJson(localSettingsObj)
+        val remoteS = com.example.data.ClinicDataPersistence.settingsFromJson(remoteSettingsObj, fallback = localS)
+        val preferred = if (localS.isDefault && !remoteS.isDefault) {
+          remoteS
+        } else if (!localS.isDefault && remoteS.isDefault) {
+          localS
+        } else if (remoteS.updatedAt >= localS.updatedAt) {
+          remoteS
+        } else {
+          localS
+        }
+        com.example.data.ClinicDataPersistence.settingsToJson(preferred)
       } else localSettingsObj ?: remoteSettingsObj
 
       // Build complete merged document for local persistence update

@@ -36,27 +36,27 @@ fun ClinicSettingsDialog(
   onSave: (ClinicSettings) -> Unit,
   onCheckUpdates: (() -> Unit)? = null
 ) {
-  var clinicNameMm by remember { mutableStateOf(currentSettings.clinicNameMm) }
-  var clinicNameEn by remember { mutableStateOf(currentSettings.clinicNameEn) }
-  var clinicSubtitleMm by remember { mutableStateOf(currentSettings.clinicSubtitleMm) }
-  var clinicLogoUri by remember { mutableStateOf(currentSettings.clinicLogoUri) }
-  var clinicLogoBase64 by remember { mutableStateOf(currentSettings.clinicLogoBase64) }
-  var doctorName by remember { mutableStateOf(currentSettings.doctorName) }
-  var doctorDegree by remember { mutableStateOf(currentSettings.doctorDegree) }
-  var doctorSama by remember { mutableStateOf(currentSettings.doctorSama) }
-  var phonePrimary by remember { mutableStateOf(currentSettings.phonePrimary) }
-  var phoneSecondary by remember { mutableStateOf(currentSettings.phoneSecondary) }
-  var addressMm by remember { mutableStateOf(currentSettings.addressMm) }
-  var clinicHours by remember { mutableStateOf(currentSettings.clinicHours) }
-  var clinicRegNo by remember { mutableStateOf(currentSettings.clinicRegNo) }
-  var thermalPaperWidthMm by remember { mutableStateOf(currentSettings.thermalPaperWidthMm) }
-  var receiptGreetingMm by remember { mutableStateOf(currentSettings.receiptGreetingMm) }
-  var activeStationName by remember { mutableStateOf(currentSettings.activeStationName) }
-  var wifiHubHostIp by remember { mutableStateOf(currentSettings.wifiHubHostIp) }
-  var wifiSyncPort by remember { mutableStateOf(currentSettings.wifiSyncPort.toString()) }
-  var supabaseUrl by remember { mutableStateOf(currentSettings.supabaseUrl) }
-  var supabaseAnonKey by remember { mutableStateOf(currentSettings.supabaseAnonKey) }
-  var enableSupabaseSync by remember { mutableStateOf(currentSettings.enableSupabaseSync) }
+  var clinicNameMm by remember(currentSettings) { mutableStateOf(currentSettings.clinicNameMm) }
+  var clinicNameEn by remember(currentSettings) { mutableStateOf(currentSettings.clinicNameEn) }
+  var clinicSubtitleMm by remember(currentSettings) { mutableStateOf(currentSettings.clinicSubtitleMm) }
+  var clinicLogoUri by remember(currentSettings) { mutableStateOf(currentSettings.clinicLogoUri) }
+  var clinicLogoBase64 by remember(currentSettings) { mutableStateOf(currentSettings.clinicLogoBase64) }
+  var doctorName by remember(currentSettings) { mutableStateOf(currentSettings.doctorName) }
+  var doctorDegree by remember(currentSettings) { mutableStateOf(currentSettings.doctorDegree) }
+  var doctorSama by remember(currentSettings) { mutableStateOf(currentSettings.doctorSama) }
+  var phonePrimary by remember(currentSettings) { mutableStateOf(currentSettings.phonePrimary) }
+  var phoneSecondary by remember(currentSettings) { mutableStateOf(currentSettings.phoneSecondary) }
+  var addressMm by remember(currentSettings) { mutableStateOf(currentSettings.addressMm) }
+  var clinicHours by remember(currentSettings) { mutableStateOf(currentSettings.clinicHours) }
+  var clinicRegNo by remember(currentSettings) { mutableStateOf(currentSettings.clinicRegNo) }
+  var thermalPaperWidthMm by remember(currentSettings) { mutableStateOf(currentSettings.thermalPaperWidthMm) }
+  var receiptGreetingMm by remember(currentSettings) { mutableStateOf(currentSettings.receiptGreetingMm) }
+  var activeStationName by remember(currentSettings) { mutableStateOf(currentSettings.activeStationName) }
+  var wifiHubHostIp by remember(currentSettings) { mutableStateOf(currentSettings.wifiHubHostIp) }
+  var wifiSyncPort by remember(currentSettings) { mutableStateOf(currentSettings.wifiSyncPort.toString()) }
+  var supabaseUrl by remember(currentSettings) { mutableStateOf(currentSettings.supabaseUrl) }
+  var supabaseAnonKey by remember(currentSettings) { mutableStateOf(currentSettings.supabaseAnonKey) }
+  var enableSupabaseSync by remember(currentSettings) { mutableStateOf(currentSettings.enableSupabaseSync) }
 
   val context = androidx.compose.ui.platform.LocalContext.current
   val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -628,7 +628,8 @@ fun ClinicSettingsDialog(
                   wifiSyncPort = wifiSyncPort.toIntOrNull() ?: 8080,
                   supabaseUrl = supabaseUrl.trim(),
                   supabaseAnonKey = supabaseAnonKey.trim(),
-                  enableSupabaseSync = enableSupabaseSync
+                  enableSupabaseSync = enableSupabaseSync,
+                  updatedAt = System.currentTimeMillis()
                 )
                 onSave(updated)
                 onDismiss()
