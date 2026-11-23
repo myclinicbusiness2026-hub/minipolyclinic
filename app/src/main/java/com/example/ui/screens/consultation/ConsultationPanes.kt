@@ -266,6 +266,9 @@ fun ConsultationPrescriptionAndBillingPane(
   onPreviewA4Doc: () -> Unit,
   onSendToPharmacy: () -> Unit,
   currencyFmt: NumberFormat,
+  patient: Patient? = null,
+  pastConsultations: List<ConsultationRecord> = emptyList(),
+  subjective: String = "",
   isReadOnly: Boolean = false
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -313,7 +316,7 @@ fun ConsultationPrescriptionAndBillingPane(
       } else null
     )
 
-    if (showCstImportModal) {
+    if (showCstImportModal && patient != null) {
       val pastRxList = remember(pastConsultations) {
         pastConsultations.flatMap { it.prescriptions }
       }

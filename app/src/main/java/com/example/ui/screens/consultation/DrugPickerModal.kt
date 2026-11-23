@@ -177,7 +177,6 @@ fun DrugPickerModal(
     Pair("10 ml", "10 ml (၂ ဇွန်း)"),
     Pair("15 ml", "15 ml (၁ စားပွဲဇွန်း)")
   )
-  )
 
   val durationQuickNums = listOf(3, 5, 7, 10, 14, 30)
   val durationUnits = listOf(
@@ -1450,7 +1449,7 @@ fun DrugPickerModal(
           Button(
             onClick = {
               showOutOfStockDialog = false
-              selectedTab = 1
+              activeTab = 1
               extDrugName = med.name
               extDosage = dosage
               extFrequency = frequency

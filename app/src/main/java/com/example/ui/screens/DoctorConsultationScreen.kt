@@ -1228,6 +1228,9 @@ fun DoctorConsultationScreen(
                 onPreviewA4Doc = handlePreviewA4Doc,
                 onSendToPharmacy = handleSendToPharmacy,
                 currencyFmt = currencyFmt,
+                patient = activePatient,
+                pastConsultations = pastConsultations,
+                subjective = subjectiveNotes,
                 isReadOnly = isReadOnly
               )
             }
@@ -1324,6 +1327,9 @@ fun DoctorConsultationScreen(
               onPreviewA4Doc = handlePreviewA4Doc,
               onSendToPharmacy = handleSendToPharmacy,
               currencyFmt = currencyFmt,
+              patient = activePatient,
+              pastConsultations = pastConsultations,
+              subjective = subjectiveNotes,
               isReadOnly = isReadOnly
             )
           }
