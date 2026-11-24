@@ -1184,7 +1184,15 @@ fun DoctorConsultationScreen(
 
               val patientLabOrders = remember(activePatient, labOrders) {
                 if (activePatient == null) emptyList()
-                else labOrders.filter { it.patientId == activePatient.id || (activePatient.hn.isNotBlank() && it.patientHn == activePatient.hn) }
+                else labOrders.filter { ord ->
+                  val idMatches = activePatient.id.isNotBlank() && activePatient.id != "WALK-IN" && ord.patientId == activePatient.id
+                  val hnMatches = activePatient.hn.isNotBlank() && !activePatient.hn.equals("WALK-IN", ignoreCase = true) && ord.patientHn.equals(activePatient.hn, ignoreCase = true)
+                  val nameMatches = ord.patientName.isBlank() ||
+                                    ord.patientName.equals(activePatient.name, ignoreCase = true) ||
+                                    activePatient.name.contains(ord.patientName, ignoreCase = true) ||
+                                    ord.patientName.contains(activePatient.name, ignoreCase = true)
+                  (idMatches || hnMatches) && nameMatches
+                }
               }
               ConsultationLabResultsCard(patientLabOrders, clinicSettings, context)
             }
@@ -1291,7 +1299,15 @@ fun DoctorConsultationScreen(
 
             val mobilePatientLabOrders = remember(activePatient, labOrders) {
               if (activePatient == null) emptyList()
-              else labOrders.filter { it.patientId == activePatient.id || (activePatient.hn.isNotBlank() && it.patientHn == activePatient.hn) }
+              else labOrders.filter { ord ->
+                val idMatches = activePatient.id.isNotBlank() && activePatient.id != "WALK-IN" && ord.patientId == activePatient.id
+                val hnMatches = activePatient.hn.isNotBlank() && !activePatient.hn.equals("WALK-IN", ignoreCase = true) && ord.patientHn.equals(activePatient.hn, ignoreCase = true)
+                val nameMatches = ord.patientName.isBlank() ||
+                                  ord.patientName.equals(activePatient.name, ignoreCase = true) ||
+                                  activePatient.name.contains(ord.patientName, ignoreCase = true) ||
+                                  ord.patientName.contains(activePatient.name, ignoreCase = true)
+                (idMatches || hnMatches) && nameMatches
+              }
             }
             ConsultationLabResultsCard(mobilePatientLabOrders, clinicSettings, context)
 

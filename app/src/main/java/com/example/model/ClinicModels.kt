@@ -50,7 +50,7 @@ data class Patient(
   val age: Int,
   val gender: Gender = Gender.MALE,
   val phone: String = "",
-  val address: String = "မန္တလေးမြို့",
+  val address: String = "",
   val status: QueueStatus = QueueStatus.WAITING,
   val registrationTime: String = "",
   val vitals: VitalSigns = VitalSigns(),

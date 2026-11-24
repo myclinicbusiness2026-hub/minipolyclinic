@@ -35,6 +35,8 @@ fun ClinicalHistorySection(
   // 1. History State & Cascading Complaints
   val activeComplaints = remember(patientId) { mutableStateListOf<ComplaintItem>() }
   var historyRemarks by remember(patientId) { mutableStateOf("") }
+  var showHistoryRemarksPopup by remember { mutableStateOf(false) }
+  var tempHistoryRemarksPopupText by remember { mutableStateOf("") }
   var showAddCustomComplaintDialog by remember { mutableStateOf(false) }
 
   // Background Histories State
@@ -1515,7 +1517,27 @@ fun ClinicalHistorySection(
     Spacer(modifier = Modifier.height(10.dp))
 
     // Single Text Field for Additional Remarks
-    Text("Additional Remarks / Free Text:", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically
+    ) {
+      Text("Additional Remarks / Free Text:", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+      Row(
+        modifier = Modifier
+          .clip(RoundedCornerShape(4.dp))
+          .clickable {
+            tempHistoryRemarksPopupText = historyRemarks
+            showHistoryRemarksPopup = true
+          }
+          .padding(horizontal = 4.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Icon(Icons.Default.Fullscreen, contentDescription = "Expand", tint = MedicalGreen, modifier = Modifier.size(13.dp))
+        Spacer(modifier = Modifier.width(3.dp))
+        Text("အကြီးချဲ့ရေးမည် (Pop-up)", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MedicalGreen)
+      }
+    }
     Spacer(modifier = Modifier.height(4.dp))
     OutlinedTextField(
       value = historyRemarks,
@@ -1538,6 +1560,52 @@ fun ClinicalHistorySection(
         unfocusedContainerColor = Color(0xFFFAFAFA)
       )
     )
+
+    if (showHistoryRemarksPopup) {
+      AlertDialog(
+        onDismissRequest = { showHistoryRemarksPopup = false },
+        icon = { Icon(Icons.Default.EditNote, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(28.dp)) },
+        title = { Text("Additional Remarks / ရောဂါရာဇဝင် မှတ်ချက် အပြည့်အစုံ", fontWeight = FontWeight.Bold, fontSize = 13.5.sp, color = DarkGrayText) },
+        text = {
+          Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("ရောဂါရာဇဝင်အသေးစိတ်၊ လူနာပြောပြချက်များနှင့် အထွေထွေမှတ်ချက်များကို နေရာကျယ်ကျယ်ဖြင့် စိတ်ကြိုက်ရိုက်ထည့်ပါ:", fontSize = 11.sp, color = SlateDark)
+            OutlinedTextField(
+              value = tempHistoryRemarksPopupText,
+              onValueChange = { tempHistoryRemarksPopupText = it },
+              placeholder = { Text("ရောဂါရာဇဝင် အသေးစိတ်၊ လူနာပြောပြချက်များနှင့် အထွေထွေမှတ်ချက်များကို လွတ်လပ်စွာ ရိုက်ထည့်နိုင်ပါသည်...", fontSize = 11.5.sp, color = SlateMuted) },
+              modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 160.dp, max = 300.dp),
+              shape = RoundedCornerShape(6.dp),
+              singleLine = false,
+              textStyle = TextStyle(fontSize = 11.5.sp, color = DarkGrayText),
+              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Default)
+            )
+          }
+        },
+        confirmButton = {
+          Button(
+            onClick = {
+              historyRemarks = tempHistoryRemarksPopupText
+              syncHistory(showSavedBadge = true)
+              showHistoryRemarksPopup = false
+            },
+            colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+            shape = RoundedCornerShape(6.dp)
+          ) {
+            Text("သိမ်းဆည်းမည် (Save Remarks)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+          }
+        },
+        dismissButton = {
+          OutlinedButton(
+            onClick = { showHistoryRemarksPopup = false },
+            shape = RoundedCornerShape(6.dp)
+          ) {
+            Text("Cancel", fontSize = 11.sp)
+          }
+        }
+      )
+    }
 
     Spacer(modifier = Modifier.height(8.dp))
 

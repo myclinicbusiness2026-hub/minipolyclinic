@@ -1227,9 +1227,17 @@ private fun PatientDetailedEmrPane(
       }
     }
 
-    // Lab Investigation History Section
-    val patientLabOrders = remember(patient.id, patient.hn, labOrders) {
-      labOrders.filter { it.patientId == patient.id || (patient.hn.isNotBlank() && it.patientHn == patient.hn) }
+    // Lab Investigation History Section (Strict matching with WALK-IN exclusion and Name verification)
+    val patientLabOrders = remember(patient.id, patient.hn, patient.name, labOrders) {
+      labOrders.filter { ord ->
+        val idMatches = patient.id.isNotBlank() && patient.id != "WALK-IN" && ord.patientId == patient.id
+        val hnMatches = patient.hn.isNotBlank() && !patient.hn.equals("WALK-IN", ignoreCase = true) && ord.patientHn.equals(patient.hn, ignoreCase = true)
+        val nameMatches = ord.patientName.isBlank() ||
+                          ord.patientName.equals(patient.name, ignoreCase = true) ||
+                          patient.name.contains(ord.patientName, ignoreCase = true) ||
+                          ord.patientName.contains(patient.name, ignoreCase = true)
+        (idMatches || hnMatches) && nameMatches
+      }
     }
     if (patientLabOrders.isNotEmpty()) {
       Spacer(modifier = Modifier.height(4.dp))

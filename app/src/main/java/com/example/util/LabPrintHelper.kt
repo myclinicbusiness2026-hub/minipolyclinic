@@ -137,33 +137,62 @@ object LabPrintHelper {
   }
 
   /**
-   * Formats reference ranges into a clean horizontal line with patient-relevant demographics highlighted.
-   * Prevents multi-line vertical bloat (e.g. M/F/Child on 3 separate lines) so comprehensive panels like
-   * Complete Blood Count (CBC / 18 parameters) fit cleanly onto a single A4 page.
+   * Formats reference ranges cleanly to show the patient's specific demographic range (Option 1).
+   * Supports both multi-line and comma-separated ranges (e.g. "13.0 - 17.5 (M), 12.0 - 15.5 (F)").
+   * If a demographic segment is detected, displays the patient's applicable range with clear tag
+   * (e.g. "13.0 - 17.5 (Male)").
+   * If not demographic or ambiguous, safely displays the full original range without truncation.
+   * Underline is removed completely for an ultra-clean, premium clinical appearance.
    */
   private fun formatReferenceRangeHtml(rawRange: String, patientAge: Int, patientGender: Gender): String {
     if (rawRange.isBlank()) return "-"
-    val lines = rawRange.lines().map { it.trim() }.filter { it.isNotBlank() }
-    if (lines.size <= 1) return rawRange.trim()
+    val clean = rawRange.trim()
 
     val isChild = patientAge in 1..12
     val isMale = patientGender == Gender.MALE && (patientAge >= 13 || patientAge == 0)
     val isFemale = patientGender == Gender.FEMALE && (patientAge >= 13 || patientAge == 0)
 
-    val formattedParts = lines.map { line ->
-      val isMatch = when {
-        isChild && (line.startsWith("C:", ignoreCase = true) || line.startsWith("Child", ignoreCase = true) || line.contains("Child", ignoreCase = true)) -> true
-        isMale && (line.startsWith("M:", ignoreCase = true) || line.startsWith("Male", ignoreCase = true)) -> true
-        isFemale && (line.startsWith("F:", ignoreCase = true) || line.startsWith("Female", ignoreCase = true)) -> true
-        else -> false
+    // Check if range contains multiple demographic segments (either by newline, pipe, or comma)
+    val parts = when {
+      clean.contains("\n") -> clean.lines().map { it.trim() }.filter { it.isNotBlank() }
+      clean.contains(" | ") -> clean.split(" | ").map { it.trim() }.filter { it.isNotBlank() }
+      clean.contains("),") -> clean.split("),").mapIndexed { idx, s -> if (idx < clean.split("),").size - 1) "$s)" else s }.map { it.trim() }.filter { it.isNotBlank() }
+      clean.contains("(M)") && clean.contains("(F)") -> clean.split(",").map { it.trim() }.filter { it.isNotBlank() }
+      else -> listOf(clean)
+    }
+
+    if (parts.size > 1) {
+      val matched = parts.firstOrNull { part ->
+        when {
+          isChild && (part.contains("Child", ignoreCase = true) || part.startsWith("C:", ignoreCase = true) || part.contains("(C)", ignoreCase = true)) -> true
+          isMale && (part.contains("(M)", ignoreCase = true) || part.startsWith("M:", ignoreCase = true) || part.contains("(Male)", ignoreCase = true) || part.startsWith("Male", ignoreCase = true)) -> true
+          isFemale && (part.contains("(F)", ignoreCase = true) || part.startsWith("F:", ignoreCase = true) || part.contains("(Female)", ignoreCase = true) || part.startsWith("Female", ignoreCase = true)) -> true
+          else -> false
+        }
       }
-      if (isMatch) {
-        "<strong style='color: #0f172a; text-decoration: underline;'>$line</strong>"
-      } else {
-        "<span style='color: #64748b;'>$line</span>"
+
+      if (matched != null) {
+        val formatted = when {
+          isChild -> {
+            val stripped = matched.replace("Child", "", ignoreCase = true).replace("C:", "", ignoreCase = true).replace("(C)", "", ignoreCase = true).replace("()", "").trim()
+            if (stripped.isNotBlank()) "$stripped (Child)" else matched
+          }
+          isMale -> {
+            val stripped = matched.replace("(M)", "", ignoreCase = true).replace("M:", "", ignoreCase = true).replace("(Male)", "", ignoreCase = true).replace("Male:", "", ignoreCase = true).replace("()", "").trim()
+            if (stripped.isNotBlank()) "$stripped (Male)" else matched
+          }
+          isFemale -> {
+            val stripped = matched.replace("(F)", "", ignoreCase = true).replace("F:", "", ignoreCase = true).replace("(Female)", "", ignoreCase = true).replace("Female:", "", ignoreCase = true).replace("()", "").trim()
+            if (stripped.isNotBlank()) "$stripped (Female)" else matched
+          }
+          else -> matched
+        }
+        return "<span style='color: #0f172a; font-weight: 600;'>$formatted</span>"
       }
     }
-    return formattedParts.joinToString(" <span style='color: #94a3b8;'>|</span> ")
+
+    // Single range or general parameter without demographic breakdown
+    return "<span style='color: #334155;'>$clean</span>"
   }
 
   /**
@@ -492,7 +521,7 @@ object LabPrintHelper {
                 <div class="patient-cell"><strong>Phone:</strong> ${order.patientPhone.ifBlank { "-" }}</div>
               </div>
               <div class="patient-row">
-                <div class="patient-cell" style="width: 50%;"><strong>Address:</strong> ${order.patientAddress.ifBlank { "မန္တလေးမြို့" }}</div>
+                <div class="patient-cell" style="width: 50%;"><strong>Address:</strong> ${order.patientAddress.ifBlank { "-" }}</div>
                 <div class="patient-cell" style="width: 50%;"><strong>Referring Doctor:</strong> $refDocDisplay</div>
               </div>
             </div>

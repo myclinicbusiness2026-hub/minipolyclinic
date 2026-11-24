@@ -608,8 +608,8 @@ fun LabInvestigationScreen(
       defaultPathologistSama = clinicSettings.defaultPathologistSama,
       defaultPathologistTitle = clinicSettings.defaultPathologistTitle,
       onDismiss = { orderToEnterResults = null },
-      onSave = { updatedItems, tech, notes, pName, pDegree, pSama, pTitle, showDocSeal, showTechSign, refDoc ->
-        viewModel.saveLabOrderResults(order.id, updatedItems, tech, notes, pName, pDegree, pSama, pTitle, showDocSeal, showTechSign, refDoc)
+      onSave = { updatedItems, tech, notes, pName, pDegree, pSama, pTitle, showDocSeal, showTechSign, refDoc, patName, patAge, patGender, patPhone, patAddress ->
+        viewModel.saveLabOrderResults(order.id, updatedItems, tech, notes, pName, pDegree, pSama, pTitle, showDocSeal, showTechSign, refDoc, patName, patAge, patGender, patPhone, patAddress)
         orderToEnterResults = null
         Toast.makeText(context, "ဓာတ်ခွဲအဖြေများ မှတ်တမ်းတင်ပြီးပါပြီ (ပြီးစီးပြီး စာရင်း Tab သို့ ရောက်ရှိသွားပါပြီ)", Toast.LENGTH_SHORT).show()
       }
@@ -1885,6 +1885,15 @@ fun MobileNewLabOrderDialog(
   var isWalkIn by remember { mutableStateOf(false) }
   var patientSearch by remember { mutableStateOf("") }
   var selectedPatient by remember { mutableStateOf<Patient?>(null) }
+  var patientPhoneOverride by remember(selectedPatient?.id) { mutableStateOf(selectedPatient?.phone ?: "") }
+  var patientAddressOverride by remember(selectedPatient?.id) { mutableStateOf(selectedPatient?.address ?: "") }
+
+  LaunchedEffect(selectedPatient) {
+    if (selectedPatient != null) {
+      patientPhoneOverride = selectedPatient!!.phone
+      patientAddressOverride = selectedPatient!!.address
+    }
+  }
 
   var walkInName by remember { mutableStateOf("") }
   var walkInAge by remember { mutableStateOf("30") }
@@ -1995,6 +2004,45 @@ fun MobileNewLabOrderDialog(
                     Text("ပြောင်းရန်", fontSize = 10.5.sp, color = Color(0xFFDC2626))
                   }
                 }
+              }
+              Spacer(modifier = Modifier.height(6.dp))
+              Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                OutlinedTextField(
+                  value = patientPhoneOverride,
+                  onValueChange = { patientPhoneOverride = it },
+                  label = { Text("ဖုန်းနံပါတ် (Phone)", fontSize = 10.5.sp) },
+                  placeholder = { Text("09xxxxxxxxx", fontSize = 10.5.sp, color = SlateMuted) },
+                  singleLine = true,
+                  modifier = Modifier.weight(1f),
+                  shape = RoundedCornerShape(8.dp),
+                  textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp, color = Color(0xFF0F172A)),
+                  colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color(0xFF0F172A),
+                    unfocusedTextColor = Color(0xFF0F172A),
+                    focusedContainerColor = PureWhite,
+                    unfocusedContainerColor = PureWhite,
+                    unfocusedBorderColor = BorderGray,
+                    focusedBorderColor = Color(0xFF0284C7)
+                  )
+                )
+                OutlinedTextField(
+                  value = patientAddressOverride,
+                  onValueChange = { patientAddressOverride = it },
+                  label = { Text("နေရပ်လိပ်စာ (Address)", fontSize = 10.5.sp) },
+                  placeholder = { Text("မြို့နယ် / လိပ်စာ", fontSize = 10.5.sp, color = SlateMuted) },
+                  singleLine = true,
+                  modifier = Modifier.weight(1.3f),
+                  shape = RoundedCornerShape(8.dp),
+                  textStyle = LocalTextStyle.current.copy(fontSize = 11.5.sp, color = Color(0xFF0F172A)),
+                  colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color(0xFF0F172A),
+                    unfocusedTextColor = Color(0xFF0F172A),
+                    focusedContainerColor = PureWhite,
+                    unfocusedContainerColor = PureWhite,
+                    unfocusedBorderColor = BorderGray,
+                    focusedBorderColor = Color(0xFF0284C7)
+                  )
+                )
               }
             } else {
               OutlinedTextField(
@@ -2346,12 +2394,12 @@ fun MobileNewLabOrderDialog(
                 val orderNumber = "LAB-${SimpleDateFormat("yyMMdd-HHmm", Locale.getDefault()).format(Date())}-${(100..999).random()}"
 
                 val pName = if (isWalkIn) walkInName.trim() else selectedPatient!!.name
-                val pHn = if (isWalkIn) "WALK-IN" else selectedPatient!!.hn
+                val pHn = if (isWalkIn) "WALK-IN-${SimpleDateFormat("yyMMdd-HHmm", Locale.getDefault()).format(Date())}-${(10..99).random()}" else selectedPatient!!.hn
                 val pAge = if (isWalkIn) walkInAge.toIntOrNull() ?: 30 else selectedPatient!!.age
                 val pGender = if (isWalkIn) walkInGender else selectedPatient!!.gender
                 val pId = if (isWalkIn) UUID.randomUUID().toString() else selectedPatient!!.id
-                val pPhone = if (isWalkIn) walkInPhone.trim() else (selectedPatient?.phone ?: "")
-                val pAddress = if (isWalkIn) walkInAddress.trim().ifBlank { "ပြင်ပလူနာ (Walk-in)" } else (selectedPatient?.address?.ifBlank { "မန္တလေးမြို့" } ?: "မန္တလေးမြို့")
+                val pPhone = if (isWalkIn) walkInPhone.trim() else patientPhoneOverride.trim()
+                val pAddress = if (isWalkIn) walkInAddress.trim().ifBlank { "-" } else patientAddressOverride.trim().ifBlank { "-" }
 
                 val items = selectedTemplates.map { t ->
                   LabOrderItem(
@@ -2472,9 +2520,16 @@ fun MobileLabResultEntryDialog(
   defaultPathologistSama: String = "",
   defaultPathologistTitle: String = "",
   onDismiss: () -> Unit,
-  onSave: (List<LabOrderItem>, String, String, String, String, String, String, Boolean, Boolean, String) -> Unit
+  onSave: (List<LabOrderItem>, String, String, String, String, String, String, Boolean, Boolean, String, String, Int, Gender, String, String) -> Unit
 ) {
   val context = LocalContext.current
+  var patientNameEdit by remember(order.id) { mutableStateOf(order.patientName) }
+  var patientAgeEdit by remember(order.id) { mutableStateOf(order.patientAge.toString()) }
+  var patientGenderEdit by remember(order.id) { mutableStateOf(order.patientGender) }
+  var patientPhoneEdit by remember(order.id) { mutableStateOf(order.patientPhone) }
+  var patientAddressEdit by remember(order.id) { mutableStateOf(order.patientAddress) }
+  var showEditPatientModal by remember { mutableStateOf(false) }
+
   var referringDoctor by remember { mutableStateOf(order.referringDoctorName) }
   var techName by remember { mutableStateOf(order.technicianName.ifBlank { technicianName }) }
   val effDefaultName = defaultPathologistName.ifBlank { "Dr. Nyan Kaung Sett" }
@@ -2517,10 +2572,27 @@ fun MobileLabResultEntryDialog(
         ) {
           Column(modifier = Modifier.weight(1f)) {
             Text("ဓာတ်ခွဲအဖြေ ထည့်သွင်းခြင်း", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = SlateDark)
-            Text("${order.patientName} (${order.patientHn}) • ${order.orderNumber}", fontSize = 10.5.sp, color = SlateMuted)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Text("$patientNameEdit (${order.patientHn}) • ${order.orderNumber}", fontSize = 10.5.sp, color = SlateMuted)
+              Spacer(modifier = Modifier.width(6.dp))
+              Surface(
+                shape = RoundedCornerShape(4.dp),
+                color = Color(0xFFE0F2FE),
+                border = BorderStroke(0.5.dp, Color(0xFF38BDF8)),
+                modifier = Modifier.clickable { showEditPatientModal = true }
+              ) {
+                Text(
+                  "✏️ အချက်အလက် ပြင်ရန်",
+                  fontSize = 9.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = Color(0xFF0369A1),
+                  modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+              }
+            }
             val resultContact = listOfNotNull(
-              order.patientPhone.takeIf { it.isNotBlank() }?.let { "📞 $it" },
-              order.patientAddress.takeIf { it.isNotBlank() }?.let { "🏠 $it" }
+              patientPhoneEdit.takeIf { it.isNotBlank() }?.let { "📞 $it" },
+              patientAddressEdit.takeIf { it.isNotBlank() }?.let { "🏠 $it" }
             ).joinToString("  •  ")
             if (resultContact.isNotBlank()) {
               Text(resultContact, fontSize = 9.5.sp, color = Color(0xFF0369A1))
@@ -3052,7 +3124,12 @@ fun MobileLabResultEntryDialog(
                 pathologistTitle,
                 showDoctorSeal,
                 showTechnicianSign,
-                referringDoctor
+                referringDoctor,
+                patientNameEdit,
+                patientAgeEdit.toIntOrNull() ?: order.patientAge,
+                patientGenderEdit,
+                patientPhoneEdit,
+                patientAddressEdit
               )
             },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
@@ -3066,6 +3143,94 @@ fun MobileLabResultEntryDialog(
           }
         }
       }
+    }
+  }
+
+  // Edit Patient Details Modal for Lab Order
+  if (showEditPatientModal) {
+    var tempName by remember { mutableStateOf(patientNameEdit) }
+    var tempAge by remember { mutableStateOf(patientAgeEdit) }
+    var tempGender by remember { mutableStateOf(patientGenderEdit) }
+    var tempPhone by remember { mutableStateOf(patientPhoneEdit) }
+    var tempAddress by remember { mutableStateOf(patientAddressEdit) }
+
+    AlertDialog(
+      onDismissRequest = { showEditPatientModal = false },
+      title = { Text("လူနာအချက်အလက် ပြင်ဆင်ရန် (Edit Patient Info)", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = SlateDark) },
+      text = {
+        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          OutlinedTextField(
+            value = tempName,
+            onValueChange = { tempName = it },
+            label = { Text("လူနာအမည် (Patient Name)", fontSize = 10.5.sp) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+          )
+          Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            OutlinedTextField(
+              value = tempAge,
+              onValueChange = { tempAge = it },
+              label = { Text("အသက် (Age)", fontSize = 10.5.sp) },
+              singleLine = true,
+              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+              modifier = Modifier.weight(1f)
+            )
+            Row(modifier = Modifier.weight(1.3f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+              FilterChip(
+                selected = tempGender == Gender.MALE,
+                onClick = { tempGender = Gender.MALE },
+                label = { Text("ကျား", fontSize = 10.sp) },
+                modifier = Modifier.height(32.dp)
+              )
+              FilterChip(
+                selected = tempGender == Gender.FEMALE,
+                onClick = { tempGender = Gender.FEMALE },
+                label = { Text("မ", fontSize = 10.sp) },
+                modifier = Modifier.height(32.dp)
+              )
+            }
+          }
+          OutlinedTextField(
+            value = tempPhone,
+            onValueChange = { tempPhone = it },
+            label = { Text("ဖုန်းနံပါတ် (Phone Number)", fontSize = 10.5.sp) },
+            placeholder = { Text("09xxxxxxxxx", fontSize = 10.5.sp, color = SlateMuted) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+            modifier = Modifier.fillMaxWidth()
+          )
+          OutlinedTextField(
+            value = tempAddress,
+            onValueChange = { tempAddress = it },
+            label = { Text("နေရပ်လိပ်စာ (Address)", fontSize = 10.5.sp) },
+            placeholder = { Text("မြို့နယ် / လိပ်စာအပြည့်အစုံ", fontSize = 10.5.sp, color = SlateMuted) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+          )
+        }
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            patientNameEdit = tempName.trim()
+            patientAgeEdit = tempAge.trim()
+            patientGenderEdit = tempGender
+            patientPhoneEdit = tempPhone.trim()
+            patientAddressEdit = tempAddress.trim()
+            showEditPatientModal = false
+          },
+          colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7))
+        ) {
+          Text("သိမ်းဆည်းမည် (Save)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { showEditPatientModal = false }) {
+          Text("ပယ်ဖျက် (Cancel)", fontSize = 11.sp, color = SlateMedium)
+        }
+      }
+    )
+  }
     }
   }
 }

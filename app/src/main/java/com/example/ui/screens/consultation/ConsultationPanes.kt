@@ -210,8 +210,15 @@ fun ConsultationClinicalRecordPane(
     // 4. Suggested Diagnostic Investigations (Labs, Imaging & Tests)
     val labTemplates by viewModel.labTemplates.collectAsState()
     val labOrders by viewModel.labOrders.collectAsState()
-    val existingLabOrder = remember(labOrders, patient.id) {
-      labOrders.find { it.patientId == patient.id && it.status != LabOrderStatus.CANCELLED }
+    val existingLabOrder = remember(labOrders, patient.id, patient.name) {
+      labOrders.find { ord ->
+        val idMatches = patient.id.isNotBlank() && patient.id != "WALK-IN" && ord.patientId == patient.id
+        val nameMatches = ord.patientName.isBlank() ||
+                          ord.patientName.equals(patient.name, ignoreCase = true) ||
+                          patient.name.contains(ord.patientName, ignoreCase = true) ||
+                          ord.patientName.contains(patient.name, ignoreCase = true)
+        idMatches && nameMatches && ord.status != LabOrderStatus.CANCELLED
+      }
     }
     val context = androidx.compose.ui.platform.LocalContext.current
     SuggestedInvestigationsCard(

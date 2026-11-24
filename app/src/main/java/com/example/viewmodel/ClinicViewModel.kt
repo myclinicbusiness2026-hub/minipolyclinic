@@ -4618,7 +4618,12 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     pathologistTitle: String = "",
     showDoctorSeal: Boolean = true,
     showTechnicianSign: Boolean = false,
-    referringDoctorName: String = ""
+    referringDoctorName: String = "",
+    patientName: String = "",
+    patientAge: Int = 0,
+    patientGender: Gender? = null,
+    patientPhone: String = "",
+    patientAddress: String = ""
   ) {
     val ctx = getApplication<Application>()
     val isAllCompleted = updatedItems.all { it.isCompleted }
@@ -4637,6 +4642,11 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
           pathologistTitle = pathologistTitle.ifBlank { ord.pathologistTitle },
           showDoctorSeal = showDoctorSeal,
           showTechnicianSign = showTechnicianSign,
+          patientName = patientName.ifBlank { ord.patientName },
+          patientAge = if (patientAge > 0) patientAge else ord.patientAge,
+          patientGender = patientGender ?: ord.patientGender,
+          patientPhone = if (patientPhone.isNotBlank()) patientPhone else ord.patientPhone,
+          patientAddress = if (patientAddress.isNotBlank()) patientAddress else ord.patientAddress,
           status = if (isAllCompleted) LabOrderStatus.COMPLETED else ord.status,
           completedAt = completedAtStr ?: ord.completedAt,
           updatedAt = now
