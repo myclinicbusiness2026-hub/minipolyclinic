@@ -623,7 +623,7 @@ fun SuggestedInvestigationsCard(
           verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
           selectedInvestigations.forEach { inv ->
-            val matchedTmpl = labTemplates.find { it.name.equals(inv, ignoreCase = true) }
+            val matchedTmpl = labTemplates.find { isLabTemplateMatch(it.name, inv) }
             val priceBadge = if (matchedTmpl != null && matchedTmpl.defaultPrice > 0.0) {
               " • ${currencyFmt.format(matchedTmpl.defaultPrice.toInt())} Ks"
             } else ""
@@ -654,22 +654,14 @@ fun SuggestedInvestigationsCard(
         val matchedTemplates = remember(selectedInvestigations.toList(), labTemplates) {
           labTemplates.filter { t ->
             selectedInvestigations.any { inv ->
-              t.name.equals(inv, ignoreCase = true) ||
-              inv.contains(t.name, ignoreCase = true) ||
-              t.name.contains(inv, ignoreCase = true) ||
-              (inv.equals("CBC", ignoreCase = true) && t.name.contains("CBC", ignoreCase = true)) ||
-              (inv.equals("Urine RE", ignoreCase = true) && t.name.contains("Urine", ignoreCase = true)) ||
-              (inv.equals("LFT", ignoreCase = true) && t.name.contains("Liver", ignoreCase = true)) ||
-              (inv.equals("RBS", ignoreCase = true) && (t.name.contains("Glucose", ignoreCase = true) || t.name.contains("RBS", ignoreCase = true))) ||
-              (inv.contains("Lipid", ignoreCase = true) && t.name.contains("Lipid", ignoreCase = true)) ||
-              (inv.contains("Electrolyte", ignoreCase = true) && t.name.contains("Electrolyte", ignoreCase = true))
+              isLabTemplateMatch(templateName = t.name, investigation = inv)
             }
           }
         }
 
         val unlistedTests = remember(selectedInvestigations.toList(), matchedTemplates) {
           selectedInvestigations.filterNot { inv ->
-            matchedTemplates.any { it.name.equals(inv, ignoreCase = true) || inv.contains(it.name, ignoreCase = true) || it.name.contains(inv, ignoreCase = true) }
+            matchedTemplates.any { isLabTemplateMatch(templateName = it.name, investigation = inv) }
           }
         }
 
@@ -756,4 +748,39 @@ fun SuggestedInvestigationsCard(
       }
     }
   }
+}
+
+/**
+ * Accurately matches doctor-selected investigation strings with in-house lab templates.
+ * Enforces whole-word boundary matching for short acronyms (e.g., "RA", "CP", "CBC", "ESR")
+ * to prevent false positives like "RA" matching "Random Blood Sugar" or "Chest X-Ray".
+ */
+private fun isLabTemplateMatch(templateName: String, investigation: String): Boolean {
+  val tNorm = templateName.trim()
+  val invNorm = investigation.trim()
+  if (tNorm.isEmpty() || invNorm.isEmpty()) return false
+  if (tNorm.equals(invNorm, ignoreCase = true)) return true
+
+  // Specific clinical abbreviations & panels
+  if ((invNorm.equals("CBC", ignoreCase = true) || invNorm.equals("CP", ignoreCase = true)) &&
+    (tNorm.contains("CBC", ignoreCase = true) || tNorm.contains("Complete Blood", ignoreCase = true) || tNorm.contains("Complete Picture", ignoreCase = true))) {
+    return true
+  }
+  if (invNorm.equals("Urine RE", ignoreCase = true) && tNorm.contains("Urine", ignoreCase = true)) return true
+  if (invNorm.equals("LFT", ignoreCase = true) && (tNorm.contains("Liver", ignoreCase = true) || tNorm.contains("LFT", ignoreCase = true))) return true
+  if (invNorm.equals("RBS", ignoreCase = true) && (tNorm.contains("Glucose", ignoreCase = true) || tNorm.contains("RBS", ignoreCase = true))) return true
+  if (invNorm.contains("Lipid", ignoreCase = true) && tNorm.contains("Lipid", ignoreCase = true)) return true
+  if (invNorm.contains("Electrolyte", ignoreCase = true) && tNorm.contains("Electrolyte", ignoreCase = true)) return true
+
+  // For short strings (<= 3 chars, e.g. "RA", "CP", "BT", "CT", "PT", "ESR", "FBS", "RBS", "LFT")
+  // Do NOT perform loose substring contains! Require whole word token match or exact match.
+  if (tNorm.length <= 3 || invNorm.length <= 3) {
+    val shortWord = if (tNorm.length <= 3) tNorm else invNorm
+    val targetText = if (tNorm.length <= 3) invNorm else tNorm
+    val wordRegex = Regex("(^|[^a-zA-Z0-9])${Regex.escape(shortWord)}([^a-zA-Z0-9]|$)", RegexOption.IGNORE_CASE)
+    return wordRegex.containsMatchIn(targetText)
+  }
+
+  // Longer multi-word template names
+  return invNorm.contains(tNorm, ignoreCase = true) || tNorm.contains(invNorm, ignoreCase = true)
 }

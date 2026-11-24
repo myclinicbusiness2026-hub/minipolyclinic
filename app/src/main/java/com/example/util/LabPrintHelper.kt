@@ -20,6 +20,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import com.example.model.ClinicSettings
+import com.example.model.Gender
 import com.example.model.LabInvoice
 import com.example.model.LabOrder
 import com.example.model.LabOrderItem
@@ -133,6 +134,36 @@ object LabPrintHelper {
         Toast.makeText(context, "Error initiating print: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
       }
     }
+  }
+
+  /**
+   * Formats reference ranges into a clean horizontal line with patient-relevant demographics highlighted.
+   * Prevents multi-line vertical bloat (e.g. M/F/Child on 3 separate lines) so comprehensive panels like
+   * Complete Blood Count (CBC / 18 parameters) fit cleanly onto a single A4 page.
+   */
+  private fun formatReferenceRangeHtml(rawRange: String, patientAge: Int, patientGender: Gender): String {
+    if (rawRange.isBlank()) return "-"
+    val lines = rawRange.lines().map { it.trim() }.filter { it.isNotBlank() }
+    if (lines.size <= 1) return rawRange.trim()
+
+    val isChild = patientAge in 1..12
+    val isMale = patientGender == Gender.MALE && (patientAge >= 13 || patientAge == 0)
+    val isFemale = patientGender == Gender.FEMALE && (patientAge >= 13 || patientAge == 0)
+
+    val formattedParts = lines.map { line ->
+      val isMatch = when {
+        isChild && (line.startsWith("C:", ignoreCase = true) || line.startsWith("Child", ignoreCase = true) || line.contains("Child", ignoreCase = true)) -> true
+        isMale && (line.startsWith("M:", ignoreCase = true) || line.startsWith("Male", ignoreCase = true)) -> true
+        isFemale && (line.startsWith("F:", ignoreCase = true) || line.startsWith("Female", ignoreCase = true)) -> true
+        else -> false
+      }
+      if (isMatch) {
+        "<strong style='color: #0f172a; text-decoration: underline;'>$line</strong>"
+      } else {
+        "<span style='color: #64748b;'>$line</span>"
+      }
+    }
+    return formattedParts.joinToString(" <span style='color: #94a3b8;'>|</span> ")
   }
 
   /**
@@ -308,15 +339,16 @@ object LabPrintHelper {
             color: #1e293b;
             font-weight: bold;
             text-align: left;
-            padding: 5px 8px;
+            padding: 4px 6px;
             font-size: 11px;
             border-top: 1.5px solid #94a3b8;
             border-bottom: 1.5px solid #94a3b8;
           }
           .param-table td {
-            padding: 5px 8px;
+            padding: 3.5px 6px;
             border-bottom: 1px solid #e2e8f0;
-            font-size: 11.5px;
+            font-size: 11px;
+            line-height: 1.25;
           }
           .param-table tr:nth-child(even) {
             background-color: #f8fafc;
@@ -325,8 +357,8 @@ object LabPrintHelper {
             background-color: #f1f5f9;
             color: #0b3954;
             font-weight: bold;
-            font-size: 11.5px;
-            padding: 5px 8px;
+            font-size: 11px;
+            padding: 4px 6px;
             border-top: 1.5px solid #cbd5e1;
             border-bottom: 1px solid #cbd5e1;
             letter-spacing: 0.3px;
@@ -377,6 +409,26 @@ object LabPrintHelper {
       <body>
     """.trimIndent())
 
+    val effectiveLogoBase64: String = when {
+      clinic.clinicLogoBase64.isNotBlank() -> clinic.clinicLogoBase64
+      clinic.clinicLogoUri.isNotBlank() && java.io.File(clinic.clinicLogoUri).exists() -> {
+        try {
+          val f = java.io.File(clinic.clinicLogoUri)
+          if (f.exists() && f.length() > 0) {
+            android.util.Base64.encodeToString(f.readBytes(), android.util.Base64.NO_WRAP)
+          } else ""
+        } catch (_: Exception) { "" }
+      }
+      else -> {
+        try {
+          val defaultF = java.io.File(context.filesDir, "clinic_logo.png")
+          if (defaultF.exists() && defaultF.length() > 0) {
+            android.util.Base64.encodeToString(defaultF.readBytes(), android.util.Base64.NO_WRAP)
+          } else ""
+        } catch (_: Exception) { "" }
+      }
+    }
+
     for (pageItems in pages) {
       sb.append("<div class=\"page-sheet\">")
 
@@ -390,7 +442,7 @@ object LabPrintHelper {
               <div class="clinic-contact">${clinic.clinicAddress.ifBlank { "အမှတ်(၁၂)၊ လမ်းမတော်လမ်း၊ မန္တလေးမြို့" }} • Ph: ${clinic.clinicPhone.ifBlank { "09-421001122, 09-790112233" }}</div>
             </td>
             <td style="width: 25%; text-align: right; vertical-align: middle;">
-              ${if (clinic.clinicLogoBase64.isNotBlank()) "<img src='data:image/png;base64,${clinic.clinicLogoBase64}' class='clinic-logo' style='max-height: 48px; max-width: 60px; object-fit: contain;'/>" else ""}
+              ${if (effectiveLogoBase64.isNotBlank()) "<img src='data:image/png;base64,$effectiveLogoBase64' class='clinic-logo' style='max-height: 48px; max-width: 75px; object-fit: contain;'/>" else ""}
             </td>
           </tr>
         </table>
@@ -516,17 +568,13 @@ object LabPrintHelper {
                 "LOW" -> "<span style='color: #0284c7; font-weight: bold; font-size: 11px; margin-left: 4px;'>▼</span>"
                 else -> ""
               }
-              val refRangeHtml = if (param.referenceRange.isNotBlank()) {
-                param.referenceRange.replace("\n", "<br/>")
-              } else {
-                "-"
-              }
+              val refRangeHtml = formatReferenceRangeHtml(param.referenceRange, order.patientAge, order.patientGender)
               sb.append("""
                 <tr>
                   <td style="padding-left: ${if (currentSection.isNotBlank()) "24px" else "14px"};">${param.name}</td>
                   <td><strong style="color: #0f172a;">${param.result.ifBlank { "-" }}</strong>$arrowBadge</td>
                   <td>${param.unit.ifBlank { "-" }}</td>
-                  <td style="font-size: 10.5px; line-height: 1.35; white-space: normal;">$refRangeHtml</td>
+                  <td style="font-size: 10px; line-height: 1.25; white-space: normal;">$refRangeHtml</td>
                 </tr>
               """.trimIndent())
             }

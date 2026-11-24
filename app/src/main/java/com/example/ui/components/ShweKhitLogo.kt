@@ -39,31 +39,43 @@ fun ShweKhitLogo(
   showLabel: Boolean = false,
   customLogoUri: String? = null
 ) {
+  val context = androidx.compose.ui.platform.LocalContext.current
+  val defaultLogoFile = remember { java.io.File(context.filesDir, "clinic_logo.png") }
+  val targetLogoSource = remember(customLogoUri, defaultLogoFile.lastModified()) {
+    if (!customLogoUri.isNullOrBlank()) {
+      customLogoUri
+    } else if (defaultLogoFile.exists() && defaultLogoFile.length() > 0) {
+      defaultLogoFile.absolutePath
+    } else {
+      null
+    }
+  }
+
   Row(
     verticalAlignment = Alignment.CenterVertically,
     modifier = modifier
   ) {
-    val decodedModel: Any? = remember(customLogoUri) {
-      if (customLogoUri.isNullOrBlank()) null
+    val decodedModel: Any? = remember(targetLogoSource, defaultLogoFile.lastModified()) {
+      if (targetLogoSource.isNullOrBlank()) null
       else {
         try {
           when {
-            customLogoUri.startsWith("/") -> {
-              val f = java.io.File(customLogoUri)
+            targetLogoSource.startsWith("/") -> {
+              val f = java.io.File(targetLogoSource)
               if (f.exists() && f.length() > 0) {
                 android.graphics.BitmapFactory.decodeFile(f.absolutePath)
               } else null
             }
-            customLogoUri.startsWith("file://") -> {
-              val f = java.io.File(customLogoUri.removePrefix("file://"))
+            targetLogoSource.startsWith("file://") -> {
+              val f = java.io.File(targetLogoSource.removePrefix("file://"))
               if (f.exists() && f.length() > 0) {
                 android.graphics.BitmapFactory.decodeFile(f.absolutePath)
               } else null
             }
-            customLogoUri.startsWith("content://") -> android.net.Uri.parse(customLogoUri)
-            customLogoUri.startsWith("http://") || customLogoUri.startsWith("https://") -> customLogoUri
+            targetLogoSource.startsWith("content://") -> android.net.Uri.parse(targetLogoSource)
+            targetLogoSource.startsWith("http://") || targetLogoSource.startsWith("https://") -> targetLogoSource
             else -> {
-              val clean = if (customLogoUri.contains(",")) customLogoUri.substringAfter(",") else customLogoUri
+              val clean = if (targetLogoSource.contains(",")) targetLogoSource.substringAfter(",") else targetLogoSource
               val bytes = android.util.Base64.decode(clean, android.util.Base64.DEFAULT)
               android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
             }

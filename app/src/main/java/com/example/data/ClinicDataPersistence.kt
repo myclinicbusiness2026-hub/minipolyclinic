@@ -1812,14 +1812,7 @@ object ClinicDataPersistence {
   }
 
   fun ensureLocalLogoFile(context: Context, logoBase64: String, existingUri: String): String {
-    if (existingUri.isNotBlank()) {
-      val f = java.io.File(existingUri)
-      if (f.exists() && f.length() > 0) return existingUri
-    }
     val defaultFile = java.io.File(context.filesDir, "clinic_logo.png")
-    if (defaultFile.exists() && defaultFile.length() > 0 && logoBase64.isBlank()) {
-      return defaultFile.absolutePath
-    }
     if (logoBase64.isNotBlank()) {
       try {
         val clean = if (logoBase64.contains(",")) logoBase64.substringAfter(",") else logoBase64
@@ -1828,7 +1821,14 @@ object ClinicDataPersistence {
         return defaultFile.absolutePath
       } catch (_: Exception) {}
     }
-    return existingUri
+    if (existingUri.isNotBlank()) {
+      val f = java.io.File(existingUri)
+      if (f.exists() && f.length() > 0) return existingUri
+    }
+    if (defaultFile.exists() && defaultFile.length() > 0) {
+      return defaultFile.absolutePath
+    }
+    return ""
   }
 
   fun settingsFromJson(o: JSONObject, fallback: ClinicSettings = ClinicSettings()): ClinicSettings {
@@ -1878,11 +1878,20 @@ object ClinicDataPersistence {
   }
   fun saveClinicSettings(context: Context, s: ClinicSettings) {
     val cleanLogoUri = ensureLocalLogoFile(context, s.clinicLogoBase64, s.clinicLogoUri)
-    val effectiveS = if (s.clinicLogoBase64.length > 200_000) {
-      s.copy(clinicLogoUri = cleanLogoUri, clinicLogoBase64 = "")
+    val defaultFile = java.io.File(context.filesDir, "clinic_logo.png")
+    val effectiveBase64 = if (s.clinicLogoBase64.isNotBlank()) {
+      if (s.clinicLogoBase64.length > 250_000) "" else s.clinicLogoBase64
+    } else if (defaultFile.exists() && defaultFile.length() in 1..180_000) {
+      try {
+        android.util.Base64.encodeToString(defaultFile.readBytes(), android.util.Base64.NO_WRAP)
+      } catch (_: Exception) { "" }
     } else {
-      s.copy(clinicLogoUri = cleanLogoUri)
+      ""
     }
+    val effectiveS = s.copy(
+      clinicLogoUri = cleanLogoUri,
+      clinicLogoBase64 = effectiveBase64
+    )
     val obj = settingsToJson(effectiveS)
     getPrefs(context).edit().putString(KEY_CLINIC_SETTINGS, obj.toString()).apply()
   }
@@ -1892,11 +1901,18 @@ object ClinicDataPersistence {
     return try {
       val parsed = settingsFromJson(JSONObject(str))
       val logoFile = java.io.File(context.filesDir, "clinic_logo.png")
-      if (logoFile.exists() && logoFile.length() > 0 && (parsed.clinicLogoUri.isBlank() || !java.io.File(parsed.clinicLogoUri).exists())) {
-        parsed.copy(clinicLogoUri = logoFile.absolutePath)
-      } else {
-        parsed
-      }
+      val hasFile = logoFile.exists() && logoFile.length() > 0
+      val resolvedUri = if (hasFile && (parsed.clinicLogoUri.isBlank() || !java.io.File(parsed.clinicLogoUri).exists())) {
+        logoFile.absolutePath
+      } else parsed.clinicLogoUri
+
+      val resolvedBase64 = if (parsed.clinicLogoBase64.isBlank() && hasFile && logoFile.length() <= 180_000) {
+        try {
+          android.util.Base64.encodeToString(logoFile.readBytes(), android.util.Base64.NO_WRAP)
+        } catch (_: Exception) { "" }
+      } else parsed.clinicLogoBase64
+
+      parsed.copy(clinicLogoUri = resolvedUri, clinicLogoBase64 = resolvedBase64)
     } catch (_: Exception) {
       ClinicSettings()
     }

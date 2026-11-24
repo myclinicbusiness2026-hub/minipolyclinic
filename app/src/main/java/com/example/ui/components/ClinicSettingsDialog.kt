@@ -68,7 +68,7 @@ fun ClinicSettingsDialog(
         val origBitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
         inputStream?.close()
         if (origBitmap != null) {
-          val maxDim = 512
+          val maxDim = 384
           val scaledBitmap = if (origBitmap.width > maxDim || origBitmap.height > maxDim) {
             val ratio = origBitmap.width.toFloat() / origBitmap.height.toFloat()
             val targetWidth: Int
@@ -85,7 +85,7 @@ fun ClinicSettingsDialog(
             origBitmap
           }
           val baos = java.io.ByteArrayOutputStream()
-          scaledBitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 90, baos)
+          scaledBitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 85, baos)
           val pngBytes = baos.toByteArray()
           clinicLogoBase64 = android.util.Base64.encodeToString(pngBytes, android.util.Base64.NO_WRAP)
           val file = java.io.File(context.filesDir, "clinic_logo.png")

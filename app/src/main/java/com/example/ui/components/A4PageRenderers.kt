@@ -674,7 +674,7 @@ fun A4PrescriptionTable(
               lineHeight = 16.sp
             )
             Text(
-              if (isCst) (if (drug.duration.isNotBlank() && !drug.duration.contains("Day")) drug.duration else "Continuous") else drug.duration,
+              if (isCst || drug.duration.contains("Continuous", ignoreCase = true) || drug.duration.contains("ပုံမှန်")) "Cont." else drug.duration,
               modifier = Modifier.weight(0.65f),
               fontSize = 9.5.sp,
               color = DarkGrayText,

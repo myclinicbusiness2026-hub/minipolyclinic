@@ -1694,13 +1694,25 @@ object A4PdfNativeCanvasRenderer {
         }
         canvas.drawText(fittedDir, 380f, textRowY, paint)
 
-        // Duration
-        val durationText = if (isCst) {
-          if (rx.duration.isNotBlank() && !rx.duration.contains("Day")) rx.duration.take(15) else "Continuous"
+        // Duration (guaranteed to fit within 40pt column width without border overflow)
+        val durationText = if (isCst || rx.duration.contains("Continuous", ignoreCase = true) || rx.duration.contains("ပုံမှန်")) {
+          "Cont."
         } else {
           rx.duration.ifBlank { "5 Days" }
         }
-        canvas.drawText(durationText, width - 62f, textRowY, paint)
+        val maxDurWidth = 40f
+        val fittedDur = if (paint.measureText(durationText) > maxDurWidth) {
+          if (isCst) "Cont." else {
+            var trimmed = durationText
+            while (trimmed.isNotEmpty() && paint.measureText("$trimmed.") > maxDurWidth) {
+              trimmed = trimmed.dropLast(1)
+            }
+            "$trimmed."
+          }
+        } else {
+          durationText
+        }
+        canvas.drawText(fittedDur, width - 62f, textRowY, paint)
       }
 
       currentY += rowH
