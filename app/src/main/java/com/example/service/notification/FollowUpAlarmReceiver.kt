@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.example.data.ClinicDataPersistence
+import com.example.model.Patient
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -15,7 +16,7 @@ class FollowUpAlarmReceiver : BroadcastReceiver() {
 
     // 2. Check for patients due today who haven't been reminded yet
     try {
-      val patients = ClinicDataPersistence.loadPatients(context)
+      val patients = ClinicDataPersistence.loadPatients(context) ?: emptyList()
       val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
 
       val duePatients = patients.filter {

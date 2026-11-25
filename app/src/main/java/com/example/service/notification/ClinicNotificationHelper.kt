@@ -1,5 +1,6 @@
 package com.example.service.notification
 
+import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -54,11 +55,7 @@ object ClinicNotificationHelper {
   fun scheduleDailyFollowUpAlarm(context: Context) {
     val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
     val intent = Intent(context, FollowUpAlarmReceiver::class.java)
-    val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-    } else {
-      PendingIntent.FLAG_UPDATE_CURRENT
-    }
+    val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     val pendingIntent = PendingIntent.getBroadcast(context, 7701, intent, flags)
 
     val calendar = Calendar.getInstance().apply {
@@ -82,6 +79,7 @@ object ClinicNotificationHelper {
     }
   }
 
+  @SuppressLint("MissingPermission")
   fun showFollowUpNotification(context: Context, dueCount: Int, previewText: String) {
     if (dueCount <= 0) return
 
@@ -90,11 +88,7 @@ object ClinicNotificationHelper {
       putExtra("open_tab", 1) // Open Patient Queue
       putExtra("open_followup", true)
     }
-    val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-    } else {
-      PendingIntent.FLAG_UPDATE_CURRENT
-    }
+    val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     val pendingIntent = PendingIntent.getActivity(context, 8801, intent, flags)
 
     val builder = NotificationCompat.Builder(context, CHANNEL_FOLLOWUP)
@@ -118,16 +112,13 @@ object ClinicNotificationHelper {
     }
   }
 
+  @SuppressLint("MissingPermission")
   fun showNewPatientNotification(context: Context, patientName: String, tokenNumber: Int, queueCount: Int) {
     val intent = Intent(context, MainActivity::class.java).apply {
       flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
       putExtra("open_tab", 1) // Open Patient Queue
     }
-    val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-    } else {
-      PendingIntent.FLAG_UPDATE_CURRENT
-    }
+    val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     val pendingIntent = PendingIntent.getActivity(context, 8802, intent, flags)
 
     val notifId = NOTIF_ID_QUEUE_BASE + (tokenNumber % 100)
