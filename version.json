@@ -1,12 +1,12 @@
 {
-  "versionCode": 78,
-  "versionName": "1.5.54",
+  "versionCode": 79,
+  "versionName": "1.5.55",
   "minSupportedVersion": 1,
-  "releaseNotes": "• Treatment & Injection Single Drug Usage Field: Added a dedicated 'Usage / Administration Instructions' input field with quick-select route chips (Deltoid IM, Deep IM, Thigh IM, SC, ID, Slow IV, IV Push, Booster Dose, etc.) directly in the Single Drug section for easy nurse vaccine administration.\n• Smart Route Detection: Automatically suggests appropriate administration route and instructions when selecting common vaccines, hormone injections, and antibiotics from the clinic store.\n• Card & Slip Visibility: Displays administration instructions prominently on treatment cards and confirmation dialogs.",
-  "releaseNotesMm": "• Treatment & Injection Single Drug တွင် အသုံး/ထိုးနည်း ထည့်သွင်းနိုင်ခြင်း: သူနာပြုဆရာမများ ကာကွယ်ဆေးနှင့် ဆေးထိုးနှံမှုများ သီးခြားထိုးနှံရာတွင် အဆင်ပြေစေရန် Single Drug တွင် 'အသုံး / ထိုးနည်းညွှန်ကြားချက်' ရိုက်ထည့်နိုင်သည့် အကွက်နှင့်အတူ အမြန်ရွေးချယ်နိုင်သော Quick Chips များ (Deltoid IM လက်မောင်း၊ Deep IM တင်ပါး၊ Thigh IM ပေါင်ရှေ့ဘေး၊ SC အရေပြားအောက်၊ ID၊ Slow IV၊ IV Push၊ Booster Dose) ထည့်သွင်းပေးထားခြင်း\n• ဆေးဝါးရွေးချယ်ရာတွင် နည်းလမ်းအလိုအလျောက် သတ်မှတ်ပေးခြင်း: Store မှ ကာကွယ်ဆေးများ (Rabies, Tetanus, Hep-B စသည်)၊ Depo နှင့် ပဋိဇီဝဆေးများ ရွေးချယ်လိုက်သည်နှင့် သင့်လျော်သော ထိုးနည်း (Route) နှင့် အသုံးကို Auto Detect လုပ်ဆောင်ပေးခြင်း\n• ကုသမှုကတ်နှင့် အတည်ပြုချက်များတွင် အသုံး/ထိုးနည်းကို ထင်ရှားစွာ ပြသပေးခြင်း",
+  "releaseNotes": "• Treatment & Injection Nurse Consumables Section: Added full support for selecting injection consumables (e.g., 3cc syringe, 5cc syringe, scalp vein set, cannula, needles) in Create Treatment Card dialog, matching the consultation workflow with clean search, quantity controls, and automated fee summation.\n• Store Inventory Integration: Consumables attached to treatment cards are tracked and deducted from pharmacy/store stock upon session administration.",
+  "releaseNotesMm": "• Treatment & Injection သူနာပြုကဏ္ဍတွင် အသုံးစာရင်း (Consumables) တိုက်ရိုက်ထည့်သွင်းနိုင်ခြင်း: ဆေးထိုး/ကာကွယ်ဆေးကတ် အသစ်ဖွင့်လှစ်စဉ်ကတည်းက 3cc syringe, 5cc syringe, scalp vein set, cannula, needle စသည့် ဆေးထိုးပစ္စည်းများကို Store မှ တိုက်ရိုက်ရှာဖွေထည့်သွင်းနိုင်ပြီး အရေအတွက် (+ / -) စီမံနိုင်ခြင်း\n• အသုံးပစ္စည်းဖိုး အလိုအလျောက် ပေါင်းစပ်တွက်ချက်ခြင်းနှင့် စတော့ခ်မှ နှုတ်ယူခြင်း: ဆေးဖိုး၊ ဆေးထိုးခနှင့် အသုံးပစ္စည်းဖိုးတို့ကို စုစုပေါင်းရှင်းလင်းစွာ တွက်ချက်ပြသပေးပြီး ဆေးထိုးပြီးစီးသည့်အခါ Store စတော့ခ်မှ အလိုအလျောက် နှုတ်ယူပေးခြင်း",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-25",
-  "apkSizeBytes": 15015427,
+  "apkSizeBytes": 15031810,
   "commitSha": "HEAD",
-  "updatedAt": "2026-11-25T02:15:00.000Z"
+  "updatedAt": "2026-11-25T05:05:00.000Z"
 }
