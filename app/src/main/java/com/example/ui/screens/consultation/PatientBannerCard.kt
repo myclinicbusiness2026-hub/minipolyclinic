@@ -82,9 +82,10 @@ fun PatientBannerCard(
               if (patient.phone.isNotBlank()) {
                 Text(" • ဖုန်း: ${patient.phone}", fontSize = 10.sp, color = SlateMedium)
               }
-              if (patient.address.isNotBlank()) {
-                Text(" • 🏠 ${patient.address}", fontSize = 10.sp, color = Color(0xFF0D9488), fontWeight = FontWeight.Medium)
-              }
+            }
+            if (patient.address.isNotBlank()) {
+              Spacer(modifier = Modifier.height(2.dp))
+              Text("🏠 ${patient.address}", fontSize = 10.sp, color = Color(0xFF0D9488), fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
           }
         }

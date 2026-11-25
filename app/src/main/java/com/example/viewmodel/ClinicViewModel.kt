@@ -1441,6 +1441,11 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   fun addVaccineRecord(record: VaccineRecord) {
     val updated = _vaccines.value + record
     _vaccines.value = updated
+    val ctx = getApplication<Application>()
+    ClinicDataPersistence.saveVaccines(ctx, updated)
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
   }
 
   fun saveOrUpdateVaccineRecord(record: VaccineRecord) {
@@ -1451,10 +1456,21 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       _vaccines.value + record
     }
     _vaccines.value = updated
+    val ctx = getApplication<Application>()
+    ClinicDataPersistence.saveVaccines(ctx, updated)
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
   }
 
   fun deleteVaccineRecord(recordId: String) {
-    _vaccines.value = _vaccines.value.filter { it.id != recordId }
+    val updated = _vaccines.value.filter { it.id != recordId }
+    _vaccines.value = updated
+    val ctx = getApplication<Application>()
+    ClinicDataPersistence.saveVaccines(ctx, updated)
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
   }
 
       fun markReminderSent(targetId: String) {
@@ -2523,11 +2539,11 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       // CLINICAL SAFETY: If any dose has already been administered, NEVER wipe nurse records! Preserve as DISCONTINUED.
       if (linkedCards.isNotEmpty()) {
         val ctxLocal = getApplication<Application>()
-        val cardsToDiscontinue = linkedCards.filter { c ->
-          c.sessions.any { it.status == com.example.ui.screens.treatment.TreatmentStatus.COMPLETED } || c.completedSessionsCount > 0
+        val cardsToDelete = linkedCards.filter { c ->
+          c.consultationInvoiceId == invoiceId && (c.sessions.none { it.status == com.example.ui.screens.treatment.TreatmentStatus.COMPLETED } && c.completedSessionsCount == 0)
         }
-        val cardsToDelete = linkedCards.filterNot { c ->
-          c.sessions.any { it.status == com.example.ui.screens.treatment.TreatmentStatus.COMPLETED } || c.completedSessionsCount > 0
+        val cardsToDiscontinue = linkedCards.filter { c ->
+          c.consultationInvoiceId == invoiceId && (c.sessions.any { it.status == com.example.ui.screens.treatment.TreatmentStatus.COMPLETED } || c.completedSessionsCount > 0)
         }
 
         if (cardsToDelete.isNotEmpty()) {
@@ -2548,6 +2564,14 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
                   if (s.status == com.example.ui.screens.treatment.TreatmentStatus.PENDING || s.status == com.example.ui.screens.treatment.TreatmentStatus.IN_PROGRESS) {
                     s.copy(status = com.example.ui.screens.treatment.TreatmentStatus.CANCELLED, notes = (if (s.notes.isNotBlank()) "${s.notes} | " else "") + "Invoice Voided")
                   } else s
+                }
+              )
+            }
+            // If it's a per-session invoice that was deleted, unlink the invoiceId from the session so the card remains active and unaffected
+            card.sessions.any { it.invoiceId == invoiceId } -> {
+              card.copy(
+                sessions = card.sessions.map { s ->
+                  if (s.invoiceId == invoiceId) s.copy(invoiceId = null) else s
                 }
               )
             }
@@ -3880,7 +3904,8 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       deletedConsultationIds = ClinicDataPersistence.loadDeletedConsultationIds(ctx).toList(),
       deletedMedicineIds = ClinicDataPersistence.loadDeletedMedicineIds(ctx).toList(),
       deletedUserIds = ClinicDataPersistence.loadDeletedUserIds(ctx).toList(),
-      deletedTreatmentCardIds = ClinicDataPersistence.loadDeletedTreatmentCardIds(ctx).toList()
+      deletedTreatmentCardIds = ClinicDataPersistence.loadDeletedTreatmentCardIds(ctx).toList(),
+      deletedInvoiceIds = ClinicDataPersistence.loadDeletedInvoiceIds(ctx).toList()
     )
     val root = JSONObject(payload.toJsonString(ctx))
     root.put("exportTime", BurmeseDateUtils.getNowFormatted())
@@ -3941,6 +3966,14 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         ClinicDataPersistence.saveDeletedUserIds(ctx, (currentDelUsers + delUserSet).toMutableSet())
       }
 
+      val delInvSet = mutableSetOf<String>()
+      val delInvArr = root.optJSONArray("deletedInvoiceIds") ?: root.optJSONArray("deleted_invoice_ids")
+      if (delInvArr != null) {
+        for (i in 0 until delInvArr.length()) delInvSet.add(delInvArr.getString(i))
+        val currentDelInvoices = ClinicDataPersistence.loadDeletedInvoiceIds(ctx)
+        ClinicDataPersistence.saveDeletedInvoiceIds(ctx, (currentDelInvoices + delInvSet).toMutableSet())
+      }
+
       // 2. Patients (Non-destructive ID-based merge)
       if (root.has("patients")) {
         val parsedPatients = SyncPayloadParser.parsePatients(root.getJSONArray("patients"))
@@ -3981,13 +4014,14 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       // 4. Invoices (Non-destructive ID-based merge)
       if (root.has("invoices")) {
         val parsedInvoices = SyncPayloadParser.parseInvoices(root.getJSONArray("invoices"))
-        val currentInvMap = _invoices.value.associateBy { it.id }.toMutableMap()
+        val activeDelInvoices = ClinicDataPersistence.loadDeletedInvoiceIds(ctx) + delInvSet
+        val currentInvMap = _invoices.value.filter { !activeDelInvoices.contains(it.id) }.associateBy { it.id }.toMutableMap()
         parsedInvoices.forEach { inv ->
-          if (!delPatSet.contains(inv.patientId)) {
+          if (!delPatSet.contains(inv.patientId) && !activeDelInvoices.contains(inv.id)) {
             currentInvMap[inv.id] = inv
           }
         }
-        val mergedInvoices = currentInvMap.values.filter { !delPatSet.contains(it.patientId) }
+        val mergedInvoices = currentInvMap.values.filter { !delPatSet.contains(it.patientId) && !activeDelInvoices.contains(it.id) }
         _invoices.value = mergedInvoices
         ClinicDataPersistence.saveInvoices(ctx, mergedInvoices)
       }

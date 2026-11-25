@@ -62,9 +62,17 @@ CREATE TABLE IF NOT EXISTS clinic_cloud_sync (
     deleted_patient_ids JSONB DEFAULT '[]'::jsonb,
     deleted_consultation_ids JSONB DEFAULT '[]'::jsonb,
     deleted_medicine_ids JSONB DEFAULT '[]'::jsonb,
+    deleted_invoice_ids JSONB DEFAULT '[]'::jsonb,
+    deleted_treatment_card_ids JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+ALTER TABLE clinic_cloud_sync ADD COLUMN IF NOT EXISTS treatment_cards JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE clinic_cloud_sync ADD COLUMN IF NOT EXISTS deleted_invoice_ids JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE clinic_cloud_sync ADD COLUMN IF NOT EXISTS deleted_treatment_card_ids JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE clinic_cloud_sync ADD COLUMN IF NOT EXISTS lab_orders JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE clinic_cloud_sync ADD COLUMN IF NOT EXISTS lab_invoices JSONB DEFAULT '[]'::jsonb;
 
 ALTER TABLE clinic_cloud_sync ENABLE ROW LEVEL SECURITY;
 

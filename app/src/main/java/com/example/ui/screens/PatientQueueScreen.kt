@@ -850,8 +850,13 @@ fun PatientQueueItemCard(
                   )
                 }
               }
-              if (patient.address.isNotBlank()) {
-                Text(" • ", fontSize = 11.sp, color = SlateMuted)
+            }
+            if (patient.address.isNotBlank()) {
+              Spacer(modifier = Modifier.height(2.dp))
+              Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+              ) {
                 Text(
                   "🏠 ${patient.address}",
                   fontSize = 10.5.sp,

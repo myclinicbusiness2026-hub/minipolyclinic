@@ -60,18 +60,8 @@ fun FollowUpPatientDialog(
     }
   }
 
-  // Reason presets
-  val reasonPresets = listOf(
-    "BP Recheck",
-    "Dressing / Suture Removal",
-    "Fever Recheck",
-    "Rx Refill",
-    "Lab Results Review",
-    "Gastritis Recheck"
-  )
-
   var followUpReason by remember(selectedPatient) {
-    mutableStateOf(selectedPatient?.followUpReason?.ifBlank { "BP Recheck" } ?: "Follow-up Visit")
+    mutableStateOf(selectedPatient?.followUpReason ?: "")
   }
 
   // Vitals for today
@@ -291,41 +281,19 @@ fun FollowUpPatientDialog(
           }
         }
 
-        // 2. Reason for Follow-up / 2nd Visit
-        Text("2. Reason for Follow-up / 2nd Visit", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = SlateDark)
-        
-        // Quick Presets
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-          reasonPresets.take(3).forEach { preset ->
-            FilterChip(
-              selected = followUpReason == preset,
-              onClick = { followUpReason = preset },
-              label = { Text(preset.substringBefore(" ("), fontSize = 10.sp) },
-              modifier = Modifier.height(28.dp)
-            )
-          }
-        }
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-          reasonPresets.drop(3).forEach { preset ->
-            FilterChip(
-              selected = followUpReason == preset,
-              onClick = { followUpReason = preset },
-              label = { Text(preset.substringBefore(" ("), fontSize = 10.sp) },
-              modifier = Modifier.height(28.dp)
-            )
-          }
-        }
-
+        // 2. Reason for Follow-up / Follow-up Complaint
+        Text("2. Reason for Follow-up / Complaint *", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = SlateDark)
         OutlinedTextField(
           value = followUpReason,
           onValueChange = { followUpReason = it },
-          label = { Text("Follow-up Complaint / Details") },
+          label = { Text("Follow-up Complaint (ရိုက်ထည့်ရန် လိုအပ်ပါသည်) *") },
+          placeholder = { Text("ယနေ့ ပြန်ပြရသည့် အကြောင်းရင်း/ရောဂါလက္ခဏာ...") },
+          isError = followUpReason.isBlank(),
+          supportingText = {
+            if (followUpReason.isBlank()) {
+              Text("Follow-up complaint ရိုက်ထည့်ရန် လိုအပ်ပါသည်", fontSize = 10.sp, color = Color(0xFFDC2626))
+            }
+          },
           modifier = Modifier.fillMaxWidth(),
           singleLine = true,
           shape = RoundedCornerShape(6.dp),
@@ -441,7 +409,7 @@ fun FollowUpPatientDialog(
                 onDismiss()
               }
             },
-            enabled = selectedPatient != null,
+            enabled = selectedPatient != null && followUpReason.trim().isNotBlank(),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5E35B1)),
             shape = RoundedCornerShape(4.dp),
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
