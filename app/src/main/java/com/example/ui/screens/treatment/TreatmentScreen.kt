@@ -62,6 +62,7 @@ fun TreatmentScreen(
   var cardToDiscontinue by remember { mutableStateOf<TreatmentCard?>(null) }
   var sessionToAdminister by remember { mutableStateOf<Pair<TreatmentCard, TreatmentSession>?>(null) }
   var cardToPrint by remember { mutableStateOf<TreatmentCard?>(null) }
+  var cardToEdit by remember { mutableStateOf<TreatmentCard?>(null) }
   val vaccineRecords by viewModel.vaccineRecords.collectAsState()
   var showVaccinePatientPicker by remember { mutableStateOf(false) }
   var selectedVaccinePatient by remember { mutableStateOf<Patient?>(null) }
@@ -711,6 +712,11 @@ fun TreatmentScreen(
                           IconButton(onClick = { cardToPrint = card }, modifier = Modifier.size(26.dp)) {
                             Icon(Icons.Default.Print, contentDescription = "Print Slip", tint = SlateMedium, modifier = Modifier.size(15.dp))
                           }
+                          if (!isReadOnly && !card.isDiscontinued) {
+                            IconButton(onClick = { cardToEdit = card }, modifier = Modifier.size(26.dp)) {
+                              Icon(Icons.Default.Edit, contentDescription = "Edit Card", tint = MedicalGreen, modifier = Modifier.size(15.dp))
+                            }
+                          }
                           if (!isReadOnly) {
                             IconButton(onClick = { cardToDiscontinue = card }, modifier = Modifier.size(26.dp)) {
                               Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = StatusCritical, modifier = Modifier.size(15.dp))
@@ -858,6 +864,20 @@ fun TreatmentScreen(
       card = card,
       clinicSettings = clinicSettings,
       onDismiss = { cardToPrint = null }
+    )
+  }
+
+  // 4.1 Edit Treatment Card Modal
+  cardToEdit?.let { card ->
+    EditTreatmentCardModal(
+      card = card,
+      clinicSettings = clinicSettings,
+      onDismiss = { cardToEdit = null },
+      onSave = { updatedCard ->
+        viewModel.updateTreatmentCard(updatedCard)
+        Toast.makeText(context, "ကုသမှုကတ်နှင့် EMR မှတ်တမ်းအား အောင်မြင်စွာ ပြင်ဆင်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
+        cardToEdit = null
+      }
     )
   }
 
@@ -1583,6 +1603,9 @@ fun CreateTreatmentCardModal(
   var splitVialMode by remember { mutableStateOf(false) }
   var isPayPerVisit by remember { mutableStateOf(true) }
 
+  var addWoundDressing by remember { mutableStateOf(false) }
+  var dressingFeeText by remember { mutableStateOf("5000") }
+
   val consumablesList = remember { mutableStateListOf<TreatmentConsumable>() }
   var consumableSearchQuery by remember { mutableStateOf("") }
 
@@ -2015,64 +2038,6 @@ fun CreateTreatmentCardModal(
                 )
               }
             }
-
-            // အသုံး / ထိုးနည်းညွှန်ကြားချက် (Usage / Administration Instructions)
-            OutlinedTextField(
-              value = instructions,
-              onValueChange = { instructions = it },
-              label = { Text("အသုံး / ထိုးနည်းညွှန်ကြားချက် (Usage / Instructions)", fontSize = 11.sp) },
-              placeholder = { Text("ဥပမာ - Deltoid IM Stat (လက်မောင်းကြွက်သား) သို့မဟုတ် 1 Dose IM", fontSize = 10.sp) },
-              singleLine = true,
-              modifier = Modifier.fillMaxWidth(),
-              leadingIcon = {
-                Icon(Icons.Default.Medication, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(16.dp))
-              },
-              trailingIcon = {
-                if (instructions.isNotBlank()) {
-                  IconButton(onClick = { instructions = "" }, modifier = Modifier.size(20.dp)) {
-                    Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(14.dp))
-                  }
-                }
-              }
-            )
-
-            // Quick Usage & Route Chips
-            Text("အသုံး / ထိုးနည်း အမြန်ရွေးချယ်ရန် (Quick Usage & Route):", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = SlateDark)
-            Row(
-              modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-              horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-              val quickUsageList = listOf(
-                Triple("Deltoid IM (လက်မောင်း)", TreatmentRoute.IM, "Deltoid IM Stat"),
-                Triple("Deep IM (တင်ပါး)", TreatmentRoute.IM, "Deep IM Stat"),
-                Triple("Thigh IM (ပေါင်ရှေ့ဘေး)", TreatmentRoute.IM, "Anterolateral Thigh IM"),
-                Triple("SC Stat (အရေပြားအောက်)", TreatmentRoute.SC, "SC Stat (Subcutaneous)"),
-                Triple("ID Stat (အရေပြားတွင်း)", TreatmentRoute.CUSTOM, "Intradermal (ID) Stat"),
-                Triple("Slow IV Stat", TreatmentRoute.IV_INFUSION, "Slow IV Stat"),
-                Triple("IV Push Stat", TreatmentRoute.IV_PUSH, "IV Push Stat"),
-                Triple("1 Dose IM", TreatmentRoute.IM, "1 Dose IM"),
-                Triple("Booster Dose", TreatmentRoute.IM, "Booster Dose IM"),
-                Triple("1st Dose (Day 0)", TreatmentRoute.IM, "1st Dose (Day 0)"),
-                Triple("2nd Dose", TreatmentRoute.IM, "2nd Dose"),
-                Triple("3rd Dose", TreatmentRoute.IM, "3rd Dose")
-              )
-              quickUsageList.forEach { (label, route, text) ->
-                AssistChip(
-                  onClick = {
-                    instructions = text
-                    selectedRoute = route
-                    if (route == TreatmentRoute.CUSTOM) {
-                      customRouteText = "Intradermal (ID)"
-                    }
-                    frequency = "Stat"
-                    totalDaysText = "1"
-                  },
-                  label = { Text(label, fontSize = 9.sp) }
-                )
-              }
-            }
           } else {
             // === Cocktail / IV Mix Mode ===
             OutlinedTextField(
@@ -2367,6 +2332,50 @@ fun CreateTreatmentCardModal(
             }
           }
 
+          // 2.6 Option A: Add Extra Nursing Service / Wound Dressing
+          Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = if (addWoundDressing) Color(0xFFEFF6FF) else Color(0xFFF8FAFC),
+            border = BorderStroke(1.dp, if (addWoundDressing) Color(0xFF3B82F6) else BorderGrey),
+            modifier = Modifier.fillMaxWidth().clickable { addWoundDressing = !addWoundDressing }
+          ) {
+            Row(
+              modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Checkbox(
+                checked = addWoundDressing,
+                onCheckedChange = { addWoundDressing = it },
+                colors = CheckboxDefaults.colors(checkedColor = Color(0xFF2563EB))
+              )
+              Spacer(modifier = Modifier.width(6.dp))
+              Column(modifier = Modifier.weight(1f)) {
+                Text(
+                  "+ အနာဆေးထည့်ခြင်း ထပ်တိုးပေါင်းထည့်မည် (Add Wound Dressing Service)",
+                  fontSize = 11.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = if (addWoundDressing) Color(0xFF1E40AF) else SlateDark
+                )
+                Text(
+                  if (addWoundDressing) "ဆေးထိုးခြင်းနှင့်အတူ အနာဆေးထည့်ခြင်း ဝန်ဆောင်မှုကို ဘောင်ချာတစ်ခုတည်း၌ ပေါင်းစည်းကောက်ခံပါမည်"
+                  else "ဆေးထိုးခြင်းအပြင် အနာဆေးထည့်ပေးခြင်းပါ တစ်ပါတည်း ဆောင်ရွက်လိုပါက အမှန်ခြစ်ပါ (ဆရာဝန် Consultation မလိုပါ)",
+                  fontSize = 9.5.sp,
+                  color = if (addWoundDressing) Color(0xFF1D4ED8) else SlateMuted
+                )
+              }
+              if (addWoundDressing) {
+                Spacer(modifier = Modifier.width(6.dp))
+                OutlinedTextField(
+                  value = dressingFeeText,
+                  onValueChange = { dressingFeeText = it },
+                  label = { Text("ဆေးထည့်ခ Ks", fontSize = 8.5.sp) },
+                  singleLine = true,
+                  modifier = Modifier.width(95.dp)
+                )
+              }
+            }
+          }
+
           // 3. Route Selector
           Text("ထိုးမည့်နည်းလမ်း (Route of Administration):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SlateDark)
           Row(
@@ -2549,7 +2558,11 @@ fun CreateTreatmentCardModal(
           val currencyFmt = remember { NumberFormat.getNumberInstance(Locale.US) }
           val totalConsumablesFee = consumablesList.sumOf { it.totalPrice }
           val effectiveBaseMedFee = if (isPatientSupplied) 0.0 else (medFeeText.toDoubleOrNull() ?: 0.0)
+          val dressingFee = if (addWoundDressing) (dressingFeeText.toDoubleOrNull() ?: 5000.0) else 0.0
+          val baseSessionFee = sessionFeeText.toDoubleOrNull() ?: selectedRoute.getDefaultFee(clinicSettings)
+          val totalSessionFee = baseSessionFee + dressingFee
           val combinedDrugAndConsumables = effectiveBaseMedFee + totalConsumablesFee
+          val grandTotalPerSession = combinedDrugAndConsumables + totalSessionFee
 
           Surface(
             shape = RoundedCornerShape(8.dp),
@@ -2563,16 +2576,20 @@ fun CreateTreatmentCardModal(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
               ) {
-                Text("ဆေးနှင့် အသုံးပစ္စည်းဖိုး စုစုပေါင်း:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
-                Text("${currencyFmt.format(combinedDrugAndConsumables.toInt())} Ks", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+                Text("၁ ကြိမ် စုစုပေါင်းကျသင့်ငွေ (Per Session Total):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
+                Text("${currencyFmt.format(grandTotalPerSession.toInt())} Ks", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = MedicalGreenDark)
               }
-              if (totalConsumablesFee > 0) {
-                Text(
-                  "ဆေးဖိုး: ${currencyFmt.format(effectiveBaseMedFee.toInt())} Ks + ပစ္စည်း (${consumablesList.size} မျိုး): ${currencyFmt.format(totalConsumablesFee.toInt())} Ks",
-                  fontSize = 9.5.sp,
-                  color = SlateMedium
-                )
-              }
+              Spacer(modifier = Modifier.height(2.dp))
+              Text(
+                buildString {
+                  append("ဆေးဖိုး: ${currencyFmt.format(effectiveBaseMedFee.toInt())} Ks")
+                  if (totalConsumablesFee > 0) append(" + အသုံးပစ္စည်း: ${currencyFmt.format(totalConsumablesFee.toInt())} Ks")
+                  append(" + ထိုးခ: ${currencyFmt.format(baseSessionFee.toInt())} Ks")
+                  if (addWoundDressing) append(" + အနာဆေးထည့်ခ: ${currencyFmt.format(dressingFee.toInt())} Ks")
+                },
+                fontSize = 9.5.sp,
+                color = SlateMedium
+              )
             }
           }
 
@@ -2647,12 +2664,16 @@ fun CreateTreatmentCardModal(
               )
             }
 
+            val dressingFee = if (addWoundDressing) (dressingFeeText.toDoubleOrNull() ?: 5000.0) else 0.0
+            val baseSessionFee = sessionFeeText.toDoubleOrNull() ?: selectedRoute.getDefaultFee(clinicSettings)
+            val effectiveSessionFee = baseSessionFee + dressingFee
+
             val sessions = TreatmentCardFactory.generateSessions(
               startDateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
               frequency = frequency.ifBlank { "Stat" },
               days = days,
               medicationFee = medFee,
-              sessionFee = sessionFee,
+              sessionFee = effectiveSessionFee,
               splitVialMode = splitVialMode,
               consumables = consumablesList.toList()
             )
@@ -2661,7 +2682,7 @@ fun CreateTreatmentCardModal(
               patientName = selectedPatient?.name ?: "Unknown Patient",
               patientHn = selectedPatient?.hn ?: "HN-1000",
               doctorName = defaultDoctor,
-              medicationName = finalMedName,
+              medicationName = if (addWoundDressing) "$finalMedName + အနာဆေးထည့်ခြင်း" else finalMedName,
               dosage = finalDosage,
               route = selectedRoute,
               customRoute = if (selectedRoute == TreatmentRoute.CUSTOM) customRouteText.trim() else "",
@@ -2671,7 +2692,7 @@ fun CreateTreatmentCardModal(
               sessions = sessions.mapIndexed { idx, s ->
                 if (!isPayPerVisit) s.copy(isPrepaid = true) else s
               },
-              sessionFee = sessionFee,
+              sessionFee = effectiveSessionFee,
               medicationFee = medFee,
               instructions = instructions,
               isPayPerVisit = isPayPerVisit,
@@ -2679,7 +2700,8 @@ fun CreateTreatmentCardModal(
               isCocktail = isCocktail,
               cocktailItems = if (isCocktail) cocktailItems.toList() else emptyList(),
               consumables = consumablesList.toList(),
-              isPatientSupplied = isPatientSupplied
+              isPatientSupplied = isPatientSupplied,
+              notes = if (addWoundDressing) "Includes Wound Dressing (${dressingFee.toInt()} Ks)" else ""
             )
             onCreate(newCard)
           },
@@ -2693,6 +2715,268 @@ fun CreateTreatmentCardModal(
           Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
           Spacer(modifier = Modifier.width(6.dp))
           Text("ကုသမှုကတ် အသစ်ဖွင့်မည် (Generate Card)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Modal to edit an existing Treatment Card (Total days, dosage, frequency, fees, remarks)
+ * Preserves completed doses while recalculating remaining pending doses.
+ */
+@Composable
+fun EditTreatmentCardModal(
+  card: TreatmentCard,
+  clinicSettings: ClinicSettings,
+  onDismiss: () -> Unit,
+  onSave: (TreatmentCard) -> Unit
+) {
+  var medicationName by remember { mutableStateOf(card.medicationName) }
+  var dosage by remember { mutableStateOf(card.dosage) }
+  var totalDaysText by remember { mutableStateOf(card.totalDays.toString()) }
+  var frequency by remember { mutableStateOf(card.frequency) }
+  var selectedRoute by remember { mutableStateOf(card.route) }
+  var customRouteText by remember { mutableStateOf(card.customRoute) }
+  var sessionFeeText by remember { mutableStateOf(card.sessionFee.toInt().toString()) }
+  var medFeeText by remember { mutableStateOf(card.medicationFee.toInt().toString()) }
+  var instructions by remember { mutableStateOf(card.instructions) }
+
+  val days = totalDaysText.toIntOrNull() ?: card.totalDays
+  val sessionFee = sessionFeeText.toDoubleOrNull() ?: card.sessionFee
+  val medFee = medFeeText.toDoubleOrNull() ?: card.medicationFee
+  val completedCount = card.completedSessionsCount
+
+  Dialog(
+    onDismissRequest = onDismiss,
+    properties = DialogProperties(usePlatformDefaultWidth = false)
+  ) {
+    Surface(
+      shape = RoundedCornerShape(12.dp),
+      color = PureWhite,
+      modifier = Modifier
+        .fillMaxWidth(0.92f)
+        .fillMaxHeight(0.92f)
+        .padding(8.dp)
+    ) {
+      Column(
+        modifier = Modifier
+          .fillMaxSize()
+          .padding(14.dp)
+      ) {
+        // Header
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Edit, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Column {
+              Text("ကုသမှုကတ် ပြင်ဆင်ရန် (Edit Treatment Card)", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+              Text("လူနာ: ${card.patientName} (${card.patientHn}) • ကတ်ဖွင့်ရက်: ${card.prescribedDate}", fontSize = 10.sp, color = SlateMuted)
+            }
+          }
+          IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
+            Icon(Icons.Default.Close, contentDescription = "Close", tint = SlateMedium)
+          }
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = BorderGrey)
+
+        Column(
+          modifier = Modifier
+            .weight(1f)
+            .verticalScroll(rememberScrollState()),
+          verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+          // Status & Completed Sessions Notice
+          Surface(
+            shape = RoundedCornerShape(6.dp),
+            color = Color(0xFFF0FDF4),
+            border = BorderStroke(1.dp, Color(0xFFBBF7D0)),
+            modifier = Modifier.fillMaxWidth()
+          ) {
+            Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+              Icon(Icons.Default.Info, contentDescription = null, tint = MedicalGreenDark, modifier = Modifier.size(16.dp))
+              Spacer(modifier = Modifier.width(6.dp))
+              Text(
+                "ထိုးပြီးစီးပြီး Dose: $completedCount ကြိမ် (ယခင်မှတ်တမ်း မပျက်ပြယ်ဘဲ ထိန်းသိမ်းထားပါမည်။ ရက်နှင့်အကြိမ် ပြင်ဆင်ပါက ကျန်ရှိသော Pending Doses များကိုသာ အသစ်ညှိနှိုင်းပေးပါမည်။)",
+                fontSize = 9.5.sp,
+                color = MedicalGreenDark,
+                lineHeight = 13.sp
+              )
+            }
+          }
+
+          // Medicine Name & Dosage
+          OutlinedTextField(
+            value = medicationName,
+            onValueChange = { medicationName = it },
+            label = { Text("ဆေးအမည် (Medication Name)", fontSize = 11.sp) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+          )
+
+          Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+              value = dosage,
+              onValueChange = { dosage = it },
+              label = { Text("ဆေးပမာဏ (Dosage)", fontSize = 11.sp) },
+              singleLine = true,
+              modifier = Modifier.weight(1f)
+            )
+            OutlinedTextField(
+              value = totalDaysText,
+              onValueChange = { totalDaysText = it },
+              label = { Text("ရက်ပေါင်း (Total Days)", fontSize = 11.sp) },
+              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+              singleLine = true,
+              modifier = Modifier.weight(1f)
+            )
+          }
+
+          // Frequency Chips
+          Text("အကြိမ်အရေအတွက် (Frequency):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+          Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+          ) {
+            listOf("Stat", "Daily", "BD (2 times/day)", "TDS (3 times/day)", "12 hrly").forEach { f ->
+              val fCode = f.split(" ").first()
+              FilterChip(
+                selected = frequency.startsWith(fCode, ignoreCase = true),
+                onClick = {
+                  frequency = fCode
+                  if (fCode.equals("Stat", ignoreCase = true)) totalDaysText = "1"
+                },
+                label = { Text(f, fontSize = 9.5.sp) }
+              )
+            }
+          }
+
+          // Route Chips
+          Text("ထိုးမည့်နည်းလမ်း (Route):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+          Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+          ) {
+            TreatmentRoute.entries.forEach { r ->
+              FilterChip(
+                selected = selectedRoute == r,
+                onClick = { selectedRoute = r },
+                label = { Text(r.label.split(" ").first(), fontSize = 9.5.sp) }
+              )
+            }
+          }
+          if (selectedRoute == TreatmentRoute.CUSTOM) {
+            OutlinedTextField(
+              value = customRouteText,
+              onValueChange = { customRouteText = it },
+              label = { Text("စိတ်ကြိုက် နည်းလမ်း (Custom Route)", fontSize = 11.sp) },
+              singleLine = true,
+              modifier = Modifier.fillMaxWidth()
+            )
+          }
+
+          // Fees
+          Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+              value = medFeeText,
+              onValueChange = { medFeeText = it },
+              label = { Text("ဆေးဖိုး (Med Fee Ks)", fontSize = 11.sp) },
+              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+              singleLine = true,
+              modifier = Modifier.weight(1f)
+            )
+            OutlinedTextField(
+              value = sessionFeeText,
+              onValueChange = { sessionFeeText = it },
+              label = { Text("ဝန်ဆောင်ခ (Service Fee Ks)", fontSize = 11.sp) },
+              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+              singleLine = true,
+              modifier = Modifier.weight(1f)
+            )
+          }
+
+          // Instructions
+          OutlinedTextField(
+            value = instructions,
+            onValueChange = { instructions = it },
+            label = { Text("မှတ်ချက် / ညွှန်ကြားချက် (Instructions)", fontSize = 11.sp) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+          )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Action Buttons
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+          OutlinedButton(
+            onClick = onDismiss,
+            modifier = Modifier.weight(1f).height(42.dp),
+            shape = RoundedCornerShape(8.dp)
+          ) {
+            Text("မပြင်တော့ပါ (Cancel)", fontSize = 11.5.sp)
+          }
+          Button(
+            onClick = {
+              val completedSessions = card.sessions.filter { it.status == TreatmentStatus.COMPLETED }
+              val newBaseSessions = TreatmentCardFactory.generateSessions(
+                startDateStr = card.sessions.firstOrNull()?.scheduledDate ?: card.prescribedDate,
+                frequency = frequency.ifBlank { "Stat" },
+                days = days.coerceAtLeast(1),
+                medicationFee = medFee,
+                sessionFee = sessionFee,
+                splitVialMode = false,
+                consumables = card.consumables
+              )
+
+              val reconciledSessions = mutableListOf<TreatmentSession>()
+              val targetTotal = maxOf(completedSessions.size, newBaseSessions.size)
+              for (i in 0 until targetTotal) {
+                if (i < completedSessions.size) {
+                  reconciledSessions.add(completedSessions[i].copy(sessionNumber = i + 1))
+                } else if (i < newBaseSessions.size) {
+                  val tmpl = newBaseSessions[i]
+                  reconciledSessions.add(
+                    tmpl.copy(
+                      sessionNumber = i + 1,
+                      isPrepaid = card.isPrepaidFullCourse
+                    )
+                  )
+                }
+              }
+
+              val updatedCard = card.copy(
+                medicationName = medicationName.trim(),
+                dosage = dosage.trim(),
+                route = selectedRoute,
+                customRoute = if (selectedRoute == TreatmentRoute.CUSTOM) customRouteText.trim() else "",
+                frequency = frequency.ifBlank { "Stat" },
+                totalDays = days.coerceAtLeast(1),
+                totalSessions = reconciledSessions.size,
+                sessions = reconciledSessions,
+                sessionFee = sessionFee,
+                medicationFee = medFee,
+                instructions = instructions.trim(),
+                cardStatus = if (reconciledSessions.isNotEmpty() && reconciledSessions.all { it.status == TreatmentStatus.COMPLETED }) TreatmentStatus.COMPLETED else TreatmentStatus.IN_PROGRESS
+              )
+              onSave(updatedCard)
+            },
+            modifier = Modifier.weight(1f).height(42.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+            shape = RoundedCornerShape(8.dp)
+          ) {
+            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text("ပြင်ဆင်မှု သိမ်းမည် (Save)", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+          }
         }
       }
     }

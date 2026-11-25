@@ -315,7 +315,7 @@ fun AddTreatmentOrderModal(
     }.take(8)
   }
 
-  val days = totalDaysText.toIntOrNull() ?: 3
+  val days = totalDaysText.toIntOrNull() ?: 1
   val medFee = if (isPatientSupplied) 0.0 else (medFeeText.toDoubleOrNull() ?: 0.0)
   val sessionFee = sessionFeeText.toDoubleOrNull() ?: selectedRoute.getDefaultFee(clinicSettings)
 
@@ -597,64 +597,6 @@ fun AddTreatmentOrderModal(
                 AssistChip(
                   onClick = { dosage = d },
                   label = { Text(d, fontSize = 9.5.sp) }
-                )
-              }
-            }
-
-            // အသုံး / ထိုးနည်းညွှန်ကြားချက် (Usage / Administration Instructions)
-            OutlinedTextField(
-              value = instructions,
-              onValueChange = { instructions = it },
-              label = { Text("အသုံး / ထိုးနည်းညွှန်ကြားချက် (Usage / Instructions)", fontSize = 11.sp) },
-              placeholder = { Text("ဥပမာ - Deltoid IM Stat (လက်မောင်းကြွက်သား) သို့မဟုတ် 1 Dose IM", fontSize = 10.sp) },
-              singleLine = true,
-              modifier = Modifier.fillMaxWidth(),
-              leadingIcon = {
-                Icon(Icons.Default.Medication, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(16.dp))
-              },
-              trailingIcon = {
-                if (instructions.isNotBlank()) {
-                  IconButton(onClick = { instructions = "" }, modifier = Modifier.size(20.dp)) {
-                    Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(14.dp))
-                  }
-                }
-              }
-            )
-
-            // Quick Usage & Route Chips
-            Text("အသုံး / ထိုးနည်း အမြန်ရွေးချယ်ရန် (Quick Usage & Route):", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = SlateDark)
-            Row(
-              modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-              horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-              val quickUsageList = listOf(
-                Triple("Deltoid IM (လက်မောင်း)", TreatmentRoute.IM, "Deltoid IM Stat"),
-                Triple("Deep IM (တင်ပါး)", TreatmentRoute.IM, "Deep IM Stat"),
-                Triple("Thigh IM (ပေါင်ရှေ့ဘေး)", TreatmentRoute.IM, "Anterolateral Thigh IM"),
-                Triple("SC Stat (အရေပြားအောက်)", TreatmentRoute.SC, "SC Stat (Subcutaneous)"),
-                Triple("ID Stat (အရေပြားတွင်း)", TreatmentRoute.CUSTOM, "Intradermal (ID) Stat"),
-                Triple("Slow IV Stat", TreatmentRoute.IV_INFUSION, "Slow IV Stat"),
-                Triple("IV Push Stat", TreatmentRoute.IV_PUSH, "IV Push Stat"),
-                Triple("1 Dose IM", TreatmentRoute.IM, "1 Dose IM"),
-                Triple("Booster Dose", TreatmentRoute.IM, "Booster Dose IM"),
-                Triple("1st Dose (Day 0)", TreatmentRoute.IM, "1st Dose (Day 0)"),
-                Triple("2nd Dose", TreatmentRoute.IM, "2nd Dose"),
-                Triple("3rd Dose", TreatmentRoute.IM, "3rd Dose")
-              )
-              quickUsageList.forEach { (label, route, text) ->
-                AssistChip(
-                  onClick = {
-                    instructions = text
-                    selectedRoute = route
-                    if (route == TreatmentRoute.CUSTOM) {
-                      customRouteText = "Intradermal (ID)"
-                    }
-                    frequency = "Stat"
-                    totalDaysText = "1"
-                  },
-                  label = { Text(label, fontSize = 9.sp) }
                 )
               }
             }

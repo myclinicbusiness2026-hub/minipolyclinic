@@ -1,12 +1,12 @@
 {
-  "versionCode": 79,
-  "versionName": "1.5.55",
+  "versionCode": 80,
+  "versionName": "1.5.56",
   "minSupportedVersion": 1,
-  "releaseNotes": "• Treatment & Injection Nurse Consumables Section: Added full support for selecting injection consumables (e.g., 3cc syringe, 5cc syringe, scalp vein set, cannula, needles) in Create Treatment Card dialog, matching the consultation workflow with clean search, quantity controls, and automated fee summation.\n• Store Inventory Integration: Consumables attached to treatment cards are tracked and deducted from pharmacy/store stock upon session administration.",
-  "releaseNotesMm": "• Treatment & Injection သူနာပြုကဏ္ဍတွင် အသုံးစာရင်း (Consumables) တိုက်ရိုက်ထည့်သွင်းနိုင်ခြင်း: ဆေးထိုး/ကာကွယ်ဆေးကတ် အသစ်ဖွင့်လှစ်စဉ်ကတည်းက 3cc syringe, 5cc syringe, scalp vein set, cannula, needle စသည့် ဆေးထိုးပစ္စည်းများကို Store မှ တိုက်ရိုက်ရှာဖွေထည့်သွင်းနိုင်ပြီး အရေအတွက် (+ / -) စီမံနိုင်ခြင်း\n• အသုံးပစ္စည်းဖိုး အလိုအလျောက် ပေါင်းစပ်တွက်ချက်ခြင်းနှင့် စတော့ခ်မှ နှုတ်ယူခြင်း: ဆေးဖိုး၊ ဆေးထိုးခနှင့် အသုံးပစ္စည်းဖိုးတို့ကို စုစုပေါင်းရှင်းလင်းစွာ တွက်ချက်ပြသပေးပြီး ဆေးထိုးပြီးစီးသည့်အခါ Store စတော့ခ်မှ အလိုအလျောက် နှုတ်ယူပေးခြင်း",
+  "releaseNotes": "• Option A Injection & Wound Dressing Bundling: Easily add Wound Dressing service into single treatment card & invoice without separate consultation.\n• Treatment Card Edit & EMR Auto-Sync: Added edit capability for treatment cards (duration, frequency, dosage, fees) preserving completed doses and updating linked EMR consultation records.\n• Duration Default Fix: Prevented treatment card duration from unexpectedly reverting to 3 days when set to 5+ days.\n• Mobile Consistent Invoice Add Items: Redesigned Add Items to Invoice with responsive tabbed UI and fixed text clipping for custom consumables entry.",
+  "releaseNotesMm": "• ဆေးထိုးခြင်းနှင့်အတူ အနာဆေးထည့်ခြင်း (Option A Bundling): ဆရာဝန် Consultation ခံယူရန်မလိုဘဲ Treatment & Injection မှတစ်ဆင့် အနာဆေးထည့်ခြင်းဝန်ဆောင်ခ (Dressing Fee) အား ဆေးထိုးခြင်းနှင့်အတူ တစ်ပါတည်း ပေါင်းစပ်ကောက်ခံနိုင်ခြင်း\n• ကုသမှုကတ် ပြင်ဆင်နိုင်ခြင်း (Edit Card) နှင့် EMR အလိုအလျောက်ချိတ်ဆက်မှု: Treatment Card ၏ ရက်ပေါင်း (Duration)၊ အကြိမ် (Frequency)၊ ဆေးပမာဏနှင့် ဝန်ဆောင်ခများကို ပြင်ဆင်နိုင်ပြီး ထိုးပြီးစီးသည့် Dose မှတ်တမ်းများကို မပျက်မပြယ် ထိန်းသိမ်းထားရှိပေးသည့်အပြင် သက်ဆိုင်ရာ EMR ဆေးမှတ်တမ်းတွင်ပါ တစ်ပါတည်း အလိုအလျောက် ပြင်ဆင်ပေးခြင်း\n• ရက်ပေါင်း Duration ၅ ရက်မှ ၃ ရက်သို့ လွဲမှားပြောင်းလဲမှု ဖြေရှင်းချက်: Duration fallback အား ပြုပြင်ထား၍ ၅ ရက် သို့မဟုတ် စိတ်ကြိုက်ရက်များအတိုင်း တိကျစွာ ကတ်ဖွင့်ပေးခြင်း\n• Cashier & Invoice အသုံးပစ္စည်းထပ်ပေါင်းရန် မိုဘိုင်းမျက်နှာပြင် အဆင်ပြေစေခြင်း: စာရင်းပြင်ပ အသုံးပစ္စည်း ကိုယ်တိုင်ရိုက်ထည့်ရာတွင် စာလုံးများ မကွယ်မပျောက်စေရန် ပြင်ဆင်ထားပြီး ဖုန်းမျက်နှာပြင်တွင် Tabbed UI ဖြင့် ရှင်းလင်းလွယ်ကူစွာ အသုံးပြုနိုင်ခြင်း",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-25",
   "apkSizeBytes": 15031810,
   "commitSha": "HEAD",
-  "updatedAt": "2026-11-25T05:05:00.000Z"
+  "updatedAt": "2026-11-25T07:15:00.000Z"
 }

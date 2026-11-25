@@ -3015,6 +3015,46 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     }
   }
 
+  fun updateTreatmentCard(updatedCard: TreatmentCard) {
+    val ctx = getApplication<Application>()
+    val current = _treatmentCards.value
+    val oldCard = current.find { it.id == updatedCard.id }
+    val updatedList = current.map { if (it.id == updatedCard.id) updatedCard else it }
+    _treatmentCards.value = updatedList
+    ClinicDataPersistence.saveTreatmentCards(ctx, updatedList)
+
+    // Synchronize linked consultation record if present
+    val oldOrderSummary = oldCard?.orderSummaryText
+    val newOrderSummary = updatedCard.orderSummaryText
+    if (oldOrderSummary != null && oldOrderSummary != newOrderSummary) {
+      val records = _consultations.value
+      var recordsChanged = false
+      val updatedRecords = records.map { rec ->
+        val isLinked = (updatedCard.consultationInvoiceId != null && rec.invoiceId == updatedCard.consultationInvoiceId) ||
+                       (rec.patientId == updatedCard.patientId && rec.treatmentOrderDetails.any { it.contains(oldCard.medicationName, ignoreCase = true) || it == oldOrderSummary })
+        if (isLinked) {
+          recordsChanged = true
+          val updatedOrders = rec.treatmentOrderDetails.map { detail ->
+            if (detail == oldOrderSummary || (oldCard.medicationName.isNotBlank() && detail.contains(oldCard.medicationName, ignoreCase = true))) {
+              newOrderSummary
+            } else {
+              detail
+            }
+          }
+          rec.copy(treatmentOrderDetails = updatedOrders)
+        } else rec
+      }
+      if (recordsChanged) {
+        _consultations.value = updatedRecords
+        ClinicDataPersistence.saveConsultations(ctx, updatedRecords)
+      }
+    }
+
+    viewModelScope.launch(Dispatchers.IO) {
+      syncManager.syncWithAllPeers()
+    }
+  }
+
   fun administerTreatmentSession(
     cardId: String,
     sessionId: String,

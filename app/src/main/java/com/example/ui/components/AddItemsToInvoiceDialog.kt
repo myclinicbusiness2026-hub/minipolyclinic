@@ -7,10 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -53,6 +51,7 @@ fun AddItemsToInvoiceDialog(
   val currencyFmt = remember { NumberFormat.getNumberInstance(Locale.US) }
   var searchQuery by remember { mutableStateOf("") }
   val stagedItems = remember { mutableStateListOf<StagedAddOnItem>() }
+  var mobileTab by remember { mutableStateOf(0) } // 0: Select Items, 1: Cart
 
   var showCustomItemRow by remember { mutableStateOf(false) }
   var customName by remember { mutableStateOf("") }
@@ -91,13 +90,13 @@ fun AddItemsToInvoiceDialog(
         color = PureWhite,
         modifier = Modifier
           .fillMaxWidth(if (isWideScreen) 0.85f else 1f)
-          .fillMaxHeight(if (isWideScreen) 0.88f else 0.96f)
+          .fillMaxHeight(if (isWideScreen) 0.88f else 0.98f)
           .border(1.dp, BorderGray, RoundedCornerShape(12.dp))
       ) {
         Column(
           modifier = Modifier
             .fillMaxSize()
-            .padding(14.dp)
+            .padding(12.dp)
         ) {
           // --- 1. HEADER ---
           Row(
@@ -122,38 +121,28 @@ fun AddItemsToInvoiceDialog(
                 Column {
                   Text(
                     "+ အသုံး/ပစ္စည်း ထပ်ပေါင်းထည့်ရန် (Add Items)",
-                    fontSize = 14.sp,
+                    fontSize = 13.5.sp,
                     fontWeight = FontWeight.Bold,
                     color = MedicalGreenDark
                   )
                   Text(
                     "ပြေစာ: ${invoice.invoiceNumber} • လူနာ: ${invoice.patientName.ifBlank { "Walk-in" }}",
-                    fontSize = 10.5.sp,
+                    fontSize = 10.sp,
                     color = SlateMedium
                   )
                 }
               }
             }
-            IconButton(onClick = onDismiss) {
-              Icon(Icons.Default.Close, contentDescription = "Close", tint = SlateMedium)
+            IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
+              Icon(Icons.Default.Close, contentDescription = "Close", tint = SlateMedium, modifier = Modifier.size(18.dp))
             }
           }
 
-          HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = BorderGray.copy(alpha = 0.6f))
+          HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = BorderGray.copy(alpha = 0.6f))
 
-          // --- 2. MAIN BODY (Catalog Search + Selected Items List) ---
-          Row(
-            modifier = Modifier
-              .fillMaxWidth()
-              .weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-          ) {
-            // LEFT COLUMN: Medicine/Consumable Selector
-            Column(
-              modifier = Modifier
-                .weight(1.1f)
-                .fillMaxHeight()
-            ) {
+          // --- Sub-Component 1: Catalog Search + Custom Item Entry ---
+          val searchAndCatalogContent: @Composable (Modifier) -> Unit = { modifier ->
+            Column(modifier = modifier) {
               // Search Field
               OutlinedTextField(
                 value = searchQuery,
@@ -221,21 +210,24 @@ fun AddItemsToInvoiceDialog(
               if (showCustomItemRow) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Surface(
-                  shape = RoundedCornerShape(6.dp),
+                  shape = RoundedCornerShape(8.dp),
                   color = Color(0xFFFFFBEB),
-                  border = BorderStroke(0.8.dp, Color(0xFFFDE68A)),
+                  border = BorderStroke(1.dp, Color(0xFFFDE68A)),
                   modifier = Modifier.fillMaxWidth()
                 ) {
-                  Column(modifier = Modifier.padding(8.dp)) {
+                  Column(
+                    modifier = Modifier.padding(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                  ) {
                     OutlinedTextField(
                       value = customName,
                       onValueChange = { customName = it },
-                      placeholder = { Text("အသုံး/ပစ္စည်း အမည်", fontSize = 10.5.sp) },
+                      label = { Text("အသုံး/ပစ္စည်း အမည် (Item Name)", fontSize = 10.5.sp) },
+                      placeholder = { Text("ဥပမာ - 3cc Syringe, Scalp Vein, etc.", fontSize = 10.sp) },
                       singleLine = true,
-                      modifier = Modifier.fillMaxWidth().height(42.dp),
-                      shape = RoundedCornerShape(4.dp)
+                      modifier = Modifier.fillMaxWidth(),
+                      shape = RoundedCornerShape(6.dp)
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
                     Row(
                       modifier = Modifier.fillMaxWidth(),
                       horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -243,48 +235,51 @@ fun AddItemsToInvoiceDialog(
                       OutlinedTextField(
                         value = customQtyText,
                         onValueChange = { customQtyText = it },
-                        label = { Text("Qty", fontSize = 9.sp) },
+                        label = { Text("အရေအတွက် (Qty)", fontSize = 9.5.sp) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
-                        modifier = Modifier.weight(1f).height(44.dp),
-                        shape = RoundedCornerShape(4.dp)
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(6.dp)
                       )
                       OutlinedTextField(
                         value = customPriceText,
                         onValueChange = { customPriceText = it },
-                        label = { Text("Unit Price (Ks)", fontSize = 9.sp) },
+                        label = { Text("တစ်ခုဈေး (Unit Ks)", fontSize = 9.5.sp) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
-                        modifier = Modifier.weight(1.5f).height(44.dp),
-                        shape = RoundedCornerShape(4.dp)
+                        modifier = Modifier.weight(1.3f),
+                        shape = RoundedCornerShape(6.dp)
                       )
-                      Button(
-                        onClick = {
-                          val q = customQtyText.toIntOrNull() ?: 1
-                          val p = customPriceText.toDoubleOrNull() ?: 0.0
-                          if (customName.isNotBlank() && q > 0) {
-                            stagedItems.add(
-                              StagedAddOnItem(
-                                medicineId = "",
-                                name = customName.trim(),
-                                quantity = q,
-                                unitPrice = p,
-                                isCustom = true
-                              )
+                    }
+                    Button(
+                      onClick = {
+                        val q = customQtyText.toIntOrNull() ?: 1
+                        val p = customPriceText.toDoubleOrNull() ?: 0.0
+                        if (customName.isNotBlank() && q > 0) {
+                          stagedItems.add(
+                            StagedAddOnItem(
+                              medicineId = "",
+                              name = customName.trim(),
+                              quantity = q,
+                              unitPrice = p,
+                              isCustom = true
                             )
-                            customName = ""
-                            customQtyText = "1"
-                            customPriceText = ""
-                            showCustomItemRow = false
-                          }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = MedicalGreenDark),
-                        shape = RoundedCornerShape(4.dp),
-                        modifier = Modifier.height(44.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp)
-                      ) {
-                        Text("Add", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                      }
+                          )
+                          customName = ""
+                          customQtyText = "1"
+                          customPriceText = ""
+                          showCustomItemRow = false
+                        }
+                      },
+                      enabled = customName.isNotBlank(),
+                      colors = ButtonDefaults.buttonColors(containerColor = MedicalGreenDark),
+                      shape = RoundedCornerShape(6.dp),
+                      modifier = Modifier.fillMaxWidth().height(38.dp),
+                      contentPadding = PaddingValues(horizontal = 10.dp)
+                    ) {
+                      Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                      Spacer(modifier = Modifier.width(4.dp))
+                      Text("ပစ္စည်းထည့်မည် (Add Item)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                   }
                 }
@@ -375,15 +370,11 @@ fun AddItemsToInvoiceDialog(
                 }
               }
             }
+          }
 
-            VerticalDivider(modifier = Modifier.fillMaxHeight(), color = BorderGray, thickness = 0.8.dp)
-
-            // RIGHT COLUMN: Staged Add-on Items Cart
-            Column(
-              modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-            ) {
+          // --- Sub-Component 2: Staged Add-on Items Cart ---
+          val stagedCartContent: @Composable (Modifier) -> Unit = { modifier ->
+            Column(modifier = modifier) {
               Text(
                 "ထပ်တိုးမည့် စာရင်း (${stagedItems.size} မျိုး):",
                 fontSize = 11.5.sp,
@@ -404,7 +395,7 @@ fun AddItemsToInvoiceDialog(
                     Icon(Icons.Default.AddShoppingCart, contentDescription = null, tint = SlateMuted, modifier = Modifier.size(36.dp))
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                      "ထပ်တိုးလိုသော အသုံးစရိတ်/ဆေးဝါးကို\nဘယ်ဘက်စာရင်းမှ ရွေးချယ်ပါ",
+                      "ထပ်တိုးလိုသော အသုံးစရိတ်/ဆေးဝါးကို\nဆေးစာရင်းမှ ရွေးချယ်ပါ",
                       fontSize = 10.5.sp,
                       color = SlateMedium,
                       textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -516,7 +507,107 @@ fun AddItemsToInvoiceDialog(
             }
           }
 
-          HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = BorderGray.copy(alpha = 0.6f))
+          // --- 2. MAIN BODY (Responsive Layout) ---
+          if (isWideScreen) {
+            Row(
+              modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+              horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+              searchAndCatalogContent(Modifier.weight(1.1f).fillMaxHeight())
+              VerticalDivider(modifier = Modifier.fillMaxHeight(), color = BorderGray, thickness = 0.8.dp)
+              stagedCartContent(Modifier.weight(1f).fillMaxHeight())
+            }
+          } else {
+            // Mobile Phone: Tabbed Interface to prevent column cramping
+            Column(
+              modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+            ) {
+              TabRow(
+                selectedTabIndex = mobileTab,
+                containerColor = PureWhite,
+                contentColor = MedicalGreenDark,
+                modifier = Modifier.fillMaxWidth().height(40.dp)
+              ) {
+                Tab(
+                  selected = mobileTab == 0,
+                  onClick = { mobileTab = 0 },
+                  text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                      Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(14.dp))
+                      Spacer(modifier = Modifier.width(4.dp))
+                      Text(
+                        "၁။ ပစ္စည်းရွေးရန်",
+                        fontSize = 11.sp,
+                        fontWeight = if (mobileTab == 0) FontWeight.Bold else FontWeight.Normal
+                      )
+                    }
+                  }
+                )
+                Tab(
+                  selected = mobileTab == 1,
+                  onClick = { mobileTab = 1 },
+                  text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                      Icon(Icons.Default.ShoppingCart, contentDescription = null, modifier = Modifier.size(14.dp))
+                      Spacer(modifier = Modifier.width(4.dp))
+                      Text(
+                        "၂။ ရွေးထားသည့်စာရင်း (${stagedItems.size})",
+                        fontSize = 11.sp,
+                        fontWeight = if (mobileTab == 1) FontWeight.Bold else FontWeight.Normal,
+                        color = if (stagedItems.isNotEmpty()) MedicalGreenDark else SlateMedium
+                      )
+                    }
+                  }
+                )
+              }
+
+              Spacer(modifier = Modifier.height(6.dp))
+
+              if (mobileTab == 0) {
+                Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                  searchAndCatalogContent(Modifier.fillMaxWidth().weight(1f))
+                  if (stagedItems.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Surface(
+                      shape = RoundedCornerShape(6.dp),
+                      color = SoftGreenContainer,
+                      border = BorderStroke(1.dp, MedicalGreen),
+                      modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { mobileTab = 1 }
+                    ) {
+                      Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                      ) {
+                        Text(
+                          "🛒 စာရင်းထဲတွင် ${stagedItems.size} မျိုးရှိသည် (+${currencyFmt.format(totalAddOnAmount.toInt())} Ks)",
+                          fontSize = 10.5.sp,
+                          fontWeight = FontWeight.Bold,
+                          color = MedicalGreenDark
+                        )
+                        Text(
+                          "စာရင်းစစ်မည် >",
+                          fontSize = 10.5.sp,
+                          fontWeight = FontWeight.Bold,
+                          color = MedicalGreenDark
+                        )
+                      }
+                    }
+                  }
+                }
+              } else {
+                stagedCartContent(Modifier.fillMaxWidth().weight(1f))
+              }
+            }
+          }
+
+          HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = BorderGray.copy(alpha = 0.6f))
 
           // --- 3. FOOTER & CONFIRM BAR ---
           if (invoice.isPaid && stagedItems.isNotEmpty()) {
@@ -524,17 +615,17 @@ fun AddItemsToInvoiceDialog(
               shape = RoundedCornerShape(6.dp),
               color = Color(0xFFFEF3C7),
               border = BorderStroke(0.8.dp, Color(0xFFD97706)),
-              modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+              modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
             ) {
               Row(
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
               ) {
-                Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(14.dp))
+                Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(13.dp))
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                   "ဤဘောင်ချာသည် ယခင်က ငွေရှင်းပြီးဖြစ်သဖြင့် ထပ်တိုးပြီးပါက ထပ်တိုးကျသင့်ငွေ ကျန်ရှိမှု (Balance Due) အဖြစ် ပြသပေးမည်ဖြစ်ပါသည်။",
-                  fontSize = 9.5.sp,
+                  fontSize = 9.sp,
                   color = Color(0xFF78350F),
                   fontWeight = FontWeight.Medium
                 )
@@ -542,54 +633,117 @@ fun AddItemsToInvoiceDialog(
             }
           }
 
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-          ) {
-            Column {
-              Text("ထပ်တိုး ကျသင့်ငွေ စုစုပေါင်း:", fontSize = 10.sp, color = DarkGrayText)
-              Text(
-                "+${currencyFmt.format(totalAddOnAmount.toInt())} Ks",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = MedicalGreenDark
-              )
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-              OutlinedButton(
-                onClick = onDismiss,
-                shape = RoundedCornerShape(6.dp),
-                modifier = Modifier.height(38.dp)
-              ) {
-                Text("ပယ်ဖျက်မည် (Cancel)", fontSize = 11.sp)
+          if (isWideScreen) {
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Column {
+                Text("ထပ်တိုး ကျသင့်ငွေ စုစုပေါင်း:", fontSize = 10.sp, color = DarkGrayText)
+                Text(
+                  "+${currencyFmt.format(totalAddOnAmount.toInt())} Ks",
+                  fontSize = 15.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = MedicalGreenDark
+                )
               }
 
-              Button(
-                onClick = {
-                  val newItems = stagedItems.map { staged ->
-                    InvoiceItem(
-                      name = staged.name,
-                      quantity = staged.quantity,
-                      unitPrice = staged.unitPrice,
-                      totalPrice = staged.total,
-                      isProcedure = false,
-                      category = if (staged.isCustom) "Consumables / Custom" else "Pharmacy",
-                      isAddOn = true,
-                      medicineId = staged.medicineId
-                    )
-                  }
-                  onConfirmAddItems(newItems)
-                },
-                enabled = stagedItems.isNotEmpty(),
-                shape = RoundedCornerShape(6.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
-                modifier = Modifier.height(38.dp)
+              Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                  onClick = onDismiss,
+                  shape = RoundedCornerShape(6.dp),
+                  modifier = Modifier.height(38.dp)
+                ) {
+                  Text("ပယ်ဖျက်မည် (Cancel)", fontSize = 11.sp)
+                }
+
+                Button(
+                  onClick = {
+                    val newItems = stagedItems.map { staged ->
+                      InvoiceItem(
+                        name = staged.name,
+                        quantity = staged.quantity,
+                        unitPrice = staged.unitPrice,
+                        totalPrice = staged.total,
+                        isProcedure = false,
+                        category = if (staged.isCustom) "Consumables / Custom" else "Pharmacy",
+                        isAddOn = true,
+                        medicineId = staged.medicineId
+                      )
+                    }
+                    onConfirmAddItems(newItems)
+                  },
+                  enabled = stagedItems.isNotEmpty(),
+                  shape = RoundedCornerShape(6.dp),
+                  colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+                  modifier = Modifier.height(38.dp)
+                ) {
+                  Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                  Spacer(modifier = Modifier.width(4.dp))
+                  Text("မူလဘောင်ချာထဲ ထပ်ပေါင်းထည့်မည်", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+              }
+            }
+          } else {
+            // Mobile Phone Responsive Bottom Action Bar
+            Column(
+              modifier = Modifier.fillMaxWidth(),
+              verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+              Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
               ) {
-                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("မူလဘောင်ချာထဲ ထပ်ပေါင်းထည့်မည်", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text("ထပ်တိုး စုစုပေါင်း:", fontSize = 10.5.sp, color = DarkGrayText, fontWeight = FontWeight.SemiBold)
+                Text(
+                  "+${currencyFmt.format(totalAddOnAmount.toInt())} Ks",
+                  fontSize = 14.5.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = MedicalGreenDark
+                )
+              }
+
+              Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+              ) {
+                OutlinedButton(
+                  onClick = onDismiss,
+                  shape = RoundedCornerShape(6.dp),
+                  modifier = Modifier.weight(1f).height(38.dp),
+                  contentPadding = PaddingValues(horizontal = 4.dp)
+                ) {
+                  Text("ပယ်ဖျက်", fontSize = 11.sp)
+                }
+
+                Button(
+                  onClick = {
+                    val newItems = stagedItems.map { staged ->
+                      InvoiceItem(
+                        name = staged.name,
+                        quantity = staged.quantity,
+                        unitPrice = staged.unitPrice,
+                        totalPrice = staged.total,
+                        isProcedure = false,
+                        category = if (staged.isCustom) "Consumables / Custom" else "Pharmacy",
+                        isAddOn = true,
+                        medicineId = staged.medicineId
+                      )
+                    }
+                    onConfirmAddItems(newItems)
+                  },
+                  enabled = stagedItems.isNotEmpty(),
+                  shape = RoundedCornerShape(6.dp),
+                  colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),
+                  modifier = Modifier.weight(1.8f).height(38.dp),
+                  contentPadding = PaddingValues(horizontal = 6.dp)
+                ) {
+                  Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                  Spacer(modifier = Modifier.width(4.dp))
+                  Text("ဘောင်ချာထဲ ထည့်မည်", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
               }
             }
           }
