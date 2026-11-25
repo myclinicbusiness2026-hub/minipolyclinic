@@ -3030,7 +3030,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       val records = _consultations.value
       var recordsChanged = false
       val updatedRecords = records.map { rec ->
-        val isLinked = (updatedCard.consultationInvoiceId != null && rec.invoiceId == updatedCard.consultationInvoiceId) ||
+        val isLinked = (updatedCard.consultationInvoiceId != null && _invoices.value.any { it.id == updatedCard.consultationInvoiceId && it.consultationId == rec.id }) ||
                        (rec.patientId == updatedCard.patientId && rec.treatmentOrderDetails.any { it.contains(oldCard.medicationName, ignoreCase = true) || it == oldOrderSummary })
         if (isLinked) {
           recordsChanged = true
