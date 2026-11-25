@@ -77,7 +77,15 @@ fun PatientBannerCard(
           Spacer(modifier = Modifier.width(10.dp))
           Column {
             Text(patient.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = DarkGrayText)
-            Text("${patient.gender.label} • ${patient.age} နှစ် • ဖုန်း: ${patient.phone}", fontSize = 10.sp, color = SlateMedium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Text("${patient.gender.label} • ${patient.age} နှစ်", fontSize = 10.sp, color = SlateMedium)
+              if (patient.phone.isNotBlank()) {
+                Text(" • ဖုန်း: ${patient.phone}", fontSize = 10.sp, color = SlateMedium)
+              }
+              if (patient.address.isNotBlank()) {
+                Text(" • 🏠 ${patient.address}", fontSize = 10.sp, color = Color(0xFF0D9488), fontWeight = FontWeight.Medium)
+              }
+            }
           }
         }
 

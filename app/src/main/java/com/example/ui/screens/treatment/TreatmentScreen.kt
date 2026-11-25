@@ -804,7 +804,7 @@ fun TreatmentScreen(
         } else if (generatedInv.id.startsWith("INV-TC-SUPP-")) {
           Toast.makeText(context, "Dose ${session.sessionNumber} ဆေးထိုးပြီးစီးပါပြီ (အပိုသုံးပစ္စည်း ထပ်ဆောင်းဘောင်ချာ #${generatedInv.invoiceNumber} ထုတ်ပေးပြီး)", Toast.LENGTH_LONG).show()
         } else {
-          Toast.makeText(context, "Dose ${session.sessionNumber} ဆေးထိုးပြီးစီးပါပြီ (ဘောင်ချာ #${generatedInv.invoiceNumber} ထုတ်ပေးပြီး)", Toast.LENGTH_SHORT).show()
+          Toast.makeText(context, "Dose ${session.sessionNumber} ဆေးထိုးပြီးစီးပါပြီ (ငွေရှင်းရန်နှင့် ဘောင်ချာထုတ်ပေးရန် Cashier ကောင်တာသို့ ပို့ဆောင်ထားပါသည် - #${generatedInv.invoiceNumber})", Toast.LENGTH_LONG).show()
         }
         sessionToAdminister = null
       }

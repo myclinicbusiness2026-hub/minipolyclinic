@@ -850,6 +850,17 @@ fun PatientQueueItemCard(
                   )
                 }
               }
+              if (patient.address.isNotBlank()) {
+                Text(" • ", fontSize = 11.sp, color = SlateMuted)
+                Text(
+                  "🏠 ${patient.address}",
+                  fontSize = 10.5.sp,
+                  color = Color(0xFF0F766E),
+                  fontWeight = FontWeight.Medium,
+                  maxLines = 1,
+                  overflow = TextOverflow.Ellipsis
+                )
+              }
             }
           }
         }

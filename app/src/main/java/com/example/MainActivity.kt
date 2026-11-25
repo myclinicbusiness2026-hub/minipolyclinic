@@ -47,6 +47,7 @@ import com.example.ui.screens.treatment.TreatmentScreen
 import com.example.ui.screens.treatment.TreatmentStatus
 import com.example.ui.screens.lab.LabInvestigationScreen
 import com.example.ui.theme.*
+import com.example.service.notification.ClinicNotificationHelper
 import com.example.viewmodel.ClinicViewModel
 import kotlinx.coroutines.launch
 
@@ -54,6 +55,16 @@ class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
+
+    ClinicNotificationHelper.initChannels(this)
+    ClinicNotificationHelper.scheduleDailyFollowUpAlarm(this)
+
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+      if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+        requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 9901)
+      }
+    }
+
     setContent {
       MyApplicationTheme {
         MiniPolyclinicMainApp()

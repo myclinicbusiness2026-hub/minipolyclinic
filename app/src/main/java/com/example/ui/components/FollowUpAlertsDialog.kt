@@ -55,7 +55,11 @@ fun FollowUpAlertsDialog(
       .sortedBy { it.followUpDueDate }
   }
 
-  var selectedFilter by remember { mutableStateOf("All") } // "All", "Due Today / Overdue", "Upcoming", "Reminded"
+  val activeFollowUps = remember(followUpPatients) {
+    followUpPatients.count { !it.isReminderSent }
+  }
+
+  var selectedFilter by remember { mutableStateOf("Due Today / Overdue") } // "Due Today / Overdue", "Upcoming", "All Active", "Reminded"
   var searchQuery by remember { mutableStateOf("") }
 
   val filteredList = remember(followUpPatients, selectedFilter, searchQuery) {
@@ -70,7 +74,8 @@ fun FollowUpAlertsDialog(
         "Due Today / Overdue" -> dueDate <= todayStr && !patient.isReminderSent
         "Upcoming" -> dueDate > todayStr && !patient.isReminderSent
         "Reminded" -> patient.isReminderSent
-        else -> true
+        "All Active" -> !patient.isReminderSent
+        else -> !patient.isReminderSent
       }
       matchesSearch && matchesCategory
     }
@@ -127,7 +132,7 @@ fun FollowUpAlertsDialog(
                   color = Color(0xFFFFE0B2)
                 ) {
                   Text(
-                    "${followUpPatients.size} Due",
+                    "${activeFollowUps} Due",
                     fontWeight = FontWeight.Bold,
                     fontSize = 10.sp,
                     color = Color(0xFFBF360C),
@@ -179,7 +184,7 @@ fun FollowUpAlertsDialog(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-          val filterOptions = listOf("All", "Due Today / Overdue", "Upcoming", "Reminded")
+          val filterOptions = listOf("Due Today / Overdue", "Upcoming", "All Active", "Reminded")
           filterOptions.forEach { filter ->
             FilterChip(
               selected = selectedFilter == filter,

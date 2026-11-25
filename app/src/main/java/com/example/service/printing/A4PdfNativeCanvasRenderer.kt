@@ -1141,8 +1141,8 @@ object A4PdfNativeCanvasRenderer {
     val age = patient?.age ?: 45
     val pGender = patient?.gender?.name
     val gender = if (pGender == "FEMALE") "F" else "M"
-    val phone = patient?.phone ?: "09-123456789"
-    val rawAddress = patient?.address?.takeIf { it.isNotBlank() } ?: consultation.patientAddress.takeIf { it.isNotBlank() } ?: "မန္တလေးမြို့"
+    val phone = patient?.phone?.takeIf { it.isNotBlank() } ?: ""
+    val rawAddress = patient?.address?.takeIf { it.isNotBlank() } ?: consultation.patientAddress.takeIf { it.isNotBlank() } ?: ""
     val address = if (rawAddress.length > 55) rawAddress.take(52) + "..." else rawAddress
     val date = consultation.timestamp.ifBlank { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date()) }
 

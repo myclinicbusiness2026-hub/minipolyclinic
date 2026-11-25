@@ -855,6 +855,14 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     _patients.value = updated
     _selectedPatientId.value = patient.id
     ClinicDataPersistence.savePatients(getApplication(), updated)
+    if (patient.status == QueueStatus.WAITING) {
+      com.example.service.notification.ClinicNotificationHelper.showNewPatientNotification(
+        getApplication(),
+        patient.name,
+        patient.tokenNumber,
+        updated.count { it.status == QueueStatus.WAITING }
+      )
+    }
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
     }
@@ -1261,7 +1269,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       age = orig?.age ?: 30,
       gender = orig?.gender ?: Gender.MALE,
       phone = orig?.phone ?: "",
-      address = orig?.address ?: "မန္တလေးမြို့",
+      address = orig?.address ?: "",
       bloodType = orig?.bloodType ?: "",
       status = QueueStatus.WAITING,
       registrationTime = BurmeseDateUtils.getNowFormatted(),
@@ -3174,9 +3182,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         consultationFee = 0.0,
         serviceFee = 0.0,
         totalAmount = totalVisitCost,
-        paidAmount = totalVisitCost,
-        paymentStatus = "Paid",
-        cashierName = nurseName.ifBlank { _currentUser.value?.fullName ?: "Nurse Station" },
+        paidAmount = 0.0,
+        paymentStatus = "Unpaid",
+        cashierName = "Pending Payment",
         timestamp = BurmeseDateUtils.getNowFormatted()
       )
       val updatedInvoices = _invoices.value + newInv
