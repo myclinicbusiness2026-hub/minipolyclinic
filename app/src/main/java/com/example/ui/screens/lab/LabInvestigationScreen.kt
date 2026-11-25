@@ -465,6 +465,18 @@ fun LabInvestigationScreen(
                     viewModel.updateLabOrder(order.copy(items = updatedItems))
                     Toast.makeText(context, "စက်အဖြေပုံ တွဲစပ်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
                   },
+                  onUpdatePatientInfo = { name, age, gender, phone, address ->
+                    viewModel.updateLabOrder(
+                      order.copy(
+                        patientName = name,
+                        patientAge = age,
+                        patientGender = gender,
+                        patientPhone = phone,
+                        patientAddress = address
+                      )
+                    )
+                    Toast.makeText(context, "လူနာအချက်အလက် ပြင်ဆင်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
+                  },
                   onDeleteOrder = { orderToDelete = order }
                 )
               }
@@ -520,6 +532,18 @@ fun LabInvestigationScreen(
                     val updatedItems = order.items.map { it.copy(attachedImageUri = imageUri) }
                     viewModel.updateLabOrder(order.copy(items = updatedItems))
                     Toast.makeText(context, "စက်အဖြေပုံ တွဲစပ်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
+                  },
+                  onUpdatePatientInfo = { name, age, gender, phone, address ->
+                    viewModel.updateLabOrder(
+                      order.copy(
+                        patientName = name,
+                        patientAge = age,
+                        patientGender = gender,
+                        patientPhone = phone,
+                        patientAddress = address
+                      )
+                    )
+                    Toast.makeText(context, "လူနာအချက်အလက် ပြင်ဆင်ပြီးပါပြီ", Toast.LENGTH_SHORT).show()
                   },
                   onDeleteOrder = { orderToDelete = order }
                 )
@@ -717,6 +741,7 @@ fun MobileLabOrderQueueCard(
   onCreateInvoice: () -> Unit,
   onCancelOrder: () -> Unit,
   onAttachSlipImage: (String) -> Unit = {},
+  onUpdatePatientInfo: (String, Int, Gender, String, String) -> Unit = { _, _, _, _, _ -> },
   onDeleteOrder: () -> Unit = {}
 ) {
   val context = LocalContext.current
@@ -730,6 +755,7 @@ fun MobileLabOrderQueueCard(
   }
   val currencyFmt = remember { NumberFormat.getNumberInstance(Locale.US) }
   var showMenu by remember { mutableStateOf(false) }
+  var showEditPatientModal by remember { mutableStateOf(false) }
 
   Surface(
     shape = RoundedCornerShape(8.dp),
@@ -976,6 +1002,14 @@ fun MobileLabOrderQueueCard(
               onDismissRequest = { showMenu = false }
             ) {
               DropdownMenuItem(
+                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF0284C7)) },
+                text = { Text("✏️ လူနာအချက်အလက် ပြင်ဆင်ရန်", fontSize = 11.5.sp) },
+                onClick = {
+                  showMenu = false
+                  showEditPatientModal = true
+                }
+              )
+              DropdownMenuItem(
                 text = { Text("📄 CBC စက်ထည့်ရန် စာရွက်ကြိုထုတ် (Pre-printed Sheet)", fontSize = 11.5.sp) },
                 onClick = {
                   showMenu = false
@@ -1019,6 +1053,89 @@ fun MobileLabOrderQueueCard(
       }
     }
   }
+
+  // Edit Patient Details Modal for Queue Order
+  if (showEditPatientModal) {
+    var tempName by remember(showEditPatientModal) { mutableStateOf(order.patientName) }
+    var tempAge by remember(showEditPatientModal) { mutableStateOf(order.patientAge.toString()) }
+    var tempGender by remember(showEditPatientModal) { mutableStateOf(order.patientGender) }
+    var tempPhone by remember(showEditPatientModal) { mutableStateOf(order.patientPhone) }
+    var tempAddress by remember(showEditPatientModal) { mutableStateOf(order.patientAddress) }
+
+    AlertDialog(
+      onDismissRequest = { showEditPatientModal = false },
+      title = { Text("လူနာအချက်အလက် ပြင်ဆင်ရန် (Edit Patient Info)", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = SlateDark) },
+      text = {
+        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          OutlinedTextField(
+            value = tempName,
+            onValueChange = { tempName = it },
+            label = { Text("လူနာအမည် (Patient Name)", fontSize = 10.5.sp) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+          )
+          Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            OutlinedTextField(
+              value = tempAge,
+              onValueChange = { tempAge = it },
+              label = { Text("အသက် (Age)", fontSize = 10.5.sp) },
+              singleLine = true,
+              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+              modifier = Modifier.weight(1f)
+            )
+            Row(modifier = Modifier.weight(1.3f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+              FilterChip(
+                selected = tempGender == Gender.MALE,
+                onClick = { tempGender = Gender.MALE },
+                label = { Text("ကျား", fontSize = 10.sp) },
+                modifier = Modifier.height(32.dp)
+              )
+              FilterChip(
+                selected = tempGender == Gender.FEMALE,
+                onClick = { tempGender = Gender.FEMALE },
+                label = { Text("မ", fontSize = 10.sp) },
+                modifier = Modifier.height(32.dp)
+              )
+            }
+          }
+          OutlinedTextField(
+            value = tempPhone,
+            onValueChange = { tempPhone = it },
+            label = { Text("ဖုန်းနံပါတ် (Phone Number)", fontSize = 10.5.sp) },
+            placeholder = { Text("09xxxxxxxxx", fontSize = 10.5.sp, color = SlateMuted) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+            modifier = Modifier.fillMaxWidth()
+          )
+          OutlinedTextField(
+            value = tempAddress,
+            onValueChange = { tempAddress = it },
+            label = { Text("နေရပ်လိပ်စာ (Address)", fontSize = 10.5.sp) },
+            placeholder = { Text("မြို့နယ် / လိပ်စာအပြည့်အစုံ", fontSize = 10.5.sp, color = SlateMuted) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+          )
+        }
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            val parsedAge = tempAge.trim().toIntOrNull() ?: order.patientAge
+            onUpdatePatientInfo(tempName.trim(), parsedAge, tempGender, tempPhone.trim(), tempAddress.trim())
+            showEditPatientModal = false
+          },
+          colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7))
+        ) {
+          Text("သိမ်းဆည်းမည် (Save)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { showEditPatientModal = false }) {
+          Text("ပယ်ဖျက် (Cancel)", fontSize = 11.sp, color = SlateMedium)
+        }
+      }
+    )
+  }
 }
 
 // -------------------------------------------------------------
@@ -1033,11 +1150,13 @@ fun MobileLabCompletedResultCard(
   onPrintVoucher: () -> Unit,
   onEditResults: () -> Unit,
   onAttachSlipImage: (String) -> Unit,
+  onUpdatePatientInfo: (String, Int, Gender, String, String) -> Unit = { _, _, _, _, _ -> },
   onDeleteOrder: () -> Unit = {}
 ) {
   val context = LocalContext.current
   var isExpanded by remember { mutableStateOf(false) }
   var showMenu by remember { mutableStateOf(false) }
+  var showEditPatientModal by remember { mutableStateOf(false) }
 
   val photoLauncher = rememberLauncherForActivityResult(
     contract = ActivityResultContracts.GetContent()
@@ -1049,18 +1168,20 @@ fun MobileLabCompletedResultCard(
   }
 
   Surface(
-    shape = RoundedCornerShape(8.dp),
+    shape = RoundedCornerShape(10.dp),
     color = PureWhite,
     border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+    shadowElevation = 0.5.dp,
     modifier = Modifier.fillMaxWidth().animateContentSize()
   ) {
     Column(modifier = Modifier.padding(10.dp)) {
-      // Header
+      // Row 1: Header - Patient Name & HN (Left) + Lab No & Completed Badge (Right)
       Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
       ) {
+        // Patient Name & HN Tag
         Row(
           verticalAlignment = Alignment.CenterVertically,
           modifier = Modifier.weight(1f)
@@ -1076,135 +1197,122 @@ fun MobileLabCompletedResultCard(
           Spacer(modifier = Modifier.width(6.dp))
           Surface(
             shape = RoundedCornerShape(3.dp),
+            color = if (order.patientHn.startsWith("WALK-IN")) Color(0xFFEFF6FF) else Color(0xFFF1F5F9),
+            border = BorderStroke(0.6.dp, Color(0xFFCBD5E1))
+          ) {
+            Text(
+              order.patientHn,
+              fontSize = 9.sp,
+              fontWeight = FontWeight.SemiBold,
+              color = if (order.patientHn.startsWith("WALK-IN")) Color(0xFF1D4ED8) else SlateDark,
+              modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+            )
+          }
+        }
+
+        // Lab No & Completed Badge
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+          Surface(
+            shape = RoundedCornerShape(4.dp),
+            color = Color(0xFFF0F9FF),
+            border = BorderStroke(0.5.dp, Color(0xFFBAE6FD))
+          ) {
+            Text(
+              order.orderNumber,
+              fontSize = 9.sp,
+              fontWeight = FontWeight.Bold,
+              color = Color(0xFF0284C7),
+              modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
+            )
+          }
+
+          Surface(
+            shape = RoundedCornerShape(4.dp),
             color = Color(0xFFDCFCE7),
-            border = BorderStroke(0.6.dp, Color(0xFF86EFAC))
+            border = BorderStroke(0.5.dp, Color(0xFF86EFAC))
           ) {
             Text(
               "ပြီးစီး",
               fontSize = 9.sp,
               fontWeight = FontWeight.Bold,
               color = Color(0xFF16A34A),
-              modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+              modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
             )
-          }
-        }
-
-        // Actions
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-          Button(
-            onClick = onPrintFullReport,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
-            shape = RoundedCornerShape(6.dp),
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-            modifier = Modifier.height(30.dp)
-          ) {
-            Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(12.dp))
-            Spacer(modifier = Modifier.width(3.dp))
-            Text("📄 A4 / PDF Print", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-          }
-
-          Button(
-            onClick = onPrintVoucher,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
-            shape = RoundedCornerShape(6.dp),
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-            modifier = Modifier.height(30.dp)
-          ) {
-            Icon(Icons.Default.Receipt, contentDescription = null, modifier = Modifier.size(12.dp))
-            Spacer(modifier = Modifier.width(3.dp))
-            Text("ဘောင်ချာ", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-          }
-
-          Box {
-            IconButton(
-              onClick = { showMenu = true },
-              modifier = Modifier.size(32.dp)
-            ) {
-              Icon(Icons.Default.MoreVert, contentDescription = "More", tint = SlateDark, modifier = Modifier.size(18.dp))
-            }
-
-            DropdownMenu(
-              expanded = showMenu,
-              onDismissRequest = { showMenu = false }
-            ) {
-              DropdownMenuItem(
-                text = { Text("📄 A4 Blank Letterhead ထုတ်ရန်", fontSize = 11.5.sp) },
-                onClick = {
-                  showMenu = false
-                  onPrintBlankLetterhead()
-                }
-              )
-              DropdownMenuItem(
-                text = { Text("🧾 Thermal ဘောင်ချာ ထုတ်ရန်", fontSize = 11.5.sp) },
-                onClick = {
-                  showMenu = false
-                  onPrintVoucher()
-                }
-              )
-              DropdownMenuItem(
-                text = { Text("✏️ အဖြေများ ပြန်လည်ပြင်ဆင်ရန်", fontSize = 11.5.sp) },
-                onClick = {
-                  showMenu = false
-                  onEditResults()
-                }
-              )
-              DropdownMenuItem(
-                text = { Text("🗑️ စစ်ဆေးမှု စာရင်းမှ ဖျက်မည်", fontSize = 11.5.sp, color = Color(0xFFDC2626)) },
-                onClick = {
-                  showMenu = false
-                  onDeleteOrder()
-                }
-              )
-            }
           }
         }
       }
 
+      Spacer(modifier = Modifier.height(4.dp))
+
+      // Row 2: Demographics, Ref Doctor & Order Date
       Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
       ) {
+        val genderStr = if (order.patientGender == Gender.MALE) "ကျား" else "မ"
         Text(
-          "HN: ${order.patientHn} • ${order.orderDate} • Ref. Dr: ${order.referringDoctorName.ifBlank { "Direct / Self-request" }}",
+          "အသက် ${order.patientAge} ($genderStr) • Ref: ${order.referringDoctorName.ifBlank { "Direct" }}",
           fontSize = 10.sp,
+          color = Color(0xFF64748B),
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+          modifier = Modifier.weight(1f)
+        )
+        Text(
+          order.orderDate,
+          fontSize = 9.5.sp,
           color = SlateMuted
         )
-        Surface(
-          shape = RoundedCornerShape(4.dp),
-          color = Color(0xFFF1F5F9),
-          border = BorderStroke(0.5.dp, Color(0xFFCBD5E1))
+      }
+
+      // Row 3: Contact Info (Phone & Address) with clickable edit shortcut
+      val hasPhone = order.patientPhone.isNotBlank()
+      val hasAddress = order.patientAddress.isNotBlank()
+      if (hasPhone || hasAddress) {
+        Spacer(modifier = Modifier.height(2.dp))
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(4.dp))
+            .clickable { showEditPatientModal = true }
+            .padding(vertical = 1.dp),
+          verticalAlignment = Alignment.CenterVertically
         ) {
+          val contactParts = listOfNotNull(
+            order.patientPhone.takeIf { it.isNotBlank() }?.let { "📞 $it" },
+            order.patientAddress.takeIf { it.isNotBlank() }?.let { "🏠 $it" }
+          ).joinToString("  •  ")
           Text(
-            "🔬 Lab No: ${order.orderNumber}",
+            contactParts,
             fontSize = 9.5.sp,
-            fontWeight = FontWeight.Bold,
             color = Color(0xFF0369A1),
-            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+          )
+          Icon(
+            Icons.Default.Edit,
+            contentDescription = "Edit Contact",
+            tint = Color(0xFF0284C7),
+            modifier = Modifier.size(11.dp)
           )
         }
       }
 
-      val completedContact = listOfNotNull(
-        order.patientPhone.takeIf { it.isNotBlank() }?.let { "📞 $it" },
-        order.patientAddress.takeIf { it.isNotBlank() }?.let { "🏠 $it" }
-      ).joinToString("  •  ")
-      if (completedContact.isNotBlank()) {
-        Text(
-          completedContact,
-          fontSize = 9.5.sp,
-          color = Color(0xFF0369A1),
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-          modifier = Modifier.padding(top = 2.dp)
-        )
-      }
-
       Spacer(modifier = Modifier.height(6.dp))
 
-      // Expand / Collapse Result Details Toggle
+      // Row 4: Expand / Collapse Result Details Toggle
       Row(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)).background(Color(0xFFF1F5F9)).clickable { isExpanded = !isExpanded }.padding(horizontal = 8.dp, vertical = 6.dp),
+        modifier = Modifier
+          .fillMaxWidth()
+          .clip(RoundedCornerShape(6.dp))
+          .background(Color(0xFFF1F5F9))
+          .clickable { isExpanded = !isExpanded }
+          .padding(horizontal = 8.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
       ) {
@@ -1217,6 +1325,7 @@ fun MobileLabCompletedResultCard(
           overflow = TextOverflow.Ellipsis,
           modifier = Modifier.weight(1f)
         )
+        Spacer(modifier = Modifier.width(6.dp))
         Text(
           if (isExpanded) "ပိတ်ရန် ▲" else "အဖြေကြည့်ရန် ▼",
           fontSize = 10.5.sp,
@@ -1386,7 +1495,201 @@ fun MobileLabCompletedResultCard(
           }
         }
       }
+
+      Spacer(modifier = Modifier.height(8.dp))
+      HorizontalDivider(color = Color(0xFFF1F5F9))
+      Spacer(modifier = Modifier.height(6.dp))
+
+      // Row 5: Dedicated Bottom Mobile Action Bar
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        // 1. A4 Print
+        Button(
+          onClick = onPrintFullReport,
+          colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
+          shape = RoundedCornerShape(6.dp),
+          contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+          modifier = Modifier.weight(1.2f).height(32.dp)
+        ) {
+          Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(13.dp))
+          Spacer(modifier = Modifier.width(4.dp))
+          Text("A4 Report", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+        }
+
+        // 2. Edit Results & Patient Info (Prominent button right on card!)
+        FilledTonalButton(
+          onClick = onEditResults,
+          colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = Color(0xFFE0F2FE),
+            contentColor = Color(0xFF0369A1)
+          ),
+          shape = RoundedCornerShape(6.dp),
+          contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+          modifier = Modifier.weight(1.2f).height(32.dp)
+        ) {
+          Icon(Icons.Default.EditNote, contentDescription = null, modifier = Modifier.size(14.dp))
+          Spacer(modifier = Modifier.width(4.dp))
+          Text("အဖြေ/လူနာပြင်", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
+        }
+
+        // 3. Thermal Voucher
+        OutlinedButton(
+          onClick = onPrintVoucher,
+          shape = RoundedCornerShape(6.dp),
+          contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+          modifier = Modifier.weight(0.9f).height(32.dp),
+          border = BorderStroke(1.dp, Color(0xFF7C3AED)),
+          colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF7C3AED))
+        ) {
+          Icon(Icons.Default.Receipt, contentDescription = null, modifier = Modifier.size(12.dp))
+          Spacer(modifier = Modifier.width(3.dp))
+          Text("ဘောင်ချာ", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+        }
+
+        // 4. More Options Menu
+        Box {
+          IconButton(
+            onClick = { showMenu = true },
+            modifier = Modifier.size(32.dp)
+          ) {
+            Icon(Icons.Default.MoreVert, contentDescription = "More", tint = SlateDark, modifier = Modifier.size(18.dp))
+          }
+
+          DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false }
+          ) {
+            DropdownMenuItem(
+              leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF0284C7)) },
+              text = { Text("✏️ လူနာအချက်အလက် ပြင်ဆင်ရန်", fontSize = 11.5.sp) },
+              onClick = {
+                showMenu = false
+                showEditPatientModal = true
+              }
+            )
+            DropdownMenuItem(
+              leadingIcon = { Icon(Icons.Default.EditNote, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF0D9488)) },
+              text = { Text("📝 အဖြေများ ပြန်လည်ပြင်ဆင်ရန်", fontSize = 11.5.sp) },
+              onClick = {
+                showMenu = false
+                onEditResults()
+              }
+            )
+            DropdownMenuItem(
+              leadingIcon = { Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(16.dp), tint = SlateDark) },
+              text = { Text("📄 A4 Blank Letterhead ထုတ်ရန်", fontSize = 11.5.sp) },
+              onClick = {
+                showMenu = false
+                onPrintBlankLetterhead()
+              }
+            )
+            DropdownMenuItem(
+              leadingIcon = { Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF0D9488)) },
+              text = { Text("📷 စက်အဖြေပုံ / Slip တွဲစပ်ရန်", fontSize = 11.5.sp) },
+              onClick = {
+                showMenu = false
+                photoLauncher.launch("image/*")
+              }
+            )
+            HorizontalDivider()
+            DropdownMenuItem(
+              leadingIcon = { Icon(Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFFDC2626)) },
+              text = { Text("🗑️ စစ်ဆေးမှု စာရင်းမှ ဖျက်မည်", fontSize = 11.5.sp, color = Color(0xFFDC2626)) },
+              onClick = {
+                showMenu = false
+                onDeleteOrder()
+              }
+            )
+          }
+        }
+      }
     }
+  }
+
+  // Edit Patient Details Modal
+  if (showEditPatientModal) {
+    var tempName by remember(showEditPatientModal) { mutableStateOf(order.patientName) }
+    var tempAge by remember(showEditPatientModal) { mutableStateOf(order.patientAge.toString()) }
+    var tempGender by remember(showEditPatientModal) { mutableStateOf(order.patientGender) }
+    var tempPhone by remember(showEditPatientModal) { mutableStateOf(order.patientPhone) }
+    var tempAddress by remember(showEditPatientModal) { mutableStateOf(order.patientAddress) }
+
+    AlertDialog(
+      onDismissRequest = { showEditPatientModal = false },
+      title = { Text("လူနာအချက်အလက် ပြင်ဆင်ရန် (Edit Patient Info)", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = SlateDark) },
+      text = {
+        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          OutlinedTextField(
+            value = tempName,
+            onValueChange = { tempName = it },
+            label = { Text("လူနာအမည် (Patient Name)", fontSize = 10.5.sp) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+          )
+          Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            OutlinedTextField(
+              value = tempAge,
+              onValueChange = { tempAge = it },
+              label = { Text("အသက် (Age)", fontSize = 10.5.sp) },
+              singleLine = true,
+              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+              modifier = Modifier.weight(1f)
+            )
+            Row(modifier = Modifier.weight(1.3f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+              FilterChip(
+                selected = tempGender == Gender.MALE,
+                onClick = { tempGender = Gender.MALE },
+                label = { Text("ကျား", fontSize = 10.sp) },
+                modifier = Modifier.height(32.dp)
+              )
+              FilterChip(
+                selected = tempGender == Gender.FEMALE,
+                onClick = { tempGender = Gender.FEMALE },
+                label = { Text("မ", fontSize = 10.sp) },
+                modifier = Modifier.height(32.dp)
+              )
+            }
+          }
+          OutlinedTextField(
+            value = tempPhone,
+            onValueChange = { tempPhone = it },
+            label = { Text("ဖုန်းနံပါတ် (Phone Number)", fontSize = 10.5.sp) },
+            placeholder = { Text("09xxxxxxxxx", fontSize = 10.5.sp, color = SlateMuted) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+            modifier = Modifier.fillMaxWidth()
+          )
+          OutlinedTextField(
+            value = tempAddress,
+            onValueChange = { tempAddress = it },
+            label = { Text("နေရပ်လိပ်စာ (Address)", fontSize = 10.5.sp) },
+            placeholder = { Text("မြို့နယ် / လိပ်စာအပြည့်အစုံ", fontSize = 10.5.sp, color = SlateMuted) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+          )
+        }
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            val parsedAge = tempAge.trim().toIntOrNull() ?: order.patientAge
+            onUpdatePatientInfo(tempName.trim(), parsedAge, tempGender, tempPhone.trim(), tempAddress.trim())
+            showEditPatientModal = false
+          },
+          colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7))
+        ) {
+          Text("သိမ်းဆည်းမည် (Save)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { showEditPatientModal = false }) {
+          Text("ပယ်ဖျက် (Cancel)", fontSize = 11.sp, color = SlateMedium)
+        }
+      }
+    )
   }
 }
 
@@ -2564,42 +2867,95 @@ fun MobileLabResultEntryDialog(
       modifier = Modifier.fillMaxWidth(0.96f).fillMaxHeight(0.94f)
     ) {
       Column(modifier = Modifier.padding(14.dp)) {
-        // Sticky Header
+        // Sticky Header: Title + Close Button
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.SpaceBetween,
           verticalAlignment = Alignment.CenterVertically
         ) {
-          Column(modifier = Modifier.weight(1f)) {
-            Text("ဓာတ်ခွဲအဖြေ ထည့်သွင်းခြင်း", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = SlateDark)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-              Text("$patientNameEdit (${order.patientHn}) • ${order.orderNumber}", fontSize = 10.5.sp, color = SlateMuted)
-              Spacer(modifier = Modifier.width(6.dp))
-              Surface(
-                shape = RoundedCornerShape(4.dp),
-                color = Color(0xFFE0F2FE),
-                border = BorderStroke(0.5.dp, Color(0xFF38BDF8)),
-                modifier = Modifier.clickable { showEditPatientModal = true }
-              ) {
-                Text(
-                  "✏️ အချက်အလက် ပြင်ရန်",
-                  fontSize = 9.sp,
-                  fontWeight = FontWeight.Bold,
-                  color = Color(0xFF0369A1),
-                  modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                )
-              }
-            }
-            val resultContact = listOfNotNull(
-              patientPhoneEdit.takeIf { it.isNotBlank() }?.let { "📞 $it" },
-              patientAddressEdit.takeIf { it.isNotBlank() }?.let { "🏠 $it" }
-            ).joinToString("  •  ")
-            if (resultContact.isNotBlank()) {
-              Text(resultContact, fontSize = 9.5.sp, color = Color(0xFF0369A1))
-            }
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Science, contentDescription = null, tint = Color(0xFF0284C7), modifier = Modifier.size(19.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text("ဓာတ်ခွဲအဖြေ ရိုက်သွင်း/ပြင်ဆင်ခြင်း", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
           }
           IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
             Icon(Icons.Default.Close, contentDescription = "Close", modifier = Modifier.size(18.dp))
+          }
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Prominent Patient Info Card with Dedicated "✏️ အချက်အလက် ပြင်ရန်" Button
+        Surface(
+          shape = RoundedCornerShape(8.dp),
+          color = Color(0xFFF0F9FF),
+          border = BorderStroke(1.dp, Color(0xFFBAE6FD)),
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Column(modifier = Modifier.weight(1f)) {
+              Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                  patientNameEdit,
+                  fontSize = 13.sp,
+                  fontWeight = FontWeight.Bold,
+                  color = Color(0xFF0F172A),
+                  maxLines = 1,
+                  overflow = TextOverflow.Ellipsis
+                )
+                val gStr = if (patientGenderEdit == Gender.MALE) "ကျား" else "မ"
+                Surface(
+                  shape = RoundedCornerShape(3.dp),
+                  color = Color(0xFFE0F2FE)
+                ) {
+                  Text(
+                    "$gStr • ${patientAgeEdit} နှစ်",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF0284C7),
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                  )
+                }
+              }
+              Spacer(modifier = Modifier.height(2.dp))
+              Text(
+                "HN: ${order.patientHn} • Lab No: ${order.orderNumber}",
+                fontSize = 9.5.sp,
+                color = Color(0xFF64748B)
+              )
+              val resultContact = listOfNotNull(
+                patientPhoneEdit.takeIf { it.isNotBlank() }?.let { "📞 $it" },
+                patientAddressEdit.takeIf { it.isNotBlank() }?.let { "🏠 $it" }
+              ).joinToString("  •  ")
+              if (resultContact.isNotBlank()) {
+                Text(
+                  resultContact,
+                  fontSize = 9.5.sp,
+                  color = Color(0xFF0369A1),
+                  maxLines = 1,
+                  overflow = TextOverflow.Ellipsis
+                )
+              }
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Dedicated, prominent button to edit patient info
+            Button(
+              onClick = { showEditPatientModal = true },
+              colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
+              shape = RoundedCornerShape(6.dp),
+              contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+              modifier = Modifier.height(30.dp)
+            ) {
+              Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(11.dp))
+              Spacer(modifier = Modifier.width(3.dp))
+              Text("အချက်အလက် ပြင်ရန်", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            }
           }
         }
 
@@ -3148,11 +3504,11 @@ fun MobileLabResultEntryDialog(
 
   // Edit Patient Details Modal for Lab Order
   if (showEditPatientModal) {
-    var tempName by remember { mutableStateOf(patientNameEdit) }
-    var tempAge by remember { mutableStateOf(patientAgeEdit) }
-    var tempGender by remember { mutableStateOf(patientGenderEdit) }
-    var tempPhone by remember { mutableStateOf(patientPhoneEdit) }
-    var tempAddress by remember { mutableStateOf(patientAddressEdit) }
+    var tempName by remember(showEditPatientModal) { mutableStateOf(patientNameEdit) }
+    var tempAge by remember(showEditPatientModal) { mutableStateOf(patientAgeEdit) }
+    var tempGender by remember(showEditPatientModal) { mutableStateOf(patientGenderEdit) }
+    var tempPhone by remember(showEditPatientModal) { mutableStateOf(patientPhoneEdit) }
+    var tempAddress by remember(showEditPatientModal) { mutableStateOf(patientAddressEdit) }
 
     AlertDialog(
       onDismissRequest = { showEditPatientModal = false },

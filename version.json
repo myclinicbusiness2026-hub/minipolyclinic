@@ -1,12 +1,12 @@
 {
-  "versionCode": 76,
-  "versionName": "1.5.52",
+  "versionCode": 77,
+  "versionName": "1.5.53",
   "minSupportedVersion": 1,
-  "releaseNotes": "• Lab Reference Range Option 1: Clean demographic tag display (e.g. 13.0 - 17.5 (Male)) with zero underlines and automatic full-text fail-safe for unmatched ranges.\n• Lab Order Patient Demographics Editing: Ability to edit patient Name, Age, Gender, Phone, and Address in both New Lab Order and Result Entry dialogs, removing hardcoded Mandalay defaults.\n• Cross-Patient Lab Order Leak Bug Fix: Strict patient name and HN matching to prevent walk-in lab orders from leaking into other patients' EMR.\n• History Additional Remarks / Free Text Pop-up: Full-screen expandable dialog for clinical history additional remarks with auto-sync.",
-  "releaseNotesMm": "• ဓာတ်ခွဲခန်း Reference Range အား Option 1 ပုံစံဖြင့် သပ်ရပ်စွာ ပြသခြင်း: အောက်ခံမျဉ်းတား (Underline) များအား ဖယ်ရှားပြီး လူနာ၏ ကျား/မ/အသက်အရွယ်နှင့် ကိုက်ညီသော စံနှုန်းတန်ဖိုးကို (Male), (Female), (Child) ဟူသော Tag ဖြင့် သပ်ရပ်သန့်ရှင်းစွာ ဖော်ပြခြင်းနှင့် စံနှုန်းခွဲခြားမရသော စာသားများအတွက် မူလအတိုင်း ဖော်ပြပေးသော Fail-safe ပါဝင်ခြင်း\n• သွေးစစ်လူနာ အချက်အလက် (ဖုန်း၊ လိပ်စာ) ပြင်ဆင်နိုင်ခြင်း & မန္တလေးမြို့ Default ဖြုတ်ခြင်း: Lab Order အသစ်သွင်းရာတွင်လည်းကောင်း၊ အဖြေရိုက်သွင်းရာတွင်လည်းကောင်း လူနာ၏ အမည်၊ အသက်၊ ကျား/မ၊ ဖုန်းနံပါတ်နှင့် လိပ်စာတို့ကို စိတ်ကြိုက် ပြင်ဆင်ရိုက်သွင်းနိုင်စေခြင်း\n• အခြားလူနာ၏ သွေးစစ်အဖြေများ EMR တွင် မှားယွင်းရောနှောပေါ်နေခြင်းအား အပြီးတိုင်ဖြေရှင်းခြင်း: Walk-in လူနာများနှင့် ဆေးခန်းလူနာများကြား သွေးစစ်အဖြေများ မှားယွင်းမရောနှောစေရန် Patient Name နှင့် HN တို့အား တိကျစွာ ခွဲခြားစစ်ဆေးခြင်း\n• ရောဂါရာဇဝင် အောက်ဆုံး Free Text / Additional Remarks အား Pop-up ဖြင့် အကျယ်ချဲ့ရေးနိုင်ခြင်း: ရောဂါရာဇဝင်၏ အောက်ဆုံးရှိ Additional Remarks အကွက်ကို Pop-up အကြီးချဲ့၍ အသေးစိတ် အလွယ်တကူ ရိုက်ထည့်သိမ်းဆည်းနိုင်စေခြင်း",
+  "releaseNotes": "• Lab Results Tab Mobile UI Modernization: Redesigned completed lab result cards with compact patient headers, uncluttered demographics and contact pills, and a dedicated bottom action bar (A4 Report, Edit Results/Patient Info, Voucher, and More options menu).\n• Direct Patient Demographics Editing: Added instant 'Edit Patient Info' dialog accessible directly from result and queue cards, plus a prominent, unclipped patient header banner with high-visibility edit button inside the result entry modal.",
+  "releaseNotesMm": "• Lab Results Tab အား ဖုန်းမျက်နှာပြင်နှင့် အထူးကိုက်ညီအောင် ခေတ်မီသပ်ရပ်စွာ ပြင်ဆင်ခြင်း: လူနာအမည်၊ HN၊ Lab No တို့ မကျပ်ညပ်စေဘဲ Card ပေါ်တွင် သန့်ရှင်းသပ်ရပ်စွာ နေရာချထားပြီး အောက်ခြေတွင် A4 Report၊ အဖြေ/လူနာပြင်၊ ဘောင်ချာ စသည့် Action ခလုတ်များကို လက်လှမ်းမီလွယ်ကူစွာ စီစဉ်ပေးထားခြင်း\n• လူနာအချက်အလက် (အမည်၊ အသက်၊ ကျား/မ၊ ဖုန်း၊ လိပ်စာ) အလွယ်တကူ ပြင်ဆင်နိုင်ခြင်း: Result Card ပေါ်မှ တိုက်ရိုက်ပြင်ဆင်နိုင်သည့်အပြင် အဖြေရိုက်သွင်းသည့် Dialog အတွင်း၌လည်း စာသားမကွယ်ဘဲ ထင်ရှားသော 'အချက်အလက် ပြင်ရန်' ခလုတ်ပါဝင်သော လူနာ Card အသစ် ထည့်သွင်းပေးထားခြင်း",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
-  "publishedAt": "2026-11-24",
-  "apkSizeBytes": 14949885,
+  "publishedAt": "2026-11-25",
+  "apkSizeBytes": 15015427,
   "commitSha": "HEAD",
-  "updatedAt": "2026-11-24T17:00:00.000Z"
+  "updatedAt": "2026-11-25T01:30:00.000Z"
 }
