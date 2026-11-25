@@ -2540,10 +2540,10 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       if (linkedCards.isNotEmpty()) {
         val ctxLocal = getApplication<Application>()
         val cardsToDelete = linkedCards.filter { c ->
-          c.consultationInvoiceId == invoiceId && (c.sessions.none { it.status == com.example.ui.screens.treatment.TreatmentStatus.COMPLETED } && c.completedSessionsCount == 0)
+          c.consultationInvoiceId == invoiceId && c.completedSessionsCount == 0
         }
         val cardsToDiscontinue = linkedCards.filter { c ->
-          c.consultationInvoiceId == invoiceId && (c.sessions.any { it.status == com.example.ui.screens.treatment.TreatmentStatus.COMPLETED } || c.completedSessionsCount > 0)
+          c.consultationInvoiceId == invoiceId && c.completedSessionsCount > 0
         }
 
         if (cardsToDelete.isNotEmpty()) {

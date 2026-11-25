@@ -289,16 +289,15 @@ fun FollowUpPatientDialog(
           label = { Text("Follow-up Complaint (ရိုက်ထည့်ရန် လိုအပ်ပါသည်) *") },
           placeholder = { Text("ယနေ့ ပြန်ပြရသည့် အကြောင်းရင်း/ရောဂါလက္ခဏာ...") },
           isError = followUpReason.isBlank(),
-          supportingText = {
-            if (followUpReason.isBlank()) {
-              Text("Follow-up complaint ရိုက်ထည့်ရန် လိုအပ်ပါသည်", fontSize = 10.sp, color = Color(0xFFDC2626))
-            }
-          },
           modifier = Modifier.fillMaxWidth(),
           singleLine = true,
           shape = RoundedCornerShape(6.dp),
           colors = clinicTextFieldColors()
         )
+        if (followUpReason.isBlank()) {
+          Spacer(modifier = Modifier.height(2.dp))
+          Text("Follow-up complaint ရိုက်ထည့်ရန် လိုအပ်ပါသည်", fontSize = 10.sp, color = Color(0xFFDC2626))
+        }
 
         // 3. Today's Vital Signs
         Text("3. Vital Signs Today", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = SlateDark)

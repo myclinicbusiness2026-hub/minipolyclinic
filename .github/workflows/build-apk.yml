@@ -38,7 +38,12 @@ jobs:
         run: chmod +x gradlew
 
       - name: Assemble Release APK
-        run: ./gradlew assembleRelease --stacktrace --info
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Show Error Logs on Failure
+        if: failure()
+        run: |
+          find app/build -type f \( -name "*.log" -o -name "*lint*.txt" -o -name "*output*.txt" \) -exec echo "=== {} ===" \; -exec head -n 100 {} \; || true
 
       - name: Upload Release APK Artifact
         uses: actions/upload-artifact@v4
