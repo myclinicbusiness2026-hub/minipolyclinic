@@ -528,6 +528,28 @@ fun AddTreatmentOrderModal(
                           if (med.standardDosage.isNotBlank()) {
                             dosage = med.standardDosage
                           }
+                          val lower = med.name.lowercase()
+                          if (instructions.isBlank()) {
+                            when {
+                              lower.contains("rabies") || lower.contains("tetanus") || lower.contains("toxoid") ||
+                              lower.contains("hep") || lower.contains("vaccine") || lower.contains("flu") -> {
+                                instructions = "Deltoid IM Stat (လက်မောင်း)"
+                                selectedRoute = TreatmentRoute.IM
+                              }
+                              lower.contains("depo") -> {
+                                instructions = "Deep IM Stat (Gluteal)"
+                                selectedRoute = TreatmentRoute.IM
+                              }
+                              lower.contains("ceftri") || lower.contains("roceph") -> {
+                                instructions = "Slow IV Push (over 3-5 mins)"
+                                selectedRoute = TreatmentRoute.IV_PUSH
+                              }
+                              lower.contains("todol") || lower.contains("tramadol") || lower.contains("ketorolac") -> {
+                                instructions = "Slow IV Push / IM"
+                                selectedRoute = TreatmentRoute.IV_PUSH
+                              }
+                            }
+                          }
                           searchQuery = ""
                         }
                         .padding(horizontal = 8.dp, vertical = 6.dp),
@@ -575,6 +597,64 @@ fun AddTreatmentOrderModal(
                 AssistChip(
                   onClick = { dosage = d },
                   label = { Text(d, fontSize = 9.5.sp) }
+                )
+              }
+            }
+
+            // အသုံး / ထိုးနည်းညွှန်ကြားချက် (Usage / Administration Instructions)
+            OutlinedTextField(
+              value = instructions,
+              onValueChange = { instructions = it },
+              label = { Text("အသုံး / ထိုးနည်းညွှန်ကြားချက် (Usage / Instructions)", fontSize = 11.sp) },
+              placeholder = { Text("ဥပမာ - Deltoid IM Stat (လက်မောင်းကြွက်သား) သို့မဟုတ် 1 Dose IM", fontSize = 10.sp) },
+              singleLine = true,
+              modifier = Modifier.fillMaxWidth(),
+              leadingIcon = {
+                Icon(Icons.Default.Medication, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(16.dp))
+              },
+              trailingIcon = {
+                if (instructions.isNotBlank()) {
+                  IconButton(onClick = { instructions = "" }, modifier = Modifier.size(20.dp)) {
+                    Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(14.dp))
+                  }
+                }
+              }
+            )
+
+            // Quick Usage & Route Chips
+            Text("အသုံး / ထိုးနည်း အမြန်ရွေးချယ်ရန် (Quick Usage & Route):", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = SlateDark)
+            Row(
+              modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+              horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+              val quickUsageList = listOf(
+                Triple("Deltoid IM (လက်မောင်း)", TreatmentRoute.IM, "Deltoid IM Stat"),
+                Triple("Deep IM (တင်ပါး)", TreatmentRoute.IM, "Deep IM Stat"),
+                Triple("Thigh IM (ပေါင်ရှေ့ဘေး)", TreatmentRoute.IM, "Anterolateral Thigh IM"),
+                Triple("SC Stat (အရေပြားအောက်)", TreatmentRoute.SC, "SC Stat (Subcutaneous)"),
+                Triple("ID Stat (အရေပြားတွင်း)", TreatmentRoute.CUSTOM, "Intradermal (ID) Stat"),
+                Triple("Slow IV Stat", TreatmentRoute.IV_INFUSION, "Slow IV Stat"),
+                Triple("IV Push Stat", TreatmentRoute.IV_PUSH, "IV Push Stat"),
+                Triple("1 Dose IM", TreatmentRoute.IM, "1 Dose IM"),
+                Triple("Booster Dose", TreatmentRoute.IM, "Booster Dose IM"),
+                Triple("1st Dose (Day 0)", TreatmentRoute.IM, "1st Dose (Day 0)"),
+                Triple("2nd Dose", TreatmentRoute.IM, "2nd Dose"),
+                Triple("3rd Dose", TreatmentRoute.IM, "3rd Dose")
+              )
+              quickUsageList.forEach { (label, route, text) ->
+                AssistChip(
+                  onClick = {
+                    instructions = text
+                    selectedRoute = route
+                    if (route == TreatmentRoute.CUSTOM) {
+                      customRouteText = "Intradermal (ID)"
+                    }
+                    frequency = "Stat"
+                    totalDaysText = "1"
+                  },
+                  label = { Text(label, fontSize = 9.sp) }
                 )
               }
             }
@@ -1104,7 +1184,7 @@ fun AddTreatmentOrderModal(
           OutlinedTextField(
             value = instructions,
             onValueChange = { instructions = it },
-            label = { Text("ဆေးထိုးညွှန်ကြားချက် (Special Instructions)", fontSize = 11.sp) },
+            label = { Text(if (!isCocktail) "အပိုဆောင်း ညွှန်ကြားချက် / မှတ်ချက် (Additional Remarks / Instructions)" else "ဆေးထိုးညွှန်ကြားချက် (Special Instructions / Drip Rate)", fontSize = 11.sp) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
           )
