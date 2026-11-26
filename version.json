@@ -1,12 +1,12 @@
 {
-  "versionCode": 82,
-  "versionName": "1.5.58",
+  "versionCode": 83,
+  "versionName": "1.5.59",
   "minSupportedVersion": 1,
-  "releaseNotes": "• Patient Address Mobile Consistency: Dedicated sub-line in Patient Queue and Consultation Banner ensures address is always visible on all mobile screens without horizontal clipping.\n• Follow-Up Complaint Mandatory Entry: Removed preset chips; follow-up complaint is now a mandatory text input before queuing.\n• Supabase Deleted Invoices Sync Fix: Deleted invoices are now properly tracked and removed during Supabase push & pull, preventing resurrection.\n• Treatment Card Cascade Protection: Voiding or deleting session invoices no longer cascades into deleting or discontinuing active treatment cards.\n• Vaccine EMR Record Persistence: Vaccine records are now automatically persisted and synced across peers.",
-  "releaseNotesMm": "• Patient Queue နှင့် Consultation Banner လူနာလိပ်စာ မိုဘိုင်းမျက်နှာပြင်တွင် အပြည့်အဝ ပေါ်လွင်စေခြင်း: စာလုံးများ ကွယ်မသွားစေရန် လိပ်စာအား သီးသန့် အောက်စာကြောင်းအဖြစ် ဖော်ပြပေးထားခြင်း\n• Follow-up စာရင်းသွင်းရာတွင် Complaint ရိုက်ထည့်ရန် မဖြစ်မနေ လိုအပ်စေခြင်း: Preset chip များကို ဖယ်ရှားပြီး Follow-up Complaint ကို ကိုယ်တိုင် မဖြစ်မနေ ရိုက်ထည့်ပြီးမှသာ Queue ထဲသို့ သွင်းနိုင်စေရန် ပြင်ဆင်ထားခြင်း\n• ဖျက်ထားသော Invoice များ Supabase မှ ပြန်မဝင်စေရန် ဖြေရှင်းခြင်း: Deleted Invoice ID များကို Supabase Push & Pull တွင် အပြည့်အဝ ချိတ်ဆက်ပြီး Cloud နှင့် ဖုန်းထဲမှ အလိုအလျောက် သန့်စင်ဖယ်ရှားပေးခြင်း\n• ဆေးထိုးကတ် မပျက်ပြယ်စေရန် ထိန်းသိမ်းခြင်း: Dose Invoice အား ဖျက်လိုက်သည့်အခါ ဆေးထိုးကတ်ပါ Discontinued / Deleted မဖြစ်စေဘဲ ဆက်လက်တည်ရှိစေခြင်း\n• EMR ကာကွယ်ဆေးမှတ်တမ်း အလိုအလျောက် သိမ်းဆည်းခြင်း: Vaccine Record များအား အမြဲတမ်း သိမ်းဆည်းမှုနှင့် Peer Sync ချိတ်ဆက်ထားရှိခြင်း",
+  "releaseNotes": "• Wound Dressing in Doctor Consultation Treatment Orders: Doctors can now directly prescribe daily or alternate-day wound dressings and suture removals alongside injections without needing to re-register the patient.\n• Dressing Quick Presets: Includes presets for Clean Dressing (5,000 Ks), Large / Infected Wound (7,000 Ks), Burn Dressing (7,000 Ks), and Stitch Off (5,000 Ks).\n• Flexible Treatment Scheduling: Added Alternate Day (QOD / တစ်ရက်ခြား) frequency and quick duration chips (1, 2, 3, 5, 7, 10 days).\n• Dressing Consumables Auto-Link: Conveniently search and add gauze, bandage, micropore, cotton, and povidone to the treatment order.",
+  "releaseNotesMm": "• ဆရာဝန် Consultation မှ ဒဏ်ရာဆေးထည့်ခြင်း (Wound Dressing) အော်ဒါ တိုက်ရိုက်ထည့်သွင်းနိုင်ခြင်း: ဆေးခန်းကောင်တာမှ လူနာအသစ်အနေနှင့် ပြန်သွင်းစရာမလိုဘဲ နေ့စဉ်ဆေးထိုးနှင့်အတူ နေ့စဉ် ဒဏ်ရာဆေးထည့်ခြင်း (Wound Dressing) နှင့် ချုပ်ရိုးဖြည်အော်ဒါများကို တစ်ပါတည်း ထည့်သွင်းနိုင်ခြင်း\n• ဒဏ်ရာဆေးထည့်မှု Presets များ: သာမန်ဒဏ်ရာဆေးထည့် (Clean Dressing - 5,000 Ks)၊ ပြည်တည်/ဒဏ်ရာကြီး (Infected/Large - 7,000 Ks)၊ မီးလောင်ဒဏ်ရာ (Burn - 7,000 Ks) နှင့် ချုပ်ရိုးဖြည် (Stitch Off - 5,000 Ks) များကို တစ်ချက်နှိပ်ရွေးချယ်နိုင်ခြင်း\n• ကုသမှုရက် ချိန်းဆိုမှုပုံစံများ: Alternate Day (တစ်ရက်ခြား) ကြိမ်နှုန်းနှင့် ရက်ပေါင်း (၁၊ ၂၊ ၃၊ ၅၊ ၇၊ ၁၀ ရက်) အမြန်ရွေးချယ်နိုင်ခြင်း\n• ဒဏ်ရာဆေးထည့်ပစ္စည်း အသုံးစာရင်း: Gauze, Plaster, Micropore, Cotton, Betadine ပစ္စည်းများကို လိုအပ်ပါက အသုံးစာရင်းထဲသို့ တစ်ပါတည်း ရှာဖွေတွဲဖက်ထည့်သွင်းနိုင်ခြင်း",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
-  "publishedAt": "2026-11-25",
+  "publishedAt": "2026-11-26",
   "apkSizeBytes": 15064673,
   "commitSha": "HEAD",
-  "updatedAt": "2026-11-25T14:26:00.000Z"
+  "updatedAt": "2026-11-26T10:45:00.000Z"
 }

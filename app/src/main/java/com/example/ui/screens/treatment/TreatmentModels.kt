@@ -249,6 +249,14 @@ object TreatmentCardFactory {
         val dateStr = dateFormat.format(cal.time)
         list.add(TreatmentSession(sessionNumber = 1, scheduledDate = dateStr, scheduledTime = "Immediate", medicationFee = medicationFee, sessionFee = sessionFee, consumables = consumables))
       }
+      frequency.contains("Alternate", ignoreCase = true) || frequency.contains("QOD", ignoreCase = true) || frequency.contains("တစ်ရက်ခြား", ignoreCase = true) -> {
+        // Alternate Day (every 2 days)
+        for (d in 1..days) {
+          val dateStr = dateFormat.format(cal.time)
+          list.add(TreatmentSession(sessionNumber = d, scheduledDate = dateStr, scheduledTime = "09:00 AM", medicationFee = medicationFee, sessionFee = sessionFee, consumables = consumables))
+          cal.add(Calendar.DAY_OF_YEAR, 2)
+        }
+      }
       else -> {
         // Daily
         for (d in 1..days) {
