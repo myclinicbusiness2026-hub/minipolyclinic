@@ -36,6 +36,7 @@ object ClinicDataPersistence {
   private const val KEY_LAB_ORDERS = "lab_orders_list"
   private const val KEY_LAB_TEMPLATES = "lab_templates_list"
   private const val KEY_LAB_INVOICES = "lab_invoices_list"
+  private const val KEY_AUDIT_LOGS = "audit_logs_list"
 
   private fun getPrefs(context: Context) =
     context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -2610,6 +2611,75 @@ object ClinicDataPersistence {
       list
     } catch (_: Exception) {
       emptyList()
+    }
+  }
+
+  // 12. Audit & Activity Logs Persistence
+  fun saveAuditLogs(context: Context, logs: List<AuditLogEntry>) {
+    val arr = JSONArray()
+    // Cap at most recent 2000 entries to prevent memory bloat
+    logs.take(2000).forEach { log ->
+      val obj = JSONObject().apply {
+        put("id", log.id)
+        put("timestamp", log.timestamp)
+        put("operatorName", log.operatorName)
+        put("operatorRole", log.operatorRole)
+        put("module", log.module)
+        put("actionType", log.actionType)
+        put("targetName", log.targetName)
+        put("quantityChange", log.quantityChange)
+        put("unitType", log.unitType)
+        put("costAmount", log.costAmount)
+        put("details", log.details)
+        put("reason", log.reason)
+        if (log.metadata.isNotEmpty()) {
+          val metaObj = JSONObject()
+          log.metadata.forEach { (k, v) -> metaObj.put(k, v) }
+          put("metadata", metaObj)
+        }
+      }
+      arr.put(obj)
+    }
+    getPrefs(context).edit().putString(KEY_AUDIT_LOGS, arr.toString()).apply()
+  }
+
+  fun loadAuditLogs(context: Context): List<AuditLogEntry>? {
+    val str = getPrefs(context).getString(KEY_AUDIT_LOGS, null) ?: return null
+    return try {
+      val arr = JSONArray(str)
+      val list = mutableListOf<AuditLogEntry>()
+      for (i in 0 until arr.length()) {
+        val o = arr.getJSONObject(i)
+        val metaMap = mutableMapOf<String, String>()
+        val metaObj = o.optJSONObject("metadata")
+        if (metaObj != null) {
+          val keys = metaObj.keys()
+          while (keys.hasNext()) {
+            val key = keys.next()
+            metaMap[key] = metaObj.optString(key, "")
+          }
+        }
+        list.add(
+          AuditLogEntry(
+            id = o.optString("id", UUID.randomUUID().toString()),
+            timestamp = o.optLong("timestamp", System.currentTimeMillis()),
+            operatorName = o.optString("operatorName", "Staff"),
+            operatorRole = o.optString("operatorRole", "Staff"),
+            module = o.optString("module", AuditModule.PHARMACY.displayName),
+            actionType = o.optString("actionType", AuditActionType.WASTAGE_WRITE_OFF.displayName),
+            targetName = o.optString("targetName", ""),
+            quantityChange = o.optDouble("quantityChange", 0.0),
+            unitType = o.optString("unitType", ""),
+            costAmount = o.optDouble("costAmount", 0.0),
+            details = o.optString("details", ""),
+            reason = o.optString("reason", ""),
+            metadata = metaMap
+          )
+        )
+      }
+      list
+    } catch (_: Exception) {
+      null
     }
   }
 }

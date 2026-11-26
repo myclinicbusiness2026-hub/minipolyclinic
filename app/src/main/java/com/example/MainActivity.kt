@@ -96,7 +96,8 @@ val navDrawerItems = listOf(
   NavDrawerItem("Medical Records", "လူနာ ဆေးမှတ်တမ်းများ (Archive)", Icons.Default.FolderShared, 8, "RECORDS & OPERATIONS", { it.canAccessMedicalRecords }),
   NavDrawerItem("Procedures & Services", "ကုသမှုလုပ်ငန်းနှင့် အထူးဝန်ဆောင်ခများ (Procedures)", Icons.Default.MedicalInformation, 5, "RECORDS & OPERATIONS", { it.canAccessProcedures }),
   NavDrawerItem("Income & Expenses", "ဝင်ငွေ ထွက်ငွေ ဇယား (Ledger)", Icons.Default.AccountBalanceWallet, 7, "RECORDS & OPERATIONS", { it.canAccessFinancialLedger }),
-  NavDrawerItem("Inventory Master", "စတော့အချုပ် & တန်ဖိုးသတ်မှတ်ချက်", Icons.Default.Inventory2, 6, "RECORDS & OPERATIONS", { it.canAccessInventoryMaster })
+  NavDrawerItem("Inventory Master", "စတော့အချုပ် & တန်ဖိုးသတ်မှတ်ချက်", Icons.Default.Inventory2, 6, "RECORDS & OPERATIONS", { it.canAccessInventoryMaster }),
+  NavDrawerItem("Audit Logs", "လုပ်ငန်းမှတ်တမ်း & အပြောင်းအလဲများ", Icons.Default.HistoryEdu, 11, "RECORDS & OPERATIONS", { it.canAccessMedicalRecords || it.canManageUsers || it.canAccessFinancialLedger })
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -166,6 +167,7 @@ fun MiniPolyclinicMainApp(
       8 -> p.canAccessMedicalRecords
       9 -> p.canAccessTreatment
       10 -> p.canAccessLab
+      11 -> p.canAccessMedicalRecords || p.canManageUsers || p.canAccessFinancialLedger
       else -> false
     }
   }
@@ -861,6 +863,11 @@ fun MiniPolyclinicMainApp(
             LabInvestigationScreen(
               viewModel = clinicViewModel,
               onNavigateBack = { safeNavigateToTab(0) }
+            )
+          }
+          11 -> {
+            AuditLogsScreen(
+              viewModel = clinicViewModel
             )
           }
         }

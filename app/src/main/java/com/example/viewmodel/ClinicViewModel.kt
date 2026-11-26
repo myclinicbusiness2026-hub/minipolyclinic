@@ -94,6 +94,9 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   private val _labInvoices = MutableStateFlow<List<LabInvoice>>(emptyList())
   val labInvoices: StateFlow<List<LabInvoice>> = _labInvoices.asStateFlow()
 
+  private val _auditLogs = MutableStateFlow<List<AuditLogEntry>>(emptyList())
+  val auditLogs: StateFlow<List<AuditLogEntry>> = _auditLogs.asStateFlow()
+
   private val _activePreviewRecord = MutableStateFlow<ConsultationRecord?>(null)
   val activePreviewRecord: StateFlow<ConsultationRecord?> = _activePreviewRecord.asStateFlow()
 
@@ -219,6 +222,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     _invoices.value = (ClinicDataPersistence.loadInvoices(ctx) ?: ClinicInitialDataSeeder.getSeedInvoices())
       .filter { !deletedInvoices.contains(it.id) && !deletedPatients.contains(it.patientId) }
     _expenses.value = ClinicDataPersistence.loadExpenses(ctx) ?: ClinicInitialDataSeeder.getSeedExpenses()
+    _auditLogs.value = ClinicDataPersistence.loadAuditLogs(ctx) ?: emptyList()
     _vaccines.value = ClinicDataPersistence.loadVaccines(ctx) ?: ClinicInitialDataSeeder.getSeedVaccines()
     val loadedSuppliers = ClinicDataPersistence.loadSuppliers(ctx) ?: ClinicInitialDataSeeder.getSeedSuppliers()
     val cleanedSuppliers = loadedSuppliers.filterNot { 
@@ -3582,10 +3586,59 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       )
     }
 
+    if (actualDeducted > 0.0) {
+      val operator = _currentUser.value?.fullName?.ifBlank { null } ?: _currentUser.value?.username ?: "Staff"
+      val role = _currentUser.value?.role?.name ?: "Staff"
+      logAudit(
+        operatorName = operator,
+        operatorRole = role,
+        module = com.example.model.AuditModule.PHARMACY.displayName,
+        actionType = com.example.model.AuditActionType.WASTAGE_WRITE_OFF.displayName,
+        targetName = "${med.name} (${med.genericName})",
+        quantityChange = actualDeducted,
+        unitType = med.unitType,
+        costAmount = totalCostDeducted,
+        details = "ဆေးဝါးအသုံး/အလေအလွင့် စာရင်းနှုတ်ခြင်း: $qtyDisplay ${med.unitType} (ဝယ်ရင်းတန်ဖိုး စုစုပေါင်း: ${totalCostDeducted.toInt()} Ks)",
+        reason = reason.trim()
+      )
+    }
+
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
     }
     return true
+  }
+
+  fun logAudit(
+    operatorName: String,
+    operatorRole: String = "Staff",
+    module: String,
+    actionType: String,
+    targetName: String,
+    quantityChange: Double = 0.0,
+    unitType: String = "",
+    costAmount: Double = 0.0,
+    details: String = "",
+    reason: String = "",
+    metadata: Map<String, String> = emptyMap()
+  ) {
+    val ctx = getApplication<Application>()
+    val entry = AuditLogEntry(
+      operatorName = operatorName,
+      operatorRole = operatorRole,
+      module = module,
+      actionType = actionType,
+      targetName = targetName,
+      quantityChange = quantityChange,
+      unitType = unitType,
+      costAmount = costAmount,
+      details = details,
+      reason = reason,
+      metadata = metadata
+    )
+    val updated = listOf(entry) + _auditLogs.value
+    _auditLogs.value = updated
+    ClinicDataPersistence.saveAuditLogs(ctx, updated)
   }
 
   fun deleteMedicine(medicineId: String) {

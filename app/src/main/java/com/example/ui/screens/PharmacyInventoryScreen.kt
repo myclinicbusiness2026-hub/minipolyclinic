@@ -2442,11 +2442,18 @@ fun MedicineWastageDialog(
   onDismiss: () -> Unit,
   onConfirm: (quantity: Double, reason: String) -> Unit
 ) {
-  var quantityText by remember { mutableStateOf("0.5") }
-  var reasonText by remember { mutableStateOf("ရက်ကြာ/အသုံးမကုန် လေလွင့်စွန့်ပစ်") }
-  val quickQtyPresets = listOf("0.5", "1", "2", "3")
+  var quantityText by remember { mutableStateOf("1") }
+  var reasonText by remember { mutableStateOf("") }
+  val quickQtyPresets = listOf("0.5", "1", "2", "3", "5")
+  val reasonPresets = listOf(
+    "ပုလင်းကွဲ/ပျက်စီး (Breakage)",
+    "ရက်လွန်စွန့်ပစ် (Expired)",
+    "ဆေးခန်းတွင်းသုံး (Clinic Use)",
+    "Test Dose စမ်းသပ်ထိုးနှံခြင်း"
+  )
   val parsedQty = quantityText.toDoubleOrNull() ?: 0.0
   val estimatedCost = parsedQty * medicine.latestCostPrice
+  val isReasonValid = reasonText.trim().length >= 3
 
   AlertDialog(
     onDismissRequest = onDismiss,
@@ -2545,24 +2552,65 @@ fun MedicineWastageDialog(
           }
         }
 
+        Text("နှုတ်ရသည့် အကြောင်းပြချက်/မှတ်ချက် (Reason) * မဖြစ်မနေ လိုအပ်ပါသည်:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGrayText)
+
+        // Quick Reason Presets
+        Row(
+          modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+          horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+          reasonPresets.forEach { preset ->
+            val isSel = reasonText == preset
+            FilterChip(
+              selected = isSel,
+              onClick = { reasonText = preset },
+              label = { Text(preset, fontSize = 9.5.sp) },
+              colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = Color(0xFFD97706),
+                selectedLabelColor = PureWhite
+              )
+            )
+          }
+        }
+
         OutlinedTextField(
           value = reasonText,
           onValueChange = { reasonText = it },
-          label = { Text("နှုတ်ရသည့် အကြောင်းပြချက် (Reason)", fontSize = 11.sp) },
+          label = { Text("မှတ်ချက် ရိုက်ထည့်ရန် (Remark) *", fontSize = 11.sp) },
+          placeholder = { Text("ဥပမာ - ပုလင်းကွဲသွားခြင်း၊ ရက်လွန်စွန့်ပစ်ခြင်း", fontSize = 10.sp) },
           modifier = Modifier.fillMaxWidth(),
           shape = RoundedCornerShape(6.dp),
-          singleLine = true
+          singleLine = true,
+          isError = !isReasonValid && reasonText.isNotBlank()
         )
+
+        // Validation Helper Text
+        if (!isReasonValid) {
+          Text(
+            if (reasonText.isBlank()) "* စာရင်းနှုတ်ရသည့် အကြောင်းပြချက်/မှတ်ချက်အား မဖြစ်မနေ ရိုက်ထည့်ပေးပါ (အနည်းဆုံး ၃ လုံး) *"
+            else "* မှတ်ချက် အနည်းဆုံး ၃ လုံး ရိုက်ထည့်ပေးပါ *",
+            color = Color(0xFFDC2626),
+            fontSize = 9.5.sp,
+            fontWeight = FontWeight.Medium
+          )
+        } else {
+          Text(
+            "✓ မှတ်ချက် ပြည့်စုံပါသည် (Audit Log သို့ မှတ်တမ်းဝင်ပါမည်)",
+            color = Color(0xFF047857),
+            fontSize = 9.5.sp,
+            fontWeight = FontWeight.Medium
+          )
+        }
       }
     },
     confirmButton = {
       Button(
         onClick = {
-          if (parsedQty > 0.0) {
+          if (parsedQty > 0.0 && isReasonValid) {
             onConfirm(parsedQty, reasonText.trim())
           }
         },
-        enabled = parsedQty > 0.0 && parsedQty <= medicine.totalStock,
+        enabled = parsedQty > 0.0 && parsedQty <= medicine.totalStock && isReasonValid,
         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)),
         shape = RoundedCornerShape(6.dp)
       ) {
