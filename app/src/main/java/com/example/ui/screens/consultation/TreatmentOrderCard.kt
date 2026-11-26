@@ -29,9 +29,12 @@ import com.example.model.ClinicSettings
 import com.example.model.Medicine
 import com.example.model.Patient
 import com.example.ui.screens.treatment.CocktailDrugItem
+import com.example.ui.screens.treatment.DRESSING_PRESETS
+import com.example.ui.screens.treatment.NEBULIZATION_PRESETS
 import com.example.ui.screens.treatment.TreatmentCard
 import com.example.ui.screens.treatment.TreatmentCardFactory
 import com.example.ui.screens.treatment.TreatmentConsumable
+import com.example.ui.screens.treatment.TreatmentOrderMode
 import com.example.ui.screens.treatment.TreatmentRoute
 import com.example.ui.theme.*
 import java.text.NumberFormat
@@ -148,7 +151,7 @@ fun TreatmentOrderCard(
                     })
                   ) {
                     Text(
-                      if (card.route == TreatmentRoute.DRESSING) "Dressing" else card.routeDisplay.split(" ").first(),
+                      if (card.route == TreatmentRoute.DRESSING) "Dressing" else if (card.route == TreatmentRoute.NEBULIZATION) "Nebulization" else card.routeDisplay.split(" ").first(),
                       fontSize = 9.sp,
                       fontWeight = FontWeight.Bold,
                       color = when (card.route) {
@@ -237,72 +240,7 @@ fun TreatmentOrderCard(
   }
 }
 
-/**
- * Mode selector for treatment order: Single drug, Cocktail mix, or Wound dressing procedure
- */
-enum class TreatmentOrderMode {
-  SINGLE_DRUG,
-  COCKTAIL,
-  WOUND_DRESSING
-}
 
-private data class DressingQuickPreset(
-  val label: String,
-  val fullName: String,
-  val technique: String,
-  val fee: Double,
-  val frequency: String,
-  val days: Int,
-  val instructions: String
-)
-
-private val DRESSING_PRESETS = listOf(
-  DressingQuickPreset(
-    label = "Clean Dressing (5,000 Ks)",
-    fullName = "Regular Clean Dressing (ဒဏ်ရာဆေးထည့်)",
-    technique = "Aseptic Clean Dressing",
-    fee = 5000.0,
-    frequency = "Daily",
-    days = 3,
-    instructions = "Clean with Normal Saline & Povidone Iodine. Apply sterile gauze & micropore."
-  ),
-  DressingQuickPreset(
-    label = "Infected / Large Wound (7,000 Ks)",
-    fullName = "Infected / Large Wound Dressing (ပြည်တည်/ဒဏ်ရာကြီး)",
-    technique = "Antiseptic Pack & Dressing",
-    fee = 7000.0,
-    frequency = "Daily",
-    days = 5,
-    instructions = "Debridement if needed, clean with H2O2 / NS. Betadine pack & sterile bandage."
-  ),
-  DressingQuickPreset(
-    label = "Burn Dressing (7,000 Ks)",
-    fullName = "Burn Dressing (မီးလောင်ဒဏ်ရာ)",
-    technique = "Silver Sulphadiazine Dressing",
-    fee = 7000.0,
-    frequency = "Alternate Day",
-    days = 5,
-    instructions = "Clean with normal saline. Apply SSD cream and sterile dressing."
-  ),
-  DressingQuickPreset(
-    label = "Suture Removal / Stitch Off (5,000 Ks)",
-    fullName = "Suture Removal / Stitch Off (ချုပ်ရိုးဖြည်)",
-    technique = "Stitch Off & Dressing",
-    fee = 5000.0,
-    frequency = "Stat",
-    days = 1,
-    instructions = "Clean wound edges. Remove sutures aseptically and apply sterile strip/dressing."
-  ),
-  DressingQuickPreset(
-    label = "Minor Dressing (3,000 Ks)",
-    fullName = "Simple / Minor Dressing (ဒဏ်ရာအသေး)",
-    technique = "Minor Clean Dressing",
-    fee = 3000.0,
-    frequency = "Daily",
-    days = 2,
-    instructions = "Clean with antiseptic and apply sterile adhesive dressing."
-  )
-)
 
 /**
  * Modal dialog for doctor to configure and add a Day-Care Treatment Order (Injections, Drips, Wound Dressings) during consultation
@@ -321,6 +259,7 @@ fun AddTreatmentOrderModal(
   var orderMode by remember(initialCard) {
     mutableStateOf(
       when {
+        initialCard?.route == TreatmentRoute.NEBULIZATION -> TreatmentOrderMode.NEBULIZATION
         initialCard?.route == TreatmentRoute.DRESSING -> TreatmentOrderMode.WOUND_DRESSING
         initialCard?.isCocktail == true -> TreatmentOrderMode.COCKTAIL
         else -> TreatmentOrderMode.SINGLE_DRUG
@@ -460,13 +399,28 @@ fun AddTreatmentOrderModal(
               modifier = Modifier
                 .size(32.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .background(if (orderMode == TreatmentOrderMode.WOUND_DRESSING) Color(0xFFFEF3C7) else SoftGreenContainer),
+                .background(
+                  when (orderMode) {
+                    TreatmentOrderMode.WOUND_DRESSING -> Color(0xFFFEF3C7)
+                    TreatmentOrderMode.NEBULIZATION -> Color(0xFFFDF4FF)
+                    else -> SoftGreenContainer
+                  }
+                ),
               contentAlignment = Alignment.Center
             ) {
               Icon(
-                if (orderMode == TreatmentOrderMode.WOUND_DRESSING) Icons.Default.MedicalServices else Icons.Default.Vaccines,
+                when (orderMode) {
+                  TreatmentOrderMode.WOUND_DRESSING -> Icons.Default.MedicalServices
+                  TreatmentOrderMode.NEBULIZATION -> Icons.Default.Air
+                  TreatmentOrderMode.COCKTAIL -> Icons.Default.Science
+                  TreatmentOrderMode.SINGLE_DRUG -> Icons.Default.Vaccines
+                },
                 contentDescription = null,
-                tint = if (orderMode == TreatmentOrderMode.WOUND_DRESSING) Color(0xFFD97706) else MedicalGreenDark,
+                tint = when (orderMode) {
+                  TreatmentOrderMode.WOUND_DRESSING -> Color(0xFFD97706)
+                  TreatmentOrderMode.NEBULIZATION -> Color(0xFFC026D3)
+                  else -> MedicalGreenDark
+                },
                 modifier = Modifier.size(18.dp)
               )
             }
@@ -474,11 +428,19 @@ fun AddTreatmentOrderModal(
             Column {
               Text(
                 if (initialCard != null) {
-                  if (orderMode == TreatmentOrderMode.WOUND_DRESSING) "ဒဏ်ရာဆေးထည့်/ကုသမှု အော်ဒါ ပြင်ဆင်ရန် (Edit Dressing Order)"
-                  else "ဆေးထိုး/အကြောဆေး အော်ဒါ ပြင်ဆင်ရန် (Edit Injection Order)"
+                  when (orderMode) {
+                    TreatmentOrderMode.WOUND_DRESSING -> "ဒဏ်ရာဆေးထည့်/ကုသမှု အော်ဒါ ပြင်ဆင်ရန် (Edit Dressing Order)"
+                    TreatmentOrderMode.NEBULIZATION -> "အငွေ့ရှူကုသမှု အော်ဒါ ပြင်ဆင်ရန် (Edit Nebulization Order)"
+                    TreatmentOrderMode.COCKTAIL -> "Cocktail သွင်းဆေး ပြင်ဆင်ရန် (Edit Cocktail Order)"
+                    TreatmentOrderMode.SINGLE_DRUG -> "ဆေးထိုး/အကြောဆေး အော်ဒါ ပြင်ဆင်ရန် (Edit Injection Order)"
+                  }
                 } else {
-                  if (orderMode == TreatmentOrderMode.WOUND_DRESSING) "ဒဏ်ရာဆေးထည့်/ကုသမှု အော်ဒါ အသစ် (New Dressing Order)"
-                  else "ဆေးထိုး/အကြောဆေး အော်ဒါ (New Injection Order)"
+                  when (orderMode) {
+                    TreatmentOrderMode.WOUND_DRESSING -> "ဒဏ်ရာဆေးထည့်/ကုသမှု အော်ဒါ အသစ် (New Dressing Order)"
+                    TreatmentOrderMode.NEBULIZATION -> "အငွေ့ရှူကုသမှု အော်ဒါ အသစ် (New Nebulization Order)"
+                    TreatmentOrderMode.COCKTAIL -> "Cocktail / IV Mix အော်ဒါ (New Cocktail Order)"
+                    TreatmentOrderMode.SINGLE_DRUG -> "ဆေးထိုး/အကြောဆေး အော်ဒါ (New Injection Order)"
+                  }
                 },
                 fontSize = 13.5.sp,
                 fontWeight = FontWeight.Bold,
@@ -500,13 +462,13 @@ fun AddTreatmentOrderModal(
             .verticalScroll(rememberScrollState()),
           verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-          // 1. Order Type Mode Selector: Single Drug vs Cocktail Mix vs Wound Dressing
+          // 1. Order Type Mode Selector: Single Drug vs Cocktail Mix vs Wound Dressing vs Nebulization
           Surface(
             shape = RoundedCornerShape(8.dp),
             color = Color(0xFFF1F5F9),
             modifier = Modifier.fillMaxWidth()
           ) {
-            Row(modifier = Modifier.padding(3.dp)) {
+            Row(modifier = Modifier.padding(3.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
               Surface(
                 shape = RoundedCornerShape(6.dp),
                 color = if (orderMode == TreatmentOrderMode.SINGLE_DRUG) MedicalGreen else Color.Transparent,
@@ -515,9 +477,9 @@ fun AddTreatmentOrderModal(
                   .clickable {
                     orderMode = TreatmentOrderMode.SINGLE_DRUG
                     isCocktail = false
-                    if (selectedRoute == TreatmentRoute.DRESSING) selectedRoute = TreatmentRoute.IV_PUSH
+                    if (selectedRoute == TreatmentRoute.DRESSING || selectedRoute == TreatmentRoute.NEBULIZATION) selectedRoute = TreatmentRoute.IV_PUSH
                     sessionFeeText = selectedRoute.getDefaultFee(clinicSettings).toInt().toString()
-                    if (medicationName.contains("Dressing", ignoreCase = true) || medicationName.contains("Stitch", ignoreCase = true)) {
+                    if (medicationName.contains("Dressing", ignoreCase = true) || medicationName.contains("Stitch", ignoreCase = true) || medicationName.contains("Nebulization", ignoreCase = true)) {
                       medicationName = ""
                       dosage = ""
                     }
@@ -531,9 +493,9 @@ fun AddTreatmentOrderModal(
                   horizontalArrangement = Arrangement.Center,
                   verticalAlignment = Alignment.CenterVertically
                 ) {
-                  Icon(Icons.Default.Medication, contentDescription = null, modifier = Modifier.size(14.dp))
-                  Spacer(modifier = Modifier.width(3.dp))
-                  Text("Single Drug", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                  Icon(Icons.Default.Medication, contentDescription = null, modifier = Modifier.size(13.dp))
+                  Spacer(modifier = Modifier.width(2.dp))
+                  Text("Single Drug", fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                 }
               }
 
@@ -545,7 +507,7 @@ fun AddTreatmentOrderModal(
                   .clickable {
                     orderMode = TreatmentOrderMode.COCKTAIL
                     isCocktail = true
-                    if (selectedRoute == TreatmentRoute.IM || selectedRoute == TreatmentRoute.DRESSING) {
+                    if (selectedRoute == TreatmentRoute.IM || selectedRoute == TreatmentRoute.DRESSING || selectedRoute == TreatmentRoute.NEBULIZATION) {
                       selectedRoute = TreatmentRoute.IV_INFUSION
                     }
                     sessionFeeText = selectedRoute.getDefaultFee(clinicSettings).toInt().toString()
@@ -561,9 +523,9 @@ fun AddTreatmentOrderModal(
                   horizontalArrangement = Arrangement.Center,
                   verticalAlignment = Alignment.CenterVertically
                 ) {
-                  Icon(Icons.Default.Science, contentDescription = null, modifier = Modifier.size(14.dp))
-                  Spacer(modifier = Modifier.width(3.dp))
-                  Text("Cocktail / Mix", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                  Icon(Icons.Default.Science, contentDescription = null, modifier = Modifier.size(13.dp))
+                  Spacer(modifier = Modifier.width(2.dp))
+                  Text("Cocktail / Mix", fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                 }
               }
 
@@ -571,13 +533,13 @@ fun AddTreatmentOrderModal(
                 shape = RoundedCornerShape(6.dp),
                 color = if (orderMode == TreatmentOrderMode.WOUND_DRESSING) Color(0xFFD97706) else Color.Transparent,
                 modifier = Modifier
-                  .weight(1.1f)
+                  .weight(1.05f)
                   .clickable {
                     orderMode = TreatmentOrderMode.WOUND_DRESSING
                     isCocktail = false
                     selectedRoute = TreatmentRoute.DRESSING
                     sessionFeeText = "5000"
-                    if (medicationName.isBlank() || medicationName == "IV Cocktail Mix") {
+                    if (medicationName.isBlank() || medicationName == "IV Cocktail Mix" || medicationName.contains("Nebulization", ignoreCase = true)) {
                       medicationName = "Regular Clean Dressing (ဒဏ်ရာဆေးထည့်)"
                       dosage = "Aseptic Clean Dressing"
                       instructions = "Clean with Normal Saline & Povidone Iodine. Apply sterile gauze & micropore."
@@ -594,9 +556,40 @@ fun AddTreatmentOrderModal(
                   horizontalArrangement = Arrangement.Center,
                   verticalAlignment = Alignment.CenterVertically
                 ) {
-                  Icon(Icons.Default.MedicalServices, contentDescription = null, modifier = Modifier.size(14.dp))
-                  Spacer(modifier = Modifier.width(3.dp))
-                  Text("Wound Dressing", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                  Icon(Icons.Default.MedicalServices, contentDescription = null, modifier = Modifier.size(13.dp))
+                  Spacer(modifier = Modifier.width(2.dp))
+                  Text("Wound Dressing", fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                }
+              }
+
+              Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = if (orderMode == TreatmentOrderMode.NEBULIZATION) Color(0xFFC026D3) else Color.Transparent,
+                modifier = Modifier
+                  .weight(1.05f)
+                  .clickable {
+                    orderMode = TreatmentOrderMode.NEBULIZATION
+                    isCocktail = false
+                    selectedRoute = TreatmentRoute.NEBULIZATION
+                    sessionFeeText = "3000"
+                    if (medicationName.isBlank() || medicationName.contains("Dressing", ignoreCase = true) || medicationName == "IV Cocktail Mix") {
+                      medicationName = "Ventolin (Salbutamol) Nebulization"
+                      dosage = "2.5mg (1 neb)"
+                      instructions = "Nebulize with 2.5ml Salbutamol + 2ml Normal Saline over 10-15 mins."
+                    }
+                    if (!isPatientSupplied && medFeeText == "0") medFeeText = "2500"
+                  }
+                  .padding(vertical = 6.dp),
+                contentColor = if (orderMode == TreatmentOrderMode.NEBULIZATION) PureWhite else SlateMedium
+              ) {
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.Center,
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Icon(Icons.Default.Air, contentDescription = null, modifier = Modifier.size(13.dp))
+                  Spacer(modifier = Modifier.width(2.dp))
+                  Text("Nebulization", fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                 }
               }
             }
@@ -993,6 +986,101 @@ fun AddTreatmentOrderModal(
                     "ဒဏ်ရာဆေးထည့်ခြင်းအတွက် ဆေးဖိုး (Med Fee) မရှိပါ (0 Ks)။ ဝန်ဆောင်ခ (Service Fee) နှင့် လိုအပ်ပါက အောက်တွင် Gauze/Plaster အသုံးစာရင်း ထည့်သွင်းနိုင်ပါသည်",
                     fontSize = 9.5.sp,
                     color = Color(0xFF92400E)
+                  )
+                }
+              }
+            }
+
+            TreatmentOrderMode.NEBULIZATION -> {
+              // === Nebulization Presets & Configuration ===
+              Text("အမြန်ရွေးချယ်နိုင်သော အငွေ့ရှူကုသမှု ပုံစံများ (Nebulization Presets):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+
+              Row(
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+              ) {
+                NEBULIZATION_PRESETS.forEach { preset ->
+                  val isSelected = medicationName.contains(preset.fullName, ignoreCase = true) || medicationName == preset.fullName
+                  FilterChip(
+                    selected = isSelected,
+                    onClick = {
+                      medicationName = preset.fullName
+                      dosage = preset.dosage
+                      sessionFeeText = preset.fee.toInt().toString()
+                      frequency = preset.frequency
+                      totalDaysText = preset.days.toString()
+                      instructions = preset.instructions
+                      selectedRoute = TreatmentRoute.NEBULIZATION
+                      val matchedMed = medicines.find { 
+                        (it.name.contains("Ventolin", ignoreCase = true) && preset.medicineName.contains("Ventolin", ignoreCase = true)) ||
+                        (it.name.contains("Combivent", ignoreCase = true) && preset.medicineName.contains("Combivent", ignoreCase = true)) ||
+                        (it.name.contains("Pulmicort", ignoreCase = true) && preset.medicineName.contains("Pulmicort", ignoreCase = true)) ||
+                        (it.name.contains("Saline", ignoreCase = true) && preset.medicineName.contains("Saline", ignoreCase = true))
+                      }
+                      if (matchedMed != null && !isPatientSupplied) {
+                        selectedMedId = matchedMed.id
+                        medFeeText = matchedMed.sellingPrice.toInt().toString()
+                      } else if (!isPatientSupplied) {
+                        medFeeText = "2500"
+                      }
+                    },
+                    label = { Text(preset.label, fontSize = 10.sp) },
+                    colors = FilterChipDefaults.filterChipColors(
+                      selectedContainerColor = Color(0xFFC026D3),
+                      selectedLabelColor = PureWhite
+                    )
+                  )
+                }
+              }
+
+              // Nebulization Medication Name & Dosage Fields
+              Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                  value = medicationName,
+                  onValueChange = { medicationName = it },
+                  label = { Text("အငွေ့ရှူဆေး အမည် (Nebulizer Medication)", fontSize = 11.sp) },
+                  singleLine = true,
+                  modifier = Modifier.weight(1.3f)
+                )
+                OutlinedTextField(
+                  value = dosage,
+                  onValueChange = { dosage = it },
+                  label = { Text("ဆေးပမာဏ (Dosage e.g. 2.5mg / 1 neb)", fontSize = 11.sp) },
+                  singleLine = true,
+                  modifier = Modifier.weight(0.9f)
+                )
+              }
+
+              // Quick dosage chips
+              Row(
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+              ) {
+                listOf("1 nebule (2.5ml)", "1 respule + 2ml NS", "2 respules", "4-5ml NS only", "With O2 (6L/min)", "With Air Compressor").forEach { t ->
+                  AssistChip(
+                    onClick = { dosage = t },
+                    label = { Text(t, fontSize = 9.5.sp) }
+                  )
+                }
+              }
+
+              Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = Color(0xFFFAF5FF),
+                border = BorderStroke(1.dp, Color(0xFFF0ABFC)),
+                modifier = Modifier.fillMaxWidth()
+              ) {
+                Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                  Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFFC026D3), modifier = Modifier.size(16.dp))
+                  Spacer(modifier = Modifier.width(6.dp))
+                  Text(
+                    "အငွေ့ရှူကုသမှုအတွက် အငွေ့ရှူစက်ဝန်ဆောင်ခ (Nebulizer Fee) နှင့် ဆေးဖိုး (Respules) တွက်ချက်ပြီး လိုအပ်ပါက အောက်တွင် Nebulizer Mask / Tubing ပစ္စည်း ထည့်သွင်းနိုင်ပါသည်",
+                    fontSize = 9.5.sp,
+                    color = Color(0xFF86198F)
                   )
                 }
               }
@@ -1442,6 +1530,7 @@ fun AddTreatmentOrderModal(
           val canConfirm = when (orderMode) {
             TreatmentOrderMode.COCKTAIL -> cocktailTitle.isNotBlank() || cocktailItems.isNotEmpty()
             TreatmentOrderMode.WOUND_DRESSING -> medicationName.isNotBlank()
+            TreatmentOrderMode.NEBULIZATION -> medicationName.isNotBlank()
             TreatmentOrderMode.SINGLE_DRUG -> medicationName.isNotBlank()
           }
 
@@ -1456,6 +1545,7 @@ fun AddTreatmentOrderModal(
                   else "IV Cocktail Mix"
                 }
                 TreatmentOrderMode.WOUND_DRESSING -> medicationName.ifBlank { "Regular Clean Dressing (ဒဏ်ရာဆေးထည့်)" }
+                TreatmentOrderMode.NEBULIZATION -> medicationName.ifBlank { "Ventolin (Salbutamol) Nebulization" }
                 TreatmentOrderMode.SINGLE_DRUG -> medicationName
               }
               val finalDosage = when (orderMode) {
@@ -1464,6 +1554,7 @@ fun AddTreatmentOrderModal(
                   else "${cocktailItems.size} Drugs Mixed"
                 }
                 TreatmentOrderMode.WOUND_DRESSING -> dosage.ifBlank { "Aseptic Clean Dressing" }
+                TreatmentOrderMode.NEBULIZATION -> dosage.ifBlank { "1 session" }
                 TreatmentOrderMode.SINGLE_DRUG -> dosage
               }
 

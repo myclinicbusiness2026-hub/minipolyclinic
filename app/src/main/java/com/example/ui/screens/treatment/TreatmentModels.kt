@@ -398,3 +398,130 @@ object TreatmentCardFactory {
     )
   }
 }
+
+/**
+ * Clean 4-mode selector for Treatment Orders across Doctor Consultation and Nurse Counter:
+ * 1. Single drug injection (IV push, IM, SC)
+ * 2. Cocktail / IV mix (IV Infusion / Drip)
+ * 3. Wound dressing procedure (Minor, Major, Infected, Burn, Stitch off)
+ * 4. Nebulization therapy (Ventolin, Combivent, Pulmicort, Saline)
+ */
+enum class TreatmentOrderMode(val label: String, val burmeseLabel: String) {
+  SINGLE_DRUG("Single Drug", "ဆေး ၁ မျိုး"),
+  COCKTAIL("Cocktail / Mix", "တွဲဖက်ဆေး"),
+  WOUND_DRESSING("Wound Dressing", "ဒဏ်ရာဆေးထည့်"),
+  NEBULIZATION("Nebulization", "အငွေ့ရှူကုသ")
+}
+
+data class DressingQuickPreset(
+  val label: String,
+  val fullName: String,
+  val technique: String,
+  val fee: Double,
+  val frequency: String,
+  val days: Int,
+  val instructions: String
+)
+
+val DRESSING_PRESETS = listOf(
+  DressingQuickPreset(
+    label = "Clean Dressing (5,000 Ks)",
+    fullName = "Regular Clean Dressing (ဒဏ်ရာဆေးထည့်)",
+    technique = "Aseptic Clean Dressing",
+    fee = 5000.0,
+    frequency = "Daily",
+    days = 3,
+    instructions = "Clean with Normal Saline & Povidone Iodine. Apply sterile gauze & micropore."
+  ),
+  DressingQuickPreset(
+    label = "Infected / Large Wound (7,000 Ks)",
+    fullName = "Infected / Large Wound Dressing (ပြည်တည်/ဒဏ်ရာကြီး)",
+    technique = "Antiseptic Pack & Dressing",
+    fee = 7000.0,
+    frequency = "Daily",
+    days = 5,
+    instructions = "Debridement if needed, clean with H2O2 / NS. Betadine pack & sterile bandage."
+  ),
+  DressingQuickPreset(
+    label = "Burn Dressing (7,000 Ks)",
+    fullName = "Burn Dressing (မီးလောင်ဒဏ်ရာ)",
+    technique = "Silver Sulphadiazine Dressing",
+    fee = 7000.0,
+    frequency = "Alternate Day",
+    days = 5,
+    instructions = "Clean with normal saline. Apply SSD cream and sterile dressing."
+  ),
+  DressingQuickPreset(
+    label = "Suture Removal / Stitch Off (5,000 Ks)",
+    fullName = "Suture Removal / Stitch Off (ချုပ်ရိုးဖြည်)",
+    technique = "Stitch Off & Dressing",
+    fee = 5000.0,
+    frequency = "Stat",
+    days = 1,
+    instructions = "Clean wound edges. Remove sutures aseptically and apply sterile strip/dressing."
+  ),
+  DressingQuickPreset(
+    label = "Minor Dressing (3,000 Ks)",
+    fullName = "Simple / Minor Dressing (ဒဏ်ရာအသေး)",
+    technique = "Minor Clean Dressing",
+    fee = 3000.0,
+    frequency = "Daily",
+    days = 2,
+    instructions = "Clean with antiseptic and apply sterile adhesive dressing."
+  )
+)
+
+data class NebulizationQuickPreset(
+  val label: String,
+  val fullName: String,
+  val medicineName: String,
+  val dosage: String,
+  val fee: Double,
+  val frequency: String,
+  val days: Int,
+  val instructions: String
+)
+
+val NEBULIZATION_PRESETS = listOf(
+  NebulizationQuickPreset(
+    label = "Salbutamol / Ventolin (3,000 Ks)",
+    fullName = "Ventolin (Salbutamol) Nebulization",
+    medicineName = "Ventolin Respirator Solution / Respules (2.5mg)",
+    dosage = "2.5mg (1 neb)",
+    fee = 3000.0,
+    frequency = "Stat",
+    days = 1,
+    instructions = "Nebulize with 2.5ml Salbutamol + 2ml Normal Saline over 10-15 mins with oxygen/air."
+  ),
+  NebulizationQuickPreset(
+    label = "Combivent / Duolin (3,000 Ks)",
+    fullName = "Combivent (Ipratropium + Salbutamol) Nebulization",
+    medicineName = "Combivent / Duolin Respules",
+    dosage = "1 respule (2.5ml)",
+    fee = 3000.0,
+    frequency = "BD",
+    days = 2,
+    instructions = "Nebulize 1 respule over 10-15 mins. Monitor pulse and respiratory rate."
+  ),
+  NebulizationQuickPreset(
+    label = "Pulmicort (Budesonide) (4,000 Ks)",
+    fullName = "Pulmicort (Budesonide) Nebulization",
+    medicineName = "Pulmicort (Budesonide) Respules 0.5mg/2ml",
+    dosage = "0.5mg (1 respule)",
+    fee = 4000.0,
+    frequency = "BD",
+    days = 3,
+    instructions = "Nebulize 1 respule. Rinse mouth with water after nebulization."
+  ),
+  NebulizationQuickPreset(
+    label = "Normal Saline Inhalation (2,500 Ks)",
+    fullName = "Normal Saline 0.9% Moist Nebulization",
+    medicineName = "Normal Saline 0.9% Inhalation",
+    dosage = "4-5 ml",
+    fee = 2500.0,
+    frequency = "TDS",
+    days = 2,
+    instructions = "Moist inhalation with sterile normal saline to loosen phlegm."
+  )
+)
+

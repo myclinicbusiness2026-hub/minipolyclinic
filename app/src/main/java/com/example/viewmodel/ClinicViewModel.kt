@@ -3195,27 +3195,50 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       val existingInv = _invoices.value.find { it.id == card.consultationInvoiceId || it.id == session.invoiceId }
       invoice = existingInv
     } else if (invoiceItems.isNotEmpty()) {
-      val invId = "INV-TC-" + UUID.randomUUID().toString().take(8)
-      val invNo = "INV-" + (1000 + _invoices.value.size + 1)
-      val newInv = Invoice(
-        id = invId,
-        invoiceNumber = invNo,
-        patientId = card.patientId.ifBlank { "WALK-IN" },
-        patientName = card.patientName.ifBlank { "Treatment Patient" },
-        items = invoiceItems,
-        consultationFee = 0.0,
-        serviceFee = 0.0,
-        totalAmount = totalVisitCost,
-        paidAmount = 0.0,
-        paymentStatus = "Unpaid",
-        cashierName = "Pending Payment",
-        timestamp = BurmeseDateUtils.getNowFormatted()
-      )
-      val updatedInvoices = _invoices.value + newInv
-      _invoices.value = updatedInvoices
-      ClinicDataPersistence.saveInvoices(ctx, updatedInvoices)
-      deductInventoryForInvoice(newInv)
-      invoice = newInv
+      val todayDateOnly = BurmeseDateUtils.getNowFormatted().split(" ").firstOrNull() ?: ""
+      val existingUnpaidTodayInv = _invoices.value.find {
+        it.patientId.isNotBlank() &&
+        it.patientId == card.patientId &&
+        it.paymentStatus == "Unpaid" &&
+        it.id.startsWith("INV-TC-") &&
+        (todayDateOnly.isBlank() || it.timestamp.startsWith(todayDateOnly))
+      }
+
+      if (existingUnpaidTodayInv != null) {
+        val mergedItems = existingUnpaidTodayInv.items + invoiceItems
+        val mergedTotal = existingUnpaidTodayInv.totalAmount + totalVisitCost
+        val updatedInv = existingUnpaidTodayInv.copy(
+          items = mergedItems,
+          totalAmount = mergedTotal
+        )
+        val updatedInvoices = _invoices.value.map { if (it.id == existingUnpaidTodayInv.id) updatedInv else it }
+        _invoices.value = updatedInvoices
+        ClinicDataPersistence.saveInvoices(ctx, updatedInvoices)
+        deductInventoryForInvoice(Invoice(id = updatedInv.id, invoiceNumber = updatedInv.invoiceNumber, patientId = updatedInv.patientId, items = invoiceItems))
+        invoice = updatedInv
+      } else {
+        val invId = "INV-TC-" + UUID.randomUUID().toString().take(8)
+        val invNo = "INV-" + (1000 + _invoices.value.size + 1)
+        val newInv = Invoice(
+          id = invId,
+          invoiceNumber = invNo,
+          patientId = card.patientId.ifBlank { "WALK-IN" },
+          patientName = card.patientName.ifBlank { "Treatment Patient" },
+          items = invoiceItems,
+          consultationFee = 0.0,
+          serviceFee = 0.0,
+          totalAmount = totalVisitCost,
+          paidAmount = 0.0,
+          paymentStatus = "Unpaid",
+          cashierName = "Pending Payment",
+          timestamp = BurmeseDateUtils.getNowFormatted()
+        )
+        val updatedInvoices = _invoices.value + newInv
+        _invoices.value = updatedInvoices
+        ClinicDataPersistence.saveInvoices(ctx, updatedInvoices)
+        deductInventoryForInvoice(newInv)
+        invoice = newInv
+      }
     }
 
     // 3. Mark session COMPLETED
