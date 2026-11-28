@@ -1,12 +1,12 @@
 {
-  "versionCode": 86,
-  "versionName": "1.5.62",
+  "versionCode": 87,
+  "versionName": "1.5.63",
   "minSupportedVersion": 1,
-  "releaseNotes": "• Full Audit Logs & Cross-Device Sync: Audit logs now record Stock-In, Inventory Adjustments, Deletions, Patient Edits, Invoice Payments/Voids, Treatment Discontinuations, and Vaccine Records, and sync automatically across devices.\n• All-Module Notifications: Added instant alerts for Cashier & Invoices, Pharmacy Dispense, Treatment & Injections, Lab Investigation, and Patient Queue — including incoming Wi-Fi synced items.\n• Background Local Wi-Fi Sync Service: Added a persistent Foreground Service so devices on the same Wi-Fi stay synced even when the app is minimized or closed.\n• Dashboard 5-Category Breakdown: Split patient breakdown into New Consultation, Follow-up Consultation, Injection/Treatment Only, Pharmacy OTC, and Lab Direct (plus Burmese spelling fix 'ဦး').\n• Removed all default password/PIN hints for security.\n• Vaccination Follow-Up Trace Link: Linked Vaccination Tracker doses directly with Patient Follow-Up Due Dates and 8:30 AM reminders.",
-  "releaseNotesMm": "• Audit Logs အပြည့်အစုံနှင့် Sync ချိတ်ဆက်မှု: Stock-In၊ စတော့ပြင်ဆင်မှု၊ ဖျက်သိမ်းမှု၊ လူနာမှတ်တမ်းပြင်ဆင်မှု၊ ငွေရှင်း/ပြေစာပြင်ဆင်မှု၊ ကုသမှုရပ်ဆိုင်းမှုနှင့် ကာကွယ်ဆေးထိုးမှတ်တမ်းအားလုံး Audit Logs ထဲသို့ ဝင်ရောက်ပြီး စက်အချင်းချင်း အလိုအလျောက် Sync ဖြစ်စေခြင်း\n• ကဏ္ဍအားလုံးအတွက် Notifications: Cashier & Invoices၊ Pharmacy Dispense၊ Treatment & Injections၊ Lab Investigation နှင့် Patient Queue အားလုံးအတွက် Notification ချက်ချင်းပို့ပေးခြင်း (Wi-Fi Sync ဝင်လာချိန်တွင်ပါ အသိပေးခြင်း)\n• Background Local Wi-Fi Sync Service: App ကို ပိတ်ထား/Minimize လုပ်ထားလျှင်တောင် Same Wi-Fi ပေါ်တွင် Foreground Service ဖြင့် အလိုအလျောက် Sync ဆက်လက်လုပ်ဆောင်ပေးခြင်း\n• Dashboard လူနာအမျိုးအစား (၅) မျိုးခွဲခြင်း: ဆရာဝန်ပြ (New / Follow-up)၊ ဆေးလာထိုးသူ၊ ဆေးလာဝယ်သူ၊ ဓာတ်ခွဲခန်းသီးသန့် ဟူ၍ ခွဲခြားပြသခြင်းနှင့် 'ဦး' သတ်ပုံပြင်ဆင်ခြင်း\n• Security အတွက် Password/PIN Hint များအားလုံး ဖယ်ရှားခြင်း\n• Vaccination Follow-Up Trace: ကာကွယ်ဆေးထိုးမှတ်တမ်း (Vaccination Tracker) နှင့် Follow-Up ရက်ချိန်း Notification စနစ်ကို တိုက်ရိုက်ချိတ်ဆက်ပေးခြင်း",
+  "releaseNotes": "• Historical Audit Log Backfill: Automatically reconstructs past medicine wastage/clinic use write-offs (from Expense Ledger) and discontinued treatment cards into Audit Logs.",
+  "releaseNotesMm": "• ယခင် Audit Log မှတ်တမ်းဟောင်းများ ပြန်လည်ဖော်ထုတ်ပေးခြင်း (Auto-Backfill): အရင်က စာရင်းနှုတ်ထားခဲ့သော ဆေးဝါးအလေအလွင့်/အသုံး Expense များနှင့် ရပ်ဆိုင်းထားသော Treatment Card မှတ်တမ်းဟောင်းများကို Audit Logs Tab ထဲသို့ အလိုအလျောက် ပြန်လည်ဖော်ထုတ်ပြသပေးခြင်း",
   "downloadUrl": "https://raw.githubusercontent.com/myclinicbusiness2026-hub/minipolyclinic/main/ShweKhitClinic-debug.apk",
   "publishedAt": "2026-11-28",
   "apkSizeBytes": 15064673,
   "commitSha": "HEAD",
-  "updatedAt": "2026-11-28T13:10:00.000Z"
+  "updatedAt": "2026-11-28T13:20:00.000Z"
 }

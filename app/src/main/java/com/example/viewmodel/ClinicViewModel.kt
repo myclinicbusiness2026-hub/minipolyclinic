@@ -323,6 +323,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     if (cleanedCards.size != rawCards.size) {
       ClinicDataPersistence.saveTreatmentCards(ctx, cleanedCards)
     }
+    backfillHistoricalAuditLogs()
     draftConsultations.value = ClinicDataPersistence.loadDraftConsultations(ctx)
     clinicSettings.value = ClinicDataPersistence.loadClinicSettings(ctx)
 
@@ -3795,6 +3796,84 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val updated = listOf(entry) + _auditLogs.value
     _auditLogs.value = updated
     ClinicDataPersistence.saveAuditLogs(ctx, updated)
+  }
+
+  /**
+   * Idempotent backfill of historical wastage expenses and discontinued treatment cards
+   * into Audit Logs so past actions remain visible after upgrading.
+   */
+  private fun backfillHistoricalAuditLogs() {
+    val ctx = getApplication<Application>()
+    val existingIds = _auditLogs.value.map { it.id }.toSet()
+    val backfilled = mutableListOf<AuditLogEntry>()
+    val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+
+    // 1. Reconstruct historical Medicine Wastage / Clinic Use from Expense records
+    _expenses.value.forEach { exp ->
+      val isWastage = exp.title.contains("လေလွင့်") ||
+        exp.payee.contains("လေလွင့်") ||
+        exp.title.contains("Wastage", ignoreCase = true)
+      val bfId = "BACKFILL-EXP-${exp.id}"
+      if (isWastage && !existingIds.contains(bfId)) {
+        val ts = try {
+          sdfDate.parse(exp.date)?.time ?: System.currentTimeMillis()
+        } catch (_: Exception) {
+          System.currentTimeMillis()
+        }
+        val cleanTarget = exp.title
+          .removePrefix("ဆေးဝါးလေလွင့်/ဆေးခန်းအသုံး - ")
+          .trim()
+          .ifBlank { exp.title }
+        backfilled.add(
+          AuditLogEntry(
+            id = bfId,
+            timestamp = ts,
+            operatorName = exp.recordedBy.ifBlank { "Staff" },
+            operatorRole = "Pharmacy / Staff",
+            module = AuditModule.PHARMACY.displayName,
+            actionType = AuditActionType.WASTAGE_WRITE_OFF.displayName,
+            targetName = cleanTarget,
+            costAmount = exp.amount,
+            details = "ယခင် စာရင်းနှုတ်မှတ်တမ်း (Expense Ledger မှ ပြန်လည်ဖော်ထုတ်မှု)",
+            reason = exp.notes.ifBlank { "ဆေးဝါးအသုံး/အလေအလွင့် မှတ်တမ်းဟောင်း" }
+          )
+        )
+      }
+    }
+
+    // 2. Reconstruct historical Discontinued Treatment Cards
+    _treatmentCards.value.forEach { card ->
+      if (card.cardStatus == TreatmentStatus.DISCONTINUED) {
+        val bfId = "BACKFILL-TC-${card.id}"
+        if (!existingIds.contains(bfId)) {
+          val ts = try {
+            SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).parse(card.discontinuedAt)?.time
+              ?: System.currentTimeMillis()
+          } catch (_: Exception) {
+            System.currentTimeMillis()
+          }
+          backfilled.add(
+            AuditLogEntry(
+              id = bfId,
+              timestamp = ts,
+              operatorName = card.discontinuedBy.ifBlank { "Staff" },
+              operatorRole = "Clinical Staff",
+              module = AuditModule.TREATMENT.displayName,
+              actionType = AuditActionType.RECORD_DELETION.displayName,
+              targetName = "${card.patientName} - ${card.medicationName}",
+              details = "ကုသမှုကတ် ရပ်ဆိုင်းခြင်း (မှတ်တမ်းဟောင်း)",
+              reason = card.discontinueReason.ifBlank { "ကုသမှုရပ်ဆိုင်းခြင်း" }
+            )
+          )
+        }
+      }
+    }
+
+    if (backfilled.isNotEmpty()) {
+      val merged = (_auditLogs.value + backfilled).sortedByDescending { it.timestamp }
+      _auditLogs.value = merged
+      ClinicDataPersistence.saveAuditLogs(ctx, merged)
+    }
   }
 
   fun deleteMedicine(medicineId: String) {
