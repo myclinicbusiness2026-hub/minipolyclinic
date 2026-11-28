@@ -107,7 +107,7 @@ fun DashboardScreen(
       val consCount = dayCons.size
       val treatmentOnlyCount = treatmentCards
         .filter { card ->
-          card.sessions.any { it.administeredAt.startsWith(dateKey) } &&
+          card.sessions.any { it.administeredAt?.startsWith(dateKey) == true } &&
           dayCons.none { it.patientId == card.patientId }
         }
         .map { it.patientId }
@@ -397,7 +397,7 @@ fun DashboardScreen(
       val todayTreatmentOnlyCount = remember(treatmentCards, todayConsList, todayKey) {
         treatmentCards
           .filter { card ->
-            card.sessions.any { it.administeredAt.startsWith(todayKey) } &&
+            card.sessions.any { it.administeredAt?.startsWith(todayKey) == true } &&
               todayConsList.none { it.patientId == card.patientId }
           }
           .map { it.patientId }
