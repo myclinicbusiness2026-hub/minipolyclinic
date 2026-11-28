@@ -356,6 +356,8 @@ class LocalWifiSyncManager(
     val users = ClinicDataPersistence.loadUsers(context) ?: emptyList()
 
     val treatmentCards = ClinicDataPersistence.loadTreatmentCards(context) ?: emptyList()
+    val vaccines = ClinicDataPersistence.loadVaccines(context) ?: emptyList()
+    val auditLogs = ClinicDataPersistence.loadAuditLogs(context) ?: emptyList()
     val payload = SyncDataPayload(
       deviceId = deviceId,
       deviceName = deviceName,
@@ -366,6 +368,8 @@ class LocalWifiSyncManager(
       medicines = medicines,
       users = users,
       treatmentCards = treatmentCards,
+      vaccines = vaccines,
+      auditLogs = auditLogs,
       clinicSettings = ClinicDataPersistence.loadClinicSettings(context),
       deletedPatientIds = deletedPatients,
       deletedConsultationIds = deletedConsultations,
@@ -489,11 +493,13 @@ class LocalWifiSyncManager(
         .associateBy { it.id }
         .toMutableMap()
       val remoteTreatmentCards = SyncPayloadParser.parseTreatmentCards(root.optJSONArray("treatmentCards") ?: root.optJSONArray("treatment_cards"))
+      var newTreatmentCount = 0
       remoteTreatmentCards.forEach { rtc ->
         if (!allDeletedPatientIds.contains(rtc.patientId) && !allDeletedTcIds.contains(rtc.id)) {
           val ex = tcMap[rtc.id]
           if (ex == null) {
             tcMap[rtc.id] = rtc
+            newTreatmentCount++
           } else {
             tcMap[rtc.id] = mergeTreatmentCards(ex, rtc)
           }
@@ -670,6 +676,8 @@ class LocalWifiSyncManager(
       val allDeletedLabTemplateIds = (localDelLabTmpl + remoteDelLabTmpl).toMutableSet()
       ClinicDataPersistence.saveDeletedLabTemplateIds(context, allDeletedLabTemplateIds)
 
+      // Merge Lab Orders
+      var newLabOrderCount = 0
       if (root.has("labOrders")) {
         val incomingLabOrders = ClinicDataPersistence.parseLabOrders(root.getJSONArray("labOrders").toString())
         val localLabOrders = ClinicDataPersistence.loadLabOrders(context) ?: emptyList()
@@ -683,6 +691,7 @@ class LocalWifiSyncManager(
             val ex = labMap[inc.id]
             if (ex == null) {
               labMap[inc.id] = inc
+              newLabOrderCount++
             } else {
               val incHasResults = inc.items.any { item -> item.parameters.any { it.result.isNotBlank() } }
               val exHasResults = ex.items.any { item -> item.parameters.any { it.result.isNotBlank() } }
@@ -738,10 +747,76 @@ class LocalWifiSyncManager(
         ClinicDataPersistence.saveLabInvoices(context, invMap.values.toList())
       }
 
+      // Merge Vaccines
+      if (root.has("vaccines")) {
+        val incomingVaccines = SyncPayloadParser.parseVaccines(root.optJSONArray("vaccines"))
+        val localVaccines = ClinicDataPersistence.loadVaccines(context) ?: emptyList()
+        val vacMap = localVaccines
+          .filterNot { allDeletedPatientIds.contains(it.patientId) }
+          .associateBy { it.id }
+          .toMutableMap()
+        incomingVaccines.forEach { rv ->
+          if (!allDeletedPatientIds.contains(rv.patientId)) {
+            vacMap[rv.id] = rv
+          }
+        }
+        ClinicDataPersistence.saveVaccines(context, vacMap.values.toList())
+      }
+
+      // Merge Audit Logs (Union by ID, newest first)
+      if (root.has("auditLogs")) {
+        val incomingLogs = SyncPayloadParser.parseAuditLogs(root.optJSONArray("auditLogs"))
+        val localLogs = ClinicDataPersistence.loadAuditLogs(context) ?: emptyList()
+        val logMap = localLogs.associateBy { it.id }.toMutableMap()
+        incomingLogs.forEach { log ->
+          if (!logMap.containsKey(log.id)) {
+            logMap[log.id] = log
+          }
+        }
+        val mergedLogs = logMap.values.sortedByDescending { it.timestamp }.take(2000)
+        ClinicDataPersistence.saveAuditLogs(context, mergedLogs)
+      }
+
       scope.launch(Dispatchers.Main) {
         onDataUpdated()
         if (newPatCount > 0) {
           com.example.util.SoundHelper.playNewPatientIncomingSound(context)
+          com.example.service.notification.ClinicNotificationHelper.showGenericClinicNotification(
+            context = context,
+            channelId = com.example.service.notification.ClinicNotificationHelper.CHANNEL_QUEUE,
+            notifId = 2101,
+            title = "လူနာအသစ် ($newPatCount) ဦး Sync ဝင်လာပါသည်",
+            message = "စောင့်ဆိုင်းခန်း (Patient Queue) တွင် စစ်ဆေးရန် နှိပ်ပါ",
+            openTab = 1
+          )
+        }
+        if (newInvCount > 0) {
+          com.example.service.notification.ClinicNotificationHelper.showInvoiceNotification(
+            context = context,
+            title = "ငွေရှင်းပြေစာ အသစ် ($newInvCount) စောင် ဝင်လာပါသည်",
+            message = "Cashier & Invoices ကောင်တာတွင် ငွေကောက်ခံရန် နှိပ်ပါ"
+          )
+        }
+        if (newConsCount > 0) {
+          com.example.service.notification.ClinicNotificationHelper.showPharmacyNotification(
+            context = context,
+            title = "ဆေးညွှန်းအသစ် ($newConsCount) ခု ရောက်ရှိပါသည်",
+            message = "Pharmacy Dispense တွင် ဆေးထုတ်ပေးရန် စစ်ဆေးပါ"
+          )
+        }
+        if (newTreatmentCount > 0) {
+          com.example.service.notification.ClinicNotificationHelper.showTreatmentNotification(
+            context = context,
+            title = "ဆေးထိုး/ကုသမှု Order အသစ် ($newTreatmentCount) ခု",
+            message = "Treatment & Injections စာမျက်နှာတွင် ကြည့်ရှုရန် နှိပ်ပါ"
+          )
+        }
+        if (newLabOrderCount > 0) {
+          com.example.service.notification.ClinicNotificationHelper.showLabNotification(
+            context = context,
+            title = "ဓာတ်ခွဲစစ်ဆေးမှု Order အသစ် ($newLabOrderCount) ခု",
+            message = "Lab Investigation တွင် စစ်ဆေးရန် နှိပ်ပါ"
+          )
         }
       }
 

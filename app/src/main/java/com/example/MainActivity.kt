@@ -58,6 +58,7 @@ class MainActivity : ComponentActivity() {
 
     ClinicNotificationHelper.initChannels(this)
     ClinicNotificationHelper.scheduleDailyFollowUpAlarm(this)
+    com.example.service.sync.ClinicBackgroundSyncService.start(this)
 
     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
       if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
@@ -137,6 +138,12 @@ fun MiniPolyclinicMainApp(
       com.example.service.sync.LocalWifiSyncService.startHub()
       com.example.service.sync.LocalWifiSyncService.startDiscovery(context)
     } catch (_: Exception) {}
+    val activity = context as? android.app.Activity
+    val targetTab = activity?.intent?.getIntExtra("open_tab", -1) ?: -1
+    if (targetTab >= 0) {
+      clinicViewModel.setTab(targetTab)
+      activity?.intent?.removeExtra("open_tab")
+    }
   }
 
   if (!isLoggedIn) {
@@ -977,7 +984,7 @@ fun MiniPolyclinicMainApp(
               pinInput = it
               adminPinError = null
             },
-            placeholder = { Text("Admin PIN (e.g. 2121994)", fontSize = 11.sp) },
+            placeholder = { Text("Admin PIN ရိုက်ထည့်ပါ", fontSize = 11.sp) },
             singleLine = true,
             visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
@@ -1002,7 +1009,7 @@ fun MiniPolyclinicMainApp(
               showAdminPinDialog = false
               showUserManagementDialog = true
             } else {
-              adminPinError = "Admin PIN မမှန်ကန်ပါ။ (Default PIN: 2121994)"
+              adminPinError = "Admin PIN မမှန်ကန်ပါ။"
             }
           },
           colors = ButtonDefaults.buttonColors(containerColor = MedicalGreen),

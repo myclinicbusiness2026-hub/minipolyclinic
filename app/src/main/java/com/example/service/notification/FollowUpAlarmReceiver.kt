@@ -17,16 +17,24 @@ class FollowUpAlarmReceiver : BroadcastReceiver() {
     // 2. Check for patients due today who haven't been reminded yet
     try {
       val patients = ClinicDataPersistence.loadPatients(context) ?: emptyList()
+      val vaccines = ClinicDataPersistence.loadVaccines(context) ?: emptyList()
       val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
 
       val duePatients = patients.filter {
         it.followUpDueDate == todayStr && !it.isReminderSent
       }
+      val dueVaccines = vaccines.filter { v ->
+        v.nextDueDate == todayStr && duePatients.none { p -> p.id == v.patientId }
+      }
 
-      if (duePatients.isNotEmpty()) {
-        val preview = duePatients.take(4).joinToString("\n") { "• ${it.name} (${it.hn}) - ${it.phone}" }
-        val more = if (duePatients.size > 4) "\n... နှင့် အခြား ${duePatients.size - 4} ဦး" else ""
-        ClinicNotificationHelper.showFollowUpNotification(context, duePatients.size, "$preview$more")
+      val totalDue = duePatients.size + dueVaccines.size
+      if (totalDue > 0) {
+        val patLines = duePatients.map { "• ${it.name} (${it.hn}) - ${it.phone}" }
+        val vacLines = dueVaccines.map { "• [ကာကွယ်ဆေး] ${it.patientName} (${it.vaccineName} ${it.doseNumber})" }
+        val combined = patLines + vacLines
+        val preview = combined.take(4).joinToString("\n")
+        val more = if (combined.size > 4) "\n... နှင့် အခြား ${combined.size - 4} ဦး" else ""
+        ClinicNotificationHelper.showFollowUpNotification(context, totalDue, "$preview$more")
       }
     } catch (e: Exception) {
       e.printStackTrace()

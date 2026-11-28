@@ -1,4 +1,4 @@
-package com.example.viewmodel
+﻿package com.example.viewmodel
 
 import android.app.Application
 import android.content.Context
@@ -1010,6 +1010,11 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val updatedInvoices = _invoices.value + invoice
     _invoices.value = updatedInvoices
     ClinicDataPersistence.saveInvoices(getApplication(), updatedInvoices)
+    com.example.service.notification.ClinicNotificationHelper.showInvoiceNotification(
+      context = getApplication(),
+      title = "ပြေစာအသစ်: ${invoice.invoiceNumber}",
+      message = "${invoice.patientName} • ${invoice.totalAmount.toInt()} Ks ($procedureName)"
+    )
 
     if (recurringDays > 1) {
       val route = when {
@@ -1124,9 +1129,23 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
   }
 
   fun updatePatient(updatedPatient: Patient) {
+    val oldPatient = _patients.value.find { it.id == updatedPatient.id }
     val updated = _patients.value.map { if (it.id == updatedPatient.id) updatedPatient else it }
     _patients.value = updated
     ClinicDataPersistence.savePatients(getApplication(), updated)
+    val operator = _currentUser.value?.fullName?.ifBlank { null } ?: _currentUser.value?.username ?: "Staff"
+    val role = _currentUser.value?.role?.name ?: "Staff"
+    if (oldPatient != null && (oldPatient.name != updatedPatient.name || oldPatient.phone != updatedPatient.phone || oldPatient.address != updatedPatient.address || oldPatient.age != updatedPatient.age)) {
+      logAudit(
+        operatorName = operator,
+        operatorRole = role,
+        module = AuditModule.PATIENT.displayName,
+        actionType = AuditActionType.PATIENT_EDIT.displayName,
+        targetName = "${updatedPatient.name} (${updatedPatient.hn})",
+        details = "လူနာအချက်အလက် ပြင်ဆင်ခြင်း (Phone: ${updatedPatient.phone}, Address: ${updatedPatient.address})",
+        reason = "လူနာမှတ်တမ်း ပြင်ဆင်ခြင်း"
+      )
+    }
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
     }
@@ -1134,6 +1153,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
   fun deletePatient(patientId: String) {
     val ctx = getApplication<Application>()
+    val target = _patients.value.find { it.id == patientId }
     // 1. Record tombstone in persistent storage
     ClinicDataPersistence.addDeletedPatientId(ctx, patientId)
 
@@ -1141,6 +1161,19 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val updated = _patients.value.filter { it.id != patientId }
     _patients.value = updated
     ClinicDataPersistence.savePatients(ctx, updated)
+    if (target != null) {
+      val operator = _currentUser.value?.fullName?.ifBlank { null } ?: _currentUser.value?.username ?: "Staff"
+      val role = _currentUser.value?.role?.name ?: "Staff"
+      logAudit(
+        operatorName = operator,
+        operatorRole = role,
+        module = AuditModule.PATIENT.displayName,
+        actionType = AuditActionType.RECORD_DELETION.displayName,
+        targetName = "${target.name} (${target.hn})",
+        details = "လူနာစာရင်း ဖျက်သိမ်းခြင်း",
+        reason = "စာရင်းဖျက်ပယ်ခြင်း"
+      )
+    }
 
     // 3. Clear draft and active selection
     draftConsultations.value = draftConsultations.value - patientId
@@ -1442,11 +1475,48 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     return _vaccines.value.filter { it.patientId in matchingIds }
   }
 
+  private fun syncPatientFollowUpForVaccine(record: VaccineRecord) {
+    val ctx = getApplication<Application>()
+    val nextDue = record.nextDueDate?.trim()?.takeIf { it.isNotBlank() }
+    val updatedPatients = _patients.value.map { p ->
+      if (p.id == record.patientId) {
+        if (nextDue != null) {
+          p.copy(
+            followUpDueDate = nextDue,
+            followUpReason = "ကာကွယ်ဆေး (${record.vaccineName} - ${record.doseNumber} အပြီး နောက်အကြိမ်)",
+            isReminderSent = false
+          )
+        } else {
+          // Dose series completed -> clear pending vaccine follow-up
+          val isVaccineFollowUp = p.followUpReason.contains("ကာကွယ်ဆေး") || p.followUpReason.contains("Vaccine", ignoreCase = true)
+          p.copy(
+            followUpDueDate = if (isVaccineFollowUp) null else p.followUpDueDate,
+            isReminderSent = true
+          )
+        }
+      } else p
+    }
+    _patients.value = updatedPatients
+    ClinicDataPersistence.savePatients(ctx, updatedPatients)
+  }
+
   fun addVaccineRecord(record: VaccineRecord) {
     val updated = _vaccines.value + record
     _vaccines.value = updated
     val ctx = getApplication<Application>()
     ClinicDataPersistence.saveVaccines(ctx, updated)
+    syncPatientFollowUpForVaccine(record)
+    val operator = _currentUser.value?.fullName?.ifBlank { null } ?: _currentUser.value?.username ?: "Staff"
+    val role = _currentUser.value?.role?.name ?: "Staff"
+    logAudit(
+      operatorName = operator,
+      operatorRole = role,
+      module = AuditModule.TREATMENT.displayName,
+      actionType = AuditActionType.STOCK_IN.displayName,
+      targetName = "${record.patientName} - ${record.vaccineName}",
+      details = "ကာကွယ်ဆေးထိုးနှံမှု မှတ်တမ်း (${record.doseNumber}, Next Due: ${record.nextDueDate ?: "ပြီးစီး"})",
+      reason = record.remarks.ifBlank { "ကာကွယ်ဆေးထိုးနှံခြင်း" }
+    )
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
     }
@@ -1462,6 +1532,7 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     _vaccines.value = updated
     val ctx = getApplication<Application>()
     ClinicDataPersistence.saveVaccines(ctx, updated)
+    syncPatientFollowUpForVaccine(record)
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
     }
@@ -1898,6 +1969,28 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     _invoices.value = updatedInvoices
     ClinicDataPersistence.saveInvoices(getApplication(), updatedInvoices)
 
+    // Notify Cashier & Pharmacy & Treatment counters
+    val ctxNotif = getApplication<Application>()
+    com.example.service.notification.ClinicNotificationHelper.showInvoiceNotification(
+      context = ctxNotif,
+      title = "ပြေစာအသစ်: ${invoice.invoiceNumber}",
+      message = "${patient.name} • ကျသင့်ငွေ ${calculatedTotal.toInt()} Ks (ငွေရှင်းကောင်တာ)"
+    )
+    if (prescriptions.isNotEmpty()) {
+      com.example.service.notification.ClinicNotificationHelper.showPharmacyNotification(
+        context = ctxNotif,
+        title = "ဆေးညွှန်းအသစ် (${prescriptions.size} မျိုး)",
+        message = "${patient.name} အတွက် Pharmacy Dispense တွင် ဆေးထုတ်ပေးရန်"
+      )
+    }
+    if (treatmentOrders.isNotEmpty()) {
+      com.example.service.notification.ClinicNotificationHelper.showTreatmentNotification(
+        context = ctxNotif,
+        title = "ကုသမှု Order အသစ် (${treatmentOrders.size} ခု)",
+        message = "${patient.name} အတွက် Treatment & Injections တွင် ဆောင်ရွက်ရန်"
+      )
+    }
+
     // Tag and persist Day-Care Treatment Cards linked to this consultation invoice
     if (treatmentOrders.isNotEmpty()) {
       val ctx = getApplication<Application>()
@@ -2119,6 +2212,23 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     if (inv != null) {
       updatePatientStatus(inv.patientId, QueueStatus.COMPLETED)
       deductInventoryForInvoice(inv)
+      val operator = _currentUser.value?.fullName?.ifBlank { null } ?: _currentUser.value?.username ?: "Cashier"
+      val role = _currentUser.value?.role?.name ?: "Cashier"
+      logAudit(
+        operatorName = operator,
+        operatorRole = role,
+        module = AuditModule.BILLING.displayName,
+        actionType = AuditActionType.INVOICE_EDIT.displayName,
+        targetName = "${inv.invoiceNumber} (${inv.patientName})",
+        costAmount = inv.totalAmount,
+        details = "ငွေရှင်းပြီးစီးမှု (${pm.displayName}, Paid: ${paid.toInt()} Ks, Discount: ${discount.toInt()} Ks)",
+        reason = "Cashier ငွေကောက်ခံပြီးစီးခြင်း"
+      )
+      com.example.service.notification.ClinicNotificationHelper.showInvoiceNotification(
+        context = getApplication(),
+        title = "ငွေရှင်းပြီးစီးပါပြီ: ${inv.invoiceNumber}",
+        message = "${inv.patientName} • ${inv.totalAmount.toInt()} Ks (${pm.displayName})"
+      )
     }
   }
 
@@ -2390,6 +2500,23 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     if (inv != null) {
       updatePatientStatus(inv.patientId, QueueStatus.COMPLETED)
       deductInventoryForInvoice(inv)
+      val operator = _currentUser.value?.fullName?.ifBlank { null } ?: _currentUser.value?.username ?: "Cashier"
+      val role = _currentUser.value?.role?.name ?: "Cashier"
+      logAudit(
+        operatorName = operator,
+        operatorRole = role,
+        module = AuditModule.BILLING.displayName,
+        actionType = AuditActionType.INVOICE_EDIT.displayName,
+        targetName = "${inv.invoiceNumber} (${inv.patientName})",
+        costAmount = inv.totalAmount,
+        details = "ငွေရှင်းပြီးစီးမှု (${pm.displayName}, Paid: ${paid.toInt()} Ks, Discount: ${discount.toInt()} Ks)",
+        reason = "Cashier ငွေကောက်ခံပြီးစီးခြင်း"
+      )
+      com.example.service.notification.ClinicNotificationHelper.showInvoiceNotification(
+        context = getApplication(),
+        title = "ငွေရှင်းပြီးစီးပါပြီ: ${inv.invoiceNumber}",
+        message = "${inv.patientName} • ${inv.totalAmount.toInt()} Ks (${pm.displayName})"
+      )
     }
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
@@ -3028,6 +3155,11 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val updated = _invoices.value + inv
     _invoices.value = updated
     ClinicDataPersistence.saveInvoices(ctx, updated)
+    com.example.service.notification.ClinicNotificationHelper.showInvoiceNotification(
+      context = ctx,
+      title = "Walk-in ပြေစာ: ${inv.invoiceNumber}",
+      message = "${inv.patientName} • ${inv.totalAmount.toInt()} Ks (${if (isPaid) "Paid" else "Unpaid"})"
+    )
 
     if (isPaid) {
       deductInventoryForInvoice(inv)
@@ -3046,6 +3178,11 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val updated = _treatmentCards.value + card
     _treatmentCards.value = updated
     ClinicDataPersistence.saveTreatmentCards(ctx, updated)
+    com.example.service.notification.ClinicNotificationHelper.showTreatmentNotification(
+      context = ctx,
+      title = "ကုသမှုကတ်အသစ်: ${card.patientName}",
+      message = "${card.medicationName} (${card.totalSessions} ကြိမ်) - Treatment & Injections"
+    )
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
     }
@@ -3241,6 +3378,11 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
         _invoices.value = updatedInvoices
         ClinicDataPersistence.saveInvoices(ctx, updatedInvoices)
         deductInventoryForInvoice(newInv)
+        com.example.service.notification.ClinicNotificationHelper.showInvoiceNotification(
+          context = ctx,
+          title = "ကုသမှုပြေစာအသစ်: ${newInv.invoiceNumber}",
+          message = "${newInv.patientName} • ${newInv.totalAmount.toInt()} Ks (Cashier & Invoices)"
+        )
         invoice = newInv
       }
     }
@@ -3522,6 +3664,20 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
       _medicines.value = updated
       ClinicDataPersistence.saveMedicines(getApplication(), updated)
     }
+    val operator = _currentUser.value?.fullName?.ifBlank { null } ?: _currentUser.value?.username ?: "Staff"
+    val role = _currentUser.value?.role?.name ?: "Staff"
+    logAudit(
+      operatorName = operator,
+      operatorRole = role,
+      module = AuditModule.INVENTORY.displayName,
+      actionType = AuditActionType.STOCK_IN.displayName,
+      targetName = tradeName,
+      quantityChange = quantity.toDouble(),
+      unitType = unitType,
+      costAmount = costPrice * quantity,
+      details = "စတော့အသစ်သွင်းခြင်း: +$quantity $unitType (Batch: $batchNumber, Exp: $expiryDate)",
+      reason = "Stock-In ($supplierName)".trim()
+    )
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
     }
@@ -3643,10 +3799,24 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
 
   fun deleteMedicine(medicineId: String) {
     val ctx = getApplication<Application>()
+    val target = _medicines.value.find { it.id == medicineId }
     ClinicDataPersistence.addDeletedMedicineId(ctx, medicineId)
     val updated = _medicines.value.filter { it.id != medicineId }
     _medicines.value = updated
     ClinicDataPersistence.saveMedicines(ctx, updated)
+    if (target != null) {
+      val operator = _currentUser.value?.fullName?.ifBlank { null } ?: _currentUser.value?.username ?: "Staff"
+      val role = _currentUser.value?.role?.name ?: "Staff"
+      logAudit(
+        operatorName = operator,
+        operatorRole = role,
+        module = AuditModule.INVENTORY.displayName,
+        actionType = AuditActionType.RECORD_DELETION.displayName,
+        targetName = target.name,
+        details = "ဆေးဝါးစာရင်း ဖျက်သိမ်းခြင်း",
+        reason = "Inventory မှ ဖျက်ပယ်ခြင်း"
+      )
+    }
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
     }
@@ -4462,6 +4632,18 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     if (loadedLabInvoices != null) {
       _labInvoices.value = loadedLabInvoices
     }
+    val loadedAuditLogs = ClinicDataPersistence.loadAuditLogs(ctx)
+    if (loadedAuditLogs != null) {
+      _auditLogs.value = loadedAuditLogs
+    }
+    val loadedVaccines = ClinicDataPersistence.loadVaccines(ctx)
+    if (loadedVaccines != null) {
+      _vaccines.value = loadedVaccines
+    }
+    val loadedExpenses = ClinicDataPersistence.loadExpenses(ctx)
+    if (loadedExpenses != null) {
+      _expenses.value = loadedExpenses
+    }
   }
 
   // --- Wi-Fi & Cloud Sync Handlers ---
@@ -5203,6 +5385,11 @@ class ClinicViewModel(application: Application) : AndroidViewModel(application) 
     val updatedInvoices = _invoices.value + newInvoice
     _invoices.value = updatedInvoices
     ClinicDataPersistence.saveInvoices(getApplication(), updatedInvoices)
+    com.example.service.notification.ClinicNotificationHelper.showInvoiceNotification(
+      context = getApplication(),
+      title = "ပြေစာအသစ်: ${newInvoice.invoiceNumber}",
+      message = "${newInvoice.patientName} • ကျသင့်ငွေ ${newInvoice.totalAmount.toInt()} Ks"
+    )
     viewModelScope.launch(Dispatchers.IO) {
       syncManager.syncWithAllPeers()
     }

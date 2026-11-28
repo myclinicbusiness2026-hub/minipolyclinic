@@ -622,4 +622,29 @@ object SyncPayloadParser {
     }
     return list
   }
+
+  fun parseAuditLogs(arr: JSONArray?): List<AuditLogEntry> {
+    if (arr == null) return emptyList()
+    val list = mutableListOf<AuditLogEntry>()
+    for (i in 0 until arr.length()) {
+      val o = arr.optJSONObject(i) ?: continue
+      list.add(
+        AuditLogEntry(
+          id = o.optString("id", UUID.randomUUID().toString()),
+          timestamp = o.optLong("timestamp", System.currentTimeMillis()),
+          operatorName = o.optString("operatorName", "Staff"),
+          operatorRole = o.optString("operatorRole", "Staff"),
+          module = o.optString("module", AuditModule.PHARMACY.displayName),
+          actionType = o.optString("actionType", AuditActionType.WASTAGE_WRITE_OFF.displayName),
+          targetName = o.optString("targetName", ""),
+          quantityChange = o.optDouble("quantityChange", 0.0),
+          unitType = o.optString("unitType", ""),
+          costAmount = o.optDouble("costAmount", 0.0),
+          details = o.optString("details", ""),
+          reason = o.optString("reason", "")
+        )
+      )
+    }
+    return list
+  }
 }

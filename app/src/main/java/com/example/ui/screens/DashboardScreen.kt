@@ -62,6 +62,7 @@ fun DashboardScreen(
   val expenses by viewModel.expenses.collectAsState()
   val consultations by viewModel.consultations.collectAsState()
   val labOrders by viewModel.labOrders.collectAsState()
+  val treatmentCards by viewModel.treatmentCards.collectAsState()
   val clinicSettings by viewModel.clinicSettings.collectAsState()
 
   var showExportDialog by remember { mutableStateOf(false) }
@@ -101,13 +102,24 @@ fun DashboardScreen(
       val dayEng = sdfDisplay.format(dayCal.time)
       val dayMm = dayNamesMm[dayEng] ?: dayEng
 
-      // Count actual patient encounters on this date across 3 categories:
-      val consCount = consultations.count { it.timestamp.startsWith(dateKey) }
-      val pharmacyWalkInCount = invoices.count { it.dateString == dateKey && it.consultationId.isNullOrBlank() && !it.invoiceNumber.startsWith("LAB-") }
-      val labOnlyCount = labOrders.count { it.orderDate == dateKey && !consultations.any { c -> (c.patientId == it.patientId || c.patientName.equals(it.patientName, ignoreCase = true)) && c.timestamp.startsWith(dateKey) } }
+      // Count actual patient encounters on this date across categories:
+      val dayCons = consultations.filter { it.timestamp.startsWith(dateKey) }
+      val consCount = dayCons.size
+      val treatmentOnlyCount = treatmentCards
+        .filter { card ->
+          card.sessions.any { it.administeredAt.startsWith(dateKey) } &&
+          dayCons.none { it.patientId == card.patientId }
+        }
+        .map { it.patientId }
+        .distinct()
+        .size
+      val pharmacyWalkInCount = invoices.count {
+        it.dateString == dateKey && it.consultationId.isNullOrBlank() && !it.invoiceNumber.startsWith("LAB-") && !it.id.startsWith("INV-TC-")
+      }
+      val labOnlyCount = labOrders.count { it.orderDate == dateKey && !dayCons.any { c -> c.patientId == it.patientId || c.patientName.equals(it.patientName, ignoreCase = true) } }
 
-      // Distinct total encounters: Consultation + Pharmacy OTC + Direct Lab
-      val totalCount = consCount + pharmacyWalkInCount + labOnlyCount
+      // Distinct total encounters: Consultation + Treatment Only + Pharmacy OTC + Direct Lab
+      val totalCount = consCount + treatmentOnlyCount + pharmacyWalkInCount + labOnlyCount
 
       list.add(
         DailyPatientStat(
@@ -367,15 +379,38 @@ fun DashboardScreen(
     }
 
 
-    // Dedicated 3-Category Patient Breakdown (ဆရာဝန်နှင့်ပြသူ၊ ဆေးလာဝယ်သူ၊ ဓာတ်ခွဲခန်းသီးသန့်စစ်ဆေးသူ)
+    // Dedicated 5-Category Patient Breakdown (New Cons, Follow-up Cons, Treatment/Injection, Pharmacy OTC, Lab Direct)
     item {
       val todayKey = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
-      val todayConsCount = remember(consultations, todayKey) { consultations.count { it.timestamp.startsWith(todayKey) } }
-      val todayOtcCount = remember(invoices, todayKey) { invoices.count { it.dateString == todayKey && it.consultationId.isNullOrBlank() && !it.invoiceNumber.startsWith("LAB-") } }
-      val todayLabCount = remember(labOrders, consultations, todayKey) {
-        labOrders.count { it.orderDate == todayKey && !consultations.any { c -> (c.patientId == it.patientId || c.patientName.equals(it.patientName, ignoreCase = true)) && c.timestamp.startsWith(todayKey) } }
+      val todayConsList = remember(consultations, todayKey) { consultations.filter { it.timestamp.startsWith(todayKey) } }
+      val todayFollowUpConsCount = remember(todayConsList, consultations, patients) {
+        todayConsList.count { c ->
+          val pat = patients.find { p -> p.id == c.patientId }
+          pat?.isFollowUp == true || consultations.any { prev ->
+            prev.id != c.id &&
+              (prev.patientId == c.patientId || (c.patientHn.isNotBlank() && prev.patientHn.equals(c.patientHn, ignoreCase = true))) &&
+              prev.timestamp < c.timestamp
+          }
+        }
       }
-      val todayTotalEncounters = todayConsCount + todayOtcCount + todayLabCount
+      val todayNewConsCount = (todayConsList.size - todayFollowUpConsCount).coerceAtLeast(0)
+      val todayTreatmentOnlyCount = remember(treatmentCards, todayConsList, todayKey) {
+        treatmentCards
+          .filter { card ->
+            card.sessions.any { it.administeredAt.startsWith(todayKey) } &&
+              todayConsList.none { it.patientId == card.patientId }
+          }
+          .map { it.patientId }
+          .distinct()
+          .size
+      }
+      val todayOtcCount = remember(invoices, todayKey) {
+        invoices.count { it.dateString == todayKey && it.consultationId.isNullOrBlank() && !it.invoiceNumber.startsWith("LAB-") && !it.id.startsWith("INV-TC-") }
+      }
+      val todayLabCount = remember(labOrders, todayConsList, todayKey) {
+        labOrders.count { it.orderDate == todayKey && !todayConsList.any { c -> c.patientId == it.patientId || c.patientName.equals(it.patientName, ignoreCase = true) } }
+      }
+      val todayTotalEncounters = todayNewConsCount + todayFollowUpConsCount + todayTreatmentOnlyCount + todayOtcCount + todayLabCount
 
       Card(
         modifier = Modifier.fillMaxWidth(),
@@ -407,7 +442,7 @@ fun DashboardScreen(
                   fontSize = 12.5.sp,
                   color = DarkGrayText
                 )
-                Text("ဆရာဝန်ပြသမှု၊ ဆေးဝယ်ယူမှု နှင့် ဓာတ်ခွဲစစ်ဆေးမှု သီးသန့်", fontSize = 9.5.sp, color = SlateMedium)
+                Text("ဆရာဝန်ပြ (New/Follow-up)၊ ဆေးထိုး၊ ဆေးဝယ် နှင့် ဓာတ်ခွဲခန်း သီးသန့်", fontSize = 9.5.sp, color = SlateMedium)
               }
             }
             Surface(
@@ -415,7 +450,7 @@ fun DashboardScreen(
               color = SoftGreenContainer
             ) {
               Text(
-                "စုစုပေါင်း: $todayTotalEncounters ဉီး",
+                "စုစုပေါင်း: $todayTotalEncounters ဦး",
                 fontSize = 10.5.sp,
                 fontWeight = FontWeight.Bold,
                 color = MedicalGreenDark,
@@ -426,11 +461,11 @@ fun DashboardScreen(
 
           Spacer(modifier = Modifier.height(10.dp))
 
+          // Row 1: Doctor Consultation (New vs Follow-up)
           Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
           ) {
-            // Category 1: Doctor Consultation
             Surface(
               modifier = Modifier.weight(1f),
               shape = RoundedCornerShape(8.dp),
@@ -441,13 +476,13 @@ fun DashboardScreen(
                 modifier = Modifier.padding(10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
               ) {
-                Icon(Icons.Default.MedicalServices, contentDescription = null, tint = OceanGreenPrimary, modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.PersonAdd, contentDescription = null, tint = OceanGreenPrimary, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("ဆရာဝန်နှင့်ပြသူ", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
-                Text("Consultation", fontSize = 8.5.sp, color = SlateMuted)
+                Text("ဆရာဝန်ပြ (လူနာသစ်)", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+                Text("New Consultation", fontSize = 8.5.sp, color = SlateMuted)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                  "$todayConsCount ဉီး",
+                  "$todayNewConsCount ဦး",
                   fontSize = 15.sp,
                   fontWeight = FontWeight.ExtraBold,
                   color = OceanGreenPrimary
@@ -455,7 +490,64 @@ fun DashboardScreen(
               }
             }
 
-            // Category 2: Pharmacy Walk-in / Direct OTC
+            Surface(
+              modifier = Modifier.weight(1f),
+              shape = RoundedCornerShape(8.dp),
+              color = Color(0xFFEFF6FF),
+              border = BorderStroke(1.dp, Color(0xFFBFDBFE))
+            ) {
+              Column(
+                modifier = Modifier.padding(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+              ) {
+                Icon(Icons.Default.EventRepeat, contentDescription = null, tint = Color(0xFF2563EB), modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("ဆရာဝန်ပြ (Follow-up)", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+                Text("Follow-Up Consultation", fontSize = 8.5.sp, color = SlateMuted)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                  "$todayFollowUpConsCount ဦး",
+                  fontSize = 15.sp,
+                  fontWeight = FontWeight.ExtraBold,
+                  color = Color(0xFF2563EB)
+                )
+              }
+            }
+          }
+
+          Spacer(modifier = Modifier.height(8.dp))
+
+          // Row 2: Injection/Treatment, Pharmacy OTC, Lab Direct
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+          ) {
+            // Category 3: Injection / Treatment Only
+            Surface(
+              modifier = Modifier.weight(1f),
+              shape = RoundedCornerShape(8.dp),
+              color = Color(0xFFFFFBEB),
+              border = BorderStroke(1.dp, Color(0xFFFDE68A))
+            ) {
+              Column(
+                modifier = Modifier.padding(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+              ) {
+                Icon(Icons.Default.Healing, contentDescription = null, tint = Color(0xFFD97706), modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("ဆေးလာထိုးသူ", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = SlateDark)
+                Text("Injection / Treatment", fontSize = 8.5.sp, color = SlateMuted)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                  "$todayTreatmentOnlyCount ဦး",
+                  fontSize = 15.sp,
+                  fontWeight = FontWeight.ExtraBold,
+                  color = Color(0xFFD97706)
+                )
+              }
+            }
+
+            // Category 4: Pharmacy Walk-in / Direct OTC
             Surface(
               modifier = Modifier.weight(1f),
               shape = RoundedCornerShape(8.dp),
@@ -472,7 +564,7 @@ fun DashboardScreen(
                 Text("Pharmacy OTC", fontSize = 8.5.sp, color = SlateMuted)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                  "$todayOtcCount ဉီး",
+                  "$todayOtcCount ဦး",
                   fontSize = 15.sp,
                   fontWeight = FontWeight.ExtraBold,
                   color = Color(0xFF0D9488)
@@ -480,7 +572,7 @@ fun DashboardScreen(
               }
             }
 
-            // Category 3: Direct Lab Only
+            // Category 5: Direct Lab Only
             Surface(
               modifier = Modifier.weight(1f),
               shape = RoundedCornerShape(8.dp),
@@ -497,7 +589,7 @@ fun DashboardScreen(
                 Text("Lab Direct", fontSize = 8.5.sp, color = SlateMuted)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                  "$todayLabCount ဉီး",
+                  "$todayLabCount ဦး",
                   fontSize = 15.sp,
                   fontWeight = FontWeight.ExtraBold,
                   color = Color(0xFF7E22CE)

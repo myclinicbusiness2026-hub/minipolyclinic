@@ -1319,7 +1319,7 @@ fun AdminUserManagementDialog(
             value = resetNewPasswordText,
             onValueChange = { resetNewPasswordText = it },
             label = { Text("စကားဝှက် အသစ် ရိုက်ထည့်ပါ", fontSize = 9.5.sp) },
-            placeholder = { Text("e.g. 123456", fontSize = 10.sp) },
+            placeholder = { Text("စကားဝှက် အသစ် ရိုက်ထည့်ပါ", fontSize = 10.sp) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             shape = RoundedCornerShape(4.dp)

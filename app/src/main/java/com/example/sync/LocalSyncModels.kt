@@ -62,6 +62,7 @@ data class SyncDataPayload(
   val procedures: List<ProcedureItem> = emptyList(),
   val suppliers: List<Supplier> = emptyList(),
   val vaccines: List<VaccineRecord> = emptyList(),
+  val auditLogs: List<AuditLogEntry> = emptyList(),
   val clinicSettings: ClinicSettings? = null,
   val deletedPatientIds: List<String> = emptyList(),
   val deletedConsultationIds: List<String> = emptyList(),
@@ -540,6 +541,27 @@ data class SyncDataPayload(
       vacArr.put(vo)
     }
     root.put("vaccines", vacArr)
+
+    // Audit Logs
+    val auditArr = JSONArray()
+    auditLogs.take(1000).forEach { log ->
+      val ao = JSONObject().apply {
+        put("id", log.id)
+        put("timestamp", log.timestamp)
+        put("operatorName", log.operatorName)
+        put("operatorRole", log.operatorRole)
+        put("module", log.module)
+        put("actionType", log.actionType)
+        put("targetName", log.targetName)
+        put("quantityChange", log.quantityChange)
+        put("unitType", log.unitType)
+        put("costAmount", log.costAmount)
+        put("details", log.details)
+        put("reason", log.reason)
+      }
+      auditArr.put(ao)
+    }
+    root.put("auditLogs", auditArr)
 
     if (clinicSettings != null) {
       val so = com.example.data.ClinicDataPersistence.settingsToJson(clinicSettings)

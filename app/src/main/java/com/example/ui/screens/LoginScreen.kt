@@ -371,7 +371,7 @@ fun LoginScreen(
             errorMessage = null
           },
           label = { Text("စကားဝှက် (Password)", fontSize = 11.5.sp) },
-          placeholder = { Text("Default: 2121994 (Admin) / 123456", fontSize = 11.5.sp) },
+          placeholder = { Text("စကားဝှက် ရိုက်ထည့်ပါ", fontSize = 11.5.sp) },
           leadingIcon = {
             Icon(Icons.Default.Lock, contentDescription = null, tint = MedicalGreen, modifier = Modifier.size(18.dp))
           },
